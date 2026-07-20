@@ -1,0 +1,51 @@
+@import '../../../../config/fonts.css';
+@import '../../../app/src/styles/tokens.css';
+
+:root {
+  --sl-color-bg: var(--color-paper);
+  --sl-color-bg-nav: var(--color-paper);
+  --sl-color-bg-sidebar: var(--color-paper-2);
+  --sl-color-text: var(--color-ink);
+  --sl-color-text-accent: var(--color-accent-text);
+  --sl-color-accent: var(--color-accent-text);
+  --sl-color-accent-high: var(--color-accent-text);
+  --sl-color-hairline: var(--color-rule);
+  --sl-font: var(--font-body);
+  --sl-font-mono: var(--font-mono);
+}
+
+html,
+body {
+  overflow-x: clip;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+a {
+  text-underline-offset: 0.2em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+  }
+}

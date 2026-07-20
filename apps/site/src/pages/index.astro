@@ -1,0 +1,459 @@
+---
+import '../styles/global.css';
+
+import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/site.mjs';
+
+const appHref = `${appBasePath}/`;
+const docsHref = `${docsBasePath}/`;
+const screenshotHref = `${projectBasePath}/app-workspace.png`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <meta name="theme-color" content="#f7f1e8" />
+    <meta
+      name="description"
+      content="Dusori is a free local-first learning workspace built from portable Markdown and JSON."
+    />
+    <title>Dusori — local-first learning</title>
+  </head>
+  <body>
+    <header class="edge-nav">
+      <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">Dusori</a>
+      <a class="nav-action" href={appHref}>Open app</a>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="kicker">A second brain for learning — local-first, free, works without AI</p>
+          <h1 id="hero-title">Your learning files. Still yours.</h1>
+          <p class="lede">
+            Dusori creates a paced learning workspace from plain Markdown and JSON. Start in your
+            browser, export whenever you want, or connect one folder on supported browsers.
+          </p>
+          <div class="hero-links">
+            <a href={appHref}>Open the app →</a>
+            <a href={docsHref}>Read the documentation →</a>
+          </div>
+        </div>
+        <aside class="availability" aria-label="Current release">
+          <span>Available now</span>
+          <strong>Workspace foundation</strong>
+          <p>
+            Browser storage, folder mode, portable exports, conflict-safe proposals, offline use.
+          </p>
+        </aside>
+      </section>
+
+      <section class="product-view" aria-labelledby="product-title">
+        <div class="section-heading">
+          <p class="kicker">The working surface</p>
+          <h2 id="product-title">Notes in the middle. The file contract in view.</h2>
+          <p>
+            The workspace rail, reading canvas, and inspector come from the real application—not a
+            fabricated product mockup.
+          </p>
+        </div>
+        <figure>
+          <img
+            src={screenshotHref}
+            width="1440"
+            height="960"
+            alt="Dusori workspace showing a learning note with the storage inspector open"
+            fetchpriority="high"
+          />
+          <figcaption>One topic, its first note, and the local storage boundary.</figcaption>
+        </figure>
+      </section>
+
+      <section class="contract" aria-labelledby="contract-title">
+        <div>
+          <p class="kicker">A legible folder</p>
+          <h2 id="contract-title">Leave Dusori. Keep the work.</h2>
+          <p>
+            Each topic carries its overview, roadmap, preferences, notes, source manifest, machine
+            state, and dated update history. Obsidian is compatible, never required.
+          </p>
+        </div>
+        <pre
+          aria-label="Dusori topic folder structure"><code>Topics/topic-name/
+  Overview.md
+  roadmap.md
+  TUTOR.md
+  state.json
+  Notes/
+  Updates/YYYY/MM/
+  Sources/manifest.json</code></pre>
+      </section>
+
+      <section class="proof" aria-labelledby="proof-title">
+        <div class="section-heading">
+          <p class="kicker">Conflict safety</p>
+          <h2 id="proof-title">External edits win.</h2>
+        </div>
+        <div class="proof-flow">
+          <div><span>1</span><p>Dusori remembers the last-seen content hash.</p></div>
+          <div><span>2</span><p>A changed file is left untouched.</p></div>
+          <div><span>3</span><p>The new version becomes a dated proposal beside it.</p></div>
+        </div>
+      </section>
+
+      <section class="capabilities" aria-labelledby="capability-title">
+        <div class="section-heading">
+          <p class="kicker">Honest browser support</p>
+          <h2 id="capability-title">A useful baseline everywhere.</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Modern browsers</dt><dd>
+              Private browser workspace, ZIP import/export, offline reload.
+            </dd>
+          </div>
+          <div>
+            <dt>Chromium desktop</dt><dd>Add direct access to one user-approved folder.</dd>
+          </div>
+          <div>
+            <dt>Local companion</dt><dd>
+              Optional loopback service foundation; Ollama and fetching are not built yet.
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="utility-index" aria-label="Project links">
+        <a href={appHref}><span>Use</span>Open the browser app →</a>
+        <a href={docsHref}><span>Understand</span>Read the file and browser contracts →</a>
+        <a href="https://github.com/udhawan97/dusori"
+          ><span>Inspect</span>Review the source on GitHub →</a
+        >
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <p>
+        Dusori is open-source software under the MIT License. No account. No telemetry. No hosted
+        application backend. The current build establishes the local-first workspace; AI, search,
+        and unattended scheduling remain future work.
+      </p>
+      <span>Built in public · 2026</span>
+    </footer>
+  </body>
+</html>
+
+<style>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    min-width: 20rem;
+    overflow-x: clip;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  a {
+    color: inherit;
+    white-space: nowrap;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  .edge-nav,
+  main,
+  .colophon {
+    width: min(100%, 92rem);
+    margin-inline: auto;
+    padding-inline: var(--page-gutter);
+  }
+
+  .edge-nav {
+    display: flex;
+    min-height: 5rem;
+    align-items: center;
+    justify-content: space-between;
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .nav-action {
+    min-height: 2.75rem;
+    padding: 0.55rem 1rem;
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-accent-text);
+    text-decoration: none;
+  }
+
+  .hero {
+    display: grid;
+    min-height: min(76dvh, 50rem);
+    align-items: end;
+    gap: var(--space-xl);
+    padding-block: var(--space-3xl) var(--space-2xl);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  h1,
+  h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: normal;
+    font-weight: 600;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  h1 {
+    max-width: 11ch;
+    font-size: var(--text-display);
+  }
+
+  h2 {
+    max-width: 18ch;
+    font-size: clamp(2rem, 3vw + 0.5rem, 3.75rem);
+  }
+
+  .kicker {
+    margin: 0 0 var(--space-md);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .lede {
+    max-width: 54ch;
+    margin-block-start: var(--space-lg);
+    font-size: var(--text-md);
+  }
+
+  .hero-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-lg);
+    margin-block-start: var(--space-lg);
+  }
+
+  .hero-links a,
+  .utility-index a {
+    color: var(--color-accent-text);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+
+  .availability {
+    max-width: 27rem;
+    padding-block-start: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .availability span,
+  .availability strong {
+    display: block;
+  }
+
+  .availability span,
+  figcaption,
+  .colophon {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .product-view,
+  .contract,
+  .proof,
+  .capabilities,
+  .utility-index {
+    padding-block: var(--space-3xl);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .section-heading {
+    display: grid;
+    gap: var(--space-md);
+    margin-block-end: var(--space-xl);
+  }
+
+  .section-heading > p:last-child,
+  .contract p {
+    max-width: 58ch;
+  }
+
+  figure {
+    margin: 0;
+  }
+
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: var(--rule-hair) solid var(--color-rule);
+  }
+
+  figcaption {
+    margin-block-start: var(--space-sm);
+  }
+
+  .contract {
+    display: grid;
+    gap: var(--space-xl);
+  }
+
+  pre {
+    min-width: 0;
+    overflow: auto;
+    margin: 0;
+    padding: var(--space-lg);
+    border-block: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  .proof-flow,
+  .capabilities dl {
+    display: grid;
+    margin: 0;
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .proof-flow > div,
+  .capabilities dl > div {
+    display: grid;
+    gap: var(--space-sm);
+    padding-block: var(--space-lg);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .proof-flow span {
+    color: var(--color-accent);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+  }
+
+  .proof-flow p,
+  .capabilities dd {
+    margin: 0;
+  }
+
+  .capabilities dt {
+    font-weight: 700;
+  }
+
+  .capabilities dd {
+    color: var(--color-muted);
+  }
+
+  .utility-index {
+    display: grid;
+  }
+
+  .utility-index a {
+    display: grid;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: var(--space-xs);
+    padding-block: var(--space-md);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .utility-index span {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+  }
+
+  .colophon {
+    display: grid;
+    gap: var(--space-md);
+    padding-block: var(--space-xl);
+  }
+
+  .colophon p {
+    max-width: 96ch;
+    margin: 0;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .nav-action:hover {
+      background: var(--color-paper-2);
+    }
+
+    .hero-links a:hover,
+    .utility-index a:hover {
+      color: var(--color-ink);
+      text-decoration-thickness: 2px;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    .hero {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    }
+
+    .contract {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+    }
+
+    .proof-flow > div,
+    .capabilities dl > div {
+      grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+    }
+
+    .utility-index a {
+      grid-template-columns: 7rem minmax(0, 1fr);
+    }
+
+    .colophon {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .section-heading {
+      grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+    }
+
+    .section-heading .kicker {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 150ms !important;
+    }
+  }
+</style>
