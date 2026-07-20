@@ -3,6 +3,8 @@ import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 
+import { projectBasePath } from '../config/site.mjs';
+
 const root = resolve(import.meta.dirname, '../dist/pages');
 const port = Number(process.env.DUSORI_PREVIEW_PORT ?? 4173);
 const types = {
@@ -20,9 +22,9 @@ createServer(async (request, response) => {
   const requestPath = decodeURIComponent(
     new URL(request.url ?? '/', `http://127.0.0.1:${port}`).pathname,
   );
-  const withoutBase = requestPath.startsWith('/dusori/')
-    ? requestPath.slice('/dusori'.length)
-    : requestPath === '/dusori'
+  const withoutBase = requestPath.startsWith(`${projectBasePath}/`)
+    ? requestPath.slice(projectBasePath.length)
+    : requestPath === projectBasePath
       ? '/'
       : requestPath;
   const candidate = normalize(join(root, withoutBase));
@@ -43,5 +45,5 @@ createServer(async (request, response) => {
   response.setHeader('Content-Type', types[extname(file)] ?? 'application/octet-stream');
   createReadStream(file).pipe(response);
 }).listen(port, '127.0.0.1', () => {
-  process.stdout.write(`Dusori preview: http://127.0.0.1:${port}/dusori/\n`);
+  process.stdout.write(`Dusori preview: http://127.0.0.1:${port}${projectBasePath}/\n`);
 });

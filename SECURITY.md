@@ -1,6 +1,6 @@
 # Security policy
 
-Report a vulnerability through GitHub’s private vulnerability reporting for the `udhawan97/dusori` repository. Do not include private workspace contents in a public issue.
+Report a vulnerability through GitHub’s private vulnerability reporting for the `udhawan97/Dusori` repository. Do not include private workspace contents in a public issue.
 
 ## Security boundary
 

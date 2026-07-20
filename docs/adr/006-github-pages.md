@@ -4,7 +4,7 @@
 
 ## Decision
 
-Compose the Astro site at `/dusori/`, Starlight documentation at `/dusori/docs/`, and the SvelteKit PWA at `/dusori/app/` into one GitHub Pages artifact.
+Compose the Astro site at `/Dusori/`, Starlight documentation at `/Dusori/docs/`, and the SvelteKit PWA at `/Dusori/app/` into one GitHub Pages artifact. The capitalized path matches the repository’s canonical product name.
 
 Do not depend on custom response headers. The service worker is emitted inside the application scope and the CSP is expressed in page metadata.
 

@@ -11,7 +11,7 @@ export default defineConfig({
       title: 'Dusori',
       description: 'Documentation for the local-first Dusori learning workspace.',
       customCss: ['./src/styles/global.css'],
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/udhawan97/dusori' }],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/udhawan97/Dusori' }],
       sidebar: [
         {
           label: 'Start',

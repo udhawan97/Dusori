@@ -1,4 +1,4 @@
-export const projectSlug = 'dusori';
+export const projectSlug = 'Dusori';
 export const projectBasePath = `/${projectSlug}`;
 export const appBasePath = `${projectBasePath}/app`;
 export const docsBasePath = `${projectBasePath}/docs`;

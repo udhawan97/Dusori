@@ -6,9 +6,9 @@ The current workspace-foundation milestone proves browser storage, direct folder
 
 ## Try Dusori
 
-- Web app: <https://udhawan97.github.io/dusori/app/>
-- Documentation: <https://udhawan97.github.io/dusori/docs/>
-- Product page: <https://udhawan97.github.io/dusori/>
+- Web app: <https://udhawan97.github.io/Dusori/app/>
+- Documentation: <https://udhawan97.github.io/Dusori/docs/>
+- Product page: <https://udhawan97.github.io/Dusori/>
 
 The optional companion is implemented and can be built locally:
 
@@ -84,4 +84,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the [arc
 
 ## License
 
-[MIT](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.
+[Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.

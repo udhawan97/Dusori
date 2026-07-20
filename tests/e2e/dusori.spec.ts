@@ -13,7 +13,7 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 }
 
 async function createBrowserWorkspace(page: Page): Promise<void> {
-  await page.goto('/dusori/app/');
+  await page.goto('/Dusori/app/');
   await page.getByRole('button', { name: 'Create workspace' }).click();
   await expect(page.getByRole('heading', { name: 'Create your first topic.' })).toBeVisible();
 }
@@ -40,25 +40,25 @@ async function runConflictProof(page: Page): Promise<void> {
 }
 
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
-  await page.goto('/dusori/');
+  await page.goto('/Dusori/');
   await expect(
     page.getByRole('heading', { name: 'Your learning files. Still yours.' }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: /open the app/iu })).toHaveAttribute(
     'href',
-    '/dusori/app/',
+    '/Dusori/app/',
   );
   await expect(page.getByRole('link', { name: /read the documentation/iu })).toHaveAttribute(
     'href',
-    '/dusori/docs/',
+    '/Dusori/docs/',
   );
   await expectNoSeriousA11yViolations(page);
 
-  await page.goto('/dusori/docs/');
+  await page.goto('/Dusori/docs/');
   await expect(page.getByRole('heading', { name: 'Dusori documentation' })).toBeVisible();
   await expectNoSeriousA11yViolations(page);
 
-  await page.goto('/dusori/app/');
+  await page.goto('/Dusori/app/');
   await expect(
     page.getByRole('heading', { name: 'Make a learning space you can keep.' }),
   ).toBeVisible();
@@ -147,18 +147,18 @@ test('the installed shell reloads and remains usable offline', async ({ page, co
 });
 
 test('manifest and service-worker paths honor the single project base', async ({ request }) => {
-  const manifest = await request.get('/dusori/app/manifest.webmanifest');
+  const manifest = await request.get('/Dusori/app/manifest.webmanifest');
   expect(manifest.ok()).toBe(true);
   expect(await manifest.json()).toMatchObject({
-    start_url: '/dusori/app/',
-    scope: '/dusori/app/',
+    start_url: '/Dusori/app/',
+    scope: '/Dusori/app/',
   });
-  expect((await request.get('/dusori/app/service-worker.js')).ok()).toBe(true);
+  expect((await request.get('/Dusori/app/service-worker.js')).ok()).toBe(true);
 });
 
 test('mobile workspace drawers are fully keyboard operable', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto('/dusori/app/');
+  await page.goto('/Dusori/app/');
   await page.getByRole('button', { name: 'Create workspace' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { name: 'Create your first topic.' })).toBeVisible();
@@ -185,7 +185,7 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
     });
     const page = await context.newPage();
 
-    await page.goto('/dusori/');
+    await page.goto('/Dusori/');
     await page.screenshot({
       path: `test-results/screenshots/landing-${width}.png`,
       fullPage: true,

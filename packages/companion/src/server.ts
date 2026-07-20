@@ -8,6 +8,8 @@ import { z } from 'zod';
 
 import { StorageConflictError } from '@dusori/core';
 
+import { appBasePath } from '../../../config/site.mjs';
+
 import {
   canonicalRoot,
   listWorkspace,
@@ -119,17 +121,17 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   });
 
   const staticDirectory =
-    options.staticDirectory ?? resolve(import.meta.dirname, '../public/dusori/app');
+    options.staticDirectory ?? resolve(import.meta.dirname, `../public${appBasePath}`);
   try {
     await access(staticDirectory);
     await server.register(fastifyStatic, {
       root: staticDirectory,
-      prefix: '/dusori/app/',
+      prefix: `${appBasePath}/`,
       wildcard: false,
     });
-    server.get('/dusori/app/*', async (_request, reply) => reply.sendFile('index.html'));
+    server.get(`${appBasePath}/*`, async (_request, reply) => reply.sendFile('index.html'));
     server.get('/', async (_request, reply) =>
-      reply.redirect(`/dusori/app/?token=${encodeURIComponent(options.token)}`),
+      reply.redirect(`${appBasePath}/?token=${encodeURIComponent(options.token)}`),
     );
   } catch {
     server.get('/', async () => ({
