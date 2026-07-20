@@ -1,0 +1,33 @@
+{
+  "name": "dusori",
+  "version": "0.0.0",
+  "description": "Optional loopback-only companion for the Dusori local-first learning app.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dusori": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "public",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/copy-app.mjs && tsup",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/static": "10.1.0",
+    "fastify": "5.10.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@dusori/core": "workspace:*",
+    "tsup": "8.5.1"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

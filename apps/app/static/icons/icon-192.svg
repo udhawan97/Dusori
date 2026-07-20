@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-labelledby="title">
+  <title id="title">Dusori</title>
+  <rect width="192" height="192" rx="20" fill="#f7f1e8"/>
+  <path d="M48 43h52c28 0 44 17 44 52s-16 54-44 54H48V43Zm35 26v54h14c13 0 20-9 20-28 0-18-7-26-20-26H83Z" fill="#1a1511"/>
+  <rect x="44" y="39" width="9" height="110" fill="#cb4832"/>
+</svg>

@@ -1,0 +1,45 @@
+{
+  "name": "dusori-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "11.x"
+  },
+  "scripts": {
+    "build": "pnpm --filter @dusori/app build && pnpm --filter @dusori/site build && pnpm --filter dusori build && node scripts/compose-pages.mjs",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build",
+    "dev:app": "pnpm --filter @dusori/app dev",
+    "dev:site": "pnpm --filter @dusori/site dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "preview": "node scripts/serve-pages.mjs",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.9",
+    "@axe-core/playwright": "4.12.1",
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.61.1",
+    "@testing-library/svelte": "5.4.2",
+    "@types/node": "26.1.1",
+    "@types/wicg-file-system-access": "2023.10.7",
+    "eslint": "10.7.0",
+    "eslint-plugin-astro": "3.0.1",
+    "eslint-plugin-svelte": "3.22.0",
+    "globals": "17.7.0",
+    "prettier": "3.9.5",
+    "prettier-plugin-astro": "0.14.1",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte-check": "4.7.3",
+    "tsx": "4.20.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
+  }
+}

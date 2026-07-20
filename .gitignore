@@ -1,0 +1,17 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+coverage/
+dist/
+build/
+.svelte-kit/
+.astro/
+.playwright-cli/
+playwright-report/
+test-results/
+output/playwright/
+packages/companion/public/
+*.log
+*.tsbuildinfo

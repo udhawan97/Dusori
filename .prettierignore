@@ -1,0 +1,12 @@
+node_modules
+dist
+packages/companion/public
+.playwright-cli
+build
+.svelte-kit
+.astro
+coverage
+playwright-report
+test-results
+output
+pnpm-lock.yaml

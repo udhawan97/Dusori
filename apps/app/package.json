@@ -1,0 +1,32 @@
+{
+  "name": "@dusori/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite dev",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@dusori/core": "workspace:*",
+    "@dusori/storage-fsa": "workspace:*",
+    "@dusori/storage-opfs": "workspace:*",
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.70.1",
+    "@vite-pwa/assets-generator": "1.0.2",
+    "@vite-pwa/sveltekit": "1.1.0",
+    "@lucide/svelte": "1.25.0",
+    "mermaid": "11.16.0",
+    "rehype-sanitize": "6.0.0",
+    "rehype-stringify": "10.0.1",
+    "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
+    "svelte": "5.56.7",
+    "unified": "11.0.5",
+    "vite": "8.1.5"
+  },
+  "devDependencies": {
+    "@types/wicg-file-system-access": "2023.10.7"
+  }
+}
