@@ -1,0 +1,76 @@
+/* Hallmark · macrostructure: Workbench · nav: N9 edge-aligned minimal · footer: Ft4 colophon
+ * theme: custom · vibe: "quiet editorial utility" · paper: oklch(96% 0.014 80) · accent: oklch(58% 0.17 32)
+ * display: Shippori Mincho · body: Zen Kaku Gothic New · axes: light / roman-serif / chromatic-vermilion
+ * enrichment: real app capture · studied: no · context: explicit · contrast: pass (40-41)
+ * slop: pass (42-45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48)
+ * responsive: pass (34, 49, 50-57) · icons: pass (30) · pre-emit critique: P5 H4 E4 S5 R5 V4
+ */
+
+:root {
+  --paper: oklch(96% 0.014 80);
+  --paper-2: oklch(93% 0.016 80);
+  --ink: oklch(20% 0.012 55);
+  --muted: oklch(48% 0.01 60);
+  --rule: oklch(80% 0.012 75);
+  --border: oklch(57% 0.014 75);
+  --accent: oklch(58% 0.17 32);
+  --accent-text: oklch(46% 0.16 32);
+  --focus: oklch(55% 0.2 32);
+
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-ink: var(--paper);
+  --color-focus: var(--focus);
+  --color-error: oklch(45% 0.16 25);
+  --color-success: oklch(39% 0.09 145);
+
+  --font-display: 'Shippori Mincho', 'Yu Mincho', serif;
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.953rem;
+  --text-2xl: 2.441rem;
+  --text-display: clamp(2.5rem, 4vw + 1rem, 5.25rem);
+
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --rule-hair: 1px;
+  --page-gutter: clamp(1rem, 4vw, 4rem);
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}
