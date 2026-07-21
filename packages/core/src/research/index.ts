@@ -1,3 +1,4 @@
+export * from './companion.js';
 export * from './plan.js';
 export * from './providers/index.js';
 export * from './research-file.js';
