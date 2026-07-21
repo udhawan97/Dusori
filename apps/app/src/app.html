@@ -7,8 +7,18 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:* http://localhost:*"
     />
-    <meta name="theme-color" content="#f7f1e8" />
-    <link rel="icon" href="%sveltekit.assets%/icons/icon-192.svg" />
+    <meta name="theme-color" content="#14100d" />
+    <link rel="icon" href="%sveltekit.assets%/brand/dusori-favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="%sveltekit.assets%/icons/favicon-32x32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('dusori-theme');
+        document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'dark';
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

@@ -1,5 +1,5 @@
-/* Hallmark · macrostructure: Workbench · nav: N9 edge-aligned minimal · footer: Ft4 colophon
- * theme: custom · vibe: "quiet editorial utility" · paper: light + dark · accent: vermilion
+/* Hallmark · macrostructure: Workbench + constellation desk · nav: N9 edge-aligned minimal · footer: Ft4 colophon
+ * theme: custom supplied identity · vibe: "nocturnal editorial utility" · paper: light + dark · accent: vermilion + marigold
  * display: Shippori Mincho · body: Zen Kaku Gothic New · axes: dual / roman-serif / chromatic-vermilion
  * enrichment: real app capture · studied: no · context: explicit · contrast: pass (40-41)
  * slop: pass (42-45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48)
@@ -20,6 +20,7 @@
   --focus-light: oklch(55% 0.2 32);
   --error-light: oklch(45% 0.16 25);
   --success-light: oklch(39% 0.09 145);
+  --marigold-light: #c9862e;
 
   --paper-dark: oklch(15% 0.012 55);
   --paper-2-dark: oklch(19% 0.014 60);
@@ -32,6 +33,7 @@
   --focus-dark: oklch(70% 0.16 32);
   --error-dark: oklch(68% 0.13 25);
   --success-dark: oklch(68% 0.08 145);
+  --marigold-dark: #c9862e;
 
   --paper: light-dark(var(--paper-light), var(--paper-dark));
   --paper-2: light-dark(var(--paper-2-light), var(--paper-2-dark));
@@ -44,6 +46,7 @@
   --focus: light-dark(var(--focus-light), var(--focus-dark));
   --error: light-dark(var(--error-light), var(--error-dark));
   --success: light-dark(var(--success-light), var(--success-dark));
+  --marigold: light-dark(var(--marigold-light), var(--marigold-dark));
 
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
@@ -57,6 +60,7 @@
   --color-focus: var(--focus);
   --color-error: var(--error);
   --color-success: var(--success);
+  --color-marigold: var(--marigold);
 
   --font-display: 'Shippori Mincho', 'Yu Mincho', serif;
   --font-body: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;

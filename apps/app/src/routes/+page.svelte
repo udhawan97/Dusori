@@ -11,10 +11,11 @@
     PanelRightClose,
     PanelRightOpen,
     ShieldCheck,
+    Share2,
     Upload,
     X,
   } from '@lucide/svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   import {
     WorkspaceSchema,
@@ -36,7 +37,10 @@
 
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
+  import LearningLoop from '$lib/components/LearningLoop.svelte';
+  import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
+  import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -45,6 +49,7 @@
   let selectedSlug = '';
   let notePath = '';
   let noteContent = '';
+  let workspaceView: 'graph' | 'note' | 'roadmap' | 'today' = 'note';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
   let error = '';
@@ -53,6 +58,9 @@
   let mobileNavOpen = false;
   let companionStatus = 'Not connected';
   let sourceRevision = 0;
+  let learningRevision = 0;
+  let obsidianGuideOpen = false;
+  let obsidianDialog: HTMLElement;
   let statusTimer: number | undefined;
 
   $: diff = conflict
@@ -122,7 +130,7 @@
     storageLabel = label;
     workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
     const first = workspace.topics[0];
-    if (first) await openTopic(first.slug);
+    if (first) openToday(first.slug);
   }
 
   async function createBrowserWorkspace(): Promise<void> {
@@ -142,6 +150,12 @@
       await activateStorage(adapter, `Folder · ${adapter.root.name}`);
       status = 'Folder connected. Dusori writes only inside this selected root.';
     });
+  }
+
+  async function openObsidianGuide(): Promise<void> {
+    obsidianGuideOpen = true;
+    await tick();
+    obsidianDialog?.focus();
   }
 
   async function addTopic(): Promise<void> {
@@ -166,6 +180,7 @@
 
   async function openDocument(relativePath: string): Promise<void> {
     if (!storage || !selectedSlug) return;
+    workspaceView = 'note';
     notePath = `Topics/${selectedSlug}/${relativePath}`;
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
@@ -173,14 +188,59 @@
   }
 
   function showImportedRoadmap(content: string): void {
+    workspaceView = 'roadmap';
     notePath = `Topics/${selectedSlug}/roadmap.md`;
     noteContent = content;
+    learningRevision += 1;
     conflict = null;
     announceStatus('Curriculum applied. The imported roadmap is open.');
   }
 
   function refreshSources(): void {
     sourceRevision += 1;
+  }
+
+  function openToday(slug = selectedSlug): void {
+    if (!slug) return;
+    selectedSlug = slug;
+    workspaceView = 'today';
+    notePath = '';
+    conflict = null;
+    mobileNavOpen = false;
+  }
+
+  async function openRoadmap(slug = selectedSlug): Promise<void> {
+    if (!storage || !slug) return;
+    selectedSlug = slug;
+    workspaceView = 'roadmap';
+    notePath = `Topics/${slug}/roadmap.md`;
+    noteContent = (await storage.read(notePath))?.content ?? '';
+    conflict = null;
+    mobileNavOpen = false;
+  }
+
+  function openGraph(): void {
+    workspaceView = 'graph';
+    notePath = '';
+    conflict = null;
+    inspectorOpen = false;
+    mobileNavOpen = false;
+  }
+
+  async function openGraphDocument(path: string): Promise<void> {
+    if (!storage) return;
+    const match = /^Topics\/([^/]+)\//u.exec(path);
+    if (match?.[1]) selectedSlug = match[1];
+    workspaceView = 'note';
+    notePath = path;
+    noteContent = (await storage.read(path))?.content ?? '';
+    conflict = null;
+    mobileNavOpen = false;
+  }
+
+  function handleRoadmapChanged(slug: string, content: string): void {
+    if (slug === selectedSlug) noteContent = content;
+    learningRevision += 1;
   }
 
   async function runConflictProof(): Promise<void> {
@@ -290,6 +350,7 @@
 <svelte:window
   onkeydown={(event) => {
     if (event.key === 'Escape') {
+      obsidianGuideOpen = false;
       mobileNavOpen = false;
       if (window.innerWidth < 960) inspectorOpen = false;
     }
@@ -305,10 +366,28 @@
   <main class="setup-shell">
     <header class="setup-header">
       <a class="wordmark" href="../">
-        <img src={`${base}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+        <span class="brand-symbol" aria-hidden="true">
+          <img
+            class="brand-mark-light"
+            src={`${base}/brand/dusori-mark.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+          <img
+            class="brand-mark-dark"
+            src={`${base}/brand/dusori-mark-reversed.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+        </span>
         <span>Dusori</span>
       </a>
-      <a class="quiet-link" href="../docs/">Read docs</a>
+      <div class="setup-actions">
+        <a class="quiet-link" href="../docs/">Read docs</a>
+        <ThemeToggle />
+      </div>
     </header>
 
     <section class="setup-intro" aria-labelledby="setup-title">
@@ -343,10 +422,68 @@
         >
           Connect folder
         </button>
+        <button class="text-button" disabled={busy} onclick={openObsidianGuide}>
+          Use Dusori with Obsidian
+        </button>
       </article>
     </section>
 
-    <label class="import-link">
+    {#if obsidianGuideOpen}
+      <div class="dialog-backdrop">
+        <div
+          class="obsidian-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="obsidian-title"
+          tabindex="-1"
+          bind:this={obsidianDialog}
+        >
+          <div class="dialog-heading">
+            <div>
+              <p class="kicker">Obsidian · least privilege</p>
+              <h2 id="obsidian-title">Connect only a Dusori folder.</h2>
+            </div>
+            <button
+              class="icon-button"
+              aria-label="Close Obsidian guide"
+              onclick={() => (obsidianGuideOpen = false)}
+            >
+              <X aria-hidden="true" size={20} />
+            </button>
+          </div>
+          <ol>
+            <li>Open or create your vault in Obsidian.</li>
+            <li>Create a folder named <strong>Dusori</strong> inside that vault.</li>
+            <li>Select that Dusori folder here — never the whole vault.</li>
+          </ol>
+          <p class="privacy-note">
+            <span class="privacy-icon">
+              <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.5} />
+            </span>
+            <span
+              ><strong>No Obsidian plugin is required.</strong> Dusori reads and writes only the folder
+              you approve.</span
+            >
+          </p>
+          {#if 'showDirectoryPicker' in globalThis}
+            <button class="primary-button" disabled={busy} onclick={connectFolder}>
+              Select my Dusori folder
+            </button>
+          {:else}
+            <p class="message">Folder connection needs Chrome or Edge on desktop.</p>
+            <a
+              class="quiet-link"
+              href="#workspace-import"
+              onclick={() => (obsidianGuideOpen = false)}
+            >
+              Use ZIP import instead
+            </a>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <label class="import-link" id="workspace-import">
       <Upload aria-hidden="true" size={17} />
       Import an exported workspace
       <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
@@ -365,13 +502,22 @@
   >
     <nav class:open={mobileNavOpen} class="rail" id="workspace-navigation" aria-label="Workspace">
       <div class="rail-brand">
-        <img
-          class="brand-mark"
-          src={`${base}/brand/dusori-mark.svg`}
-          alt=""
-          width="28"
-          height="28"
-        />
+        <span class="brand-symbol" aria-hidden="true">
+          <img
+            class="brand-mark-light"
+            src={`${base}/brand/dusori-mark.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+          <img
+            class="brand-mark-dark"
+            src={`${base}/brand/dusori-mark-reversed.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+        </span>
         <span>Dusori</span>
         <button
           class="rail-close"
@@ -384,22 +530,31 @@
       <div class="rail-section">
         <p>Workspace</p>
         <button
-          class:active={notePath.endsWith('/Notes/001-first-look.md')}
+          class:active={workspaceView === 'today'}
           class="rail-link"
           disabled={!selectedSlug}
-          onclick={() => openDocument('Notes/001-first-look.md')}
+          onclick={() => openToday()}
         >
           <BookOpen aria-hidden="true" size={18} />
           Today
         </button>
         <button
-          class:active={notePath.endsWith('/roadmap.md')}
+          class:active={workspaceView === 'roadmap'}
           class="rail-link"
           disabled={!selectedSlug}
-          onclick={() => openDocument('roadmap.md')}
+          onclick={() => openRoadmap()}
         >
           <ListChecks aria-hidden="true" size={18} />
           Roadmap
+        </button>
+        <button
+          class:active={workspaceView === 'graph'}
+          class="rail-link"
+          disabled={!workspace.topics.length}
+          onclick={openGraph}
+        >
+          <Share2 aria-hidden="true" size={18} />
+          Graph
         </button>
       </div>
       <div class="rail-section topic-list">
@@ -441,27 +596,51 @@
           <Menu aria-hidden="true" size={20} />
         </button>
         <div>
-          <p class="path-label">{notePath || 'Workspace ready'}</p>
+          <p class="path-label">
+            {workspaceView === 'today'
+              ? 'Today · local activity'
+              : workspaceView === 'graph'
+                ? 'Graph · portable relationships'
+                : notePath || 'Workspace ready'}
+          </p>
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
-        <button
-          class="icon-button"
-          aria-label={inspectorOpen ? 'Close inspector' : 'Open inspector'}
-          aria-pressed={inspectorOpen}
-          onclick={() => (inspectorOpen = !inspectorOpen)}
-        >
-          {#if inspectorOpen}
-            <PanelRightClose aria-hidden="true" size={20} />
-          {:else}
-            <PanelRightOpen aria-hidden="true" size={20} />
-          {/if}
-        </button>
+        <div class="canvas-actions">
+          <ThemeToggle />
+          <button
+            class="icon-button"
+            aria-label={inspectorOpen ? 'Close inspector' : 'Open inspector'}
+            aria-pressed={inspectorOpen}
+            onclick={() => (inspectorOpen = !inspectorOpen)}
+          >
+            {#if inspectorOpen}
+              <PanelRightClose aria-hidden="true" size={20} />
+            {:else}
+              <PanelRightOpen aria-hidden="true" size={20} />
+            {/if}
+          </button>
+        </div>
       </header>
 
       {#if selectedSlug}
-        <div class="note-sheet">
-          <MarkdownView content={noteContent} />
-        </div>
+        {#if workspaceView === 'note'}
+          <div class="note-sheet">
+            <MarkdownView content={noteContent} />
+          </div>
+        {:else if workspaceView === 'graph' && storage}
+          <KnowledgeGraph {storage} onOpen={(path) => void openGraphDocument(path)} />
+        {:else if storage && workspace}
+          <LearningLoop
+            {storage}
+            {workspace}
+            topicSlug={selectedSlug}
+            view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
+            revision={learningRevision}
+            onOpenRoadmap={(slug) => void openRoadmap(slug)}
+            onRoadmapChanged={handleRoadmapChanged}
+            onStatus={announceStatus}
+          />
+        {/if}
       {:else}
         <section class="empty-topic" aria-labelledby="new-topic-title">
           <p class="kicker">One useful beginning</p>
@@ -638,10 +817,54 @@
     block-size: 1.75rem;
   }
 
+  .brand-symbol {
+    position: relative;
+    display: grid;
+    flex: none;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    place-items: center;
+  }
+
+  .brand-symbol img {
+    position: absolute;
+    inset: 0;
+  }
+
+  .brand-mark-dark {
+    display: none;
+  }
+
+  :global(html[data-theme='dark']) .brand-mark-light {
+    display: none;
+  }
+
+  :global(html[data-theme='dark']) .brand-mark-dark {
+    display: block;
+  }
+
+  .setup-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
   .quiet-link,
-  .import-link {
+  .import-link,
+  .text-button {
     color: var(--color-accent-text);
     text-underline-offset: 0.25em;
+  }
+
+  .text-button {
+    display: block;
+    min-height: 2.75rem;
+    margin-block-start: var(--space-sm);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .setup-intro {
@@ -765,6 +988,61 @@
     color: var(--color-error);
   }
 
+  .dialog-backdrop {
+    position: fixed;
+    z-index: var(--z-modal);
+    inset: 0;
+    display: grid;
+    padding: var(--space-md);
+    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
+    place-items: center;
+  }
+
+  .obsidian-dialog {
+    width: min(100%, 38rem);
+    max-height: calc(100dvh - 2rem);
+    overflow: auto;
+    padding: var(--space-xl);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-md);
+    outline: none;
+    background: var(--color-paper);
+    box-shadow: 0 2rem 6rem color-mix(in srgb, var(--color-ink) 55%, transparent);
+  }
+
+  .dialog-heading {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  .dialog-heading h2 {
+    margin-block-start: var(--space-xs);
+  }
+
+  .obsidian-dialog ol {
+    display: grid;
+    gap: var(--space-md);
+    margin-block: var(--space-xl);
+    padding-inline-start: var(--space-lg);
+  }
+
+  .privacy-note {
+    display: flex;
+    align-items: start;
+    gap: var(--space-sm);
+    padding-block: var(--space-md);
+    border-block: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .privacy-icon {
+    display: grid;
+    flex: none;
+    color: var(--color-marigold, var(--color-accent-text));
+    place-items: center;
+  }
+
   .workbench {
     display: grid;
     min-height: 100dvh;
@@ -885,12 +1163,6 @@
     place-items: center;
   }
 
-  .brand-mark {
-    flex: none;
-    inline-size: 1.75rem;
-    block-size: 1.75rem;
-  }
-
   .rail-section {
     display: grid;
     gap: var(--space-xs);
@@ -945,6 +1217,13 @@
   .canvas-bar > div {
     min-width: 0;
     flex: 1;
+  }
+
+  .canvas-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-xs);
   }
 
   .path-label {

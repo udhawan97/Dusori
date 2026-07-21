@@ -1,51 +1,77 @@
-# Dusori
-
 <p align="center">
-  <img src="apps/site/public/brand/dusori-lockup.svg" width="420" alt="Dusori" />
+  <img src="docs/assets/dusori-mark-animated.svg" width="640" alt="Dusori — local-first learning" />
 </p>
 
-Dusori is a free, open-source, local-first learning workspace. It creates plain Markdown and JSON that remains readable in any editor, including Obsidian, and it works without an account, hosted database, telemetry, or AI.
+<p align="center">
+  A free, local-first learning workspace built from files you can keep.<br />
+  No account · no telemetry · no hosted database · useful without AI
+</p>
 
-The current workspace-foundation milestone includes browser storage, direct folder access on supported Chromium desktop browsers, ZIP portability, conflict-safe proposals, sanitized note rendering, offline reloads, a local source library, and preview-first curriculum import. Paste an English Microsoft Learn study guide or a structured Markdown syllabus; Dusori extracts the outline locally, shows the roadmap before writing, and stores the original beside the topic. Remote source fetching, web search, Ollama, AI transformation, and unattended scheduling are roadmap items—not shipped features.
+<p align="center">
+  <a href="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml"><img alt="Verify and deploy" src="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="LICENSE"><img alt="Apache License 2.0" src="https://img.shields.io/badge/license-Apache--2.0-cb4832" /></a>
+  <img alt="Local first" src="https://img.shields.io/badge/data-local--first-c9862e" />
+  <img alt="Progressive Web App" src="https://img.shields.io/badge/app-PWA-1a1511" />
+</p>
 
-## Try Dusori
+<p align="center">
+  <a href="https://udhawan97.github.io/Dusori/app/"><strong>Open the app</strong></a>
+  ·
+  <a href="https://udhawan97.github.io/Dusori/docs/">Documentation</a>
+  ·
+  <a href="https://udhawan97.github.io/Dusori/">Product page</a>
+</p>
 
-- Web app: <https://udhawan97.github.io/Dusori/app/>
-- Documentation: <https://udhawan97.github.io/Dusori/docs/>
-- Product page: <https://udhawan97.github.io/Dusori/>
+---
 
-The optional companion is implemented and can be built locally:
+Dusori turns plain Markdown and JSON into a private learning workbench: notes, a checkable roadmap, local sources, dated updates, and a knowledge graph that understands Obsidian-style `[[wikilinks]]`. Start in browser storage or connect one folder. Export a ZIP at any time. The app works offline after its first load and does not need an account, plugin, remote backend, or AI model.
 
-```sh
-corepack enable
-pnpm install
-pnpm build
-pnpm --filter dusori dev -- --root /path/to/Dusori
+The identity combines Japanese restraint—an open ensō and blade—with rangoli-like Indian geometry at the center. Vermilion marks action; marigold marks connected knowledge. The app starts in black mode and keeps an explicit light/dark choice locally.
+
+## The product today
+
+![Dusori workspace showing the local learning loop](apps/site/public/app-workspace.png)
+
+| Surface            | What ships                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| **Today**          | Next unchecked objective, progress, topic state, and recent local updates             |
+| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states           |
+| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks   |
+| **Notes**          | Sanitized Markdown, Mermaid diagrams, and explicit conflict proposals                 |
+| **Sources**        | Local paste, file, and URL-reference capture with hashes and provenance               |
+| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides |
+| **Portability**    | Browser storage, direct folder access where supported, and ZIP import/export          |
+| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons           |
+
+Remote fetching, search, Ollama transforms, generated schedules, and unattended work are roadmap items. Dusori does not claim they exist yet.
+
+## Obsidian, without surrendering the vault
+
+Dusori uses Obsidian’s most durable interface: folders, Markdown, frontmatter, and wikilinks. No plugin is required.
+
+1. Open or create an Obsidian vault.
+2. Create `<Vault>/Dusori/`.
+3. In Chrome or Edge on desktop, choose **Use Dusori with Obsidian**.
+4. Select only the `Dusori` subfolder—never the whole vault.
+
+Firefox and Safari use the private browser workspace plus ZIP import/export. Folder access is an enhancement, not a portability requirement.
+
+## A graph that remains files
+
+The graph does not introduce a graph database. `@dusori/core` scans readable workspace files, gives every node its normalized relative path, derives containment from topic folders, and resolves `[[wikilinks]]`. Unresolved links remain visible instead of being guessed. Coordinates are never written into the workspace.
+
+![Dusori dark knowledge graph showing portable learning artifacts](apps/site/public/app-graph.png)
+
+```mermaid
+flowchart LR
+  F["Markdown + text files"] --> C["@dusori/core graph builder"]
+  C --> G["Local SVG constellation"]
+  C --> A["Accessible artifact index"]
+  O["Obsidian"] <--> F
+  Z["ZIP export"] <--> F
 ```
 
-The intended public command is `npx dusori --root /path/to/Dusori`, but the npm package has not been published in this milestone. The README will not claim that command works until an npm release exists.
-
-## Browser capabilities
-
-| Capability                       | Chrome/Edge desktop                 | Chrome Android | Firefox desktop           | Safari macOS                    | Safari iOS         |
-| -------------------------------- | ----------------------------------- | -------------- | ------------------------- | ------------------------------- | ------------------ |
-| Browser workspace (OPFS)         | Yes                                 | Yes            | Yes                       | Yes¹                            | Yes¹               |
-| ZIP import/export                | Yes                                 | Yes            | Yes                       | Yes                             | Yes                |
-| Connect a real folder            | Yes                                 | Yes²           | No → import/export        | No → import/export              | No                 |
-| Companion from hosted origin     | Local-network permission may appear | Not supported  | Supported                 | Blocked by mixed-content policy | Not supported      |
-| Companion from its localhost URL | Yes                                 | Not supported  | Yes                       | Yes                             | Not supported      |
-| Ollama                           | Future via companion                | Not supported  | Future via companion      | Future via companion localhost  | Not supported      |
-| Install                          | PWA                                 | PWA            | Tab + service worker only | Add to Dock                     | Add to Home Screen |
-| Offline after first load         | Yes                                 | Yes            | Yes                       | Yes¹                            | Yes¹               |
-| Closed-app scheduling            | No                                  | No             | No                        | No                              | No                 |
-
-¹ Safari storage retention can be less predictable for a site used only in a browser tab. Install the web app where supported and keep exported backups.
-
-² Chrome Android 132+ exposes folder access, but its writes are not atomic. Dusori treats it as best-effort and keeps import/export as the portability baseline.
-
-Folder access is a capability enhancement, not a universal promise. When connecting an Obsidian vault, select or create `<Vault>/Dusori/`; Dusori never needs access to the rest of the vault and does not install a plugin.
-
-## File contract
+## Portable file contract
 
 ```text
 <Dusori Root>/
@@ -64,11 +90,36 @@ Folder access is a capability enhancement, not a universal promise. When connect
     └── Backups/
 ```
 
-Markdown and text sources are user-readable. JSON is machine-owned, schema-versioned, and validated. Adding a source records its hash, local path, method, size, and optional original URL or filename in `Sources/manifest.json`, then appends the event to that topic’s dated update log. If an externally edited Markdown file no longer matches Dusori’s last-seen hash, the external file stays untouched and Dusori writes a dated `.proposed-…` file beside it.
+Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If a Markdown file changed outside Dusori, that file stays active and Dusori writes a dated `.proposed-…` version beside it. Acceptance is always explicit and recorded in `Updates/`.
 
-Curriculum import is offline and explicit: open the inspector, paste a supported outline, preview the extracted hierarchy, then choose **Apply roadmap**. Microsoft Learn recognition currently targets the English `Skills measured` heading; the structured Markdown adapter accepts ordinary headings and lists in any language. Inputs are capped at 512 KiB and 200 roadmap items. Dusori never fetches the optional source URL.
+## Architecture
 
-## Development
+```text
+apps/app                  SvelteKit browser/PWA workbench
+apps/site                 Astro + Starlight product and documentation site
+packages/core             Storage-neutral domain, learning loop, graph, conflicts
+packages/storage-opfs     Private browser workspace adapter
+packages/storage-fsa      User-approved folder adapter
+packages/companion        Optional token-protected loopback foundation
+tests/e2e                 Built Pages artifact and user-flow verification
+```
+
+The browser app calls storage-neutral core modules. Storage adapters provide the same interface to OPFS, the File System Access API, memory tests, and the optional local companion. There is no hosted application backend.
+
+## Browser support
+
+| Capability                | Chrome / Edge desktop | Firefox / Safari  | Mobile                      |
+| ------------------------- | --------------------- | ----------------- | --------------------------- |
+| Private browser workspace | Yes                   | Yes               | Yes¹                        |
+| ZIP import/export         | Yes                   | Yes               | Yes                         |
+| Direct folder connection  | Yes                   | No; use ZIP       | Chrome Android best-effort² |
+| Offline after first load  | Yes                   | Yes¹              | Yes¹                        |
+| Install                   | PWA                   | Add to Dock / tab | PWA / Home Screen           |
+
+¹ Browser storage retention varies. Install where supported and keep exported backups.<br />
+² Mobile folder writes are not atomic; ZIP remains the portability baseline.
+
+## Develop and verify
 
 Prerequisites: Node.js 24 LTS and pnpm 11.
 
@@ -76,6 +127,7 @@ Prerequisites: Node.js 24 LTS and pnpm 11.
 corepack enable
 pnpm install
 pnpm check
+pnpm test:e2e
 ```
 
 Useful commands:
@@ -83,13 +135,22 @@ Useful commands:
 ```sh
 pnpm dev:app       # SvelteKit app
 pnpm dev:site      # Astro/Starlight site
-pnpm test:unit     # domain and companion tests
-pnpm test:e2e      # built Pages artifact in Chromium
-pnpm build         # compose dist/pages
+pnpm test:unit     # core, storage, and companion tests
+pnpm build         # compose the exact GitHub Pages artifact
+pnpm preview       # serve dist/pages locally
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the [architecture decisions](docs/adr/).
+The optional companion can be built from this repository:
+
+```sh
+pnpm build
+pnpm --filter dusori dev -- --root /path/to/Dusori
+```
+
+`npx dusori` is the intended public command, but the package is not published yet. This README will not claim otherwise.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), the [architecture decisions](docs/adr/), and the [product specification](docs/product/spec.md).
 
 ## License
 
-[Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.
+Dusori is released under the [Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.

@@ -91,6 +91,7 @@ export async function acceptMarkdownUpdate(
   nextContent: string,
   expectedHash: string,
   now = new Date(),
+  updateLine?: string,
 ): Promise<TopicState> {
   const root = topicRoot(topicSlug);
   const path = normalizeWorkspacePath(`${root}/${relativePath}`);
@@ -112,7 +113,8 @@ export async function acceptMarkdownUpdate(
   await appendTopicUpdate(
     storage,
     topicSlug,
-    `- Accepted an explicit update to [[../../${relativePath.replace(/\.md$/u, '')}]].`,
+    updateLine ??
+      `- Accepted an explicit update to [[../../${relativePath.replace(/\.md$/u, '')}]].`,
     now,
   );
   return nextState;

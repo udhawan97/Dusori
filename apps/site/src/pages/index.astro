@@ -29,7 +29,13 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   <body>
     <header class="edge-nav">
       <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">
-        <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+        <picture>
+          <source
+            srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
+            media="(prefers-color-scheme: dark)"
+          />
+          <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+        </picture>
         <span>Dusori</span>
       </a>
       <a class="nav-action" href={appHref}>Open app</a>
@@ -38,6 +44,25 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
+          <div class="identity-signature">
+            <picture>
+              <source
+                srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                src={`${projectBasePath}/brand/dusori-mark.svg`}
+                width="112"
+                height="112"
+                alt="Dusori ensō, rangoli, and katana mark"
+              />
+            </picture>
+            <p>
+              <strong>Japanese restraint. Indian geometry.</strong><span
+                >One quiet mark for connected learning.</span
+              >
+            </p>
+          </div>
           <p class="kicker">A second brain for learning — local-first, free, works without AI</p>
           <h1 id="hero-title">Your learning files. Still yours.</h1>
           <p class="lede">
@@ -53,10 +78,44 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
           <span>Available now</span>
           <strong>Workspace foundation</strong>
           <p>
-            Browser storage, local sources, curriculum import, portable exports, conflict-safe
-            proposals, offline use.
+            Browser storage, local sources, curriculum import, interactive progress, portable
+            exports, conflict-safe proposals, offline use.
           </p>
         </aside>
+      </section>
+
+      <section class="graph-proof" aria-labelledby="graph-proof-title">
+        <div>
+          <p class="kicker">A graph made of files</p>
+          <h2 id="graph-proof-title">See how your learning connects.</h2>
+          <p>
+            Dusori maps Markdown artifacts, topic structure, and Obsidian wikilinks directly in the
+            browser. Select any artifact from the accessible index to open the original file. No
+            graph database, sync account, or proprietary export.
+          </p>
+          <a href={`${docsHref}knowledge-graph/`}>How the portable graph works →</a>
+        </div>
+        <figure class="graph-art" aria-label="A constellation of connected learning artifacts">
+          <svg viewBox="0 0 620 420" aria-hidden="true">
+            <circle class="orbit" cx="310" cy="210" r="154"></circle>
+            <path
+              d="M310 210 Q250 130 195 92 M310 210 Q386 140 455 98 M310 210 Q425 240 512 288 M310 210 Q274 320 224 350 M195 92 Q164 184 128 238 M455 98 Q490 168 512 288"
+            ></path>
+            <g class="home"
+              ><circle cx="310" cy="210" r="18"></circle><circle cx="310" cy="210" r="28"
+              ></circle></g
+            >
+            <g class="topic"
+              ><circle cx="195" cy="92" r="13"></circle><circle cx="195" cy="92" r="20"></circle></g
+            >
+            <g
+              ><circle cx="455" cy="98" r="8"></circle><circle cx="512" cy="288" r="8"
+              ></circle><circle cx="224" cy="350" r="8"></circle><circle cx="128" cy="238" r="8"
+              ></circle></g
+            >
+          </svg>
+          <figcaption>Rangoli-like order for notes that remain ordinary Markdown.</figcaption>
+        </figure>
       </section>
 
       <section class="product-view" aria-labelledby="product-title">
@@ -73,11 +132,11 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
             src={screenshotHref}
             width="1440"
             height="960"
-            alt="Dusori workspace showing a learning note and a preview of an imported curriculum"
+            alt="Dusori Today view showing local topic progress, the next roadmap objective, and recent activity"
             fetchpriority="high"
           />
           <figcaption>
-            One topic, its first note, and an official outline ready for review.
+            Today is assembled from the topic’s roadmap, status, and dated update files.
           </figcaption>
         </figure>
       </section>
@@ -124,8 +183,8 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
         <dl>
           <div>
             <dt>Modern browsers</dt><dd>
-              Private workspace, pasted/file/URL sources, curriculum previews, ZIP portability,
-              offline reload.
+              Private workspace, interactive roadmap progress, Today summaries, pasted/file/URL
+              sources, curriculum previews, ZIP portability, offline reload.
             </dd>
           </div>
           <div>
@@ -160,6 +219,10 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
 </html>
 
 <style>
+  /* Hallmark · macrostructure: Marquee Hero + ruled proof sequence · genre: atmospheric editorial
+   * theme: custom supplied identity · nav: N9 · footer: Ft4 · contrast/slop/honesty/tokens/mobile: pass
+   * pre-emit critique: P5 H5 E5 S5 R5 V5
+   */
   *,
   *::before,
   *::after {
@@ -181,6 +244,10 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   a {
     color: inherit;
     white-space: nowrap;
+  }
+
+  a:active {
+    text-decoration-thickness: 2px;
   }
 
   :focus-visible {
@@ -220,9 +287,14 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     block-size: 1.75rem;
   }
 
+  .wordmark picture {
+    display: grid;
+    place-items: center;
+  }
+
   .nav-action {
     min-height: 2.75rem;
-    padding: 0.55rem 1rem;
+    padding: var(--space-xs) var(--space-md);
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-accent-text);
@@ -234,12 +306,13 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     min-height: min(76dvh, 50rem);
     align-items: end;
     gap: var(--space-xl);
-    padding-block: var(--space-3xl) var(--space-2xl);
+    padding-block: var(--space-2xl) var(--space-3xl);
     border-block-end: var(--rule-hair) solid var(--color-rule);
   }
 
   h1,
   h2 {
+    min-width: 0;
     margin: 0;
     font-family: var(--font-display);
     font-style: normal;
@@ -271,6 +344,40 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     max-width: 54ch;
     margin-block-start: var(--space-lg);
     font-size: var(--text-md);
+  }
+
+  .identity-signature {
+    display: flex;
+    max-width: 34rem;
+    align-items: center;
+    gap: var(--space-md);
+    margin-block-end: var(--space-xl);
+    padding-block-end: var(--space-md);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .identity-signature picture,
+  .identity-signature img {
+    display: block;
+    flex: none;
+    inline-size: 5rem;
+    block-size: 5rem;
+  }
+
+  .identity-signature p,
+  .identity-signature span {
+    display: block;
+    margin: 0;
+  }
+
+  .identity-signature strong {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+  }
+
+  .identity-signature span {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
   }
 
   .hero-links {
@@ -308,6 +415,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
 
   .product-view,
   .contract,
+  .graph-proof,
   .proof,
   .capabilities,
   .utility-index {
@@ -344,6 +452,71 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   .contract {
     display: grid;
     gap: var(--space-xl);
+  }
+
+  .graph-proof {
+    display: grid;
+    align-items: center;
+    gap: var(--space-xl);
+  }
+
+  .graph-proof > div > p:not(.kicker) {
+    max-width: 56ch;
+  }
+
+  .graph-proof > div > a {
+    display: inline-block;
+    margin-block-start: var(--space-md);
+    color: var(--color-accent-text);
+  }
+
+  .graph-art {
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-rule);
+    background:
+      radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--color-marigold) 8%, transparent),
+        transparent 55%
+      ),
+      var(--color-paper-2);
+  }
+
+  .graph-art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .graph-art .orbit {
+    fill: none;
+    stroke: var(--color-rule);
+    stroke-dasharray: 2 12;
+  }
+
+  .graph-art path {
+    fill: none;
+    stroke: color-mix(in srgb, var(--color-marigold) 72%, var(--color-rule));
+    stroke-width: 1.25;
+  }
+
+  .graph-art circle:first-child {
+    fill: var(--color-paper);
+    stroke: var(--color-border);
+  }
+
+  .graph-art g circle:last-child {
+    fill: none;
+    stroke: var(--color-rule);
+    stroke-dasharray: 3 5;
+  }
+
+  .graph-art .home circle:first-child {
+    fill: var(--color-accent);
+  }
+
+  .graph-art .topic circle:first-child {
+    fill: var(--color-marigold);
   }
 
   pre {
@@ -418,7 +591,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   }
 
   .colophon p {
-    max-width: 96ch;
+    max-width: 72ch;
     margin: 0;
   }
 
@@ -443,6 +616,10 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
       grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
     }
 
+    .graph-proof {
+      grid-template-columns: minmax(0, 5fr) minmax(20rem, 4fr);
+    }
+
     .proof-flow > div,
     .capabilities dl > div {
       grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
@@ -455,16 +632,6 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     .colophon {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: end;
-    }
-  }
-
-  @media (min-width: 60rem) {
-    .section-heading {
-      grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
-    }
-
-    .section-heading .kicker {
-      grid-column: 1 / -1;
     }
   }
 

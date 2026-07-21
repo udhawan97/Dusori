@@ -26,6 +26,8 @@ export default defineConfig({
             { label: 'Workspaces and folders', slug: 'docs/workspaces' },
             { label: 'Sources', slug: 'docs/sources' },
             { label: 'Curriculum import', slug: 'docs/curricula' },
+            { label: 'Learning loop', slug: 'docs/learning-loop' },
+            { label: 'Knowledge graph', slug: 'docs/knowledge-graph' },
             { label: 'Conflict safety', slug: 'docs/conflict-safety' },
             { label: 'Browser support', slug: 'docs/browser-support' },
           ],

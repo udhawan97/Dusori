@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>KnowledgeGraph — state contract</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: system-ui, sans-serif;
+        background: #0f0a07;
+        color: #f7f1e8;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+      }
+      main {
+        max-width: 48rem;
+        margin: auto;
+      }
+      .states {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 2rem;
+        padding: 0;
+        list-style: none;
+      }
+      .state {
+        display: grid;
+        grid-template-columns: 8rem minmax(0, 1fr);
+        align-items: center;
+        gap: 1rem;
+      }
+      button,
+      .status {
+        display: grid;
+        min-height: 2.75rem;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0 0.75rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+        outline: 2px solid transparent;
+        outline-offset: 1px;
+        background: transparent;
+        color: #f7f1e8;
+        text-align: left;
+      }
+      .node {
+        width: 0.75rem;
+        height: 0.75rem;
+        border: 1px solid #c9862e;
+        border-radius: 50%;
+      }
+      small {
+        color: #b8aaa0;
+      }
+      .hover {
+        border-color: #59483d;
+        background: #1d1510;
+      }
+      .focus {
+        outline-color: #e66b52;
+      }
+      .active {
+        transform: translateY(1px);
+      }
+      .disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+      .loading {
+        color: #b8aaa0;
+      }
+      .loading .node {
+        border-style: dashed;
+      }
+      .error {
+        border-color: #dc745f;
+        color: #dc745f;
+      }
+      .success {
+        border-color: #c9862e;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>KnowledgeGraph — eight states</h1>
+      <ul class="states">
+        <li class="state">
+          <span>Default</span
+          ><button><i class="node"></i><span>First look</span><small>note</small></button>
+        </li>
+        <li class="state">
+          <span>Hover</span
+          ><button class="hover">
+            <i class="node"></i><span>First look</span><small>note</small>
+          </button>
+        </li>
+        <li class="state">
+          <span>Focus</span
+          ><button class="focus">
+            <i class="node"></i><span>First look</span><small>note</small>
+          </button>
+        </li>
+        <li class="state">
+          <span>Active</span
+          ><button class="active">
+            <i class="node"></i><span>First look</span><small>note</small>
+          </button>
+        </li>
+        <li class="state">
+          <span>Disabled</span
+          ><button class="disabled" disabled>
+            <i class="node"></i><span>First look</span><small>note</small>
+          </button>
+        </li>
+        <li class="state">
+          <span>Loading</span>
+          <div class="status loading"><i class="node"></i><span>Mapping local files…</span></div>
+        </li>
+        <li class="state">
+          <span>Error</span>
+          <div class="status error"><i class="node"></i><span>Storage read failed</span></div>
+        </li>
+        <li class="state">
+          <span>Success</span>
+          <div class="status success">
+            <i class="node"></i><span>6 artifacts · 10 connections</span>
+          </div>
+        </li>
+      </ul>
+    </main>
+  </body>
+</html>

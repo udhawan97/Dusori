@@ -60,6 +60,7 @@ button {
 h1,
 h2,
 h3 {
+  min-width: 0;
   margin-block: 0;
   font-family: var(--font-display);
   font-style: normal;

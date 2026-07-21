@@ -109,8 +109,9 @@ async function previewCurriculum(page: Page): Promise<void> {
 async function applyCurriculum(page: Page): Promise<void> {
   await previewCurriculum(page);
   await page.getByRole('button', { name: 'Apply roadmap' }).click();
-  await expect(page.locator('.note-sheet').getByRole('heading', { name: 'Roadmap' })).toBeVisible();
-  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
+  await expect(page.locator('.learning-loop')).toContainText(
+    'Identify AI concepts and capabilities',
+  );
   await expect(page.getByRole('heading', { name: 'Curriculum ready.' })).toBeVisible();
 }
 
@@ -202,6 +203,75 @@ test('website and docs render distinct, usable light and dark themes', async ({ 
   await expect.poll(colors).toEqual(docsLight);
 });
 
+test('public site explains the identity, Obsidian boundary, and portable graph', async ({
+  page,
+}) => {
+  await page.goto('/Dusori/');
+  await expect(
+    page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'See how your learning connects.' }),
+  ).toBeVisible();
+  await expect(page.getByText('Japanese restraint. Indian geometry.')).toBeVisible();
+
+  await page.goto('/Dusori/docs/knowledge-graph/');
+  await expect(page.getByRole('heading', { name: 'Portable knowledge graph' })).toBeVisible();
+  await expect(page.getByText('No graph database')).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('app starts dark and persists an explicit theme choice', async ({ page }) => {
+  await page.goto('/Dusori/app/');
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
+    'dark',
+  );
+
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('dusori-theme'))).toBe('light');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(await page.evaluate(() => localStorage.getItem('dusori-theme'))).toBe('dark');
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('Obsidian setup explains least-privilege folder access and the portable fallback', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(globalThis, 'showDirectoryPicker');
+  });
+  await page.goto('/Dusori/app/');
+
+  await page.getByRole('button', { name: 'Use Dusori with Obsidian' }).click();
+  const guide = page.getByRole('dialog', { name: 'Connect only a Dusori folder.' });
+  await expect(guide).toBeVisible();
+  await expect(guide.getByText('Open or create your vault in Obsidian.')).toBeVisible();
+  await expect(guide.getByText('Create a folder named Dusori inside that vault.')).toBeVisible();
+  await expect(
+    guide.getByText('Select that Dusori folder here — never the whole vault.'),
+  ).toBeVisible();
+  await expect(guide.getByText('No Obsidian plugin is required.')).toBeVisible();
+  await expect(guide.getByText('Folder connection needs Chrome or Edge on desktop.')).toBeVisible();
+  await expect(guide.getByRole('link', { name: 'Use ZIP import instead' })).toHaveAttribute(
+    'href',
+    '#workspace-import',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await page.keyboard.press('Escape');
+  await expect(guide).toBeHidden();
+});
+
 test('topic creation writes the complete canonical OPFS tree', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -236,6 +306,25 @@ test('topic creation writes the complete canonical OPFS tree', async ({ page }) 
   expect(paths.some((path) => /Updates\/\d{4}\/\d{2}\/\d{4}-\d{2}-\d{2}\.md$/u.test(path))).toBe(
     true,
   );
+});
+
+test('knowledge graph renders portable artifacts and opens a selected note', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Graph' }).click();
+  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
+  await expect(page.getByRole('img', { name: 'Workspace knowledge graph' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText('First look');
+  await expect(page.getByText(/6 artifacts · \d+ connections/u)).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+
+  await page
+    .getByRole('list', { name: 'Graph documents' })
+    .getByRole('button', { name: /First look/u })
+    .click();
+  await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
 
 test('source library stores pasted text and URL references without remote fetching', async ({
@@ -313,8 +402,9 @@ test('curriculum import previews official objectives, applies explicitly, and ne
   expect(remoteRequests).toEqual([]);
 
   await page.getByRole('button', { name: 'Apply roadmap' }).click();
-  await expect(page.locator('.note-sheet').getByRole('heading', { name: 'Roadmap' })).toBeVisible();
-  await expect(page.locator('.note-sheet')).toContainText('Describe responsible AI considerations');
+  await expect(page.locator('.learning-loop')).toContainText(
+    'Describe responsible AI considerations',
+  );
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'AI-901 official study guide',
   );
@@ -364,7 +454,7 @@ test('curriculum import explains invalid URLs and unstructured input before writ
     const topic = await topics.getDirectoryHandle('ai-fundamentals');
     return (await (await topic.getFileHandle('roadmap.md')).getFile()).text();
   });
-  expect(await roadmap).toContain('This first roadmap is deliberately manual.');
+  expect(await roadmap).toContain('Import a curriculum when you want a structured outline');
 });
 
 test('curriculum import preserves an externally edited roadmap until explicit replacement', async ({
@@ -386,11 +476,21 @@ test('curriculum import preserves an externally edited roadmap until explicit re
   await previewCurriculum(page);
   await page.getByRole('button', { name: 'Apply roadmap' }).click();
   await expect(page.getByRole('heading', { name: 'The existing roadmap changed.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
-  await expect(page.locator('.note-sheet')).toContainText('Keep this direction.');
+
+  const externalRoadmap = await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    return (await (await topic.getFileHandle('roadmap.md')).getFile()).text();
+  });
+  expect(await externalRoadmap).toContain('Keep this direction.');
 
   await page.getByRole('button', { name: 'Use imported roadmap' }).click();
-  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
+  await expect(page.locator('.learning-loop')).toContainText(
+    'Identify AI concepts and capabilities',
+  );
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -408,13 +508,111 @@ test('export and replacement import preserve the rendered workspace', async ({ p
 
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
-  await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
   await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
-  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
+  await expect(page.locator('.learning-loop')).toContainText(
+    'Identify AI concepts and capabilities',
+  );
   await expect(page.getByText('Workspace imported and schema-checked.')).toBeVisible();
+});
+
+test('learning loop persists roadmap progress, topic status, and Today activity', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  const firstObjective = page.getByLabel('Establish the terms and boundaries.');
+  await firstObjective.check();
+  await expect(firstObjective).toBeChecked();
+  await expect(page.getByText('33%', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Paused' }).click();
+  await expect(page.getByRole('button', { name: 'Paused' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByText('Explain the central mechanism in your own words.')).toBeVisible();
+  await expect(page.getByText('Paused this topic.')).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByText('Paused this topic.')).toBeVisible();
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  await expect(page.getByLabel('Establish the terms and boundaries.')).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Paused' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  const persisted = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const roadmap = await (await topic.getFileHandle('roadmap.md')).getFile();
+    const state = await (await topic.getFileHandle('state.json')).getFile();
+    return { roadmap: await roadmap.text(), state: JSON.parse(await state.text()) };
+  });
+  expect(persisted.roadmap).toContain('- [x] Establish the terms and boundaries.');
+  expect(persisted.state.status).toBe('paused');
+});
+
+test('learning loop protects an externally edited roadmap before accepting progress', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const handle = await topic.getFileHandle('roadmap.md');
+    const current = await (await handle.getFile()).text();
+    const writable = await handle.createWritable();
+    await writable.write(`${current.trimEnd()}\n\nExternal planning note.\n`);
+    await writable.close();
+  });
+
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  await page.getByLabel('Establish the terms and boundaries.').check();
+  await expect(
+    page.getByRole('heading', { name: 'The roadmap changed outside Dusori.' }),
+  ).toBeVisible();
+
+  const beforeAccept = await page.evaluate(async () => {
+    const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    return (await (await topic.getFileHandle('roadmap.md')).getFile()).text();
+  });
+  expect(await beforeAccept).toContain('External planning note.');
+  expect(await beforeAccept).toContain('- [ ] Establish the terms and boundaries.');
+
+  await page.getByRole('button', { name: 'Use this progress choice' }).click();
+  await expect(page.getByLabel('Establish the terms and boundaries.')).toBeChecked();
+  const afterAccept = await page.evaluate(async () => {
+    const root = await (await navigator.storage.getDirectory()).getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    return (await (await topic.getFileHandle('roadmap.md')).getFile()).text();
+  });
+  expect(await afterAccept).toContain('External planning note.');
+  expect(await afterAccept).toContain('- [x] Establish the terms and boundaries.');
+  await expectNoSeriousA11yViolations(page);
 });
 
 test('curriculum preview remains usable without horizontal overflow at supported narrow widths', async ({
@@ -435,6 +633,35 @@ test('curriculum preview remains usable without horizontal overflow at supported
     );
     const applyButton = page.getByRole('button', { name: 'Apply roadmap' });
     expect(await applyButton.evaluate((button) => button.getClientRects().length)).toBe(1);
+    await context.close();
+  }
+});
+
+test('Today and Roadmap remain usable without overflow at supported narrow widths', async ({
+  browser,
+}) => {
+  for (const width of [320, 375, 414, 768]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const page = await context.newPage();
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+    let dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth, `Today overflow at ${width}px`).toBe(dimensions.clientWidth);
+
+    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+    await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+    await expect(page.getByLabel('Establish the terms and boundaries.')).toBeVisible();
+    dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth, `Roadmap overflow at ${width}px`).toBe(dimensions.clientWidth);
     await context.close();
   }
 });
@@ -541,8 +768,9 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await createBrowserWorkspace(sitePage);
   await createTopic(sitePage);
   await addPastedSource(sitePage);
-  await previewCurriculum(sitePage);
-  await sitePage.locator('.curriculum-slot').scrollIntoViewIfNeeded();
+  await applyCurriculum(sitePage);
+  await sitePage.getByLabel('Describe generative AI concepts').check();
+  await sitePage.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(sitePage.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
   await sitePage.screenshot({ path: 'test-results/screenshots/site-workspace-1440.png' });
   await siteContext.close();
