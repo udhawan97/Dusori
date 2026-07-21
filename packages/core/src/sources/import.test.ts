@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { exportWorkspace, importWorkspace } from '../portable.js';
+import { SourceRecordSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { addSource, maxSourceBytes, readSourceManifest } from './import.js';
@@ -205,5 +206,33 @@ describe('local source library', () => {
 
     expect((await target.read(added.path))?.content).toBe('Portable source.\n');
     expect((await readSourceManifest(target, 'ai-fundamentals', now)).sources).toHaveLength(1);
+  });
+});
+
+describe('source origin schema', () => {
+  it('accepts companion and future provenance values as tolerant strings', () => {
+    const record = SourceRecordSchema.parse({
+      fetchedAt: '2026-07-21T00:00:00.000Z',
+      method: 'url',
+      origin: {
+        capturedAt: '2026-07-21T00:00:00.000Z',
+        capturedVia: 'page-extract',
+        provider: 'companion',
+      },
+      sha256: 'a'.repeat(64),
+      title: 'Example',
+      url: 'https://example.org/',
+    });
+    expect(record.origin?.provider).toBe('companion');
+    expect(() =>
+      SourceRecordSchema.parse({
+        fetchedAt: '2026-07-21T00:00:00.000Z',
+        method: 'url',
+        origin: { capturedAt: '2026-07-21T00:00:00.000Z', capturedVia: 'page-extract', provider: '' },
+        sha256: 'a'.repeat(64),
+        title: 'Example',
+        url: 'https://example.org/',
+      }),
+    ).toThrow();
   });
 });

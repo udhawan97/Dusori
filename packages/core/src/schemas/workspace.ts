@@ -31,9 +31,12 @@ export const TopicStateSchema = z.object({
   fileIndex: z.record(z.string(), FileVersionSchema),
 });
 
+// Known provider values: 'mslearn', 'wikipedia', 'companion'.
+// Known capturedVia values: 'catalog-reference', 'api-extract', 'page-extract'.
+// Tolerant strings, not enums, so a future provenance value never breaks a reader again.
 export const SourceOriginSchema = z.object({
-  provider: z.enum(['mslearn', 'wikipedia']),
-  capturedVia: z.enum(['catalog-reference', 'api-extract']),
+  provider: z.string().min(1).max(40),
+  capturedVia: z.string().min(1).max(40),
   capturedAt: z.string().datetime(),
 });
 
