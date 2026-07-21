@@ -23,6 +23,8 @@ The first milestone must prove:
 9. Keyboard, responsive, contrast, and automated accessibility gates.
 10. A public GitHub repository, product page, documentation, and PWA on GitHub Pages.
 
+The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
+
 ## Explicitly not built yet
 
 - Automated curriculum or certification extraction

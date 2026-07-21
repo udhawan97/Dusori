@@ -33,9 +33,13 @@ export const TopicStateSchema = z.object({
 
 export const SourceRecordSchema = z.object({
   fetchedAt: z.string().datetime(),
+  mediaType: z.enum(['text/markdown', 'text/plain']).optional(),
   method: z.enum(['file', 'paste', 'url']),
+  originalName: z.string().min(1).max(255).optional(),
+  path: z.string().min(1).max(320).optional(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
-  title: z.string().min(1),
+  size: z.number().int().nonnegative().optional(),
+  title: z.string().min(1).max(160),
   url: z.url().optional(),
 });
 
@@ -46,4 +50,5 @@ export const SourceManifestSchema = z.object({
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type TopicState = z.infer<typeof TopicStateSchema>;
+export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 export type SourceManifest = z.infer<typeof SourceManifestSchema>;

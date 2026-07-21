@@ -34,6 +34,7 @@
   import { createOpfsStorage } from '@dusori/storage-opfs';
 
   import MarkdownView from '$lib/components/MarkdownView.svelte';
+  import SourceLibrary from '$lib/components/SourceLibrary.svelte';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -488,6 +489,14 @@
           <p>{storageLabel}</p>
         </section>
 
+        {#if selectedSlug && storage}
+          <div class="source-slot">
+            {#key selectedSlug}
+              <SourceLibrary {storage} topicSlug={selectedSlug} />
+            {/key}
+          </div>
+        {/if}
+
         <section>
           <p class="kicker">Portability</p>
           <button class="inspector-action" disabled={busy} onclick={downloadWorkspace}>
@@ -751,7 +760,9 @@
     place-items: center;
   }
 
-  .inspector section + section {
+  .inspector section + section,
+  .source-slot + section,
+  .source-slot {
     padding-block-start: var(--space-lg);
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }

@@ -48,7 +48,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
           <span>Available now</span>
           <strong>Workspace foundation</strong>
           <p>
-            Browser storage, folder mode, portable exports, conflict-safe proposals, offline use.
+            Browser storage, local sources, portable exports, conflict-safe proposals, offline use.
           </p>
         </aside>
       </section>
@@ -67,10 +67,10 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
             src={screenshotHref}
             width="1440"
             height="960"
-            alt="Dusori workspace showing a learning note with the storage inspector open"
+            alt="Dusori workspace showing a learning note and the local source library"
             fetchpriority="high"
           />
-          <figcaption>One topic, its first note, and the local storage boundary.</figcaption>
+          <figcaption>One topic, its first note, and a pasted source stored beside it.</figcaption>
         </figure>
       </section>
 
@@ -79,8 +79,8 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
           <p class="kicker">A legible folder</p>
           <h2 id="contract-title">Leave Dusori. Keep the work.</h2>
           <p>
-            Each topic carries its overview, roadmap, preferences, notes, source manifest, machine
-            state, and dated update history. Obsidian is compatible, never required.
+            Each topic carries its overview, roadmap, preferences, notes, readable source files,
+            machine state, and dated update history. Obsidian is compatible, never required.
           </p>
         </div>
         <pre
@@ -91,7 +91,9 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   state.json
   Notes/
   Updates/YYYY/MM/
-  Sources/manifest.json</code></pre>
+  Sources/
+    manifest.json
+    items/hash-source.md</code></pre>
       </section>
 
       <section class="proof" aria-labelledby="proof-title">
@@ -114,7 +116,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
         <dl>
           <div>
             <dt>Modern browsers</dt><dd>
-              Private browser workspace, ZIP import/export, offline reload.
+              Private workspace, pasted/file/URL sources, ZIP portability, offline reload.
             </dd>
           </div>
           <div>

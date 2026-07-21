@@ -13,5 +13,6 @@ playwright-report/
 test-results/
 output/playwright/
 packages/companion/public/
+graphify-out/
 *.log
 *.tsbuildinfo

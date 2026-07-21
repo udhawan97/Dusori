@@ -1,0 +1,19 @@
+{
+  "scannedAt": "2026-07-20",
+  "framework": "SvelteKit 5",
+  "fonts": ["Shippori Mincho", "Zen Kaku Gothic New", "IBM Plex Mono"],
+  "palette": "OKLCH custom properties",
+  "motion": "motion-cut; no animation library",
+  "spacing": "4-point CSS custom-property scale",
+  "preserve": [
+    "quiet editorial Workbench macrostructure",
+    "warm paper, sumi, and vermilion palette",
+    "existing typography",
+    "existing spacing and motion tokens"
+  ],
+  "sources": [
+    "apps/app/package.json",
+    "apps/app/src/styles/tokens.css",
+    "apps/app/src/styles/app.css"
+  ]
+}

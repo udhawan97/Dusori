@@ -18,7 +18,7 @@ export interface MarkdownConflict {
   updatePath: string;
 }
 
-async function appendUpdate(
+export async function appendTopicUpdate(
   storage: StorageAdapter,
   topicSlug: string,
   line: string,
@@ -67,7 +67,7 @@ export async function proposeMarkdownUpdate(
 
   const proposalPath = proposedPath(normalized, now);
   await storage.write(proposalPath, nextContent, { expectedHash: null });
-  const updatePath = await appendUpdate(
+  const updatePath = await appendTopicUpdate(
     storage,
     topicSlug,
     `- Conflict detected in [[../../${relativePath.replace(/\.md$/u, '')}]]. External content stayed in place; Dusori wrote [[../../${proposalPath.slice(root.length + 1).replace(/\.md$/u, '')}|a proposed version]].`,
@@ -109,7 +109,7 @@ export async function acceptMarkdownUpdate(
   await storage.write(statePath, `${JSON.stringify(nextState, null, 2)}\n`, {
     expectedHash: stateFile?.hash,
   });
-  await appendUpdate(
+  await appendTopicUpdate(
     storage,
     topicSlug,
     `- Accepted an explicit update to [[../../${relativePath.replace(/\.md$/u, '')}]].`,

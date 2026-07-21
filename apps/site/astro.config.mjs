@@ -24,6 +24,7 @@ export default defineConfig({
           label: 'Use Dusori',
           items: [
             { label: 'Workspaces and folders', slug: 'docs/workspaces' },
+            { label: 'Sources', slug: 'docs/sources' },
             { label: 'Conflict safety', slug: 'docs/conflict-safety' },
             { label: 'Browser support', slug: 'docs/browser-support' },
           ],

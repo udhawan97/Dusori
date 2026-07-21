@@ -1,3 +1,5 @@
+import type { SourceRecord } from './schemas/workspace.js';
+
 export type StorageKind = 'memory' | 'opfs' | 'fsa' | 'companion';
 
 export interface FileSnapshot {
@@ -24,14 +26,6 @@ export interface StorageAdapter {
   read(path: string): Promise<FileSnapshot | null>;
   remove(path: string, recursive?: boolean): Promise<void>;
   write(path: string, content: string, options?: WriteOptions): Promise<FileSnapshot>;
-}
-
-export interface SourceRecord {
-  fetchedAt: string;
-  method: 'file' | 'paste' | 'url';
-  sha256: string;
-  title: string;
-  url?: string;
 }
 
 export interface SourceAdapter {

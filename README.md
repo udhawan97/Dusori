@@ -2,7 +2,7 @@
 
 Dusori is a free, open-source, local-first learning workspace. It creates plain Markdown and JSON that remains readable in any editor, including Obsidian, and it works without an account, hosted database, telemetry, or AI.
 
-The current workspace-foundation milestone proves browser storage, direct folder access on supported Chromium desktop browsers, ZIP portability, conflict-safe proposals, sanitized note rendering, offline reloads, and a loopback-only companion security boundary. Automated syllabi, web search, Ollama, AI transformation, and unattended scheduling are roadmap items—not shipped features.
+The current workspace-foundation milestone includes browser storage, direct folder access on supported Chromium desktop browsers, ZIP portability, conflict-safe proposals, sanitized note rendering, offline reloads, and a local source library. Sources can be pasted text, local Markdown/text files, or URL references; Dusori stores URL metadata without fetching the page. Automated syllabi, web search, Ollama, AI transformation, and unattended scheduling are roadmap items—not shipped features.
 
 ## Try Dusori
 
@@ -54,11 +54,13 @@ Folder access is a capability enhancement, not a universal promise. When connect
     ├── state.json
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
-    ├── Sources/manifest.json
+    ├── Sources/
+    │   ├── manifest.json
+    │   └── items/<hash>-<source-name>.md|txt
     └── Backups/
 ```
 
-Markdown is user-owned. JSON is machine-owned, schema-versioned, and validated. If an externally edited Markdown file no longer matches Dusori’s last-seen hash, the external file stays untouched and Dusori writes a dated `.proposed-…` file beside it.
+Markdown and text sources are user-readable. JSON is machine-owned, schema-versioned, and validated. Adding a source records its hash, local path, method, size, and optional original URL or filename in `Sources/manifest.json`, then appends the event to that topic’s dated update log. If an externally edited Markdown file no longer matches Dusori’s last-seen hash, the external file stays untouched and Dusori writes a dated `.proposed-…` file beside it.
 
 ## Development
 

@@ -39,6 +39,23 @@ async function runConflictProof(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+async function addPastedSource(page: Page): Promise<void> {
+  if (!(await page.getByRole('heading', { name: 'Sources' }).isVisible())) {
+    await page.getByRole('button', { name: 'Open inspector' }).click();
+  }
+  await page.getByLabel('Source title').fill('Transformer notes');
+  await page
+    .getByLabel('Source text')
+    .fill('Attention lets each token weigh the other tokens in its context.');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(
+    page.getByText('Source added to this topic and its update log.').first(),
+  ).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Transformer notes',
+  );
+}
+
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
   await page.goto('/Dusori/');
   await expect(
@@ -115,9 +132,69 @@ test('topic creation writes the complete canonical OPFS tree', async ({ page }) 
   );
 });
 
+test('source library stores pasted text and URL references without remote fetching', async ({
+  page,
+}) => {
+  const remoteRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://arxiv.org/')) remoteRequests.push(request.url());
+  });
+
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addPastedSource(page);
+
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill('Transformers paper');
+  await page.getByLabel('Web address').fill('https://arxiv.org/abs/1706.03762');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('link', { name: 'Transformers paper' })).toHaveAttribute(
+    'href',
+    'https://arxiv.org/abs/1706.03762',
+  );
+  expect(remoteRequests).toEqual([]);
+
+  const sourceState = await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topics = await root.getDirectoryHandle('Topics');
+    const topic = await topics.getDirectoryHandle('ai-fundamentals');
+    const sources = await topic.getDirectoryHandle('Sources');
+    const manifest = JSON.parse(
+      await (await sources.getFileHandle('manifest.json')).getFile().then((file) => file.text()),
+    );
+    const items = await sources.getDirectoryHandle('items');
+    const itemNames: string[] = [];
+    for await (const [name] of items.entries()) itemNames.push(name);
+    const updates = await topic.getDirectoryHandle('Updates');
+    const yearNames: string[] = [];
+    for await (const [name] of updates.entries()) yearNames.push(name);
+    return { itemNames: itemNames.sort(), manifest, yearNames };
+  });
+
+  expect(sourceState.manifest.sources).toHaveLength(2);
+  expect(sourceState.manifest.sources).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ method: 'paste', title: 'Transformer notes' }),
+      expect.objectContaining({ method: 'url', title: 'Transformers paper' }),
+    ]),
+  );
+  expect(sourceState.itemNames).toHaveLength(2);
+  expect(sourceState.yearNames).not.toEqual([]);
+
+  await page.getByLabel('Source title').fill('Private file');
+  await page.getByLabel('Web address').fill('file:///private/notes.txt');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Dusori stores only http:// or https:// URL references.',
+  );
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('export and replacement import preserve the rendered workspace', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await addPastedSource(page);
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export workspace' }).click();
@@ -128,6 +205,9 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Transformer notes',
+  );
   await expect(page.getByText('Workspace imported and schema-checked.')).toBeVisible();
 });
 
@@ -177,6 +257,7 @@ test('mobile workspace drawers are fully keyboard operable', async ({ page }) =>
 });
 
 test('captures the required responsive product surfaces', async ({ browser }) => {
+  test.setTimeout(60_000);
   await mkdir('test-results/screenshots', { recursive: true });
 
   for (const width of [375, 1280]) {
@@ -205,6 +286,13 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
       fullPage: true,
     });
 
+    await addPastedSource(page);
+    await expect(page.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
+    await page.screenshot({
+      path: `test-results/screenshots/sources-${width}.png`,
+      fullPage: true,
+    });
+
     await runConflictProof(page);
     await expect(page.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
     await page.screenshot({
@@ -218,6 +306,7 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   const sitePage = await siteContext.newPage();
   await createBrowserWorkspace(sitePage);
   await createTopic(sitePage);
+  await addPastedSource(sitePage);
   await expect(sitePage.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
   await sitePage.screenshot({ path: 'test-results/screenshots/site-workspace-1440.png' });
   await siteContext.close();
