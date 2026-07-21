@@ -112,4 +112,71 @@ describe('research suggestions', () => {
 
     expect(remaining.map((item) => item.title)).toEqual(['Keep first', 'Keep second']);
   });
+
+  it('drops a ranked-search candidate whose URL was dismissed under its catalog-style key', async () => {
+    const storage = await topicStorage();
+    const url = 'https://learn.microsoft.com/training/modules/entra-id/';
+    await dismissSuggestion(
+      storage,
+      'azure-administration',
+      { key: 'mslearn:entra-id', title: 'Entra ID module', url },
+      now,
+    );
+
+    const remaining = await filterResearchSuggestions(
+      storage,
+      'azure-administration',
+      [candidate({ key: `mslearn:${url}`, provider: 'mslearn', title: 'Entra ID module', url })],
+      now,
+    );
+
+    expect(remaining).toEqual([]);
+  });
+
+  it('drops a catalog candidate whose URL was dismissed under its ranked-search-style key', async () => {
+    const storage = await topicStorage();
+    const url = 'https://learn.microsoft.com/training/modules/entra-id/';
+    await dismissSuggestion(
+      storage,
+      'azure-administration',
+      { key: `mslearn:${url}`, title: 'Entra ID module', url },
+      now,
+    );
+
+    const remaining = await filterResearchSuggestions(
+      storage,
+      'azure-administration',
+      [candidate({ key: 'mslearn:entra-id', provider: 'mslearn', title: 'Entra ID module', url })],
+      now,
+    );
+
+    expect(remaining).toEqual([]);
+  });
+
+  it('still filters a legacy dismissal that has no url field by key alone', async () => {
+    const storage = await topicStorage();
+    const path = 'Topics/azure-administration/research.json';
+    await storage.write(
+      path,
+      `${JSON.stringify(
+        {
+          dismissed: [{ at: now.toISOString(), key: 'wikipedia:legacy', title: 'Legacy entry' }],
+          schemaVersion: 1,
+          topicSlug: 'azure-administration',
+        },
+        null,
+        2,
+      )}\n`,
+      { expectedHash: null },
+    );
+
+    const remaining = await filterResearchSuggestions(
+      storage,
+      'azure-administration',
+      [candidate({ key: 'wikipedia:legacy', title: 'Legacy entry' })],
+      now,
+    );
+
+    expect(remaining).toEqual([]);
+  });
 });

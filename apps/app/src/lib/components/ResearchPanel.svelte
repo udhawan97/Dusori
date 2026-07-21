@@ -232,7 +232,11 @@
   async function dismiss(candidate: ResearchCandidate): Promise<void> {
     actionError = null;
     try {
-      await dismissSuggestion(storage, topicSlug, { key: candidate.key, title: candidate.title });
+      await dismissSuggestion(storage, topicSlug, {
+        key: candidate.key,
+        title: candidate.title,
+        url: candidate.url,
+      });
       results = results.filter((result) => result.key !== candidate.key);
     } catch {
       actionError = {

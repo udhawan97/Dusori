@@ -1,20 +1,13 @@
 import type { StorageAdapter } from '../adapters.js';
 import { readSourceManifest } from '../sources/import.js';
 import {
+  canonicalUrl,
   readResearchFile,
   writeDismissedResearchSuggestion,
   type DismissedResearchSuggestion,
   type ResearchFile,
 } from './research-file.js';
 import type { ResearchCandidate } from './types.js';
-
-function canonicalUrl(url: string): string {
-  try {
-    return new URL(url).toString();
-  } catch {
-    return url;
-  }
-}
 
 export async function readDismissed(
   storage: StorageAdapter,
@@ -27,7 +20,7 @@ export async function readDismissed(
 export async function dismissSuggestion(
   storage: StorageAdapter,
   topicSlug: string,
-  suggestion: { key: string; title: string },
+  suggestion: { key: string; title: string; url?: string },
   now = new Date(),
 ): Promise<ResearchFile> {
   return writeDismissedResearchSuggestion(storage, topicSlug, suggestion, now);
@@ -47,7 +40,11 @@ export async function filterResearchSuggestions(
     manifest.sources.flatMap((source) => (source.url ? [canonicalUrl(source.url)] : [])),
   );
   const dismissedKeys = new Set(dismissed.map((item) => item.key));
-  return candidates.filter(
-    (candidate) => !savedUrls.has(canonicalUrl(candidate.url)) && !dismissedKeys.has(candidate.key),
+  const dismissedUrls = new Set(
+    dismissed.flatMap((item) => (item.url ? [canonicalUrl(item.url)] : [])),
   );
+  return candidates.filter((candidate) => {
+    const url = canonicalUrl(candidate.url);
+    return !savedUrls.has(url) && !dismissedKeys.has(candidate.key) && !dismissedUrls.has(url);
+  });
 }
