@@ -187,7 +187,7 @@ describe('fetchReadablePage', () => {
     expect(caught).toBeInstanceOf(FetchPageError);
     expect((caught as FetchPageError).reason).toBe('timeout');
     expect((caught as FetchPageError).message).toBe(
-      'This page took longer than 15 seconds. Try again, or paste the text instead.',
+      'This page took longer than 0.05 seconds. Try again, or paste the text instead.',
     );
   });
 

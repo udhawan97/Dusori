@@ -59,15 +59,16 @@ const blockedMessage =
 const noTextMessage = 'No readable article text was found on this page. Paste the text instead.';
 const shortArticleMessage =
   'The readable text on this page was too short to store as a source. Paste the text instead.';
-const timeoutMessage =
-  'This page took longer than 15 seconds. Try again, or paste the text instead.';
+function timeoutMessage(timeoutMs: number): string {
+  return `This page took longer than ${timeoutMs / 1000} seconds. Try again, or paste the text instead.`;
+}
 
 function isAbortTimeout(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'TimeoutError';
 }
 
-function timeoutFetchError(): FetchPageError {
-  return new FetchPageError(timeoutMessage, 'timeout');
+function timeoutFetchError(timeoutMs: number): FetchPageError {
+  return new FetchPageError(timeoutMessage(timeoutMs), 'timeout');
 }
 
 function parseTarget(rawUrl: string): URL {
@@ -117,6 +118,7 @@ async function guardedResponse(
   fetchImpl: typeof fetch,
   lookupImpl: LookupImpl,
   signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<{ finalUrl: URL; response: Response }> {
   let current = initial;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
@@ -125,7 +127,7 @@ async function guardedResponse(
     try {
       response = await fetchImpl(current.toString(), { redirect: 'manual', signal });
     } catch (error) {
-      if (isAbortTimeout(error)) throw timeoutFetchError();
+      if (isAbortTimeout(error)) throw timeoutFetchError(timeoutMs);
       throw new FetchPageError(
         'This page could not be fetched. Check the URL or your connection.',
         'fetch-failed',
@@ -175,6 +177,7 @@ function tooLarge(): FetchPageError {
 async function readBody(
   response: Response,
   signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<{ text: string; type: string }> {
   const type =
     (response.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
@@ -217,7 +220,7 @@ async function readBody(
   } catch (error) {
     // Best-effort: never let a cancel failure mask the real error below.
     await reader.cancel().catch(() => {});
-    if (isAbortTimeout(error)) throw timeoutFetchError();
+    if (isAbortTimeout(error)) throw timeoutFetchError(timeoutMs);
     // The too-large branch above already threw its own typed FetchPageError
     // (and cancelled the reader itself); pass it through unchanged.
     if (error instanceof FetchPageError) throw error;
@@ -294,10 +297,17 @@ export async function fetchReadablePage(
 ): Promise<FetchedPageResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const lookupImpl = options.lookupImpl ?? (lookup as unknown as LookupImpl);
-  const signal = AbortSignal.timeout(options.timeoutMs ?? 15_000);
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  const signal = AbortSignal.timeout(timeoutMs);
   const target = parseTarget(rawUrl);
-  const { finalUrl, response } = await guardedResponse(target, fetchImpl, lookupImpl, signal);
-  const body = await readBody(response, signal);
+  const { finalUrl, response } = await guardedResponse(
+    target,
+    fetchImpl,
+    lookupImpl,
+    signal,
+    timeoutMs,
+  );
+  const body = await readBody(response, signal, timeoutMs);
   const page =
     body.type === 'text/plain'
       ? {

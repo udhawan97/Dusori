@@ -80,6 +80,18 @@ function blockedV6(bytes: number[]): boolean {
     return blockedV4(embeddedV4(bytes, 12));
   }
 
+  // IPv4-translated ::ffff:0:0:0/96 (RFC 2765 / SIIT) — ffff marker sits one
+  // group earlier than IPv4-mapped (bytes 8-9, not 10-11); IPv4 in bytes 12-15.
+  if (
+    bytes.slice(0, 8).every((b) => b === 0) &&
+    bytes[8] === 0xff &&
+    bytes[9] === 0xff &&
+    bytes[10] === 0 &&
+    bytes[11] === 0
+  ) {
+    return blockedV4(embeddedV4(bytes, 12));
+  }
+
   // NAT64 64:ff9b::/96 — unwrap and re-check as IPv4.
   if (
     bytes[0] === 0x00 &&
@@ -89,6 +101,20 @@ function blockedV6(bytes: number[]): boolean {
     bytes.slice(4, 12).every((b) => b === 0)
   ) {
     return blockedV4(embeddedV4(bytes, 12));
+  }
+
+  // Local-use NAT64 64:ff9b:1::/48 (RFC 8215) — per RFC 6052 §2.2 the /48
+  // form's embedded IPv4 is not contiguous: bytes 6-7, then a reserved "u"
+  // octet at byte 8, then bytes 9-10.
+  if (
+    bytes[0] === 0x00 &&
+    bytes[1] === 0x64 &&
+    bytes[2] === 0xff &&
+    bytes[3] === 0x9b &&
+    bytes[4] === 0x00 &&
+    bytes[5] === 0x01
+  ) {
+    return blockedV4(`${bytes[6]}.${bytes[7]}.${bytes[9]}.${bytes[10]}`);
   }
 
   // 6to4 2002::/16 — embedded IPv4 lives in bytes 2-5.
@@ -112,6 +138,17 @@ function blockedV6(bytes: number[]): boolean {
 
   // Documentation 2001:db8::/32
   if (bytes[0] === 0x20 && bytes[1] === 0x01 && bytes[2] === 0x0d && bytes[3] === 0xb8) return true;
+
+  // Benchmarking 2001:2::/48 (RFC 5180) — reserved, not globally routable.
+  if (
+    bytes[0] === 0x20 &&
+    bytes[1] === 0x01 &&
+    bytes[2] === 0x00 &&
+    bytes[3] === 0x02 &&
+    bytes[4] === 0x00 &&
+    bytes[5] === 0x00
+  )
+    return true;
 
   // Discard-only 100::/64
   if (bytes[0] === 0x01 && bytes[1] === 0x00 && bytes.slice(2, 8).every((b) => b === 0))
