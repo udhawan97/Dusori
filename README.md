@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/dusori-mark-animated.svg" width="720" alt="Dusori neural ensō — local-first learning" />
+  <img src="docs/assets/dusori-readme-logo-inverted.svg" width="720" alt="Dusori — inverted ensō, rangoli, and katana mark" />
 </p>
 
 <p align="center">
