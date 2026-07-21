@@ -42,4 +42,64 @@ describe('searchMsLearnRanked', () => {
         Response.json({ unexpected: true })) as unknown as typeof fetch),
     ).rejects.toBeInstanceOf(MsLearnProxyError);
   });
+
+  it('tolerates a null description instead of rejecting the whole response', async () => {
+    const body = {
+      results: [
+        { title: 'Has null description', url: 'https://learn.microsoft.com/a', description: null },
+        { title: 'Has description', url: 'https://learn.microsoft.com/b', description: 'ok' },
+      ],
+    };
+    const results = await searchMsLearnRanked('x', (async () =>
+      Response.json(body)) as unknown as typeof fetch);
+    expect(results).toHaveLength(2);
+    expect(results[0]?.summary).toBe('');
+    expect(results[1]?.summary).toBe('ok');
+  });
+
+  it('drops a result whose url is protocol-relative to another host', async () => {
+    const body = {
+      results: [
+        { title: 'Evil', url: '//attacker.example/x' },
+        { title: 'Good', url: 'https://learn.microsoft.com/b' },
+      ],
+    };
+    const results = await searchMsLearnRanked('x', (async () =>
+      Response.json(body)) as unknown as typeof fetch);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toBe('Good');
+  });
+
+  it('drops a result whose url is absolute and off-host', async () => {
+    const body = {
+      results: [
+        { title: 'Evil', url: 'https://attacker.example/x' },
+        { title: 'Good', url: 'https://learn.microsoft.com/b' },
+      ],
+    };
+    const results = await searchMsLearnRanked('x', (async () =>
+      Response.json(body)) as unknown as typeof fetch);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toBe('Good');
+  });
+
+  it('throws MsLearnProxyError when fetch itself fails', async () => {
+    await expect(
+      searchMsLearnRanked('x', (async () => {
+        throw new Error('network down');
+      }) as unknown as typeof fetch),
+    ).rejects.toBeInstanceOf(MsLearnProxyError);
+  });
+
+  it('throws MsLearnProxyError on a non-JSON response body', async () => {
+    await expect(
+      searchMsLearnRanked(
+        'x',
+        (async () =>
+          new Response('not json', {
+            headers: { 'content-type': 'text/plain' },
+          })) as unknown as typeof fetch,
+      ),
+    ).rejects.toBeInstanceOf(MsLearnProxyError);
+  });
 });

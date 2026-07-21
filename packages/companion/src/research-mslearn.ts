@@ -8,7 +8,7 @@ const unfamiliarMessage = 'Microsoft Learn returned an unfamiliar search format.
 const UpstreamSchema = z.object({
   results: z.array(
     z.object({
-      description: z.string().optional(),
+      description: z.string().nullable().optional(),
       title: z.string(),
       url: z.string(),
     }),
@@ -50,9 +50,15 @@ export async function searchMsLearnRanked(
   const parsed = UpstreamSchema.safeParse(await response.json().catch(() => null));
   if (!parsed.success) throw new MsLearnProxyError(unfamiliarMessage);
 
-  return parsed.data.results.slice(0, maxResults).map((result) => ({
-    summary: result.description ?? '',
-    title: result.title.replace(/\s+/gu, ' ').trim(),
-    url: new URL(result.url, upstream).toString(),
-  }));
+  return parsed.data.results.slice(0, maxResults).flatMap((result) => {
+    const resolvedUrl = new URL(result.url, upstream);
+    if (resolvedUrl.origin !== url.origin) return [];
+    return [
+      {
+        summary: result.description ?? '',
+        title: result.title.replace(/\s+/gu, ' ').trim(),
+        url: resolvedUrl.toString(),
+      },
+    ];
+  });
 }
