@@ -959,3 +959,187 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await sitePage.screenshot({ path: 'test-results/screenshots/site-workspace-1440.png' });
   await siteContext.close();
 });
+
+const attentionFetchedPage = {
+  fetchedAt: '2026-07-21T00:00:00.000Z',
+  finalUrl: 'https://example.org/attention',
+  text: 'Attention lets each token weigh the other tokens in its context.',
+  title: 'Attention in transformers',
+  truncated: false,
+};
+
+async function routeCompanionFetch(page: Page): Promise<void> {
+  await page.route('**/api/health', async (route) => {
+    await route.fulfill({ json: { uptime: 1, version: '0.2.0' } });
+  });
+  await page.route('**/api/research/fetch', async (route) => {
+    await route.fulfill({ json: attentionFetchedPage });
+  });
+}
+
+// Adds a URL source, then reloads with a companion token the way a browser
+// pointed at `npx dusori`'s printed URL would. The reload relies on the same
+// OPFS-survives-reload behavior as "dismissed research suggestions stay gone
+// after reload" below (onMount re-reads dusori.json and reopens the first
+// topic on every load, so a plain page.goto with a token is enough -- no
+// extra re-selection step is needed). The source list is asserted visible
+// right after, so a broken reload fails here rather than later.
+async function addUrlSourceAndConnectCompanion(
+  page: Page,
+  title: string,
+  url: string,
+): Promise<void> {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill(title);
+  await page.getByLabel('Web address').fill(url);
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(title);
+
+  await page.goto('/Dusori/app/?token=e2e-companion-token');
+  await expect(page.getByText('Connected for this session')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(title);
+}
+
+test('companion fetch upgrades a URL source after a per-fetch confirm', async ({ page }) => {
+  const fetchCalls: string[] = [];
+  await page.route('**/api/health', async (route) => {
+    await route.fulfill({ json: { uptime: 1, version: '0.2.0' } });
+  });
+  await page.route('**/api/research/fetch', async (route) => {
+    fetchCalls.push(route.request().headers()['authorization'] ?? '');
+    await route.fulfill({ json: attentionFetchedPage });
+  });
+
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill('Attention paper');
+  await page.getByLabel('Web address').fill('https://example.org/attention');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Attention paper');
+
+  // Without a companion token the upgrade action is absent and the hint shows.
+  await expect(page.getByRole('button', { name: 'Fetch full content' })).toHaveCount(0);
+  await expect(
+    page.getByText('Run the companion (npx dusori) to fetch full page content.'),
+  ).toBeVisible();
+
+  // Reload as if served by the companion.
+  await page.goto('/Dusori/app/?token=e2e-companion-token');
+  await expect(page.getByText('Connected for this session')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Attention paper');
+
+  const fetchButton = page.getByRole('button', { name: 'Fetch full content' });
+  await fetchButton.click();
+  const confirm = page.getByRole('dialog', { name: 'Fetch full page content?' });
+  await expect(confirm).toContainText('example.org');
+  await expect(confirm).toContainText('https://example.org/attention');
+  await confirm.getByRole('button', { name: 'Keep reference only' }).click();
+  expect(fetchCalls).toHaveLength(0);
+
+  await fetchButton.click();
+  await page
+    .getByRole('dialog', { name: 'Fetch full page content?' })
+    .getByRole('button', { name: 'Fetch page' })
+    .click();
+  const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
+  await expect(preview.locator('pre')).toContainText('weigh the other tokens');
+  await expect(preview.locator('pre')).toContainText('# Attention paper');
+  await preview.getByRole('button', { name: 'Replace content' }).click();
+
+  await expect(
+    page.getByText('Source upgraded to full page content and recorded in the update log.'),
+  ).toBeVisible();
+  expect(fetchCalls).toEqual(['Bearer e2e-companion-token']);
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('a failed replace stays visible inside the still-open preview dialog', async ({ page }) => {
+  await routeCompanionFetch(page);
+  await addUrlSourceAndConnectCompanion(page, 'Attention paper', 'https://example.org/attention');
+
+  await page.getByRole('button', { name: 'Fetch full content' }).click();
+  await page
+    .getByRole('dialog', { name: 'Fetch full page content?' })
+    .getByRole('button', { name: 'Fetch page' })
+    .click();
+  const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
+  await expect(preview.locator('pre')).toContainText('weigh the other tokens');
+
+  // Simulate an external edit to the source's own file between preview and
+  // replace. SourceLibrary captures the file's hash the moment the preview
+  // opens (its `expectedContentHash`); upgradeSource re-reads the file at
+  // replace time and throws StorageConflictError the instant the hash no
+  // longer matches -- this is the same guard the "learning loop protects an
+  // externally edited roadmap" test exercises for roadmap.md, applied here to
+  // a source item file.
+  await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const items = await (await topic.getDirectoryHandle('Sources')).getDirectoryHandle('items');
+    const names: string[] = [];
+    for await (const [name] of items.entries()) names.push(name);
+    const handle = await items.getFileHandle(names[0]);
+    const writable = await handle.createWritable();
+    await writable.write('Edited outside Dusori while the preview was open.');
+    await writable.close();
+  });
+
+  await preview.getByRole('button', { name: 'Replace content' }).click();
+
+  // The dialog must stay open, and the conflict sentence must render *inside*
+  // it. Scoping the locator to `preview` (rather than `page`) means this
+  // assertion fails if a regression instead renders the message only in the
+  // page behind the modal backdrop -- the exact "invisible failed replace"
+  // defect this suite exists to catch.
+  await expect(preview).toBeVisible();
+  await expect(
+    preview.getByText('This source changed outside Dusori. Review the file, then try again.'),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Source upgraded to full page content and recorded in the update log.'),
+  ).toHaveCount(0);
+});
+
+test('Escape closes the confirm and preview dialogs even after focus leaves them', async ({
+  page,
+}) => {
+  await routeCompanionFetch(page);
+  await addUrlSourceAndConnectCompanion(page, 'Attention paper', 'https://example.org/attention');
+
+  const focusInsideAnyDialog = () =>
+    page.evaluate(() => Boolean(document.activeElement?.closest('dialog')));
+
+  const fetchButton = page.getByRole('button', { name: 'Fetch full content' });
+  await fetchButton.click();
+  const confirm = page.getByRole('dialog', { name: 'Fetch full page content?' });
+  const confirmFetchPage = confirm.getByRole('button', { name: 'Fetch page' });
+  const confirmKeepReference = confirm.getByRole('button', { name: 'Keep reference only' });
+  await expect(confirmFetchPage).toBeFocused();
+
+  await page.keyboard.press('Tab');
+  await expect(confirmKeepReference).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect.poll(focusInsideAnyDialog).toBe(false);
+
+  await page.keyboard.press('Escape');
+  await expect(confirm).toBeHidden();
+
+  await fetchButton.click();
+  await confirm.getByRole('button', { name: 'Fetch page' }).click();
+  const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
+  const previewKeepStub = preview.getByRole('button', { name: 'Keep the stub' });
+  await expect(previewKeepStub).toBeFocused();
+
+  await page.keyboard.press('Tab');
+  await expect.poll(focusInsideAnyDialog).toBe(false);
+
+  await page.keyboard.press('Escape');
+  await expect(preview).toBeHidden();
+});
