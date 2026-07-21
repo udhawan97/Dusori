@@ -57,6 +57,16 @@ describe('searchMsLearnRanked', () => {
     expect(results[1]?.summary).toBe('ok');
   });
 
+  it('tolerates an omitted description field instead of rejecting the whole response', async () => {
+    const body = {
+      results: [{ title: 'Has no description field', url: 'https://learn.microsoft.com/a' }],
+    };
+    const results = await searchMsLearnRanked('x', (async () =>
+      Response.json(body)) as unknown as typeof fetch);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.summary).toBe('');
+  });
+
   it('drops a result whose url is protocol-relative to another host', async () => {
     const body = {
       results: [
