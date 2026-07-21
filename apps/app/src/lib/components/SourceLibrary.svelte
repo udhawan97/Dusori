@@ -52,6 +52,12 @@
     }
   }
 
+  function clearFeedback(): void {
+    error = '';
+    success = '';
+    upgradeError = '';
+  }
+
   async function openConfirm(record: SourceRecord, invoker: HTMLButtonElement): Promise<void> {
     confirming = record;
     confirmInvoker = invoker;
@@ -68,13 +74,11 @@
   }
 
   async function confirmFetch(): Promise<void> {
-    if (!confirming || !companion) return;
+    if (!confirming || !companion || fetchingSha) return;
     const record = confirming;
     confirming = null;
     fetchingSha = record.sha256;
-    upgradeError = '';
-    error = '';
-    success = '';
+    clearFeedback();
     try {
       const page = await companion.fetchPage(record.url ?? '');
       // upgradeSource guards against external edits with the hash we read here.
@@ -109,9 +113,7 @@
   async function replaceContent(): Promise<void> {
     if (!upgradePreview) return;
     replacing = true;
-    upgradeError = '';
-    error = '';
-    success = '';
+    clearFeedback();
     try {
       await upgradeSource(storage, {
         expectedContentHash: upgradePreview.expectedContentHash,
@@ -121,6 +123,10 @@
       });
       upgradePreview = null;
       await refresh();
+      // The write above already succeeded, so it must be reported as a success
+      // even if this read-back failed and left `error` set (feedback renders
+      // upgradeError, then error, then success).
+      error = '';
       success = 'Source upgraded to full page content and recorded in the update log.';
       await tick();
       confirmInvoker?.focus();
@@ -137,12 +143,13 @@
     }
   }
 
-  function dialogKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    if (replacing) return;
-    if (upgradePreview) void closeUpgradePreview();
-    else if (confirming) void cancelConfirm();
+  function handleEscape(): void {
+    if (upgradePreview) {
+      if (replacing) return;
+      void closeUpgradePreview();
+    } else if (confirming) {
+      void cancelConfirm();
+    }
   }
 
   onMount(() => {
@@ -177,9 +184,7 @@
 
   async function submit(): Promise<void> {
     saving = true;
-    error = '';
-    success = '';
-    upgradeError = '';
+    clearFeedback();
     try {
       let result;
       if (method === 'paste') {
@@ -242,6 +247,8 @@
     return `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
   }
 </script>
+
+<svelte:window onkeydown={(event) => event.key === 'Escape' && handleEscape()} />
 
 <section
   class="source-library"
@@ -364,7 +371,7 @@
           {#if source.method === 'url' && companion}
             <button
               class="upgrade-source"
-              disabled={fetchingSha === source.sha256 || saving}
+              disabled={Boolean(fetchingSha) || saving}
               onclick={(event) =>
                 void openConfirm(source, event.currentTarget as HTMLButtonElement)}
             >
@@ -382,12 +389,7 @@
 
 {#if confirming}
   <div class="dialog-backdrop">
-    <dialog
-      open
-      class="upgrade-dialog"
-      aria-labelledby="upgrade-confirm-title"
-      onkeydown={dialogKeydown}
-    >
+    <dialog open class="upgrade-dialog" aria-labelledby="upgrade-confirm-title">
       <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
       <p>
         Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
@@ -410,18 +412,19 @@
 
 {#if upgradePreview}
   <div class="dialog-backdrop">
-    <dialog
-      open
-      class="upgrade-dialog"
-      aria-labelledby="upgrade-preview-title"
-      onkeydown={dialogKeydown}
-    >
+    <dialog open class="upgrade-dialog" aria-labelledby="upgrade-preview-title">
       <h3 id="upgrade-preview-title">Preview fetched content</h3>
       {#if upgradePreview.page.truncated}
         <p>This page was longer than the 2 MiB source limit and was truncated.</p>
       {/if}
       <p>Source markdown</p>
       <pre>{upgradePreview.content}</pre>
+      {#if upgradeError}
+        <p class="source-message error" role="alert">
+          <AlertTriangle aria-hidden="true" size={17} />
+          <span>{upgradeError}</span>
+        </p>
+      {/if}
       <div class="upgrade-actions">
         <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
           {replacing ? 'Replacing…' : 'Replace content'}
@@ -727,6 +730,10 @@
 
   .upgrade-url code {
     overflow-wrap: anywhere;
+  }
+
+  .upgrade-dialog .source-message {
+    margin-block-start: var(--space-sm);
   }
 
   .upgrade-actions {
