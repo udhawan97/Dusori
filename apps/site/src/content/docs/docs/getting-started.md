@@ -45,7 +45,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 ## Local companion
 
-The optional companion currently proves the loopback security boundary. It does not yet provide Ollama or source fetching.
+The optional companion holds the loopback security boundary and adds the two things the browser cannot do on its own: fetching a page you explicitly confirm and turning it into readable text, and reaching Microsoft Learn's ranked search. Both appear only when the app is opened through the companion. See [Sources](../sources/) for the fetch flow. Ollama and model transformations are still not provided.
 
 The v0.2.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
 
