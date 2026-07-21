@@ -244,35 +244,52 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
 }) => {
   await page.goto('/Dusori/');
   const identity = page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' });
-  const identityStage = page.locator('.hero-mark');
   await expect(identity).toBeVisible();
-  await expect(identity).toHaveAttribute('src', '/Dusori/brand/dusori-mark.svg');
+  await expect(identity).toHaveAttribute('src', '/Dusori/brand/dusori-mark-animated.svg');
+  await expect(page.locator('.hero-mark source').nth(0)).toHaveAttribute(
+    'srcset',
+    '/Dusori/brand/dusori-mark-reversed.svg',
+  );
+  await expect(page.locator('.hero-mark source').nth(1)).toHaveAttribute(
+    'srcset',
+    '/Dusori/brand/dusori-mark.svg',
+  );
+  await expect(page.locator('.hero-mark source').nth(2)).toHaveAttribute(
+    'srcset',
+    '/Dusori/brand/dusori-mark-animated-reversed.svg',
+  );
   expect((await identity.boundingBox())?.width).toBeGreaterThan(360);
   await expect(
     page.getByRole('heading', { name: 'Your notes, finally on speaking terms.' }),
   ).toBeVisible();
   await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
 
+  await page.goto('/Dusori/brand/dusori-mark-animated.svg');
+  const chakra = page.locator('.chakra-motion');
+  const blade = page.locator('.blade-motion');
   expect(
-    await identityStage.evaluate((mark) => ({
-      arrival: getComputedStyle(mark).animationName,
-      arrivalCount: getComputedStyle(mark).animationIterationCount,
-      breath: getComputedStyle(mark.querySelector('img') as HTMLImageElement).animationName,
-      breathCount: getComputedStyle(mark.querySelector('img') as HTMLImageElement)
-        .animationIterationCount,
+    await chakra.evaluate((element) => ({
+      name: getComputedStyle(element).animationName,
+      count: getComputedStyle(element).animationIterationCount,
     })),
-  ).toEqual({
-    arrival: 'enso-arrive',
-    arrivalCount: '1',
-    breath: 'enso-breathe',
-    breathCount: '2',
-  });
+  ).toEqual({ name: 'chakra-revolve', count: '1' });
+  expect(
+    await blade.evaluate((element) => ({
+      name: getComputedStyle(element).animationName,
+      count: getComputedStyle(element).animationIterationCount,
+    })),
+  ).toEqual({ name: 'blade-strike', count: '1' });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
+  expect(await chakra.evaluate((element) => getComputedStyle(element).animationName)).toBe('none');
+  expect(await blade.evaluate((element) => getComputedStyle(element).animationName)).toBe('none');
+
+  await page.goto('/Dusori/');
   await expect(identity).toBeVisible();
-  expect(await identityStage.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
-  expect(await identity.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
+  expect(await identity.evaluate((element) => new URL(element.currentSrc).pathname)).toBe(
+    '/Dusori/brand/dusori-mark.svg',
+  );
 
   await page.goto('/Dusori/docs/knowledge-graph/');
   await expect(page.getByRole('heading', { name: 'Portable knowledge graph' })).toBeVisible();
@@ -377,10 +394,26 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await page.getByRole('button', { name: 'Graph' }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
-  await expect(page.getByRole('img', { name: 'Workspace knowledge graph' })).toBeVisible();
+  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
+  await expect(graph).toBeVisible();
   await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText('First look');
   await expect(page.getByText(/6 artifacts · \d+ connections/u)).toBeVisible();
+
+  const hub = graph.getByRole('button', { name: /AI Fundamentals, overview, \d+ wikilinks, hub/u });
+  await expect(hub).toHaveClass(/hub/u);
+
+  for (let tabCount = 0; tabCount < 20; tabCount += 1) {
+    if (await page.locator('.node:focus').count()) break;
+    await page.keyboard.press('Tab');
+  }
+  const focusedNode = page.locator('.node:focus');
+  await expect(focusedNode).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(focusedNode).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.selection-action').getByRole('button')).toBeVisible();
   await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press('Escape');
+  await expect(focusedNode).toHaveAttribute('aria-pressed', 'false');
 
   await page
     .getByRole('list', { name: 'Graph documents' })

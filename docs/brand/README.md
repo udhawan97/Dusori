@@ -5,8 +5,10 @@ Dusori's mark is an **open ensō** containing rangoli geometry, crossed by one k
 ## Files
 
 - `apps/site/public/brand/dusori-mark.svg` — primary transparent mark
+- `apps/site/public/brand/dusori-mark-animated.svg` — finite light-surface marketing reveal
 - `apps/site/public/brand/dusori-mark-mono.svg` — one-color reproduction
 - `apps/site/public/brand/dusori-mark-reversed.svg` — dark-surface reproduction
+- `apps/site/public/brand/dusori-mark-animated-reversed.svg` — finite dark-surface marketing reveal
 - `apps/site/public/brand/dusori-lockup.svg` — horizontal presentation lockup
 - `docs/assets/dusori-readme-logo-inverted.svg` — animated reversed monochrome README lockup on black
 - `apps/app/static/icons/icon-192.svg` and `icon-512.svg` — PWA icons
@@ -23,6 +25,7 @@ The product UI composes the mark with live Shippori Mincho text. This keeps the 
 - Minimum size is 16 px for the mark and 96 px wide for the horizontal lockup.
 - Vermilion remains the action axis, not a decorative fill. Marigold carries the rangoli-inspired knowledge geometry.
 - Product icons and compact marks stay static. The marketing hero and README lockup may animate the exact supplied geometry as a finite reveal, with a reduced-motion fallback.
+- The reveal gives the rangoli chakra one complete revolution, then drives the katana from the upper-right into its supplied final position. It does not bounce, repeat, or alter the settled mark.
 
 ## Palette
 

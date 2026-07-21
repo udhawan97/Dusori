@@ -9,10 +9,13 @@
     type WorkspaceGraphNode,
   } from '@dusori/core';
 
-  interface PositionedNode extends WorkspaceGraphNode {
-    x: number;
-    y: number;
-  }
+  import {
+    NODE_RADIUS,
+    layoutWorkspaceGraph,
+    neighborIds,
+    wikilinkDegrees,
+    type PositionedWorkspaceGraphNode,
+  } from '$lib/graph-layout';
 
   export let storage: StorageAdapter;
   export let onOpen: (path: string) => void;
@@ -20,52 +23,22 @@
   let graph: WorkspaceGraph | null = null;
   let loading = true;
   let error = '';
+  let selectedId: string | null = null;
 
-  function placeNodes(nodes: WorkspaceGraphNode[]): PositionedNode[] {
-    const home = nodes.find((node) => node.kind === 'home');
-    const overviews = nodes.filter((node) => node.kind === 'overview');
-    const points: Record<string, { x: number; y: number }> = {};
-    if (home) points[home.id] = { x: 450, y: overviews.length === 1 ? 448 : 280 };
-
-    overviews.forEach((overview, index) => {
-      if (overviews.length === 1) {
-        const center = { x: 450, y: 270 };
-        points[overview.id] = center;
-        const children = nodes.filter(
-          (node) => node.topicSlug === overview.topicSlug && node.id !== overview.id,
-        );
-        children.forEach((node, childIndex) => {
-          points[node.id] = {
-            x: children.length === 1 ? 450 : 130 + (childIndex * 640) / (children.length - 1),
-            y: 122 + (childIndex % 2) * 38,
-          };
-        });
-        return;
-      }
-      const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(overviews.length, 1);
-      const center = { x: 450 + Math.cos(angle) * 185, y: 280 + Math.sin(angle) * 185 };
-      points[overview.id] = center;
-      const children = nodes.filter(
-        (node) => node.topicSlug === overview.topicSlug && node.id !== overview.id,
-      );
-      children.forEach((node, childIndex) => {
-        const childAngle =
-          angle - Math.PI * 0.68 + (childIndex * Math.PI * 1.36) / Math.max(children.length - 1, 1);
-        points[node.id] = {
-          x: center.x + Math.cos(childAngle) * 118,
-          y: center.y + Math.sin(childAngle) * 118,
-        };
-      });
-    });
-
-    const unplaced = nodes.filter((node) => !(node.id in points));
-    unplaced.forEach((node, index) => {
-      points[node.id] = { x: 110 + index * 82, y: 500 };
-    });
-    return nodes.map((node) => ({ ...node, ...(points[node.id] ?? { x: 450, y: 280 }) }));
+  function nodeRadius(node: WorkspaceGraphNode): number {
+    if (node.kind === 'home') return NODE_RADIUS.home;
+    if (node.kind === 'overview') return NODE_RADIUS.overview;
+    return NODE_RADIUS.artifact;
   }
 
-  function edgePath(source: PositionedNode, target: PositionedNode): string {
+  function nodeRingRadius(node: WorkspaceGraphNode): number {
+    return nodeRadius(node) + (node.kind === 'home' ? 12 : 9);
+  }
+
+  function edgePath(
+    source: PositionedWorkspaceGraphNode,
+    target: PositionedWorkspaceGraphNode,
+  ): string {
     const middleX = (source.x + target.x) / 2;
     const middleY = (source.y + target.y) / 2 - 18;
     return `M ${source.x} ${source.y} Q ${middleX} ${middleY} ${target.x} ${target.y}`;
@@ -79,6 +52,50 @@
     return node.label;
   }
 
+  function wikilinkLabel(count: number): string {
+    return `${count} wikilink${count === 1 ? '' : 's'}`;
+  }
+
+  function isHub(node: WorkspaceGraphNode): boolean {
+    return (degrees.get(node.id) ?? 0) >= 3;
+  }
+
+  function nodeTitle(node: WorkspaceGraphNode): string {
+    const degree = degrees.get(node.id) ?? 0;
+    if (degree >= 3) return `${node.label}, hub - ${wikilinkLabel(degree)}`;
+    if (degree > 0) return `${node.label}, ${wikilinkLabel(degree)}`;
+    return node.label;
+  }
+
+  function nodeAriaLabel(node: WorkspaceGraphNode): string {
+    const degree = degrees.get(node.id) ?? 0;
+    return [
+      node.label,
+      node.kind,
+      ...(degree > 0 ? [wikilinkLabel(degree)] : []),
+      ...(degree >= 3 ? ['hub'] : []),
+    ].join(', ');
+  }
+
+  function toggleSelection(id: string): void {
+    selectedId = selectedId === id ? null : id;
+  }
+
+  function handleNodeClick(event: MouseEvent, id: string): void {
+    event.stopPropagation();
+    toggleSelection(id);
+  }
+
+  function handleNodeKeydown(event: KeyboardEvent, id: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleSelection(id);
+    } else if (event.key === 'Escape') {
+      selectedId = null;
+    }
+  }
+
   onMount(async () => {
     try {
       graph = await buildWorkspaceGraph(storage);
@@ -89,9 +106,22 @@
     }
   });
 
-  $: positioned = placeNodes(graph?.nodes ?? []);
+  $: layout = layoutWorkspaceGraph(graph ?? { edges: [], nodes: [], unresolvedLinks: [] });
+  $: positioned = layout.nodes;
   $: nodesById = new Map(positioned.map((node) => [node.id, node]));
+  $: homeNode = positioned.find((node) => node.kind === 'home');
+  $: degrees = graph ? wikilinkDegrees(graph) : new Map<string, number>();
+  // Select-to-focus fading after chanhx/crabviz (AGPL-3.0): idea only,
+  // implemented from scratch; no code copied or derived.
+  $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
+  $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
 </script>
+
+<svelte:window
+  onkeydown={(event) => {
+    if (event.key === 'Escape') selectedId = null;
+  }}
+/>
 
 <section class="knowledge-graph" aria-labelledby="graph-title">
   <header>
@@ -120,13 +150,25 @@
   {:else if graph && graph.nodes.length === 0}
     <div class="graph-state">Create a topic to place its artifacts on the graph.</div>
   {:else if graph}
+    {#if selectedNode}
+      <div class="selection-action">
+        <button type="button" onclick={() => onOpen(selectedNode.path)}>
+          Open {selectedNode.label}
+        </button>
+      </div>
+    {/if}
     <div class="graph-stage">
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <svg
         class="constellation"
-        role="img"
+        role="group"
         aria-label="Workspace knowledge graph"
-        viewBox="0 0 900 560"
+        viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
+        onclick={() => (selectedId = null)}
+        onkeydown={(event) => {
+          if (event.key === 'Escape') selectedId = null;
+        }}
       >
         <defs>
           <radialGradient id="dusori-glow">
@@ -134,33 +176,44 @@
             <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
           </radialGradient>
         </defs>
-        <circle class="halo" cx="450" cy="280" r="250" />
+        {#if homeNode}
+          <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
+        {/if}
         {#each graph.edges as edge (edge.id)}
           {@const source = nodesById.get(edge.source)}
           {@const target = nodesById.get(edge.target)}
           {#if source && target}
-            <path class:link={edge.kind === 'links'} d={edgePath(source, target)} />
+            <path
+              class:link={edge.kind === 'links'}
+              class:faded={selectedId !== null &&
+                edge.source !== selectedId &&
+                edge.target !== selectedId}
+              d={edgePath(source, target)}
+            />
           {/if}
         {/each}
         {#each positioned as node (node.id)}
           <g
             class:home={node.kind === 'home'}
             class:overview={node.kind === 'overview'}
+            class:hub={isHub(node)}
+            class:selected={selectedId === node.id}
+            class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
             class="node"
+            role="button"
+            tabindex="0"
+            aria-label={nodeAriaLabel(node)}
+            aria-pressed={selectedId === node.id}
+            onclick={(event) => handleNodeClick(event, node.id)}
+            onkeydown={(event) => handleNodeKeydown(event, node.id)}
           >
-            <title>{node.label}</title>
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r={node.kind === 'home' ? 28 : node.kind === 'overview' ? 21 : 12}
-            />
-            <circle
-              class="node-ring"
-              cx={node.x}
-              cy={node.y}
-              r={node.kind === 'home' ? 40 : node.kind === 'overview' ? 30 : 21}
-            />
-            <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}>{visualLabel(node)}</text
+            <title>{nodeTitle(node)}</title>
+            <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
+            <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
+            <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}
+              >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
+                  · hub</tspan
+                >{/if}</text
             >
           </g>
         {/each}
@@ -241,6 +294,28 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .selection-action {
+    display: flex;
+    width: min(100%, 76rem);
+    margin: var(--space-md) auto 0;
+  }
+
+  .selection-action button {
+    min-height: 2.75rem;
+    padding-inline: var(--space-md);
+    border: var(--rule-hair) solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-paper);
+    font: 700 var(--text-sm) / 1 var(--font-body);
+    cursor: pointer;
+  }
+
+  .selection-action button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
   .constellation {
     width: 100%;
     min-height: 25rem;
@@ -257,6 +332,7 @@
     fill: none;
     stroke: var(--color-rule);
     stroke-width: 1;
+    transition: opacity var(--dur-short) var(--ease-out);
   }
 
   path.link {
@@ -273,6 +349,12 @@
       stroke var(--dur-short) var(--ease-out);
   }
 
+  .node {
+    cursor: pointer;
+    outline: none;
+    transition: opacity var(--dur-short) var(--ease-out);
+  }
+
   .node.overview circle:first-child {
     fill: var(--color-marigold);
     stroke: var(--color-paper);
@@ -287,6 +369,36 @@
     fill: none;
     stroke: var(--color-rule);
     stroke-dasharray: 3 5;
+    transition:
+      stroke var(--dur-short) var(--ease-out),
+      stroke-width var(--dur-short) var(--ease-out);
+  }
+
+  .node.hub .node-ring {
+    stroke: var(--color-marigold);
+    stroke-width: 2;
+    stroke-dasharray: none;
+  }
+
+  .node:focus-visible .node-ring {
+    stroke: var(--color-focus);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  .node.selected .node-ring,
+  .node.selected:focus-visible .node-ring {
+    stroke: var(--color-accent);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  .node.faded {
+    opacity: 0.25;
+  }
+
+  path.faded {
+    opacity: 0.15;
   }
 
   text {
@@ -294,6 +406,12 @@
     font-family: var(--font-mono);
     font-size: 14px;
     text-anchor: middle;
+  }
+
+  .hub-label {
+    fill: var(--color-marigold);
+    font-size: 0.72em;
+    font-weight: 700;
   }
 
   .artifact-index {
@@ -408,6 +526,11 @@
     }
     .node circle:first-child {
       transition: none;
+    }
+    path,
+    .node,
+    .node-ring {
+      transition: none !important;
     }
     .artifact-index button:active {
       transform: none;

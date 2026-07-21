@@ -9,6 +9,11 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Consent-gated, objective-led research using the keyless Microsoft Learn catalog and English Wikipedia APIs.
 - Deterministically ranked suggestions with sanitized snippets, exact source previews, persistent dismissal, and normal source-library acceptance.
 
+### Changed
+
+- Scale the browser-local knowledge constellation to workspace size and order topics by wikilink affinity, with deterministic geometry audits that prevent node collisions and clipping.
+- Mark wikilink hubs with marigold rings and let pointer and keyboard users focus a node, dim unrelated artifacts, and open the selection directly.
+
 ### Safety and portability
 
 - Accepted research captures remain URL sources, deduplicate by URL, record provider origin, append the topic update log, and appear in the portable graph.

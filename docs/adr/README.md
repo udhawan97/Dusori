@@ -7,3 +7,4 @@
 - [ADR-005: Quiet editorial utility](005-design-system.md)
 - [ADR-006: Static GitHub Pages hosting](006-github-pages.md)
 - [ADR-007: Vertical slice before AI](007-vertical-slice.md)
+- [ADR-008: Scaled constellation layout](008-scaled-constellation-layout.md)
