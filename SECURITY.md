@@ -22,4 +22,8 @@ Imported Markdown is sanitized before rendering. Raw HTML is removed. Mermaid de
 
 ## Supported versions
 
-Until the first tagged release, only the latest commit on `main` receives security fixes.
+| Version | Supported |
+| ------- | --------- |
+| 0.1.x   | Yes       |
+
+Security fixes target the latest `0.1.x` release and `main`. Older prerelease snapshots are not supported.

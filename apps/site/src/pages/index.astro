@@ -6,6 +6,7 @@ import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/s
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const screenshotHref = `${projectBasePath}/app-workspace.png`;
+const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
 ---
 
 <!doctype html>
@@ -76,11 +77,13 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
         </div>
         <aside class="availability" aria-label="Current release">
           <span>Available now</span>
-          <strong>Workspace foundation</strong>
+          <span>v0.1.0</span>
+          <strong>Portable learning workspace</strong>
           <p>
-            Browser storage, local sources, curriculum import, interactive progress, portable
-            exports, conflict-safe proposals, offline use.
+            Browser storage, local sources, curriculum import, interactive progress, portable graph,
+            Obsidian-compatible folders, conflict-safe proposals, dark mode, and offline use.
           </p>
+          <a href={releaseHref}>Read the v0.1.0 release notes →</a>
         </aside>
       </section>
 
@@ -204,14 +207,15 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
         <a href="https://github.com/udhawan97/Dusori"
           ><span>Inspect</span>Review the source on GitHub →</a
         >
+        <a href={releaseHref}><span>Release</span>What shipped in v0.1.0 →</a>
       </section>
     </main>
 
     <footer class="colophon">
       <p>
         Dusori is open-source software under the Apache License 2.0. No account. No telemetry. No
-        hosted application backend. The current build establishes the local-first workspace; AI,
-        search, and unattended scheduling remain future work.
+        hosted application backend. Version 0.1.0 establishes the local-first workspace; AI, search,
+        and unattended scheduling remain future work.
       </p>
       <span>Built in public · 2026</span>
     </footer>
@@ -403,6 +407,11 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   .availability span,
   .availability strong {
     display: block;
+  }
+
+  .availability a {
+    color: var(--color-accent-text);
+    text-underline-offset: 0.25em;
   }
 
   .availability span,
@@ -601,6 +610,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
     }
 
     .hero-links a:hover,
+    .availability a:hover,
     .utility-index a:hover {
       color: var(--color-ink);
       text-decoration-thickness: 2px;

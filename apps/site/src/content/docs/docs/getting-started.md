@@ -47,7 +47,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 The optional companion currently proves the loopback security boundary. It does not yet provide Ollama or source fetching.
 
-The npm package is not published in this workspace-foundation milestone. Build and run it from a clone:
+The v0.1.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
 
 ```sh
 corepack enable
@@ -56,4 +56,4 @@ pnpm build
 pnpm --filter dusori dev -- --root /path/to/Dusori
 ```
 
-After the first npm release, the equivalent public command will be `npx dusori --root /path/to/Dusori`. The companion binds only to `127.0.0.1`, uses a new token for each run, and stops when its terminal process exits.
+After a separate npm release, the equivalent public command will be `npx dusori --root /path/to/Dusori`. The companion binds only to `127.0.0.1`, uses a new token for each run, and stops when its terminal process exits.

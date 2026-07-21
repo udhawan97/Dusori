@@ -3,7 +3,7 @@ title: Roadmap
 description: Planned work is separated explicitly from what Dusori ships today.
 ---
 
-## Shipped in the workspace foundation
+## Shipped in v0.1.0
 
 - Browser workspace in origin-private storage
 - Direct folder connection on supported Chromium desktop browsers
