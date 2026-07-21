@@ -51,12 +51,13 @@ Dusori v0.1.0 is the first public release. It establishes the complete browser-f
 | **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states           |
 | **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks   |
 | **Notes**          | Sanitized Markdown, Mermaid diagrams, and explicit conflict proposals                 |
-| **Sources**        | Local paste, file, and URL-reference capture with hashes and provenance               |
+| **Sources**        | Paste, local file, URL reference, and accepted research capture with provenance       |
+| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective      |
 | **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides |
 | **Portability**    | Browser storage, direct folder access where supported, and ZIP import/export          |
 | **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons           |
 
-Remote fetching, search, Ollama transforms, generated schedules, and unattended work are roadmap items. Dusori does not claim they exist yet.
+Arbitrary page fetching, key-based search, Ollama transforms, generated schedules, and unattended work remain roadmap items. Phase 1 research is deliberately limited to the keyless Microsoft Learn catalog and English Wikipedia APIs after per-provider consent.
 
 ## Obsidian, without surrendering the vault
 
@@ -95,6 +96,7 @@ flowchart LR
     ├── roadmap.md
     ├── TUTOR.md
     ├── state.json
+    ├── research.json               # created after the first dismissal
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/
@@ -110,7 +112,7 @@ Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and v
 ```text
 apps/app                  SvelteKit browser/PWA workbench
 apps/site                 Astro + Starlight product and documentation site
-packages/core             Storage-neutral domain, learning loop, graph, conflicts
+packages/core             Storage-neutral domain, learning loop, research, graph, conflicts
 packages/storage-opfs     Private browser workspace adapter
 packages/storage-fsa      User-approved folder adapter
 packages/companion        Optional token-protected loopback foundation

@@ -2,6 +2,19 @@
 
 All notable Dusori changes are documented here. Dusori follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Consent-gated, objective-led research using the keyless Microsoft Learn catalog and English Wikipedia APIs.
+- Deterministically ranked suggestions with sanitized snippets, exact source previews, persistent dismissal, and normal source-library acceptance.
+
+### Safety and portability
+
+- Accepted research captures remain URL sources, deduplicate by URL, record provider origin, append the topic update log, and appear in the portable graph.
+- Provider consent stays on the device; all network access uses injected browser fetch, and the offline service worker ignores cross-origin API responses.
+- Topic `research.json` files use schema validation and hash-guarded writes so concurrent dismissals are merged instead of silently lost.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

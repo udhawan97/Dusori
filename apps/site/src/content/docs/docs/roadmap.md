@@ -3,7 +3,7 @@ title: Roadmap
 description: Planned work is separated explicitly from what Dusori ships today.
 ---
 
-## Shipped in v0.1.0
+## Shipped in the current build
 
 - Browser workspace in origin-private storage
 - Direct folder connection on supported Chromium desktop browsers
@@ -11,6 +11,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - ZIP import/export
 - Conflict-safe proposals and dated update logs
 - Local source library for pasted text, Markdown/text files, and unfetched URL references
+- Consent-gated Microsoft Learn catalog and English Wikipedia research with preview-first source capture
 - Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
 - Interactive Markdown roadmap progress, explicit topic status, and deterministic Today summaries
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
@@ -19,12 +20,12 @@ description: Planned work is separated explicitly from what Dusori ships today.
 
 ## Planned—not built
 
-- Remote source fetching and content extraction
+- Arbitrary remote-page fetching and readability extraction
 - PDF and other non-text document import
 - Ollama discovery and source-bounded transformations
 - Model capability probes
 - Chat-to-`TUTOR.md` diff editing
 - Optional generated review schedules and recap suggestions
-- Optional best-effort search adapters
+- Key-based or general-purpose search adapters
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

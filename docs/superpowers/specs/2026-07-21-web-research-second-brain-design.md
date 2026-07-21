@@ -36,11 +36,11 @@ Leverage points already in the codebase:
 
 Externally verified on 2026-07-21:
 
-| Endpoint | CORS | Key | Notes |
-| --- | --- | --- | --- |
-| `learn.microsoft.com/api/catalog/?type=modules` | `*` | none | 3,592 modules, ~6 MB JSON (≈1 MB gzipped). No free-text search — `q` is ignored. Fields: title, summary, url, uid, products, roles, levels, duration, popularity, last_modified. |
-| `en.wikipedia.org/w/api.php` (`list=search`, `prop=extracts`) | `*` with `origin=*` | none | Real ranked search plus full plain-text page extracts, both browser-callable. |
-| `learn.microsoft.com/api/search` | none | none | Ranked site search. Not CORS-open → companion-only, phase 2. |
+| Endpoint                                                      | CORS                | Key  | Notes                                                                                                                                                                            |
+| ------------------------------------------------------------- | ------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `learn.microsoft.com/api/catalog/?type=modules`               | `*`                 | none | 3,592 modules, ~6 MB JSON (≈1 MB gzipped). No free-text search — `q` is ignored. Fields: title, summary, url, uid, products, roles, levels, duration, popularity, last_modified. |
+| `en.wikipedia.org/w/api.php` (`list=search`, `prop=extracts`) | `*` with `origin=*` | none | Real ranked search plus full plain-text page extracts, both browser-callable.                                                                                                    |
+| `learn.microsoft.com/api/search`                              | none                | none | Ranked site search. Not CORS-open → companion-only, phase 2.                                                                                                                     |
 
 Consequence: a genuinely useful research loop is possible **entirely in the hosted
 browser app, with zero keys, zero accounts, and zero new dependencies**. That was not
@@ -98,17 +98,17 @@ the network except the two provider calls, and only after per-provider consent.
 
 ```ts
 export interface ResearchQuery {
-  objectiveTitle: string;   // cleaned of markdown/wikilink syntax
+  objectiveTitle: string; // cleaned of markdown/wikilink syntax
   topicTitle: string;
-  terms: string[];          // lowercased, stopwords removed — used by scoring
+  terms: string[]; // lowercased, stopwords removed — used by scoring
 }
 
 export interface ResearchCandidate {
-  key: string;              // "mslearn:<uid>" | "wikipedia:<pageid>"
+  key: string; // "mslearn:<uid>" | "wikipedia:<pageid>"
   provider: 'mslearn' | 'wikipedia';
   title: string;
   url: string;
-  snippet: string;          // plain text, sanitized before render
+  snippet: string; // plain text, sanitized before render
   score: number;
   meta: Record<string, string>; // duration, level, products… display-only
 }
@@ -116,7 +116,7 @@ export interface ResearchCandidate {
 export interface ResearchCapture {
   title: string;
   url: string;
-  content: string;          // markdown written into the source file
+  content: string; // markdown written into the source file
 }
 
 export interface ResearchProvider {
@@ -166,8 +166,8 @@ export interface ResearchProvider {
 
 1. Objective selector, defaulting to the next unchecked objective.
 2. One search action per provider. First use of a provider opens the disclosure gate:
-   *“Searching sends this objective’s text to Microsoft Learn (learn.microsoft.com)
-   over HTTPS. Nothing else from your workspace is sent. Allow on this device?”*
+   _“Searching sends this objective’s text to Microsoft Learn (learn.microsoft.com)
+   over HTTPS. Nothing else from your workspace is sent. Allow on this device?”_
    Consent is per-provider, stored in `localStorage` (device preference, like theme).
 3. Results list ordered by score: title, provider tag, snippet, metadata line;
    actions **Preview** and **Dismiss**. Fully keyboard operable, 44 px targets,
@@ -229,10 +229,10 @@ roadmap sentence, site docs page, CHANGELOG, ADR-003 file-contract appendix
 
 ## Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| MS Learn catalog has no server-side ranking | Local scoring over title+summary is adequate for objective-title queries; phase-2 proxy to the ranked API. |
-| ~6 MB catalog fetch per session | Session memory cache; ~1 MB gzipped transfer; persistent OPFS cache only if real usage shows pain. |
-| Catalog/API shape drift (no versioning) | Lenient zod parsing, fixture tests, friendly failure UI. |
-| Old app versions rewriting manifests drop `origin` metadata | Metadata-only loss, content files untouched; documented above. |
-| Provider text injection | Same sanitization path as pasted sources; text is data, never instructions. |
+| Risk                                                        | Mitigation                                                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| MS Learn catalog has no server-side ranking                 | Local scoring over title+summary is adequate for objective-title queries; phase-2 proxy to the ranked API. |
+| ~6 MB catalog fetch per session                             | Session memory cache; ~1 MB gzipped transfer; persistent OPFS cache only if real usage shows pain.         |
+| Catalog/API shape drift (no versioning)                     | Lenient zod parsing, fixture tests, friendly failure UI.                                                   |
+| Old app versions rewriting manifests drop `origin` metadata | Metadata-only loss, content files untouched; documented above.                                             |
+| Provider text injection                                     | Same sanitization path as pasted sources; text is data, never instructions.                                |

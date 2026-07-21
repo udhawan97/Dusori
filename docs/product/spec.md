@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** workspace-foundation implementation · **Date:** 2026-07-20
+**Status:** web-research Phase 1 implementation · **Date:** 2026-07-21
 
 ## Product contract
 
@@ -23,6 +23,7 @@ The first milestone must prove:
 9. Keyboard, responsive, contrast, and automated accessibility gates.
 10. A public GitHub repository, product page, documentation, and PWA on GitHub Pages.
 11. An interactive learning loop derived entirely from portable roadmap, state, and update files.
+12. Consent-gated, keyless research against Microsoft Learn and English Wikipedia.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
@@ -30,10 +31,14 @@ The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markd
 
 The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress, next steps, and recent dated updates. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. No schedule or recap is generated.
 
+The shipped Research panel starts from a selected roadmap objective and defaults to the next unchecked item. Searching Microsoft Learn downloads its public module catalog and ranks modules locally; an accepted module remains honestly labeled as a catalog reference, not a page snapshot. Wikipedia provides ranked English search plus a plain-text page extract, truncated when necessary to stay inside the 2 MiB source limit. Both providers are keyless and browser-callable.
+
+The first search with each provider is blocked behind an exact egress disclosure naming the provider host and the objective text being sent. Consent is stored per provider on the device. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed suggestions are kept in the topic's machine-owned `research.json` file.
+
 ## Explicitly not built yet
 
-- Web search
-- Source fetching
+- Arbitrary web search providers or API-key integrations
+- Arbitrary URL fetching, readability extraction, or Microsoft Learn page snapshots
 - PDF or non-text curriculum extraction
 - Ollama or other model operations
 - AI-generated notes or diagrams
