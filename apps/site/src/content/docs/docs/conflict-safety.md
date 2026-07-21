@@ -16,3 +16,5 @@ Before a write:
 The application surfaces the current and proposed text as a diff. There is no last-write-wins path for user-owned Markdown.
 
 Malformed machine JSON is renamed with an `.invalid-<timestamp>` suffix and surfaced instead of being silently rewritten.
+
+Upgrading a URL source to its fetched full page text follows the same guard, but checks the content hash the app just read rather than one already on file: a URL source's recorded hash identifies its URL, not its saved content, so there is nothing else to compare against. An external edit made between that read and the confirmed replacement is still caught and refused.

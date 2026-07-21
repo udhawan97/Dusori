@@ -20,6 +20,10 @@ The **Research** section defaults to the next unchecked objective. **Search Micr
 
 Results remain suggestions until you choose **Add to sources**. Microsoft Learn captures are labeled as catalog references, not page snapshots. Wikipedia extracts stay below the same 2 MiB source cap and end with `[truncated]` when the full extract would exceed it. **Dismiss** records the result key locally so it stays out of later searches.
 
+## Full-content upgrades with the companion
+
+URL references stay unfetched by default. When the app is opened through the local companion (`npx dusori`), each URL source gains a **Fetch full content** action — including a Microsoft Learn catalog reference accepted from Research. A confirmation names the exact host before anything is sent; the fetched page is capped at 4 MiB, reduced to readable text, previewed exactly as it will be written, and only replaces the stub when you choose **Replace content**. The preview ends with `[truncated]` if the extracted text would exceed the 2 MiB source limit. If the source file changed outside Dusori since it was last read, Dusori refuses the replacement as a conflict instead of overwriting it silently. The upgrade is recorded in the topic's update log, and the source keeps its URL, title, and place in the graph.
+
 ## Topic file contract
 
 ```text
@@ -32,8 +36,8 @@ Topics/<topic-slug>/
   Updates/YYYY/MM/YYYY-MM-DD.md
 ```
 
-`manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename, URL, or research origin. Research origin names `mslearn` or `wikipedia`, the capture method, and the capture time. URL sources—including research captures—deduplicate by canonical URL. A successful new capture also appends a line to the topic’s dated update log.
+`manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename, URL, or capture origin. Capture origin names the provider (`mslearn`, `wikipedia`, or `companion` after a full-content upgrade), how it was captured, and when. URL sources—including research captures—deduplicate by canonical URL. A successful new capture also appends a line to the topic’s dated update log.
 
-Source files and `research.json` are included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. Arbitrary web-page fetching, PDF extraction, key-based search, and AI transformation remain [planned work](../roadmap/).
+Source files and `research.json` are included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. PDF extraction, key-based search, and AI transformation remain [planned work](../roadmap/).
 
 Applying a [curriculum import](../curricula/) also stores the pasted official outline here before updating the topic roadmap. Re-importing identical outline text reuses the existing source record.

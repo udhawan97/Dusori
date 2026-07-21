@@ -45,19 +45,19 @@ Dusori v0.2.0 turns a roadmap objective into a deliberate research loop. After e
 
 ![Dusori workspace showing the local learning loop](apps/site/public/app-workspace.png)
 
-| Surface            | What ships                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------- |
-| **Today**          | Next unchecked objective, progress, topic state, and recent local updates             |
-| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states           |
-| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks   |
-| **Notes**          | Sanitized Markdown, Mermaid diagrams, and explicit conflict proposals                 |
-| **Sources**        | Paste, local file, URL reference, and accepted research capture with provenance       |
-| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective      |
-| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides |
-| **Portability**    | Browser storage, direct folder access where supported, and ZIP import/export          |
-| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons           |
+| Surface            | What ships                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| **Today**          | Next unchecked objective, progress, topic state, and recent local updates                                                |
+| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states                                              |
+| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks                                      |
+| **Notes**          | Sanitized Markdown, Mermaid diagrams, and explicit conflict proposals                                                    |
+| **Sources**        | Paste, local file, URL reference, accepted research capture with provenance, and companion-powered full-content upgrades |
+| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective                                         |
+| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides                                    |
+| **Portability**    | Browser storage, direct folder access where supported, and ZIP import/export                                             |
+| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons                                              |
 
-Arbitrary page fetching, key-based search, Ollama transforms, generated schedules, and unattended work remain roadmap items. Phase 1 research is deliberately limited to the keyless Microsoft Learn catalog and English Wikipedia APIs after per-provider consent.
+Key-based search, Ollama transforms, generated schedules, and unattended work remain roadmap items. With the optional local companion running, Dusori also fetches the readable text of a URL source you explicitly confirm and proxies Microsoft Learn's ranked search; the hosted app alone stays keyless and limited to the Microsoft Learn catalog and English Wikipedia APIs.
 
 ## Obsidian, without surrendering the vault
 

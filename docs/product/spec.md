@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** web-research Phase 1 implementation · **Date:** 2026-07-21
+**Status:** web-research Phase 1 and Phase 2 (companion research service) implementation · **Date:** 2026-07-21
 
 ## Product contract
 
@@ -35,10 +35,11 @@ The shipped Research panel starts from a selected roadmap objective and defaults
 
 The first search with each provider is blocked behind an exact egress disclosure naming the provider host and the objective text being sent. Consent is stored per provider on the device. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed suggestions are kept in the topic's machine-owned `research.json` file.
 
+With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. A URL source can also be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
+
 ## Explicitly not built yet
 
 - Arbitrary web search providers or API-key integrations
-- Arbitrary URL fetching, readability extraction, or Microsoft Learn page snapshots
 - PDF or non-text curriculum extraction
 - Ollama or other model operations
 - AI-generated notes or diagrams
