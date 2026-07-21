@@ -64,10 +64,18 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
           <picture class="hero-mark">
             <source
               srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
+              media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)"
+            />
+            <source
+              srcset={`${projectBasePath}/brand/dusori-mark.svg`}
+              media="(prefers-reduced-motion: reduce)"
+            />
+            <source
+              srcset={`${projectBasePath}/brand/dusori-mark-animated-reversed.svg`}
               media="(prefers-color-scheme: dark)"
             />
             <img
-              src={`${projectBasePath}/brand/dusori-mark.svg`}
+              src={`${projectBasePath}/brand/dusori-mark-animated.svg`}
               width="640"
               height="640"
               alt="Dusori ensō, rangoli, and katana mark"
@@ -222,7 +230,7 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
   /* Hallmark · genre: atmospheric editorial · tone: dry, warm, quietly witty
    * anchor: vermilion action + marigold knowledge · structure: Marquee Hero with H2 split diptych
    * design-system: design.md · enrichment: supplied original Dusori Ensō at presentation scale
-   * motion: finite ensō arrival + two-beat breath; exact supplied geometry stays intact
+   * motion: finite chakra revolution + blade strike; exact supplied geometry settles intact
    * theme: custom supplied identity · nav: N9 · footer: Ft4 · designed-as-app
    * pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · slop: 58/58
    * responsive: pass (34, 49, 50–57)
@@ -442,16 +450,12 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
     display: grid;
     width: min(100%, 34rem, 62dvh);
     place-self: center;
-    animation: enso-arrive calc(var(--dur-long) + var(--dur-long)) var(--ease-out) both;
   }
 
   .hero-mark img {
     display: block;
     width: 100%;
     height: auto;
-    animation: enso-breathe
-      calc(var(--dur-long) + var(--dur-long) + var(--dur-long) + var(--dur-short))
-      var(--ease-in-out) calc(var(--dur-long) + var(--dur-micro)) 2 alternate;
     transition: transform var(--dur-long) var(--ease-out);
   }
 
@@ -735,26 +739,6 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
     }
   }
 
-  @keyframes enso-arrive {
-    from {
-      opacity: 0;
-      transform: translateY(var(--space-md)) scale(0.94);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-
-  @keyframes enso-breathe {
-    from {
-      transform: none;
-    }
-    to {
-      transform: translateY(calc(var(--space-xs) * -1)) scale(1.012);
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -763,9 +747,7 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0';
       transition-duration: 150ms !important;
     }
 
-    .hero-mark,
     .hero-mark img {
-      animation: none !important;
       transform: none !important;
       transition: none !important;
     }
