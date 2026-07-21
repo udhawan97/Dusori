@@ -51,7 +51,12 @@ export async function searchMsLearnRanked(
   if (!parsed.success) throw new MsLearnProxyError(unfamiliarMessage);
 
   return parsed.data.results.slice(0, maxResults).flatMap((result) => {
-    const resolvedUrl = new URL(result.url, upstream);
+    let resolvedUrl: URL;
+    try {
+      resolvedUrl = new URL(result.url, upstream);
+    } catch {
+      return [];
+    }
     if (resolvedUrl.origin !== url.origin) return [];
     return [
       {

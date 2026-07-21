@@ -83,6 +83,19 @@ describe('searchMsLearnRanked', () => {
     expect(results[0]?.title).toBe('Good');
   });
 
+  it('drops a result whose url cannot be parsed', async () => {
+    const body = {
+      results: [
+        { title: 'Unparseable', url: 'http://' },
+        { title: 'Good', url: 'https://learn.microsoft.com/b' },
+      ],
+    };
+    const results = await searchMsLearnRanked('x', (async () =>
+      Response.json(body)) as unknown as typeof fetch);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.title).toBe('Good');
+  });
+
   it('throws MsLearnProxyError when fetch itself fails', async () => {
     await expect(
       searchMsLearnRanked('x', (async () => {
