@@ -11,13 +11,13 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - ZIP import/export
 - Conflict-safe proposals and dated update logs
 - Local source library for pasted text, Markdown/text files, and unfetched URL references
+- Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
 
 ## Planned—not built
 
-- Official syllabus and certification adapters
 - Remote source fetching and content extraction
 - PDF and other non-text document import
 - Ollama discovery and source-bounded transformations

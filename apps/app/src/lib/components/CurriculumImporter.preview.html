@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Curriculum importer — state preview</title>
+    <link rel="stylesheet" href="../../styles/tokens.css" />
+    <style>
+      /* Hallmark · component preview: curriculum importer · genre: editorial utility · theme: inherited custom
+       * states: default · hover · focus · active · disabled · loading · error · success
+       * contrast: pass · pre-emit critique: P5 H5 E4 S5 R5 V4
+       */
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        overflow-x: clip;
+      }
+
+      body {
+        margin: 0;
+        background: var(--color-paper);
+        color: var(--color-ink);
+        font-family: var(--font-body);
+      }
+
+      main {
+        width: min(100% - 2 * var(--space-md), 48rem);
+        margin-inline: auto;
+        padding-block: var(--space-2xl);
+      }
+
+      h1 {
+        margin: 0 0 var(--space-xl);
+        overflow-wrap: anywhere;
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-style: normal;
+      }
+
+      .state-list {
+        display: grid;
+        gap: var(--space-sm);
+        margin: 0;
+      }
+
+      .state-row {
+        display: grid;
+        grid-template-columns: minmax(6rem, 0.35fr) minmax(0, 1fr);
+        align-items: center;
+        gap: var(--space-md);
+        padding-block: var(--space-sm);
+        border-block-start: var(--rule-hair) solid var(--color-rule);
+      }
+
+      dt {
+        color: var(--color-muted);
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+      }
+
+      dd {
+        min-width: 0;
+        margin: 0;
+      }
+
+      .demo-action {
+        display: inline-flex;
+        width: 100%;
+        min-height: 2.75rem;
+        align-items: center;
+        justify-content: center;
+        padding-inline: var(--space-sm);
+        border: var(--rule-hair) solid var(--color-border);
+        border-radius: var(--radius-sm);
+        outline: 2px solid transparent;
+        outline-offset: 1px;
+        background: var(--color-ink);
+        color: var(--color-paper);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        white-space: nowrap;
+        transition:
+          background-color var(--dur-micro) var(--ease-out),
+          transform var(--dur-micro) var(--ease-out);
+      }
+
+      .demo-action.is-hover {
+        background: var(--color-accent-text);
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .demo-action:hover {
+          background: var(--color-accent-text);
+        }
+      }
+
+      .demo-action:focus-visible,
+      .demo-action.is-focus {
+        outline-color: var(--color-focus);
+      }
+
+      .demo-action:active,
+      .demo-action.is-active {
+        transform: translateY(1px);
+      }
+
+      .demo-action:disabled,
+      .demo-action.is-disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .demo-action.is-loading {
+        cursor: progress;
+      }
+
+      .demo-action.is-error {
+        border-color: var(--color-error);
+        background: var(--color-paper);
+        color: var(--color-error);
+      }
+
+      .demo-action.is-success {
+        border-color: var(--color-success);
+        background: var(--color-paper);
+        color: var(--color-success);
+      }
+
+      @media (max-width: 30rem) {
+        .state-row {
+          grid-template-columns: minmax(0, 1fr);
+          gap: var(--space-xs);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .demo-action {
+          transition-duration: 150ms;
+        }
+
+        .demo-action:active,
+        .demo-action.is-active {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Curriculum importer — eight states</h1>
+      <dl class="state-list">
+        <div class="state-row">
+          <dt>default</dt>
+          <dd><button class="demo-action">Preview roadmap</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>hover</dt>
+          <dd><button class="demo-action is-hover">Preview roadmap</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>focus</dt>
+          <dd><button class="demo-action is-focus">Preview roadmap</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>active</dt>
+          <dd><button class="demo-action is-active">Preview roadmap</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>disabled</dt>
+          <dd><button class="demo-action is-disabled" disabled>Preview roadmap</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>loading</dt>
+          <dd><button class="demo-action is-loading">Reading outline…</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>error</dt>
+          <dd><button class="demo-action is-error">Review outline</button></dd>
+        </div>
+        <div class="state-row">
+          <dt>success</dt>
+          <dd><button class="demo-action is-success">Roadmap ready</button></dd>
+        </div>
+      </dl>
+    </main>
+  </body>
+</html>

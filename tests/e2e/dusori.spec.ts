@@ -3,6 +3,37 @@ import { mkdir } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+const microsoftLearnGuide = `# Study guide for Exam AI-901
+
+## Skills measured as of April 15, 2026
+
+### Audience profile
+
+This paragraph is not an objective.
+
+### Skills at a glance
+
+- Identify AI concepts and capabilities (40–45%)
+- Build lightweight AI applications (55–60%)
+
+### Identify AI concepts and capabilities (40–45%)
+
+#### Describe generative AI concepts
+
+- Identify common generative AI scenarios
+- Describe responsible AI considerations
+
+### Build lightweight AI applications (55–60%)
+
+#### Implement information extraction
+
+- Extract information from documents and forms
+
+## Study resources
+
+- Find documentation
+`;
+
 async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).exclude('iframe').analyze();
   expect(
@@ -54,6 +85,33 @@ async function addPastedSource(page: Page): Promise<void> {
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
+}
+
+async function previewCurriculum(page: Page): Promise<void> {
+  if (!(await page.getByRole('heading', { name: 'Curriculum' }).isVisible())) {
+    await page.getByRole('button', { name: 'Open inspector' }).click();
+  }
+  await page.getByRole('button', { name: 'Import curriculum' }).click();
+  await page.getByLabel('Source title').last().fill('AI-901 official study guide');
+  await page
+    .getByLabel('Official page')
+    .fill(
+      'https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/ai-901',
+    );
+  await page.getByLabel('Outline text').fill(microsoftLearnGuide);
+  await page.getByRole('button', { name: 'Preview roadmap' }).click();
+  await expect(page.getByRole('heading', { name: '7 roadmap items' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Curriculum preview' })).toContainText(
+    'Describe responsible AI considerations',
+  );
+}
+
+async function applyCurriculum(page: Page): Promise<void> {
+  await previewCurriculum(page);
+  await page.getByRole('button', { name: 'Apply roadmap' }).click();
+  await expect(page.locator('.note-sheet').getByRole('heading', { name: 'Roadmap' })).toBeVisible();
+  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
+  await expect(page.getByRole('heading', { name: 'Curriculum ready.' })).toBeVisible();
 }
 
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
@@ -191,10 +249,108 @@ test('source library stores pasted text and URL references without remote fetchi
   await expectNoSeriousA11yViolations(page);
 });
 
+test('curriculum import previews official objectives, applies explicitly, and never fetches', async ({
+  page,
+}) => {
+  const remoteRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://learn.microsoft.com/'))
+      remoteRequests.push(request.url());
+  });
+
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await previewCurriculum(page);
+  await expectNoSeriousA11yViolations(page);
+  expect(remoteRequests).toEqual([]);
+
+  await page.getByRole('button', { name: 'Apply roadmap' }).click();
+  await expect(page.locator('.note-sheet').getByRole('heading', { name: 'Roadmap' })).toBeVisible();
+  await expect(page.locator('.note-sheet')).toContainText('Describe responsible AI considerations');
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'AI-901 official study guide',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  const files = await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topics = await root.getDirectoryHandle('Topics');
+    const topic = await topics.getDirectoryHandle('ai-fundamentals');
+    const roadmap = await (await topic.getFileHandle('roadmap.md')).getFile();
+    const sources = await topic.getDirectoryHandle('Sources');
+    const manifest = await (await sources.getFileHandle('manifest.json')).getFile();
+    return { manifest: await manifest.text(), roadmap: await roadmap.text() };
+  });
+  expect(files.roadmap).toContain('origin: imported-curriculum');
+  expect(files.manifest).toContain('AI-901 official study guide');
+});
+
+test('curriculum import explains invalid URLs and unstructured input before writing', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  if (!(await page.getByRole('heading', { name: 'Curriculum' }).isVisible())) {
+    await page.getByRole('button', { name: 'Open inspector' }).click();
+  }
+  await page.getByRole('button', { name: 'Import curriculum' }).click();
+  await page.getByLabel('Source title').last().fill('Course outline');
+  await page.getByLabel('Official page').fill('file:///private/course.md');
+  await page.getByLabel('Outline text').fill('# Course\n- First skill\n- Second skill');
+  await page.getByRole('button', { name: 'Preview roadmap' }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Curriculum sources must use an http:// or https:// address.',
+  );
+
+  await page.getByLabel('Official page').fill('');
+  await page.getByLabel('Outline text').fill('A paragraph without headings or list items.');
+  await page.getByRole('button', { name: 'Preview roadmap' }).click();
+  await expect(page.getByRole('alert')).toContainText('Dusori could not recognize this outline.');
+  await expectNoSeriousA11yViolations(page);
+
+  const roadmap = await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topics = await root.getDirectoryHandle('Topics');
+    const topic = await topics.getDirectoryHandle('ai-fundamentals');
+    return (await (await topic.getFileHandle('roadmap.md')).getFile()).text();
+  });
+  expect(await roadmap).toContain('This first roadmap is deliberately manual.');
+});
+
+test('curriculum import preserves an externally edited roadmap until explicit replacement', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topics = await root.getDirectoryHandle('Topics');
+    const topic = await topics.getDirectoryHandle('ai-fundamentals');
+    const handle = await topic.getFileHandle('roadmap.md');
+    const writable = await handle.createWritable();
+    await writable.write('# My external roadmap\n\nKeep this direction.\n');
+    await writable.close();
+  });
+
+  await previewCurriculum(page);
+  await page.getByRole('button', { name: 'Apply roadmap' }).click();
+  await expect(page.getByRole('heading', { name: 'The existing roadmap changed.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  await expect(page.locator('.note-sheet')).toContainText('Keep this direction.');
+
+  await page.getByRole('button', { name: 'Use imported roadmap' }).click();
+  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('export and replacement import preserve the rendered workspace', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
   await addPastedSource(page);
+  await applyCurriculum(page);
 
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export workspace' }).click();
@@ -208,7 +364,31 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  await expect(page.locator('.note-sheet')).toContainText('Identify AI concepts and capabilities');
   await expect(page.getByText('Workspace imported and schema-checked.')).toBeVisible();
+});
+
+test('curriculum preview remains usable without horizontal overflow at supported narrow widths', async ({
+  browser,
+}) => {
+  for (const width of [320, 375, 414, 768]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const page = await context.newPage();
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await previewCurriculum(page);
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth, `horizontal overflow at ${width}px`).toBe(
+      dimensions.clientWidth,
+    );
+    const applyButton = page.getByRole('button', { name: 'Apply roadmap' });
+    expect(await applyButton.evaluate((button) => button.getClientRects().length)).toBe(1);
+    await context.close();
+  }
 });
 
 test('the installed shell reloads and remains usable offline', async ({ page, context }) => {
@@ -293,6 +473,12 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
       fullPage: true,
     });
 
+    await previewCurriculum(page);
+    await page.screenshot({
+      path: `test-results/screenshots/curriculum-${width}.png`,
+      fullPage: true,
+    });
+
     await runConflictProof(page);
     await expect(page.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
     await page.screenshot({
@@ -307,6 +493,8 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await createBrowserWorkspace(sitePage);
   await createTopic(sitePage);
   await addPastedSource(sitePage);
+  await previewCurriculum(sitePage);
+  await sitePage.locator('.curriculum-slot').scrollIntoViewIfNeeded();
   await expect(sitePage.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
   await sitePage.screenshot({ path: 'test-results/screenshots/site-workspace-1440.png' });
   await siteContext.close();

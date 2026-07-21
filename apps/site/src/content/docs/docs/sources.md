@@ -27,3 +27,5 @@ Topics/<topic-slug>/
 `manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename or URL. Identical content added through the same method is de-duplicated. A successful new capture also appends a line to the topic’s dated update log.
 
 Source files are included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. Web-page fetching, PDF extraction, search, and AI transformation remain [planned work](../roadmap/).
+
+Applying a [curriculum import](../curricula/) also stores the pasted official outline here before updating the topic roadmap. Re-importing identical outline text reuses the existing source record.

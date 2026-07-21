@@ -25,11 +25,13 @@ The first milestone must prove:
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
+The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markdown with the English `Skills measured` hierarchy and general structured Markdown syllabi. It extracts at most 200 objectives locally, previews them before writing, preserves the original outline as a topic source, and updates `roadmap.md` through the same conflict-safe acceptance protocol. The optional official URL is provenance metadata only and is never fetched.
+
 ## Explicitly not built yet
 
-- Automated curriculum or certification extraction
 - Web search
 - Source fetching
+- PDF or non-text curriculum extraction
 - Ollama or other model operations
 - AI-generated notes or diagrams
 - Chat-to-`TUTOR.md` editing

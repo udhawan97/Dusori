@@ -15,6 +15,16 @@ sidebar:
 
 Browser workspaces use origin-private storage. They are not uploaded, but clearing site data can remove them. Export regularly.
 
+## Import a curriculum
+
+1. Create or open a topic, then open the workspace inspector.
+2. Under **Curriculum**, choose **Import curriculum**.
+3. Paste an English Microsoft Learn study guide or a structured Markdown syllabus. An official page URL is optional provenance; Dusori does not open it.
+4. Choose **Preview roadmap** and review every extracted item.
+5. Choose **Apply roadmap**. Dusori saves the original outline in `Sources/` and opens the updated `roadmap.md`.
+
+If the roadmap changed outside Dusori, the external content remains active and the imported version becomes a proposal until you explicitly accept it. See [Curriculum import](../curricula/) for formats and limits.
+
 ## Local companion
 
 The optional companion currently proves the loopback security boundary. It does not yet provide Ollama or source fetching.

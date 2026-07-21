@@ -1,5 +1,6 @@
 export * from './adapters.js';
 export * from './conflict/write-protocol.js';
+export * from './curriculum/import.js';
 export * from './hash.js';
 export * from './portable.js';
 export * from './schemas/read-machine-file.js';

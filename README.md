@@ -6,7 +6,7 @@
 
 Dusori is a free, open-source, local-first learning workspace. It creates plain Markdown and JSON that remains readable in any editor, including Obsidian, and it works without an account, hosted database, telemetry, or AI.
 
-The current workspace-foundation milestone includes browser storage, direct folder access on supported Chromium desktop browsers, ZIP portability, conflict-safe proposals, sanitized note rendering, offline reloads, and a local source library. Sources can be pasted text, local Markdown/text files, or URL references; Dusori stores URL metadata without fetching the page. Automated syllabi, web search, Ollama, AI transformation, and unattended scheduling are roadmap items—not shipped features.
+The current workspace-foundation milestone includes browser storage, direct folder access on supported Chromium desktop browsers, ZIP portability, conflict-safe proposals, sanitized note rendering, offline reloads, a local source library, and preview-first curriculum import. Paste an English Microsoft Learn study guide or a structured Markdown syllabus; Dusori extracts the outline locally, shows the roadmap before writing, and stores the original beside the topic. Remote source fetching, web search, Ollama, AI transformation, and unattended scheduling are roadmap items—not shipped features.
 
 ## Try Dusori
 
@@ -65,6 +65,8 @@ Folder access is a capability enhancement, not a universal promise. When connect
 ```
 
 Markdown and text sources are user-readable. JSON is machine-owned, schema-versioned, and validated. Adding a source records its hash, local path, method, size, and optional original URL or filename in `Sources/manifest.json`, then appends the event to that topic’s dated update log. If an externally edited Markdown file no longer matches Dusori’s last-seen hash, the external file stays untouched and Dusori writes a dated `.proposed-…` file beside it.
+
+Curriculum import is offline and explicit: open the inspector, paste a supported outline, preview the extracted hierarchy, then choose **Apply roadmap**. Microsoft Learn recognition currently targets the English `Skills measured` heading; the structured Markdown adapter accepts ordinary headings and lists in any language. Inputs are capped at 512 KiB and 200 roadmap items. Dusori never fetches the optional source URL.
 
 ## Development
 

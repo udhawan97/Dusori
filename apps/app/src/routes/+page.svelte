@@ -6,6 +6,7 @@
     FileText,
     FolderOpen,
     HardDrive,
+    ListChecks,
     Menu,
     PanelRightClose,
     PanelRightOpen,
@@ -34,6 +35,7 @@
   import { createOpfsStorage } from '@dusori/storage-opfs';
 
   import MarkdownView from '$lib/components/MarkdownView.svelte';
+  import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
 
   let storage: StorageAdapter | null = null;
@@ -50,6 +52,7 @@
   let inspectorOpen = false;
   let mobileNavOpen = false;
   let companionStatus = 'Not connected';
+  let sourceRevision = 0;
   let statusTimer: number | undefined;
 
   $: diff = conflict
@@ -156,18 +159,39 @@
   async function openTopic(slug: string): Promise<void> {
     if (!storage) return;
     selectedSlug = slug;
-    notePath = `Topics/${slug}/Notes/001-first-look.md`;
+    await openDocument('Notes/001-first-look.md');
+    conflict = null;
+    mobileNavOpen = false;
+  }
+
+  async function openDocument(relativePath: string): Promise<void> {
+    if (!storage || !selectedSlug) return;
+    notePath = `Topics/${selectedSlug}/${relativePath}`;
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
   }
 
+  function showImportedRoadmap(content: string): void {
+    notePath = `Topics/${selectedSlug}/roadmap.md`;
+    noteContent = content;
+    conflict = null;
+    announceStatus('Curriculum applied. The imported roadmap is open.');
+  }
+
+  function refreshSources(): void {
+    sourceRevision += 1;
+  }
+
   async function runConflictProof(): Promise<void> {
-    if (!storage || !selectedSlug || !noteContent) return;
+    if (!storage || !selectedSlug) return;
     await perform(async () => {
-      const externallyEdited = `${noteContent.trimEnd()}\n\n> External edit: this sentence must survive.\n`;
-      await storage!.write(notePath, externallyEdited);
-      const proposed = `${noteContent.trimEnd()}\n\n## Proposed next step\n\nConnect this note to one verified source.\n`;
+      const firstNotePath = `Topics/${selectedSlug}/Notes/001-first-look.md`;
+      const firstNote = await storage!.read(firstNotePath);
+      if (!firstNote) throw new Error('The first study note is missing.');
+      const externallyEdited = `${firstNote.content.trimEnd()}\n\n> External edit: this sentence must survive.\n`;
+      await storage!.write(firstNotePath, externallyEdited);
+      const proposed = `${firstNote.content.trimEnd()}\n\n## Proposed next step\n\nConnect this note to one verified source.\n`;
       const result = await proposeMarkdownUpdate(
         storage!,
         selectedSlug,
@@ -175,7 +199,8 @@
         proposed,
       );
       if ('proposalPath' in result) conflict = result;
-      noteContent = (await storage!.read(notePath))?.content ?? externallyEdited;
+      notePath = firstNotePath;
+      noteContent = (await storage!.read(firstNotePath))?.content ?? externallyEdited;
       status = 'External content stayed in place. Dusori wrote a separate proposal and update log.';
       if (window.innerWidth < 960) inspectorOpen = false;
     });
@@ -245,14 +270,20 @@
       error = caught instanceof Error ? caught.message : 'Dusori could not complete that action.';
     } finally {
       busy = false;
-      if (status) {
-        window.clearTimeout(statusTimer);
-        const currentStatus = status;
-        statusTimer = window.setTimeout(() => {
-          if (status === currentStatus) status = '';
-        }, 3200);
-      }
+      if (status) scheduleStatusClear(status);
     }
+  }
+
+  function announceStatus(message: string): void {
+    status = message;
+    scheduleStatusClear(message);
+  }
+
+  function scheduleStatusClear(message: string): void {
+    window.clearTimeout(statusTimer);
+    statusTimer = window.setTimeout(() => {
+      if (status === message) status = '';
+    }, 3200);
   }
 </script>
 
@@ -352,10 +383,24 @@
       </div>
       <div class="rail-section">
         <p>Workspace</p>
-        <a class="rail-link active" href="#note">
+        <button
+          class:active={notePath.endsWith('/Notes/001-first-look.md')}
+          class="rail-link"
+          disabled={!selectedSlug}
+          onclick={() => openDocument('Notes/001-first-look.md')}
+        >
           <BookOpen aria-hidden="true" size={18} />
           Today
-        </a>
+        </button>
+        <button
+          class:active={notePath.endsWith('/roadmap.md')}
+          class="rail-link"
+          disabled={!selectedSlug}
+          onclick={() => openDocument('roadmap.md')}
+        >
+          <ListChecks aria-hidden="true" size={18} />
+          Roadmap
+        </button>
       </div>
       <div class="rail-section topic-list">
         <p>Topics</p>
@@ -500,8 +545,19 @@
 
         {#if selectedSlug && storage}
           <div class="source-slot">
-            {#key selectedSlug}
+            {#key `${selectedSlug}-${sourceRevision}`}
               <SourceLibrary {storage} topicSlug={selectedSlug} />
+            {/key}
+          </div>
+
+          <div class="curriculum-slot">
+            {#key selectedSlug}
+              <CurriculumImporter
+                {storage}
+                topicSlug={selectedSlug}
+                onRoadmapApplied={showImportedRoadmap}
+                onSourceSaved={refreshSources}
+              />
             {/key}
           </div>
         {/if}
@@ -779,8 +835,9 @@
   }
 
   .inspector section + section,
-  .source-slot + section,
-  .source-slot {
+  .source-slot,
+  .curriculum-slot,
+  .curriculum-slot + section {
     padding-block-start: var(--space-lg);
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }
