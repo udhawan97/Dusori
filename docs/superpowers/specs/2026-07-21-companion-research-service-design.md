@@ -119,8 +119,9 @@ responses zod-parsed in core, storage through the adapter interface.
     hash (external edit → existing `StorageConflictError` conflict path);
   - updates the manifest record: `origin` becomes
     `{ provider: 'companion', capturedVia: 'page-extract', capturedAt }`,
-    `sha256`/`size`/`fetchedAt` refreshed, `mediaType` set to `'text/markdown'`,
-    `method` stays `'url'`;
+    `size`/`fetchedAt` refreshed, `mediaType` set to `'text/markdown'`; `sha256`
+    stays the URL hash unchanged — for `method: 'url'` records it is the dedupe
+    key and file-name stem, not a content hash; `method` stays `'url'`;
   - appends an update-log entry ("Upgraded source _title_ to full page content").
 - **`research/providers/mslearn.ts`** — `createMsLearnProvider({ ranked? })`.
   When the app supplies a `ranked` search function (companion present), the
