@@ -1,10 +1,11 @@
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createServer } from './server.js';
+import type { LookupImpl } from './research-fetch.js';
 
 const token = 'test-token';
 const origin = 'https://udhawan97.github.io';
@@ -100,5 +101,123 @@ describe('companion boundary', () => {
     await server.listen({ host: '127.0.0.1', port: 0 });
     const address = server.server.address();
     expect(typeof address === 'object' && address?.address).toBe('127.0.0.1');
+  });
+
+  it('guards the research routes with the same token and origin rules', async () => {
+    const { server } = await fixture();
+    expect(
+      (
+        await server.inject({
+          method: 'POST',
+          url: '/api/research/fetch',
+          payload: { url: 'https://example.org/' },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: 'GET',
+          url: '/api/research/mslearn-search?q=entra',
+          headers: headers(token, 'https://evil.example'),
+        })
+      ).statusCode,
+    ).toBe(403);
+  });
+
+  it('fetches, extracts, and reports typed failures on /api/research/fetch', async () => {
+    const html = await readFile(new URL('./__fixtures__/article.html', import.meta.url), 'utf8');
+    const publicLookup: LookupImpl = async () => [{ address: '93.184.215.14', family: 4 }];
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: {
+        fetchImpl: (async () =>
+          new Response(html, {
+            headers: { 'content-type': 'text/html' },
+          })) as unknown as typeof fetch,
+        lookupImpl: publicLookup,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const ok = await server.inject({
+      method: 'POST',
+      url: '/api/research/fetch',
+      headers: { ...headers(), 'content-type': 'application/json' },
+      payload: { url: 'https://example.org/attention' },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({
+      finalUrl: 'https://example.org/attention',
+      truncated: false,
+    });
+    expect(ok.json().text).toContain('weigh the other tokens');
+
+    const blocked = await server.inject({
+      method: 'POST',
+      url: '/api/research/fetch',
+      headers: { ...headers(), 'content-type': 'application/json' },
+      payload: { url: 'http://127.0.0.1/admin' },
+    });
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json()).toMatchObject({ reason: 'blocked-host' });
+  });
+
+  it('proxies ranked Microsoft Learn search behind the token', async () => {
+    const body = await readFile(
+      new URL('./__fixtures__/mslearn-search.json', import.meta.url),
+      'utf8',
+    );
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: {
+        fetchImpl: (async () =>
+          new Response(body, {
+            headers: { 'content-type': 'application/json' },
+          })) as unknown as typeof fetch,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+    const response = await server.inject({
+      method: 'GET',
+      url: '/api/research/mslearn-search?q=entra%20id',
+      headers: headers(),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().results.length).toBeGreaterThan(0);
+    expect(response.json().results[0]).toHaveProperty('title');
+    expect(response.json().results[0]).toHaveProperty('url');
+    expect(response.json().results[0]).toHaveProperty('summary');
+  });
+
+  it('rejects a malformed research/fetch body cleanly instead of leaking a stack trace', async () => {
+    const { server } = await fixture();
+    const response = await server.inject({
+      method: 'POST',
+      url: '/api/research/fetch',
+      headers: { ...headers(), 'content-type': 'application/json' },
+      payload: {},
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).not.toHaveProperty('stack');
+    expect(typeof response.json().error).toBe('string');
+  });
+
+  it('rejects a missing mslearn-search query param cleanly instead of leaking a stack trace', async () => {
+    const { server } = await fixture();
+    const response = await server.inject({
+      method: 'GET',
+      url: '/api/research/mslearn-search',
+      headers: headers(),
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).not.toHaveProperty('stack');
+    expect(typeof response.json().error).toBe('string');
   });
 });

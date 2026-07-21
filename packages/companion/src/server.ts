@@ -16,6 +16,8 @@ import {
   readWorkspaceFile,
   writeWorkspaceFile,
 } from './filesystem.js';
+import { FetchPageError, fetchReadablePage, type LookupImpl } from './research-fetch.js';
+import { MsLearnProxyError, searchMsLearnRanked } from './research-mslearn.js';
 
 const WriteBody = z.object({
   path: z.string().min(1),
@@ -23,11 +25,22 @@ const WriteBody = z.object({
   expectedHash: z.string().length(64).nullable().optional(),
 });
 
+const FetchBody = z.object({ url: z.string().min(1) });
+const SearchQuery = z.object({ q: z.string().min(1) });
+const badRequestReasons = new Set([
+  'blocked-host',
+  'invalid-url',
+  'too-large',
+  'too-many-redirects',
+  'unsupported-type',
+]);
+
 export interface ServerOptions {
   root?: string;
   staticDirectory?: string;
   token: string;
   hostedOrigin?: string;
+  research?: { fetchImpl?: typeof fetch; lookupImpl?: LookupImpl };
 }
 
 function bearerToken(header: string | undefined): string | null {
@@ -117,6 +130,38 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
       return reply
         .code(400)
         .send({ error: error instanceof Error ? error.message : 'Invalid path.' });
+    }
+  });
+
+  server.post('/api/research/fetch', async (request, reply) => {
+    const body = FetchBody.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ error: 'A url is required.', reason: 'invalid-url' });
+    }
+    try {
+      return await fetchReadablePage(body.data.url, options.research ?? {});
+    } catch (error) {
+      if (error instanceof FetchPageError) {
+        return reply
+          .code(badRequestReasons.has(error.reason) ? 400 : 502)
+          .send({ error: error.message, reason: error.reason });
+      }
+      throw error;
+    }
+  });
+
+  server.get('/api/research/mslearn-search', async (request, reply) => {
+    const query = SearchQuery.safeParse(request.query);
+    if (!query.success) {
+      return reply.code(400).send({ error: 'A search query is required.' });
+    }
+    try {
+      return { results: await searchMsLearnRanked(query.data.q, options.research?.fetchImpl) };
+    } catch (error) {
+      if (error instanceof MsLearnProxyError) {
+        return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
+      }
+      throw error;
     }
   });
 
