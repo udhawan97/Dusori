@@ -9,10 +9,11 @@
     type WorkspaceGraphNode,
   } from '@dusori/core';
 
-  interface PositionedNode extends WorkspaceGraphNode {
-    x: number;
-    y: number;
-  }
+  import {
+    NODE_RADIUS,
+    layoutWorkspaceGraph,
+    type PositionedWorkspaceGraphNode,
+  } from '$lib/graph-layout';
 
   export let storage: StorageAdapter;
   export let onOpen: (path: string) => void;
@@ -21,51 +22,20 @@
   let loading = true;
   let error = '';
 
-  function placeNodes(nodes: WorkspaceGraphNode[]): PositionedNode[] {
-    const home = nodes.find((node) => node.kind === 'home');
-    const overviews = nodes.filter((node) => node.kind === 'overview');
-    const points: Record<string, { x: number; y: number }> = {};
-    if (home) points[home.id] = { x: 450, y: overviews.length === 1 ? 448 : 280 };
-
-    overviews.forEach((overview, index) => {
-      if (overviews.length === 1) {
-        const center = { x: 450, y: 270 };
-        points[overview.id] = center;
-        const children = nodes.filter(
-          (node) => node.topicSlug === overview.topicSlug && node.id !== overview.id,
-        );
-        children.forEach((node, childIndex) => {
-          points[node.id] = {
-            x: children.length === 1 ? 450 : 130 + (childIndex * 640) / (children.length - 1),
-            y: 122 + (childIndex % 2) * 38,
-          };
-        });
-        return;
-      }
-      const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(overviews.length, 1);
-      const center = { x: 450 + Math.cos(angle) * 185, y: 280 + Math.sin(angle) * 185 };
-      points[overview.id] = center;
-      const children = nodes.filter(
-        (node) => node.topicSlug === overview.topicSlug && node.id !== overview.id,
-      );
-      children.forEach((node, childIndex) => {
-        const childAngle =
-          angle - Math.PI * 0.68 + (childIndex * Math.PI * 1.36) / Math.max(children.length - 1, 1);
-        points[node.id] = {
-          x: center.x + Math.cos(childAngle) * 118,
-          y: center.y + Math.sin(childAngle) * 118,
-        };
-      });
-    });
-
-    const unplaced = nodes.filter((node) => !(node.id in points));
-    unplaced.forEach((node, index) => {
-      points[node.id] = { x: 110 + index * 82, y: 500 };
-    });
-    return nodes.map((node) => ({ ...node, ...(points[node.id] ?? { x: 450, y: 280 }) }));
+  function nodeRadius(node: WorkspaceGraphNode): number {
+    if (node.kind === 'home') return NODE_RADIUS.home;
+    if (node.kind === 'overview') return NODE_RADIUS.overview;
+    return NODE_RADIUS.artifact;
   }
 
-  function edgePath(source: PositionedNode, target: PositionedNode): string {
+  function nodeRingRadius(node: WorkspaceGraphNode): number {
+    return nodeRadius(node) + (node.kind === 'home' ? 12 : 9);
+  }
+
+  function edgePath(
+    source: PositionedWorkspaceGraphNode,
+    target: PositionedWorkspaceGraphNode,
+  ): string {
     const middleX = (source.x + target.x) / 2;
     const middleY = (source.y + target.y) / 2 - 18;
     return `M ${source.x} ${source.y} Q ${middleX} ${middleY} ${target.x} ${target.y}`;
@@ -89,8 +59,10 @@
     }
   });
 
-  $: positioned = placeNodes(graph?.nodes ?? []);
+  $: layout = layoutWorkspaceGraph(graph ?? { edges: [], nodes: [], unresolvedLinks: [] });
+  $: positioned = layout.nodes;
   $: nodesById = new Map(positioned.map((node) => [node.id, node]));
+  $: homeNode = positioned.find((node) => node.kind === 'home');
 </script>
 
 <section class="knowledge-graph" aria-labelledby="graph-title">
@@ -125,7 +97,7 @@
         class="constellation"
         role="img"
         aria-label="Workspace knowledge graph"
-        viewBox="0 0 900 560"
+        viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
@@ -134,7 +106,9 @@
             <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
           </radialGradient>
         </defs>
-        <circle class="halo" cx="450" cy="280" r="250" />
+        {#if homeNode}
+          <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
+        {/if}
         {#each graph.edges as edge (edge.id)}
           {@const source = nodesById.get(edge.source)}
           {@const target = nodesById.get(edge.target)}
@@ -149,17 +123,8 @@
             class="node"
           >
             <title>{node.label}</title>
-            <circle
-              cx={node.x}
-              cy={node.y}
-              r={node.kind === 'home' ? 28 : node.kind === 'overview' ? 21 : 12}
-            />
-            <circle
-              class="node-ring"
-              cx={node.x}
-              cy={node.y}
-              r={node.kind === 'home' ? 40 : node.kind === 'overview' ? 30 : 21}
-            />
+            <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
+            <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
             <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}>{visualLabel(node)}</text
             >
           </g>
