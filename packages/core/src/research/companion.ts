@@ -79,11 +79,13 @@ export function createCompanionResearchClient(options: CompanionClientOptions): 
     async searchMsLearnRanked(query) {
       const url = `${base}/api/research/mslearn-search?q=${encodeURIComponent(query.objectiveTitle)}`;
       const response = await fetchImpl(url, { headers: authorization }).catch(() => null);
-      if (!response?.ok) throw new Error(fallbackSearchError);
+      if (!response?.ok) throw new CompanionFetchError(fallbackSearchError, 'fetch-failed');
 
       const body: unknown = await response.json().catch(() => null);
       const parsed = RankedResponseSchema.safeParse(body);
-      if (!parsed.success) throw new Error('The companion returned an unfamiliar search format.');
+      if (!parsed.success) {
+        throw new CompanionFetchError('The companion returned an unfamiliar search format.', 'fetch-failed');
+      }
 
       return parsed.data.results.map((result, index, all) => ({
         key: `mslearn:${result.url}`,

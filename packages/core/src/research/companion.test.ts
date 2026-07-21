@@ -70,4 +70,16 @@ describe('createCompanionResearchClient', () => {
     });
     expect(results[1]!.score).toBe(1);
   });
+
+  it('throws CompanionFetchError when the companion is unreachable for ranked search', async () => {
+    const dead = client((async () => {
+      throw new TypeError('fetch failed');
+    }) as unknown as typeof fetch);
+    await expect(dead.searchMsLearnRanked(query)).rejects.toBeInstanceOf(CompanionFetchError);
+  });
+
+  it('throws CompanionFetchError when the ranked search response has an unfamiliar shape', async () => {
+    const malformed = client((async () => Response.json({ nope: true })) as unknown as typeof fetch);
+    await expect(malformed.searchMsLearnRanked(query)).rejects.toBeInstanceOf(CompanionFetchError);
+  });
 });
