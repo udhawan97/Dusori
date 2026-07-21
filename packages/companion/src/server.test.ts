@@ -220,4 +220,30 @@ describe('companion boundary', () => {
     expect(response.json()).not.toHaveProperty('stack');
     expect(typeof response.json().error).toBe('string');
   });
+
+  it('converts unexpected errors in /api/research/fetch to a 500 without leaking detail', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const badLookup: LookupImpl = async () => {
+      // Return a non-array to trigger TypeError when assertPublicHost tries to access .length
+      return { not: 'an array' } as any;
+    };
+    const server = await createServer({
+      research: { lookupImpl: badLookup },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/api/research/fetch',
+      headers: { ...headers(), 'content-type': 'application/json' },
+      payload: { url: 'https://example.org/' },
+    });
+    expect(response.statusCode).toBe(500);
+    expect(JSON.stringify(response.json())).not.toContain('array');
+    expect(typeof response.json().error).toBe('string');
+    expect(response.json().reason).toBe('fetch-failed');
+  });
 });
