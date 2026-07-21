@@ -1,5 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#f3ecdf"/>
-  <circle cx="32" cy="32" r="19" fill="#b43a2f"/>
-  <path d="M24 19.5h9.5c9.1 0 15 4.7 15 12.5s-5.9 12.5-15 12.5H24v-25Zm9 19.2c5.1 0 8.3-2.3 8.3-6.7s-3.2-6.7-8.3-6.7h-1.9v13.4H33Z" fill="#fffaf0"/>
+<!-- Hallmark · component: favicon · genre: editorial · theme: Dusori custom · pre-emit critique: P5 H5 E5 S5 R5 V4 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Dusori</title>
+  <style>
+    .paper { fill: #f7f1e8; }
+    .ink { fill: none; stroke: #1a1511; stroke-linecap: round; stroke-linejoin: round; }
+    .memory { fill: #cb4832; }
+  </style>
+  <rect class="paper" width="64" height="64" rx="14" />
+  <g transform="translate(9 9) scale(.18)">
+    <path class="ink" stroke-width="22" d="M183 43C148 20 96 25 63 57C28 91 27 149 59 187C91 225 148 231 187 200C223 171 233 119 212 77" />
+    <path class="ink" stroke-width="9" d="M98 83C116 104 125 127 123 153C121 171 115 185 106 195M114 108C101 102 91 91 83 79M116 106C130 95 140 82 146 68M123 153C147 138 166 120 179 99M123 153C145 157 163 164 180 174" />
+    <circle class="memory" cx="123" cy="153" r="9" />
+  </g>
 </svg>

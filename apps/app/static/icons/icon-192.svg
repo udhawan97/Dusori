@@ -1,6 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-labelledby="title">
+<!-- Hallmark · component: app icon · genre: editorial · theme: Dusori custom · pre-emit critique: P5 H5 E5 S5 R5 V4 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
   <title id="title">Dusori</title>
-  <rect width="192" height="192" rx="20" fill="#f7f1e8"/>
-  <path d="M48 43h52c28 0 44 17 44 52s-16 54-44 54H48V43Zm35 26v54h14c13 0 20-9 20-28 0-18-7-26-20-26H83Z" fill="#1a1511"/>
-  <rect x="44" y="39" width="9" height="110" fill="#cb4832"/>
+  <desc id="description">An open ink circle containing a branching learning path with one vermilion memory point.</desc>
+  <style>
+    .paper { fill: #f7f1e8; }
+    .ink { fill: none; stroke: #1a1511; stroke-linecap: round; stroke-linejoin: round; }
+    .memory { fill: #cb4832; }
+  </style>
+  <rect class="paper" width="512" height="512" rx="54" />
+  <g transform="translate(57 57) scale(1.55)">
+    <path class="ink" stroke-width="22" d="M183 43C148 20 96 25 63 57C28 91 27 149 59 187C91 225 148 231 187 200C223 171 233 119 212 77" />
+    <path class="ink" stroke-width="9" d="M98 83C116 104 125 127 123 153C121 171 115 185 106 195M114 108C101 102 91 91 83 79M116 106C130 95 140 82 146 68M123 153C147 138 166 120 179 99M123 153C145 157 163 164 180 174" />
+    <circle class="memory" cx="123" cy="153" r="9" />
+  </g>
 </svg>

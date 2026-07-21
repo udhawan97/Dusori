@@ -1,0 +1,70 @@
+<!-- Hallmark · component: identity review · genre: editorial · theme: Dusori custom · pre-emit critique: P5 H5 E5 S5 R5 V4 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title description">
+  <title id="title">Dusori logo concept review</title>
+  <desc id="description">Three logo directions combining a restrained Japanese editorial character with learning, memory, and neural connections.</desc>
+  <style>
+    .paper { fill: #f7f1e8; }
+    .tile { fill: #eee5d7; stroke: #cfc4b5; }
+    .ink-fill { fill: #1a1511; }
+    .ink-stroke { fill: none; stroke: #1a1511; stroke-linecap: round; stroke-linejoin: round; }
+    .accent-fill { fill: #cb4832; }
+    .accent-stroke { fill: none; stroke: #cb4832; stroke-linecap: round; }
+    .rule { stroke: #cfc4b5; }
+    .display { fill: #1a1511; font-family: "Shippori Mincho", "Yu Mincho", serif; }
+    .body { fill: #756c63; font-family: "Zen Kaku Gothic New", sans-serif; }
+    .label { fill: #cb4832; font-family: "IBM Plex Mono", monospace; font-size: 14px; letter-spacing: 0.12em; }
+  </style>
+
+  <rect class="paper" width="1440" height="720" />
+  <text class="display" x="64" y="78" font-size="38" font-weight="600">Dusori · identity study</text>
+  <text class="body" x="64" y="112" font-size="18">A second brain for learning—drawn as memory, connection, and an open path.</text>
+  <line class="rule" x1="64" y1="142" x2="1376" y2="142" />
+
+  <g transform="translate(64 184)">
+    <rect class="tile" width="400" height="400" rx="24" />
+    <g transform="translate(72 60)">
+      <path class="ink-stroke" stroke-width="22" d="M183 43C148 20 96 25 63 57C28 91 27 149 59 187C91 225 148 231 187 200C223 171 233 119 212 77" />
+      <path class="ink-stroke" stroke-width="9" d="M98 83C116 104 125 127 123 153C121 171 115 185 106 195M114 108C101 102 91 91 83 79M116 106C130 95 140 82 146 68M123 153C147 138 166 120 179 99M123 153C145 157 163 164 180 174" />
+      <circle class="accent-fill" cx="123" cy="153" r="9" />
+    </g>
+    <text class="label" x="28" y="330">01 · NEURAL ENSŌ</text>
+    <text class="display" x="28" y="366" font-size="25" font-weight="600">An open learning loop</text>
+  </g>
+
+  <g transform="translate(520 184)">
+    <rect class="tile" width="400" height="400" rx="24" />
+    <g transform="translate(72 60)">
+      <path class="ink-stroke" stroke-width="17" d="M205 62A88 88 0 1 0 210 180" />
+      <path class="ink-stroke" stroke-width="15" d="M89 79V207H128C171 207 198 183 198 143C198 104 171 79 128 79H89Z" />
+      <path class="ink-stroke" stroke-width="8" d="M119 105V181M119 143H160M160 143L181 113M160 143L183 174" />
+      <rect class="accent-fill" x="83" y="70" width="12" height="146" rx="6" />
+      <circle class="ink-fill" cx="181" cy="113" r="6" />
+      <circle class="ink-fill" cx="183" cy="174" r="6" />
+    </g>
+    <text class="label" x="28" y="330">02 · MEMORY MON</text>
+    <text class="display" x="28" y="366" font-size="25" font-weight="600">Continuity from the existing D</text>
+  </g>
+
+  <g transform="translate(976 184)">
+    <rect class="tile" width="400" height="400" rx="24" />
+    <g transform="translate(72 60)">
+      <path class="ink-stroke" stroke-width="18" d="M116 44C79 43 49 72 48 112C47 145 63 176 92 193C109 203 128 192 125 173C122 155 108 145 88 146C105 134 117 118 117 98C118 78 107 62 91 54" />
+      <path class="ink-stroke" stroke-width="18" d="M145 49C181 39 215 62 224 100C232 133 222 167 196 189C180 202 159 194 159 175C159 156 171 143 190 140C171 132 157 119 153 100C149 80 156 63 171 52" />
+      <path class="accent-stroke" stroke-width="10" d="M137 74V183" />
+      <circle class="accent-fill" cx="137" cy="129" r="10" />
+    </g>
+    <text class="label" x="28" y="330">03 · OPEN MIND</text>
+    <text class="display" x="28" y="366" font-size="25" font-weight="600">Two hemispheres, one owned path</text>
+  </g>
+
+  <g transform="translate(64 636)">
+    <text class="body" y="0" font-size="15">Small-size test</text>
+    <g transform="translate(134 -28) scale(.105)">
+      <path class="ink-stroke" stroke-width="22" d="M183 43C148 20 96 25 63 57C28 91 27 149 59 187C91 225 148 231 187 200C223 171 233 119 212 77" />
+      <path class="ink-stroke" stroke-width="9" d="M98 83C116 104 125 127 123 153C121 171 115 185 106 195M114 108C101 102 91 91 83 79M116 106C130 95 140 82 146 68M123 153C147 138 166 120 179 99M123 153C145 157 163 164 180 174" />
+      <circle class="accent-fill" cx="123" cy="153" r="9" />
+    </g>
+    <text class="body" x="174" y="0" font-size="15">24 px</text>
+    <text class="body" x="278" y="0" font-size="15">Recommendation: Neural Ensō—most distinctive, least literal, strongest silhouette.</text>
+  </g>
+</svg>

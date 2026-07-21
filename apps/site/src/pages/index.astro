@@ -18,6 +18,7 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
       content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     />
     <meta name="theme-color" content="#f7f1e8" />
+    <link rel="icon" href={`${projectBasePath}/favicon.svg`} type="image/svg+xml" />
     <meta
       name="description"
       content="Dusori is a free local-first learning workspace built from portable Markdown and JSON."
@@ -26,7 +27,10 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   </head>
   <body>
     <header class="edge-nav">
-      <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">Dusori</a>
+      <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">
+        <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+        <span>Dusori</span>
+      </a>
       <a class="nav-action" href={appHref}>Open app</a>
     </header>
 
@@ -196,10 +200,19 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
   }
 
   .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
     font-family: var(--font-display);
     font-size: var(--text-md);
     font-weight: 600;
     text-decoration: none;
+  }
+
+  .wordmark img {
+    flex: none;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
   }
 
   .nav-action {

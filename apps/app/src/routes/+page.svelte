@@ -273,7 +273,10 @@
 {#if !workspace}
   <main class="setup-shell">
     <header class="setup-header">
-      <a class="wordmark" href="../">Dusori</a>
+      <a class="wordmark" href="../">
+        <img src={`${base}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+        <span>Dusori</span>
+      </a>
       <a class="quiet-link" href="../docs/">Read docs</a>
     </header>
 
@@ -331,7 +334,13 @@
   >
     <nav class:open={mobileNavOpen} class="rail" id="workspace-navigation" aria-label="Workspace">
       <div class="rail-brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <img
+          class="brand-mark"
+          src={`${base}/brand/dusori-mark.svg`}
+          alt=""
+          width="28"
+          height="28"
+        />
         <span>Dusori</span>
         <button
           class="rail-close"
@@ -557,11 +566,20 @@
   }
 
   .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
     color: var(--color-ink);
     font-family: var(--font-display);
     font-size: var(--text-md);
     font-weight: 600;
     text-decoration: none;
+  }
+
+  .wordmark img {
+    flex: none;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
   }
 
   .quiet-link,
@@ -811,9 +829,9 @@
   }
 
   .brand-mark {
-    inline-size: 0.3rem;
-    block-size: 1.5rem;
-    background: var(--color-accent);
+    flex: none;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
   }
 
   .rail-section {
