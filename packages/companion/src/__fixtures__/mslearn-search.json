@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "title": "Microsoft Entra ID documentation - Microsoft Entra ID",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/",
+      "displayUrl": {
+        "content": "/entra/identity/",
+        "hitHighlights": [{ "start": 1, "length": 5 }]
+      },
+      "description": "Microsoft Entra ID documentation Use Microsoft Entra ID to manage user identities and control access to your apps, data, and resources. Getting started What is Microsoft Entra ID. Manage user identities and control access to your apps, data, and resources. Authentic... Microsoft Entra ID is Microsoft\u0027s multitenant, cloud-based directory, and.",
+      "descriptions": [
+        {
+          "content": "Microsoft Entra ID documentation Use Microsoft Entra ID to manage user identities and control access to your apps, data, and resources. Getting started What is Microsoft Entra ID. Manage user identities and control access to your apps, data, and resources. Authentic... Microsoft Entra ID is Microsoft\u0027s multitenant, cloud-based directory, and.",
+          "hitHighlights": [{ "start": 180, "length": 76 }]
+        }
+      ],
+      "lastUpdatedDate": "2026-06-04T07:34:00+00:00",
+      "breadcrumbs": [],
+      "category": "Documentation"
+    },
+    {
+      "title": "Microsoft Entra documentation",
+      "url": "https://learn.microsoft.com/en-us/entra/",
+      "displayUrl": { "content": "/entra/", "hitHighlights": [{ "start": 1, "length": 5 }] },
+      "description": "Microsoft Entra documentation Learn more about the Microsoft Entra family of multicloud identity and network access solutions. Overview What is Microsoft Entra. Overview What is Microsoft Entra Agent ID. Concept Identity and access fundamentals Overview Microsoft Security Copilot \u002B Microsoft Entra Get started Microsoft Entra ID Manage user.",
+      "descriptions": [
+        {
+          "content": "Microsoft Entra documentation Learn more about the Microsoft Entra family of multicloud identity and network access solutions. Overview What is Microsoft Entra. Overview What is Microsoft Entra Agent ID. Concept Identity and access fundamentals Overview Microsoft Security Copilot \u002B Microsoft Entra Get started Microsoft Entra ID Manage user.",
+          "hitHighlights": []
+        }
+      ],
+      "lastUpdatedDate": "2026-03-31T17:23:00+00:00",
+      "breadcrumbs": [],
+      "category": "Documentation"
+    }
+  ],
+  "spellingCorrection": [],
+  "scopeRemoved": false,
+  "count": 625023,
+  "nextLink": "https://learn.microsoft.com/api/Search?search=entra%20id\u0026locale=en-us\u0026$top=2\u0026$skip=2",
+  "srcheng": "02",
+  "termHasSynonyms": false,
+  "searchType": "semantic"
+}
