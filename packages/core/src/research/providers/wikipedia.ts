@@ -82,7 +82,7 @@ function cappedContent(title: string, url: string, extract: string): string {
 }
 
 export const WIKIPEDIA_DISCLOSURE =
-  "Searching sends this objective's text to Wikipedia (en.wikipedia.org) over HTTPS. Nothing else from your workspace is sent. Allow on this device?";
+  "Searching sends this topic's name and the objective's text to Wikipedia (en.wikipedia.org) over HTTPS. Nothing else from your workspace is sent. Allow on this device?";
 
 export const wikipediaProvider: ResearchProvider = {
   id: 'wikipedia',
@@ -97,7 +97,7 @@ export const wikipediaProvider: ResearchProvider = {
       list: 'search',
       origin: '*',
       srlimit: '8',
-      srsearch: query.objectiveTitle,
+      srsearch: query.searchText,
     }).toString();
     const response = await fetchImpl(url.toString());
     if (!response.ok) throw new Error('Wikipedia search could not read the search API.');

@@ -37,6 +37,22 @@ const LABEL_HALF_WIDTH = 60;
 const LABEL_HEIGHT = 56;
 const BOUNDS_PADDING = 40;
 
+/**
+ * Node labels are drawn in the mono face at 14px, whose advance is ~0.6em. Keeping the drawn
+ * text inside the width the layout reserves (2 × LABEL_HALF_WIDTH) is what stops a long title
+ * from printing across a neighbouring node.
+ */
+const LABEL_ADVANCE = 8.4;
+export const LABEL_MAX_CHARS = Math.floor((LABEL_HALF_WIDTH * 2) / LABEL_ADVANCE);
+
+/** Shortens a node label to the width the constellation reserves for it. */
+export function fitGraphLabel(label: string, maxChars: number = LABEL_MAX_CHARS): string {
+  const text = label.trim().replace(/\s+/gu, ' ');
+  const budget = Math.max(1, maxChars);
+  if (text.length <= budget) return text;
+  return `${text.slice(0, budget - 1).trimEnd()}…`;
+}
+
 function nodeRadius(node: WorkspaceGraphNode): number {
   if (node.kind === 'home') return NODE_RADIUS.home;
   if (node.kind === 'overview') return NODE_RADIUS.overview;

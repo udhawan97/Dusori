@@ -1,6 +1,9 @@
 export interface ResearchQuery {
   objectiveTitle: string;
   topicTitle: string;
+  /** Exactly what a remote provider receives: the topic followed by the objective. */
+  searchText: string;
+  /** Objective terms followed by the topic terms it does not already carry. */
   terms: string[];
 }
 

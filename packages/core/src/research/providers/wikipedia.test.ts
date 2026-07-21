@@ -7,7 +7,8 @@ import { wikipediaProvider } from './wikipedia.js';
 
 const query = {
   objectiveTitle: 'Configure Microsoft Entra ID',
-  terms: ['configure', 'microsoft', 'entra', 'id'],
+  searchText: 'Azure administration Configure Microsoft Entra ID',
+  terms: ['configure', 'microsoft', 'entra', 'id', 'azure', 'administration'],
   topicTitle: 'Azure administration',
 };
 
@@ -38,7 +39,9 @@ describe('Wikipedia research provider', () => {
         'Microsoft Entra Connect is a tool for connecting on-premises identity infrastructure to Microsoft Entra ID.',
       url: 'https://en.wikipedia.org/?curid=44779164',
     });
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('srsearch=Configure+Microsoft+Entra+ID');
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'srsearch=Azure+administration+Configure+Microsoft+Entra+ID',
+    );
 
     const capture = await wikipediaProvider.capture(results[0]!, fetchImpl);
     expect(capture.content).toBe(

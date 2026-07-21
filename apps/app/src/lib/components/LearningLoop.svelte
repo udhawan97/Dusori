@@ -223,7 +223,9 @@
               <div class="recent-activity">
                 <p class="section-label">Recent local activity</p>
                 <ul>
-                  {#each summary.recentActivity as activity (`${activity.date}-${activity.text}`)}
+                  <!-- Keyed by position too: the update log legitimately repeats a line when the
+                       same action happens twice in one day, and duplicate keys break the view. -->
+                  {#each summary.recentActivity as activity, index (`${index}-${activity.date}-${activity.text}`)}
                     <li>
                       <time datetime={activity.date}>{activityDate(activity.date)}</time>
                       <span>{activity.text}</span>

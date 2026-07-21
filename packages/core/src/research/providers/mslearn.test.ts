@@ -5,7 +5,8 @@ import { msLearnProvider } from './mslearn.js';
 
 const query = {
   objectiveTitle: 'Configure Microsoft Entra ID',
-  terms: ['configure', 'microsoft', 'entra', 'id'],
+  searchText: 'Azure administration Configure Microsoft Entra ID',
+  terms: ['configure', 'microsoft', 'entra', 'id', 'azure', 'administration'],
   topicTitle: 'Azure administration',
 };
 
@@ -37,7 +38,7 @@ describe('Microsoft Learn research provider', () => {
     expect(first[0]).toMatchObject({
       meta: { duration_in_minutes: '23', levels: 'beginner', products: 'azure' },
       provider: 'mslearn',
-      score: 6,
+      score: 10,
     });
   });
 

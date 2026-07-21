@@ -62,7 +62,7 @@ function metadataLines(candidate: ResearchCandidate): string[] {
 }
 
 export const MS_LEARN_DISCLOSURE =
-  "Searching sends this objective's text to Microsoft Learn (learn.microsoft.com) over HTTPS. Nothing else from your workspace is sent. Allow on this device?";
+  'Searching downloads the public Microsoft Learn module catalog (learn.microsoft.com) over HTTPS and ranks it on this device. Nothing from your workspace is sent. Allow on this device?';
 
 export const msLearnProvider: ResearchProvider = {
   id: 'mslearn',

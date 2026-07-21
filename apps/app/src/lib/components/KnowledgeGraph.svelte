@@ -10,7 +10,9 @@
   } from '@dusori/core';
 
   import {
+    LABEL_MAX_CHARS,
     NODE_RADIUS,
+    fitGraphLabel,
     layoutWorkspaceGraph,
     neighborIds,
     wikilinkDegrees,
@@ -24,6 +26,7 @@
   let loading = true;
   let error = '';
   let selectedId: string | null = null;
+  let stageWidth = 0;
 
   function nodeRadius(node: WorkspaceGraphNode): number {
     if (node.kind === 'home') return NODE_RADIUS.home;
@@ -45,11 +48,19 @@
   }
 
   function visualLabel(node: WorkspaceGraphNode): string {
-    if (node.kind === 'home') return 'Workspace';
-    if (node.kind === 'roadmap') return 'Roadmap';
-    if (node.kind === 'tutor') return 'Preferences';
-    if (node.kind === 'update') return node.label.replace(/ update$/u, '');
-    return node.label;
+    const label =
+      node.kind === 'home'
+        ? 'Workspace'
+        : node.kind === 'roadmap'
+          ? 'Roadmap'
+          : node.kind === 'tutor'
+            ? 'Preferences'
+            : node.kind === 'update'
+              ? node.label.replace(/ update$/u, '')
+              : node.label;
+    // A hub node appends "· hub", so it gets a smaller budget. The full label stays in the
+    // node title and in the artifact index beside the constellation.
+    return fitGraphLabel(label, isHub(node) ? LABEL_MAX_CHARS - 5 : LABEL_MAX_CHARS);
   }
 
   function wikilinkLabel(count: number): string {
@@ -58,6 +69,15 @@
 
   function isHub(node: WorkspaceGraphNode): boolean {
     return (degrees.get(node.id) ?? 0) >= 3;
+  }
+
+  /**
+   * Ring members sit ~30px apart, far closer than any label is wide, so labelling every dot
+   * tangles the constellation. The structural nodes stay labelled; the rest reveal their label
+   * on hover, focus, or selection, and every node is listed in full in the artifact index.
+   */
+  function alwaysLabelled(node: WorkspaceGraphNode): boolean {
+    return node.kind === 'home' || node.kind === 'overview' || isHub(node);
   }
 
   function nodeTitle(node: WorkspaceGraphNode): string {
@@ -107,6 +127,11 @@
   });
 
   $: layout = layoutWorkspaceGraph(graph ?? { edges: [], nodes: [], unresolvedLinks: [] });
+  // A viewBox sized to the node bounds alone gets stretched to fill the stage, magnifying every
+  // label with it. Widening the box to the measured stage keeps one user unit at one CSS pixel,
+  // so labels stay at their token size and the layout is centred in the leftover space.
+  $: viewBoxWidth = Math.max(layout.width, stageWidth);
+  $: viewBoxX = -(viewBoxWidth - layout.width) / 2;
   $: positioned = layout.nodes;
   $: nodesById = new Map(positioned.map((node) => [node.id, node]));
   $: homeNode = positioned.find((node) => node.kind === 'home');
@@ -161,9 +186,10 @@
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <svg
         class="constellation"
+        bind:clientWidth={stageWidth}
         role="group"
         aria-label="Workspace knowledge graph"
-        viewBox={`0 0 ${layout.width} ${layout.height}`}
+        viewBox={`${viewBoxX} 0 ${viewBoxWidth} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
         onclick={() => (selectedId = null)}
         onkeydown={(event) => {
@@ -197,6 +223,7 @@
             class:home={node.kind === 'home'}
             class:overview={node.kind === 'overview'}
             class:hub={isHub(node)}
+            class:labelled={alwaysLabelled(node)}
             class:selected={selectedId === node.id}
             class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
             class="node"
@@ -405,7 +432,29 @@
     fill: var(--color-muted);
     font-family: var(--font-mono);
     font-size: 14px;
+    /* A label may still pass an artifact dot; the paper halo keeps both readable. */
+    paint-order: stroke;
+    stroke: var(--color-paper);
+    stroke-width: 4px;
+    stroke-linejoin: round;
     text-anchor: middle;
+  }
+
+  .node:not(.labelled) text {
+    opacity: 0;
+    transition: opacity var(--dur-short) var(--ease-out);
+  }
+
+  .node:not(.labelled):hover text,
+  .node:not(.labelled):focus-visible text,
+  .node:not(.labelled).selected text {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node:not(.labelled) text {
+      transition: none;
+    }
   }
 
   .hub-label {

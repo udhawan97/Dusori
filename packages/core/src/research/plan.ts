@@ -53,9 +53,16 @@ export function buildResearchQuery(
   objective: { title: string },
 ): ResearchQuery {
   const objectiveTitle = cleanObjectiveTitle(objective.title);
+  const topic = cleanObjectiveTitle(topicTitle);
+  const objectiveTerms = deriveTerms(objectiveTitle);
+  // The user's real question is the topic plus the objective. Dusori's own scaffold objectives
+  // ("Explain the central mechanism in your own words") name no subject, so an objective-only
+  // query matches on filler words and returns unrelated sources.
+  const topicTerms = deriveTerms(topic).filter((term) => !objectiveTerms.includes(term));
   return {
     objectiveTitle,
-    terms: deriveTerms(objectiveTitle),
-    topicTitle: topicTitle.trim(),
+    searchText: [topic, objectiveTitle].filter(Boolean).join(' '),
+    terms: [...objectiveTerms, ...topicTerms],
+    topicTitle: topic,
   };
 }

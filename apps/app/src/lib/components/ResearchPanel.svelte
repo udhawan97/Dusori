@@ -69,7 +69,9 @@
   }
 
   function consentKey(provider: ResearchProvider): string {
-    return `dusori-research-consent:${provider.id}`;
+    // v2: the disclosures now describe exactly what each provider receives, so consent given
+    // against the earlier wording is asked again rather than assumed.
+    return `dusori-research-consent:v2:${provider.id}`;
   }
 
   function hasConsent(provider: ResearchProvider): boolean {
@@ -327,7 +329,7 @@
     {:else}
       <div class="research-empty">
         <p>The web stays quiet until you choose a provider.</p>
-        <span>Only the selected objective text leaves this device after consent.</span>
+        <span>Each provider states exactly what it receives before its first search.</span>
       </div>
     {/if}
   {/if}
@@ -366,10 +368,12 @@
           <X aria-hidden="true" size={19} />
         </button>
       </div>
-      <div class="rendered-preview"><MarkdownView content={preview.capture.content} /></div>
-      <div class="source-markdown">
-        <p>Source markdown</p>
-        <pre>{preview.capture.content}</pre>
+      <div class="preview-body">
+        <div class="rendered-preview"><MarkdownView content={preview.capture.content} /></div>
+        <details class="source-markdown">
+          <summary>Source markdown</summary>
+          <pre>{preview.capture.content}</pre>
+        </details>
       </div>
       {#if previewError}
         <p class="dialog-error" role="alert">
@@ -483,10 +487,24 @@
   .provider-actions,
   .provider-action,
   .result-list,
-  .result-actions,
-  .source-markdown {
+  .result-actions {
     display: grid;
     gap: var(--space-xs);
+  }
+
+  .source-markdown > summary {
+    min-height: 2.75rem;
+    padding-block: var(--space-xs);
+    cursor: pointer;
+  }
+
+  .source-markdown > summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
+
+  .source-markdown[open] > summary {
+    margin-block-end: var(--space-xs);
   }
 
   .provider-action > button {
@@ -529,7 +547,7 @@
 
   .provider-tag,
   .dialog-kicker,
-  .source-markdown > p {
+  .source-markdown > summary {
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
@@ -599,6 +617,20 @@
 
   .consent-dialog {
     max-width: 34rem;
+  }
+
+  /* The capture can run to tens of thousands of pixels, so only the body scrolls: the heading
+   * and both dialog actions stay reachable without leaving the accept decision below the fold. */
+  .preview-dialog {
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .preview-body {
+    display: grid;
+    overflow: auto;
+    gap: var(--space-lg);
+    overscroll-behavior: contain;
   }
 
   .consent-dialog > p:not(.dialog-kicker) {
