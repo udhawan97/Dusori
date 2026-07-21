@@ -215,8 +215,16 @@ async function readBody(
       chunks.push(value);
     }
   } catch (error) {
+    // Best-effort: never let a cancel failure mask the real error below.
+    await reader.cancel().catch(() => {});
     if (isAbortTimeout(error)) throw timeoutFetchError();
-    throw error;
+    // The too-large branch above already threw its own typed FetchPageError
+    // (and cancelled the reader itself); pass it through unchanged.
+    if (error instanceof FetchPageError) throw error;
+    throw new FetchPageError(
+      'This page could not be fetched. Check the URL or your connection.',
+      'fetch-failed',
+    );
   }
   const merged = new Uint8Array(total);
   let offset = 0;

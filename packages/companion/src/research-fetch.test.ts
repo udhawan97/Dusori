@@ -191,6 +191,51 @@ describe('fetchReadablePage', () => {
     );
   });
 
+  it('cancels the body reader on timeout instead of leaving the stream locked', async () => {
+    let cancelled = false;
+    const stalledBody = new ReadableStream<Uint8Array>({
+      start() {
+        // Never enqueue and never close, same as the timeout test above.
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    await reason(
+      fetchReadablePage('https://example.org/slow-drip-cancel', {
+        fetchImpl: async () =>
+          new Response(stalledBody, { headers: { 'content-type': 'text/html' } }),
+        lookupImpl: publicLookup,
+        timeoutMs: 50,
+      }),
+    );
+    expect(cancelled).toBe(true);
+  });
+
+  it('wraps a mid-stream connection error as a typed FetchPageError, not a raw exception', async () => {
+    const erroringBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.error(new Error('connection reset'));
+      },
+    });
+    let caught: unknown;
+    try {
+      await fetchReadablePage('https://example.org/connection-reset', {
+        fetchImpl: async () =>
+          new Response(erroringBody, { headers: { 'content-type': 'text/html' } }),
+        lookupImpl: publicLookup,
+      });
+      expect.fail('expected fetchReadablePage to throw');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(FetchPageError);
+    expect((caught as FetchPageError).reason).toBe('fetch-failed');
+    expect((caught as FetchPageError).message).toBe(
+      'This page could not be fetched. Check the URL or your connection.',
+    );
+  });
+
   it('rejects genuine short-article text with a message naming its own shortness, not "no text found"', async () => {
     const shortParagraph =
       'This short note is a genuine article body with real sentences, but it does not reach ' +
