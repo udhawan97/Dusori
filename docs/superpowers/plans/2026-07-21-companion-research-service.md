@@ -1894,7 +1894,12 @@ let confirming: SourceRecord | null = null;
 let confirmFetchButton: HTMLButtonElement;
 let confirmInvoker: HTMLButtonElement | null = null;
 let fetchingSha = '';
-let upgradePreview: { content: string; page: FetchedPage; record: SourceRecord } | null = null;
+let upgradePreview: {
+  content: string;
+  expectedContentHash: string;
+  page: FetchedPage;
+  record: SourceRecord;
+} | null = null;
 let upgradeCloseButton: HTMLButtonElement;
 let replacing = false;
 let upgradeError = '';
@@ -1930,7 +1935,15 @@ async function confirmFetch(): Promise<void> {
   upgradeError = '';
   try {
     const page = await companion.fetchPage(record.url ?? '');
-    upgradePreview = { content: buildUpgradedContent(record, page), page, record };
+    // upgradeSource guards against external edits with the hash we read here.
+    const itemFile = record.path ? await storage.read(record.path) : null;
+    if (!itemFile) throw new Error('This source file is missing. Reload and try again.');
+    upgradePreview = {
+      content: buildUpgradedContent(record, page),
+      expectedContentHash: itemFile.hash,
+      page,
+      record,
+    };
     await tick();
     upgradeCloseButton?.focus();
   } catch (caught) {
@@ -1957,6 +1970,7 @@ async function replaceContent(): Promise<void> {
   upgradeError = '';
   try {
     await upgradeSource(storage, {
+      expectedContentHash: upgradePreview.expectedContentHash,
       page: upgradePreview.page,
       sha256: upgradePreview.record.sha256,
       topicSlug,
