@@ -1,0 +1,26 @@
+{
+  "batchcomplete": "",
+  "query": {
+    "searchinfo": { "totalhits": 7 },
+    "search": [
+      {
+        "ns": 0,
+        "title": "Microsoft Entra Connect",
+        "pageid": 44779164,
+        "size": 8948,
+        "wordcount": 746,
+        "snippet": "<span class=\"searchmatch\">Microsoft Entra</span> Connect is a tool for connecting on-premises identity infrastructure to Microsoft Entra ID.",
+        "timestamp": "2026-06-04T19:19:45Z"
+      },
+      {
+        "ns": 0,
+        "title": "SharePoint",
+        "pageid": 13473328,
+        "size": 31031,
+        "wordcount": 2824,
+        "snippet": "Services, with user authentication passed through a token issued by Microsoft Entra ID.",
+        "timestamp": "2026-05-14T16:42:22Z"
+      }
+    ]
+  }
+}

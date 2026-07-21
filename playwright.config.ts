@@ -1,16 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const previewPort = process.env.DUSORI_PREVIEW_PORT ?? '4173';
+const previewOrigin = `http://127.0.0.1:${previewPort}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   outputDir: './test-results',
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:4173/Dusori',
+    baseURL: `${previewOrigin}/Dusori`,
     trace: 'retain-on-failure',
   },
   webServer: {
     command: 'pnpm preview',
-    url: 'http://127.0.0.1:4173/Dusori/',
+    url: `${previewOrigin}/Dusori/`,
     reuseExistingServer: true,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

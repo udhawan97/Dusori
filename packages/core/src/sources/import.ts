@@ -7,6 +7,7 @@ import {
   TopicStateSchema,
   schemaVersion,
   type SourceManifest,
+  type SourceOrigin,
   type SourceRecord,
 } from '../schemas/workspace.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
@@ -32,7 +33,9 @@ export type AddSourceInput =
       originalName: string;
     })
   | (SourceInputBase & {
+      content?: string;
       method: 'url';
+      origin?: SourceOrigin;
       url: string;
     });
 
@@ -123,9 +126,10 @@ export async function addSource(
   const url = input.method === 'url' ? parseUrl(input.url) : undefined;
   const sourceContent =
     input.method === 'url'
-      ? `# ${title}\n\nOriginal URL: <${url}>\n\nDusori stored this reference without fetching its contents.\n`
+      ? (input.content?.replace(/\r\n?/gu, '\n') ??
+        `# ${title}\n\nOriginal URL: <${url}>\n\nDusori stored this reference without fetching its contents.\n`)
       : input.content.replace(/\r\n?/gu, '\n');
-  if (input.method !== 'url' && !sourceContent.trim()) {
+  if ((input.method !== 'url' || input.content !== undefined) && !sourceContent.trim()) {
     throw new Error('This source is empty. Paste text or choose a non-empty file.');
   }
   const size = byteLength(sourceContent);
@@ -165,6 +169,7 @@ export async function addSource(
       mediaType: input.method === 'url' ? 'text/markdown' : (input.mediaType ?? 'text/plain'),
       method: input.method,
       originalName: input.method === 'file' ? input.originalName : undefined,
+      origin: input.method === 'url' ? input.origin : undefined,
       path,
       sha256: contentHash,
       size,

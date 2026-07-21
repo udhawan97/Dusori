@@ -34,6 +34,36 @@ This paragraph is not an objective.
 - Find documentation
 `;
 
+const microsoftLearnCatalog = {
+  modules: [
+    {
+      duration_in_minutes: 18,
+      levels: ['beginner'],
+      popularity: 0.92,
+      products: ['azure-active-directory'],
+      summary: 'Learn the terms and boundaries of Microsoft Entra identity management.',
+      title: 'Establish identity terms with Microsoft Entra',
+      uid: 'learn.identity-terms',
+      url: 'https://learn.microsoft.com/en-us/training/modules/identity-terms/',
+    },
+  ],
+};
+
+const wikipediaSearch = {
+  query: {
+    search: [
+      {
+        pageid: 44779164,
+        size: 8948,
+        snippet:
+          '<span class="searchmatch">Microsoft Entra</span> Connect links local identity infrastructure.',
+        title: 'Microsoft Entra Connect',
+        wordcount: 746,
+      },
+    ],
+  },
+};
+
 async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).exclude('iframe').analyze();
   expect(
@@ -418,6 +448,91 @@ test('source library stores pasted text and URL references without remote fetchi
   await expectNoSeriousA11yViolations(page);
 });
 
+test('research requires disclosure, previews exact capture, and adds a graph source', async ({
+  page,
+}) => {
+  let catalogRequests = 0;
+  await page.route('https://learn.microsoft.com/api/catalog/**', async (route) => {
+    catalogRequests += 1;
+    await route.fulfill({ contentType: 'application/json', json: microsoftLearnCatalog });
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await expect(page.getByRole('heading', { name: 'Research' })).toBeVisible();
+  await expect(page.getByLabel('Research objective')).toHaveValue('0');
+  const searchMicrosoftLearn = page.getByRole('button', { name: 'Search Microsoft Learn' });
+  await searchMicrosoftLearn.click();
+  expect(catalogRequests).toBe(0);
+
+  let disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
+  await expect(disclosure).toContainText(
+    "Searching sends this objective's text to Microsoft Learn (learn.microsoft.com) over HTTPS. Nothing else from your workspace is sent. Allow on this device?",
+  );
+  await disclosure.getByRole('button', { name: 'Keep search off' }).click();
+  await expect(searchMicrosoftLearn).toBeFocused();
+  expect(catalogRequests).toBe(0);
+
+  await searchMicrosoftLearn.click();
+  disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
+  await disclosure.getByRole('button', { name: 'Allow search' }).click();
+  await expect(page.getByText('Establish identity terms with Microsoft Entra')).toBeVisible();
+  expect(catalogRequests).toBe(1);
+
+  const result = page
+    .getByRole('list', { name: 'Research suggestions' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Establish identity terms with Microsoft Entra' });
+  await result.getByRole('button', { name: 'Preview' }).click();
+  let preview = page.getByRole('dialog', { name: 'Preview research source' });
+  await expect(preview.getByText('Source markdown')).toBeVisible();
+  await expect(preview.locator('pre')).toContainText(
+    '# Establish identity terms with Microsoft Entra',
+  );
+  await preview.getByRole('button', { name: 'Close preview', exact: true }).first().click();
+  await expect(result.getByRole('button', { name: 'Preview' })).toBeFocused();
+
+  await result.getByRole('button', { name: 'Preview' }).click();
+  preview = page.getByRole('dialog', { name: 'Preview research source' });
+  await preview.getByRole('button', { name: 'Add to sources' }).click();
+
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Establish identity terms with Microsoft Entra',
+  );
+  expect(await page.evaluate(() => localStorage.getItem('dusori-research-consent:mslearn'))).toBe(
+    'allowed',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Graph' }).click();
+  await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText(
+    'Establish identity terms with Microsoft Entra',
+  );
+});
+
+test('dismissed research suggestions stay gone after reload', async ({ page }) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Search Wikipedia' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Allow Wikipedia search?' });
+  await disclosure.getByRole('button', { name: 'Allow search' }).click();
+  const result = page
+    .getByRole('list', { name: 'Research suggestions' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Microsoft Entra Connect' });
+  await result.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Search Wikipedia' }).click();
+  await expect(page.getByText('No suggestions matched this objective.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
+});
+
 test('curriculum import previews official objectives, applies explicitly, and never fetches', async ({
   page,
 }) => {
@@ -571,7 +686,11 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
 
   await page.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-  await expect(page.getByText('Explain the central mechanism in your own words.')).toBeVisible();
+  await expect(
+    page
+      .getByLabel('Today')
+      .getByText('Explain the central mechanism in your own words.', { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('Paused this topic.')).toBeVisible();
   await expectNoSeriousA11yViolations(page);
 

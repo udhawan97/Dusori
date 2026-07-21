@@ -31,10 +31,17 @@ export const TopicStateSchema = z.object({
   fileIndex: z.record(z.string(), FileVersionSchema),
 });
 
+export const SourceOriginSchema = z.object({
+  provider: z.enum(['mslearn', 'wikipedia']),
+  capturedVia: z.enum(['catalog-reference', 'api-extract']),
+  capturedAt: z.string().datetime(),
+});
+
 export const SourceRecordSchema = z.object({
   fetchedAt: z.string().datetime(),
   mediaType: z.enum(['text/markdown', 'text/plain']).optional(),
   method: z.enum(['file', 'paste', 'url']),
+  origin: SourceOriginSchema.optional(),
   originalName: z.string().min(1).max(255).optional(),
   path: z.string().min(1).max(320).optional(),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
@@ -50,5 +57,6 @@ export const SourceManifestSchema = z.object({
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type TopicState = z.infer<typeof TopicStateSchema>;
+export type SourceOrigin = z.infer<typeof SourceOriginSchema>;
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 export type SourceManifest = z.infer<typeof SourceManifestSchema>;

@@ -1,0 +1,13 @@
+{
+  "batchcomplete": "",
+  "query": {
+    "pages": {
+      "44779164": {
+        "pageid": 44779164,
+        "ns": 0,
+        "title": "Microsoft Entra Connect",
+        "extract": "Microsoft Entra Connect (formerly known as Azure AD Connect) is a tool for connecting on-premises identity infrastructure to Microsoft Entra ID. The wizard deploys and configures prerequisites and components required for the connection, including synchronization scheduling and authentication methods.\nEntra Connect encompasses functionality that was previously released as Dirsync and AAD Sync."
+      }
+    }
+  }
+}

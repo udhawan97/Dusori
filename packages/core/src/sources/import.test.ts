@@ -88,6 +88,52 @@ describe('local source library', () => {
     vi.unstubAllGlobals();
   });
 
+  it('stores captured research content with origin while deduplicating by URL', async () => {
+    const storage = await topicStorage();
+    const content =
+      '# Microsoft Entra ID\n\nOriginal URL: <https://learn.microsoft.com/training/modules/describe-identity-principles/>\n\nCatalog reference captured on 2026-07-20.\n';
+    const origin = {
+      capturedAt: now.toISOString(),
+      capturedVia: 'catalog-reference' as const,
+      provider: 'mslearn' as const,
+    };
+    const result = await addSource(
+      storage,
+      {
+        content,
+        method: 'url',
+        origin,
+        title: 'Microsoft Entra ID',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://learn.microsoft.com/training/modules/describe-identity-principles/',
+      },
+      now,
+    );
+
+    expect((await storage.read(result.path))?.content).toBe(content);
+    expect(result.record).toMatchObject({ method: 'url', origin });
+    expect((await readSourceManifest(storage, 'ai-fundamentals', now)).sources[0]).toMatchObject({
+      method: 'url',
+      origin,
+    });
+    expect((await storage.read(result.updatePath!))?.content).toContain('Added url source');
+
+    const duplicate = await addSource(
+      storage,
+      {
+        content: '# A changed capture that must not create a duplicate.\n',
+        method: 'url',
+        origin,
+        title: 'Renamed capture',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://learn.microsoft.com/training/modules/describe-identity-principles/',
+      },
+      now,
+    );
+    expect(duplicate).toMatchObject({ deduplicated: true, path: result.path });
+    expect((await readSourceManifest(storage, 'ai-fundamentals', now)).sources).toHaveLength(1);
+  });
+
   it('deduplicates identical sources without adding another update', async () => {
     const storage = await topicStorage();
     const input = {

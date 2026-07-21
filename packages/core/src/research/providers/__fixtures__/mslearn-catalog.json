@@ -1,0 +1,37 @@
+{
+  "modules": [
+    {
+      "uid": "learn.wwl.secure-mysql",
+      "type": "module",
+      "title": "Secure MySQL",
+      "summary": "Learn about Azure Database for MySQL security, encryption in Azure Database for MySQL, and how to configure Microsoft Entra authentication.",
+      "url": "https://learn.microsoft.com/en-us/training/modules/secure-mysql/?WT.mc_id=api_CatalogApi",
+      "popularity": 0.3886608255868448,
+      "duration_in_minutes": 38,
+      "levels": ["intermediate"],
+      "products": ["azure-database-mysql", "active-directory"]
+    },
+    {
+      "uid": "learn.dpu.azure-local",
+      "type": "module",
+      "title": "Introduction to Azure Local",
+      "summary": "In this module, you’ll learn how Azure Local helps you run virtual machines on-premises using hyperconverged infrastructure.",
+      "url": "https://learn.microsoft.com/en-us/training/modules/azure-local/?WT.mc_id=api_CatalogApi",
+      "popularity": 0,
+      "duration_in_minutes": 15,
+      "levels": ["beginner"],
+      "products": ["azure-local"]
+    },
+    {
+      "uid": "learn.secure-azure-openai-authentication-authorization",
+      "type": "module",
+      "title": "Secure authentication and authorization for Azure OpenAI in Microsoft Foundry",
+      "summary": "Learn how to secure Azure OpenAI in Microsoft Foundry by using Microsoft Entra ID authentication, managed identities, least-privilege Foundry RBAC roles, and local authentication controls.",
+      "url": "https://learn.microsoft.com/en-us/training/modules/secure-azure-openai-authentication-authorization/?WT.mc_id=api_CatalogApi",
+      "popularity": 0.4590690746113163,
+      "duration_in_minutes": 23,
+      "levels": ["beginner"],
+      "products": ["azure"]
+    }
+  ]
+}

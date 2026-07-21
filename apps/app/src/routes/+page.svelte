@@ -39,6 +39,7 @@
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
+  import ResearchPanel from '$lib/components/ResearchPanel.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
@@ -491,7 +492,7 @@
 
     {#if error}<p class="message error" role="alert">{error}</p>{/if}
     <p class="setup-footnote">
-      No AI, search, telemetry, or background service runs in this release.
+      No AI, telemetry, or background service runs. Web research starts only after provider consent.
     </p>
   </main>
 {:else}
@@ -723,6 +724,18 @@
         </section>
 
         {#if selectedSlug && storage}
+          <div class="research-slot">
+            {#key `${selectedSlug}-${learningRevision}`}
+              <ResearchPanel
+                {storage}
+                topicSlug={selectedSlug}
+                topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                  selectedSlug}
+                onSourceSaved={refreshSources}
+              />
+            {/key}
+          </div>
+
           <div class="source-slot">
             {#key `${selectedSlug}-${sourceRevision}`}
               <SourceLibrary {storage} topicSlug={selectedSlug} />
@@ -1113,6 +1126,7 @@
   }
 
   .inspector section + section,
+  .research-slot,
   .source-slot,
   .curriculum-slot,
   .curriculum-slot + section {
