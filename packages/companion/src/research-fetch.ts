@@ -57,6 +57,18 @@ const allowedTypes = ['text/html', 'application/xhtml+xml', 'text/plain'];
 const blockedMessage =
   "This address points at a private network and won't be fetched. Paste the text instead.";
 const noTextMessage = 'No readable article text was found on this page. Paste the text instead.';
+const shortArticleMessage =
+  'The readable text on this page was too short to store as a source. Paste the text instead.';
+const timeoutMessage =
+  'This page took longer than 15 seconds. Try again, or paste the text instead.';
+
+function isAbortTimeout(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'TimeoutError';
+}
+
+function timeoutFetchError(): FetchPageError {
+  return new FetchPageError(timeoutMessage, 'timeout');
+}
 
 function parseTarget(rawUrl: string): URL {
   let url: URL;
@@ -113,12 +125,7 @@ async function guardedResponse(
     try {
       response = await fetchImpl(current.toString(), { redirect: 'manual', signal });
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new FetchPageError(
-          'This page took longer than 15 seconds. Try again, or paste the text instead.',
-          'timeout',
-        );
-      }
+      if (isAbortTimeout(error)) throw timeoutFetchError();
       throw new FetchPageError(
         'This page could not be fetched. Check the URL or your connection.',
         'fetch-failed',
@@ -165,7 +172,10 @@ function tooLarge(): FetchPageError {
   );
 }
 
-async function readBody(response: Response): Promise<{ text: string; type: string }> {
+async function readBody(
+  response: Response,
+  signal: AbortSignal,
+): Promise<{ text: string; type: string }> {
   const type =
     (response.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
   if (!allowedTypes.includes(type)) {
@@ -183,17 +193,30 @@ async function readBody(response: Response): Promise<{ text: string; type: strin
     );
   }
   const reader = response.body.getReader();
+  // response.body isn't necessarily wired to `signal` (e.g. in tests, or with a
+  // fetch implementation that doesn't propagate abort into its body stream), so
+  // race every read against the signal ourselves rather than assuming it hangs
+  // together with the initial fetchImpl() call above.
+  const aborted = new Promise<never>((_resolve, reject) => {
+    if (signal.aborted) reject(signal.reason);
+    else signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
   const chunks: Uint8Array[] = [];
   let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxFetchBytes) {
-      await reader.cancel();
-      throw tooLarge();
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([reader.read(), aborted]);
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxFetchBytes) {
+        await reader.cancel();
+        throw tooLarge();
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch (error) {
+    if (isAbortTimeout(error)) throw timeoutFetchError();
+    throw error;
   }
   const merged = new Uint8Array(total);
   let offset = 0;
@@ -227,8 +250,11 @@ function extract(html: string, url: URL): Extracted {
     article = null;
   }
   const text = article?.textContent?.trim() ?? '';
-  if (text.length < minArticleChars) {
+  if (!text) {
     throw new FetchPageError(noTextMessage, 'extraction-failed');
+  }
+  if (text.length < minArticleChars) {
+    throw new FetchPageError(shortArticleMessage, 'extraction-failed');
   }
   return {
     byline: article?.byline ?? undefined,
@@ -263,7 +289,7 @@ export async function fetchReadablePage(
   const signal = AbortSignal.timeout(options.timeoutMs ?? 15_000);
   const target = parseTarget(rawUrl);
   const { finalUrl, response } = await guardedResponse(target, fetchImpl, lookupImpl, signal);
-  const body = await readBody(response);
+  const body = await readBody(response, signal);
   const page =
     body.type === 'text/plain'
       ? {

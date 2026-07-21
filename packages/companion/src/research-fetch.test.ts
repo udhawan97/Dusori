@@ -164,4 +164,53 @@ describe('fetchReadablePage', () => {
       ),
     ).toBe('extraction-failed');
   });
+
+  it('converts a stalled body stream into a timeout failure, not a raw DOMException', async () => {
+    const stalledBody = new ReadableStream<Uint8Array>({
+      start() {
+        // Never enqueue and never close: simulates a body that stops responding
+        // after headers have already arrived.
+      },
+    });
+    let caught: unknown;
+    try {
+      await fetchReadablePage('https://example.org/slow-drip', {
+        fetchImpl: async () =>
+          new Response(stalledBody, { headers: { 'content-type': 'text/html' } }),
+        lookupImpl: publicLookup,
+        timeoutMs: 50,
+      });
+      expect.fail('expected fetchReadablePage to throw');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(FetchPageError);
+    expect((caught as FetchPageError).reason).toBe('timeout');
+    expect((caught as FetchPageError).message).toBe(
+      'This page took longer than 15 seconds. Try again, or paste the text instead.',
+    );
+  });
+
+  it('rejects genuine short-article text with a message naming its own shortness, not "no text found"', async () => {
+    const shortParagraph =
+      'This short note is a genuine article body with real sentences, but it does not reach ' +
+      'the five hundred character floor that the extractor requires before it will accept the ' +
+      'result as a proper article for storage.';
+    const shortArticleHtml = `<html><head><title>A Short Note</title></head><body><article><h1>A Short Note</h1><p>${shortParagraph}</p></article></body></html>`;
+    let caught: unknown;
+    try {
+      await fetchReadablePage('https://example.org/short-note', {
+        fetchImpl: async () => htmlResponse(shortArticleHtml),
+        lookupImpl: publicLookup,
+      });
+      expect.fail('expected fetchReadablePage to throw');
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(FetchPageError);
+    expect((caught as FetchPageError).reason).toBe('extraction-failed');
+    expect((caught as FetchPageError).message).toBe(
+      'The readable text on this page was too short to store as a source. Paste the text instead.',
+    );
+  });
 });
