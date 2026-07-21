@@ -333,7 +333,9 @@
   </form>
 
   <div class="source-feedback" aria-live="polite">
-    {#if upgradeError}
+    <!-- The preview dialog renders upgradeError itself while it is open; showing it
+         here too would announce the same failure twice. -->
+    {#if upgradeError && !upgradePreview}
       <p class="source-message error" role="alert">
         <AlertTriangle aria-hidden="true" size={17} />
         <span>{upgradeError}</span>
