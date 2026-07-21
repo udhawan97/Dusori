@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+
+import { StorageConflictError } from '../adapters.js';
+import type { FetchedPage } from '../research/companion.js';
+import { MemoryStorageAdapter } from '../testing/memory-storage.js';
+import { createTopic, createWorkspace } from '../workspace/create.js';
+import { addSource, maxSourceBytes, readSourceManifest } from './import.js';
+import { buildUpgradedContent, upgradeSource } from './upgrade.js';
+
+const now = new Date('2026-07-21T15:30:00.000Z');
+
+const page: FetchedPage = {
+  byline: 'A. Vaswani',
+  fetchedAt: '2026-07-21T15:30:00.000Z',
+  finalUrl: 'https://example.org/attention-final',
+  siteName: 'Example Journal',
+  text: 'Attention lets each token weigh the other tokens in its context.',
+  title: 'Attention in transformers',
+  truncated: false,
+};
+
+async function urlSourceFixture() {
+  const storage = new MemoryStorageAdapter();
+  await createWorkspace(storage, 'Dusori', now);
+  await createTopic(storage, 'Transformers', now);
+  const added = await addSource(
+    storage,
+    { method: 'url', title: 'Attention paper', topicSlug: 'transformers', url: 'https://example.org/attention' },
+    now,
+  );
+  return { added, storage };
+}
+
+describe('buildUpgradedContent', () => {
+  it('writes provenance and the resolved URL when it differs', () => {
+    const content = buildUpgradedContent(
+      {
+        fetchedAt: now.toISOString(),
+        method: 'url',
+        sha256: 'a'.repeat(64),
+        title: 'Attention paper',
+        url: 'https://example.org/attention',
+      },
+      page,
+    );
+    expect(content).toContain('# Attention paper');
+    expect(content).toContain('Original URL: <https://example.org/attention>');
+    expect(content).toContain('Resolved URL: <https://example.org/attention-final>');
+    expect(content).toContain('Byline: A. Vaswani');
+    expect(content).toContain('Site: Example Journal');
+    expect(content).toContain('Fetched from example.org on 2026-07-21 via the local companion.');
+    expect(content).toContain('weigh the other tokens');
+  });
+
+  it('caps oversized text with the shared truncation marker', () => {
+    const content = buildUpgradedContent(
+      { fetchedAt: now.toISOString(), method: 'url', sha256: 'a'.repeat(64), title: 'Big', url: 'https://example.org/big' },
+      { ...page, text: 'x'.repeat(maxSourceBytes + 1024) },
+    );
+    expect(new TextEncoder().encode(content).byteLength).toBeLessThanOrEqual(maxSourceBytes);
+    expect(content.endsWith('\n\n[truncated]\n')).toBe(true);
+  });
+});
+
+describe('upgradeSource', () => {
+  it('replaces the stub, updates the manifest record, and logs the update', async () => {
+    const { added, storage } = await urlSourceFixture();
+    const upgraded = await upgradeSource(
+      storage,
+      { page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      now,
+    );
+
+    const item = await storage.read(upgraded.path);
+    expect(item?.content).toContain('weigh the other tokens');
+
+    const manifest = await readSourceManifest(storage, 'transformers', now);
+    const record = manifest.sources.find((source) => source.sha256 === added.record.sha256);
+    expect(record).toMatchObject({
+      mediaType: 'text/markdown',
+      method: 'url',
+      origin: { capturedVia: 'page-extract', provider: 'companion' },
+      path: added.path,
+      sha256: added.record.sha256,
+      title: 'Attention paper',
+      url: 'https://example.org/attention',
+    });
+    expect(record?.size).toBe(new TextEncoder().encode(item?.content ?? '').byteLength);
+
+    const log = await storage.read(upgraded.updatePath ?? '');
+    expect(log?.content).toContain('Upgraded url source');
+    expect(log?.content).toContain('Attention paper');
+  });
+
+  it('raises StorageConflictError when the item file changed outside Dusori', async () => {
+    const { added, storage } = await urlSourceFixture();
+    const item = await storage.read(added.path);
+    storage.files.set(added.path, { content: `${item?.content ?? ''}external edit\n`, modifiedAt: 99 });
+    await expect(
+      upgradeSource(storage, { page, sha256: added.record.sha256, topicSlug: 'transformers' }, now),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+  });
+
+  it('rejects unknown source ids with a friendly sentence', async () => {
+    const { storage } = await urlSourceFixture();
+    await expect(
+      upgradeSource(storage, { page, sha256: 'b'.repeat(64), topicSlug: 'transformers' }, now),
+    ).rejects.toThrow('This URL source is missing from the manifest. Refresh and try again.');
+  });
+});
