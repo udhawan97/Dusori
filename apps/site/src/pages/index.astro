@@ -17,7 +17,8 @@ const screenshotHref = `${projectBasePath}/app-workspace.png`;
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self'; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
     />
-    <meta name="theme-color" content="#f7f1e8" />
+    <meta name="theme-color" content="#f7f1e8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1715" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href={`${projectBasePath}/favicon.svg`} type="image/svg+xml" />
     <meta
       name="description"

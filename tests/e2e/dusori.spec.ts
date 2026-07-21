@@ -154,6 +154,54 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
   await expect(page.getByText('Connect this note to one verified source.')).toBeVisible();
 });
 
+test('website and docs render distinct, usable light and dark themes', async ({ page }) => {
+  const colors = async (): Promise<{ paper: string; ink: string; scheme: string }> =>
+    page.evaluate(() => {
+      const body = getComputedStyle(document.body);
+      return {
+        paper: body.backgroundColor,
+        ink: body.color,
+        scheme: getComputedStyle(document.documentElement).colorScheme,
+      };
+    });
+
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/Dusori/');
+  const websiteLight = await colors();
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const websiteDark = await colors();
+
+  expect(websiteLight.scheme).toContain('light');
+  expect(websiteDark.scheme).toContain('dark');
+  expect(websiteDark.paper).not.toBe(websiteLight.paper);
+  expect(websiteDark.ink).not.toBe(websiteLight.ink);
+  await expectNoSeriousA11yViolations(page);
+
+  await page.goto('/Dusori/docs/');
+  const themeSelect = page.getByRole('combobox', { name: 'Select theme' });
+
+  await themeSelect.selectOption('light');
+  const docsLight = await colors();
+  await themeSelect.selectOption('dark');
+  const docsDark = await colors();
+
+  expect(docsLight.scheme).toBe('light');
+  expect(docsDark.scheme).toBe('dark');
+  expect(docsDark.paper).not.toBe(docsLight.paper);
+  expect(docsDark.ink).not.toBe(docsLight.ink);
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await expect(themeSelect).toHaveValue('dark');
+  expect(await colors()).toEqual(docsDark);
+
+  await themeSelect.selectOption('auto');
+  expect(await colors()).toEqual(docsDark);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(colors).toEqual(docsLight);
+});
+
 test('topic creation writes the complete canonical OPFS tree', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);

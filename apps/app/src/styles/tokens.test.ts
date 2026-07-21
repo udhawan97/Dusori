@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 const tokenSource = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
 
-function token(name: string): [number, number, number] {
+function token(name: string, mode: 'light' | 'dark'): [number, number, number] {
   const match = tokenSource.match(
-    new RegExp(`--${name}:\\s*oklch\\(([0-9.]+)%\\s+([0-9.]+)\\s+([0-9.]+)\\)`, 'u'),
+    new RegExp(`--${name}-${mode}:\\s*oklch\\(([0-9.]+)%\\s+([0-9.]+)\\s+([0-9.]+)\\)`, 'u'),
   );
-  if (!match) throw new Error(`Missing OKLCH token: ${name}`);
+  if (!match) throw new Error(`Missing ${mode} OKLCH token: ${name}`);
   return [Number(match[1]) / 100, Number(match[2]), Number(match[3])];
 }
 
@@ -41,7 +41,6 @@ function contrast(first: [number, number, number], second: [number, number, numb
 }
 
 describe('quiet editorial utility tokens', () => {
-  const paper = token('paper');
   const expectations: Array<[string, number]> = [
     ['ink', 7],
     ['muted', 4.5],
@@ -51,9 +50,12 @@ describe('quiet editorial utility tokens', () => {
     ['accent', 3],
   ];
 
-  for (const [name, minimum] of expectations) {
-    it(`${name} has at least ${minimum}:1 contrast on paper`, () => {
-      expect(contrast(token(name), paper)).toBeGreaterThanOrEqual(minimum);
-    });
+  for (const mode of ['light', 'dark'] as const) {
+    const paper = token('paper', mode);
+    for (const [name, minimum] of expectations) {
+      it(`${mode} ${name} has at least ${minimum}:1 contrast on paper`, () => {
+        expect(contrast(token(name, mode), paper)).toBeGreaterThanOrEqual(minimum);
+      });
+    }
   }
 });

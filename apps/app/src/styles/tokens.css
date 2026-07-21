@@ -1,21 +1,49 @@
 /* Hallmark · macrostructure: Workbench · nav: N9 edge-aligned minimal · footer: Ft4 colophon
- * theme: custom · vibe: "quiet editorial utility" · paper: oklch(96% 0.014 80) · accent: oklch(58% 0.17 32)
- * display: Shippori Mincho · body: Zen Kaku Gothic New · axes: light / roman-serif / chromatic-vermilion
+ * theme: custom · vibe: "quiet editorial utility" · paper: light + dark · accent: vermilion
+ * display: Shippori Mincho · body: Zen Kaku Gothic New · axes: dual / roman-serif / chromatic-vermilion
  * enrichment: real app capture · studied: no · context: explicit · contrast: pass (40-41)
  * slop: pass (42-45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48)
- * responsive: pass (34, 49, 50-57) · icons: pass (30) · pre-emit critique: P5 H4 E4 S5 R5 V4
+ * responsive: pass (34, 49, 50-57) · icons: pass (30) · pre-emit critique: P5 H5 E5 S5 R5 V4
  */
 
 :root {
-  --paper: oklch(96% 0.014 80);
-  --paper-2: oklch(93% 0.016 80);
-  --ink: oklch(20% 0.012 55);
-  --muted: oklch(48% 0.01 60);
-  --rule: oklch(80% 0.012 75);
-  --border: oklch(57% 0.014 75);
-  --accent: oklch(58% 0.17 32);
-  --accent-text: oklch(46% 0.16 32);
-  --focus: oklch(55% 0.2 32);
+  color-scheme: light dark;
+
+  --paper-light: oklch(96% 0.014 80);
+  --paper-2-light: oklch(93% 0.016 80);
+  --ink-light: oklch(20% 0.012 55);
+  --muted-light: oklch(48% 0.01 60);
+  --rule-light: oklch(80% 0.012 75);
+  --border-light: oklch(57% 0.014 75);
+  --accent-light: oklch(58% 0.17 32);
+  --accent-text-light: oklch(46% 0.16 32);
+  --focus-light: oklch(55% 0.2 32);
+  --error-light: oklch(45% 0.16 25);
+  --success-light: oklch(39% 0.09 145);
+
+  --paper-dark: oklch(15% 0.012 55);
+  --paper-2-dark: oklch(19% 0.014 60);
+  --ink-dark: oklch(94% 0.012 80);
+  --muted-dark: oklch(72% 0.012 70);
+  --rule-dark: oklch(32% 0.014 70);
+  --border-dark: oklch(48% 0.014 70);
+  --accent-dark: oklch(67% 0.14 32);
+  --accent-text-dark: oklch(72% 0.13 32);
+  --focus-dark: oklch(70% 0.16 32);
+  --error-dark: oklch(68% 0.13 25);
+  --success-dark: oklch(68% 0.08 145);
+
+  --paper: light-dark(var(--paper-light), var(--paper-dark));
+  --paper-2: light-dark(var(--paper-2-light), var(--paper-2-dark));
+  --ink: light-dark(var(--ink-light), var(--ink-dark));
+  --muted: light-dark(var(--muted-light), var(--muted-dark));
+  --rule: light-dark(var(--rule-light), var(--rule-dark));
+  --border: light-dark(var(--border-light), var(--border-dark));
+  --accent: light-dark(var(--accent-light), var(--accent-dark));
+  --accent-text: light-dark(var(--accent-text-light), var(--accent-text-dark));
+  --focus: light-dark(var(--focus-light), var(--focus-dark));
+  --error: light-dark(var(--error-light), var(--error-dark));
+  --success: light-dark(var(--success-light), var(--success-dark));
 
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
@@ -27,8 +55,8 @@
   --color-accent-text: var(--accent-text);
   --color-accent-ink: var(--paper);
   --color-focus: var(--focus);
-  --color-error: oklch(45% 0.16 25);
-  --color-success: oklch(39% 0.09 145);
+  --color-error: var(--error);
+  --color-success: var(--success);
 
   --font-display: 'Shippori Mincho', 'Yu Mincho', serif;
   --font-body: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -73,4 +101,12 @@
   --z-modal: 400;
   --z-toast: 500;
   --z-tooltip: 600;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }

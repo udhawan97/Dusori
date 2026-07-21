@@ -5,6 +5,11 @@
     .paper { fill: #f7f1e8; }
     .ink { fill: none; stroke: #1a1511; stroke-linecap: round; stroke-linejoin: round; }
     .memory { fill: #cb4832; }
+    @media (prefers-color-scheme: dark) {
+      .paper { fill: #1b1715; }
+      .ink { stroke: #f7f1e8; }
+      .memory { fill: #db6750; }
+    }
   </style>
   <rect class="paper" width="64" height="64" rx="14" />
   <g transform="translate(9 9) scale(.18)">
