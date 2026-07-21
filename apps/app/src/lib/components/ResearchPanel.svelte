@@ -5,10 +5,13 @@
   import {
     addSource,
     buildResearchQuery,
+    createMsLearnProvider,
     dismissSuggestion,
     filterResearchSuggestions,
     readTopicProgress,
     researchProviders,
+    wikipediaProvider,
+    type CompanionResearchClient,
     type ResearchCandidate,
     type ResearchCapture,
     type ResearchProvider,
@@ -23,6 +26,14 @@
   export let topicSlug: string;
   export let topicTitle: string;
   export let onSourceSaved: () => void = () => undefined;
+  export let companion: CompanionResearchClient | null = null;
+
+  $: providers = companion
+    ? [
+        createMsLearnProvider({ ranked: (query) => companion.searchMsLearnRanked(query) }),
+        wikipediaProvider,
+      ]
+    : [...researchProviders];
 
   const networkAlternative =
     'Search needs a network connection. Paste text or add a URL reference from the source library instead.';
@@ -137,7 +148,7 @@
   }
 
   function providerFor(candidate: ResearchCandidate): ResearchProvider {
-    return researchProviders.find((provider) => provider.id === candidate.provider)!;
+    return providers.find((provider) => provider.id === candidate.provider)!;
   }
 
   function metadata(candidate: ResearchCandidate): string {
@@ -268,7 +279,7 @@
     </select>
 
     <div class="provider-actions" aria-label="Research providers">
-      {#each researchProviders as provider (provider.id)}
+      {#each providers as provider (provider.id)}
         <div class="provider-action">
           <button
             disabled={Boolean(loadingProvider)}

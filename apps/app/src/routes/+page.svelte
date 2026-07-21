@@ -21,6 +21,7 @@
     WorkspaceSchema,
     acceptMarkdownUpdate,
     clearWorkspace,
+    createCompanionResearchClient,
     createTopic,
     createWorkspace,
     exportWorkspace,
@@ -28,6 +29,7 @@
     lineDiff,
     proposeMarkdownUpdate,
     readMachineFile,
+    type CompanionResearchClient,
     type MarkdownConflict,
     type StorageAdapter,
     type Workspace,
@@ -58,6 +60,7 @@
   let inspectorOpen = false;
   let mobileNavOpen = false;
   let companionStatus = 'Not connected';
+  let companionClient: CompanionResearchClient | null = null;
   let sourceRevision = 0;
   let learningRevision = 0;
   let obsidianGuideOpen = false;
@@ -101,8 +104,10 @@
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error(`Companion returned ${response.status}.`);
+      companionClient = createCompanionResearchClient({ baseUrl: companion, token });
       companionStatus = 'Connected for this session';
     } catch {
+      companionClient = null;
       companionStatus =
         'Connection was denied. Allow local-network access, or open the URL printed by npx dusori.';
     }
@@ -732,13 +737,14 @@
                 topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
                   selectedSlug}
                 onSourceSaved={refreshSources}
+                companion={companionClient}
               />
             {/key}
           </div>
 
           <div class="source-slot">
             {#key `${selectedSlug}-${sourceRevision}`}
-              <SourceLibrary {storage} topicSlug={selectedSlug} />
+              <SourceLibrary {storage} topicSlug={selectedSlug} companion={companionClient} />
             {/key}
           </div>
 

@@ -1,17 +1,23 @@
 <script lang="ts">
   import { AlertTriangle, Check, FilePlus2 } from '@lucide/svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
 
   import {
+    StorageConflictError,
     addSource,
+    buildUpgradedContent,
     maxSourceBytes,
     readSourceManifest,
+    upgradeSource,
+    type CompanionResearchClient,
+    type FetchedPage,
     type SourceRecord,
     type StorageAdapter,
   } from '@dusori/core';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
+  export let companion: CompanionResearchClient | null = null;
 
   let method: 'paste' | 'file' | 'url' = 'paste';
   let title = '';
@@ -23,6 +29,121 @@
   let saving = false;
   let error = '';
   let success = '';
+
+  let confirming: SourceRecord | null = null;
+  let confirmFetchButton: HTMLButtonElement;
+  let confirmInvoker: HTMLButtonElement | null = null;
+  let fetchingSha = '';
+  let upgradePreview: {
+    content: string;
+    expectedContentHash: string;
+    page: FetchedPage;
+    record: SourceRecord;
+  } | null = null;
+  let upgradeCloseButton: HTMLButtonElement;
+  let replacing = false;
+  let upgradeError = '';
+
+  function hostOf(record: SourceRecord): string {
+    try {
+      return new URL(record.url ?? '').host;
+    } catch {
+      return '';
+    }
+  }
+
+  async function openConfirm(record: SourceRecord, invoker: HTMLButtonElement): Promise<void> {
+    confirming = record;
+    confirmInvoker = invoker;
+    upgradeError = '';
+    await tick();
+    confirmFetchButton?.focus();
+  }
+
+  async function cancelConfirm(): Promise<void> {
+    confirming = null;
+    await tick();
+    confirmInvoker?.focus();
+    confirmInvoker = null;
+  }
+
+  async function confirmFetch(): Promise<void> {
+    if (!confirming || !companion) return;
+    const record = confirming;
+    confirming = null;
+    fetchingSha = record.sha256;
+    upgradeError = '';
+    error = '';
+    success = '';
+    try {
+      const page = await companion.fetchPage(record.url ?? '');
+      // upgradeSource guards against external edits with the hash we read here.
+      const itemFile = record.path ? await storage.read(record.path) : null;
+      if (!itemFile) throw new Error('This source file is missing. Reload and try again.');
+      upgradePreview = {
+        content: buildUpgradedContent(record, page),
+        expectedContentHash: itemFile.hash,
+        page,
+        record,
+      };
+      await tick();
+      upgradeCloseButton?.focus();
+    } catch (caught) {
+      upgradeError =
+        caught instanceof Error ? caught.message : 'The companion could not fetch this page.';
+      await tick();
+      confirmInvoker?.focus();
+      confirmInvoker = null;
+    } finally {
+      fetchingSha = '';
+    }
+  }
+
+  async function closeUpgradePreview(): Promise<void> {
+    upgradePreview = null;
+    await tick();
+    confirmInvoker?.focus();
+    confirmInvoker = null;
+  }
+
+  async function replaceContent(): Promise<void> {
+    if (!upgradePreview) return;
+    replacing = true;
+    upgradeError = '';
+    error = '';
+    success = '';
+    try {
+      await upgradeSource(storage, {
+        expectedContentHash: upgradePreview.expectedContentHash,
+        page: upgradePreview.page,
+        sha256: upgradePreview.record.sha256,
+        topicSlug,
+      });
+      upgradePreview = null;
+      await refresh();
+      success = 'Source upgraded to full page content and recorded in the update log.';
+      await tick();
+      confirmInvoker?.focus();
+      confirmInvoker = null;
+    } catch (caught) {
+      upgradeError =
+        caught instanceof StorageConflictError
+          ? 'This source changed outside Dusori. Review the file, then try again.'
+          : caught instanceof Error
+            ? caught.message
+            : 'Dusori could not upgrade this source.';
+    } finally {
+      replacing = false;
+    }
+  }
+
+  function dialogKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    if (replacing) return;
+    if (upgradePreview) void closeUpgradePreview();
+    else if (confirming) void cancelConfirm();
+  }
 
   onMount(() => {
     void refresh();
@@ -58,6 +179,7 @@
     saving = true;
     error = '';
     success = '';
+    upgradeError = '';
     try {
       let result;
       if (method === 'paste') {
@@ -204,7 +326,12 @@
   </form>
 
   <div class="source-feedback" aria-live="polite">
-    {#if error}
+    {#if upgradeError}
+      <p class="source-message error" role="alert">
+        <AlertTriangle aria-hidden="true" size={17} />
+        <span>{upgradeError}</span>
+      </p>
+    {:else if error}
       <p class="source-message error" role="alert">
         <AlertTriangle aria-hidden="true" size={17} />
         <span>{error}</span>
@@ -234,11 +361,82 @@
             <strong>{source.title}</strong>
           {/if}
           <span>{sourceDetail(source)}</span>
+          {#if source.method === 'url' && companion}
+            <button
+              class="upgrade-source"
+              disabled={fetchingSha === source.sha256 || saving}
+              onclick={(event) =>
+                void openConfirm(source, event.currentTarget as HTMLButtonElement)}
+            >
+              {fetchingSha === source.sha256 ? 'Fetching…' : 'Fetch full content'}
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
+    {#if !companion && sources.some((source) => source.method === 'url')}
+      <p class="field-help">Run the companion (npx dusori) to fetch full page content.</p>
+    {/if}
   {/if}
 </section>
+
+{#if confirming}
+  <div class="dialog-backdrop">
+    <dialog
+      open
+      class="upgrade-dialog"
+      aria-labelledby="upgrade-confirm-title"
+      onkeydown={dialogKeydown}
+    >
+      <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
+      <p>
+        Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
+        readable text will replace this source's stub content.
+      </p>
+      <p class="upgrade-url"><code>{confirming.url}</code></p>
+      <div class="upgrade-actions">
+        <button
+          bind:this={confirmFetchButton}
+          class="primary-action"
+          onclick={() => void confirmFetch()}
+        >
+          Fetch page
+        </button>
+        <button onclick={() => void cancelConfirm()}>Keep reference only</button>
+      </div>
+    </dialog>
+  </div>
+{/if}
+
+{#if upgradePreview}
+  <div class="dialog-backdrop">
+    <dialog
+      open
+      class="upgrade-dialog"
+      aria-labelledby="upgrade-preview-title"
+      onkeydown={dialogKeydown}
+    >
+      <h3 id="upgrade-preview-title">Preview fetched content</h3>
+      {#if upgradePreview.page.truncated}
+        <p>This page was longer than the 2 MiB source limit and was truncated.</p>
+      {/if}
+      <p>Source markdown</p>
+      <pre>{upgradePreview.content}</pre>
+      <div class="upgrade-actions">
+        <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
+          {replacing ? 'Replacing…' : 'Replace content'}
+        </button>
+        <button
+          bind:this={upgradeCloseButton}
+          disabled={replacing}
+          onclick={() => void closeUpgradePreview()}
+        >
+          Keep the stub
+        </button>
+      </div>
+    </dialog>
+  </div>
+{/if}
 
 <style>
   /* Hallmark · component: source library · genre: editorial utility · theme: custom
@@ -339,6 +537,8 @@
   select:disabled,
   textarea:disabled,
   .add-source:disabled,
+  .upgrade-source:disabled,
+  .upgrade-actions button:disabled,
   .file-picker:has(input:disabled) {
     cursor: not-allowed;
     opacity: 0.55;
@@ -482,6 +682,75 @@
     font-size: var(--text-xs);
   }
 
+  .upgrade-source {
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: inherit;
+  }
+
+  .dialog-backdrop {
+    position: fixed;
+    z-index: var(--z-modal);
+    display: grid;
+    inset: 0;
+    padding: var(--page-gutter);
+    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
+    place-items: center;
+  }
+
+  .upgrade-dialog {
+    position: relative;
+    width: min(38rem, 100%);
+    max-height: calc(100dvh - 2 * var(--page-gutter));
+    margin: 0;
+    padding: var(--space-lg);
+    overflow: auto;
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  .upgrade-dialog pre {
+    max-height: 45vh;
+    overflow: auto;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    font-size: var(--text-xs);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .upgrade-url code {
+    overflow-wrap: anywhere;
+  }
+
+  .upgrade-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-block-start: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .upgrade-actions button {
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: inherit;
+  }
+
+  .upgrade-actions .primary-action {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
   @media (hover: hover) and (pointer: fine) {
     input:hover,
     select:hover,
@@ -491,6 +760,15 @@
     }
 
     .add-source:hover:not(:disabled) {
+      background: var(--color-accent-text);
+    }
+
+    .upgrade-source:hover:not(:disabled),
+    .upgrade-actions button:hover:not(:disabled) {
+      background: var(--color-paper-2);
+    }
+
+    .upgrade-actions .primary-action:hover:not(:disabled) {
       background: var(--color-accent-text);
     }
   }
