@@ -2,6 +2,12 @@
 
 All notable Dusori changes are documented here. Dusori follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Scale the browser-local knowledge constellation to workspace size and order topics by wikilink affinity, with deterministic geometry audits that prevent node collisions and clipping.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

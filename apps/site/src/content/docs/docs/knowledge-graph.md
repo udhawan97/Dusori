@@ -23,7 +23,7 @@ The graph uses normalized relative file paths as stable node IDs. Labels come fr
 
 Choose **Graph** in the workspace rail. The constellation is paired with an accessible artifact index. Select an artifact there to open the original Markdown or text file in Dusori.
 
-The layout is deterministic and browser-local. It does not write coordinates into your workspace, so opening the same folder in Obsidian remains clean.
+The constellation scales with workspace size and orders topics by their wikilink affinity. The layout remains deterministic and browser-local and writes no coordinates into your workspace, so opening the same folder in Obsidian remains clean.
 
 ## Portability and privacy
 

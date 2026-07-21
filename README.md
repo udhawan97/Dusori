@@ -167,3 +167,10 @@ See [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.
 ## License
 
 Dusori is released under the [Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.
+
+## Acknowledgements
+
+- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) for the constellation and link-affinity ideas.
+- [tt-a1i/archify](https://github.com/tt-a1i/archify) (MIT) for the geometry self-audit idea.
+
+These ideas were reimplemented independently; no code was copied.
