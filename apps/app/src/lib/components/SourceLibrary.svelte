@@ -215,6 +215,10 @@
       }
 
       await refresh();
+      // The write already succeeded. refresh() sets `error` on its own when the read-back
+      // fails, and `error` outranks `success` in the feedback region, so clear it here to
+      // avoid reporting a completed add as a failure.
+      error = '';
       success = result.deduplicated
         ? 'That source is already in this topic.'
         : 'Source added to this topic and its update log.';

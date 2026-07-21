@@ -10,12 +10,14 @@
     Menu,
     PanelRightClose,
     PanelRightOpen,
+    Plus,
     ShieldCheck,
     Share2,
     Upload,
     X,
   } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
+  import { SvelteURLSearchParams } from 'svelte/reactivity';
 
   import {
     WorkspaceSchema,
@@ -67,6 +69,11 @@
   let obsidianGuideOpen = false;
   let obsidianDialog: HTMLElement;
   let statusTimer: number | undefined;
+  let creatingTopic = false;
+  let previousSlug = '';
+  let conflictPanel: HTMLElement | undefined;
+
+  const unlockHint = 'Select or create a topic to open these views.';
 
   $: diff = conflict
     ? lineDiff(conflict.currentContent, conflict.proposalContent).filter(
@@ -79,11 +86,48 @@
     const syncInspector = () => (inspectorOpen = desktop.matches);
     syncInspector();
     desktop.addEventListener('change', syncInspector);
+    const restoreView = () => void applyLocationView();
+    window.addEventListener('popstate', restoreView);
     void restoreWorkspace();
     void registerServiceWorker();
     void connectCompanionFromUrl();
-    return () => desktop.removeEventListener('change', syncInspector);
+    return () => {
+      desktop.removeEventListener('change', syncInspector);
+      window.removeEventListener('popstate', restoreView);
+    };
   });
+
+  /** Reflects the open view in the URL so reload, Back and Forward all land where the user was. */
+  function syncLocation(replace = false): void {
+    const parameters = new SvelteURLSearchParams(location.search);
+    if (selectedSlug) parameters.set('topic', selectedSlug);
+    else parameters.delete('topic');
+    if (workspaceView === 'today') parameters.delete('view');
+    else parameters.set('view', workspaceView);
+    if (workspaceView === 'note' && notePath) parameters.set('path', notePath);
+    else parameters.delete('path');
+
+    const query = parameters.toString();
+    const next = `${location.pathname}${query ? `?${query}` : ''}`;
+    if (next === `${location.pathname}${location.search}`) return;
+    if (replace) history.replaceState(null, '', next);
+    else history.pushState(null, '', next);
+  }
+
+  /** Applies the view described by the current URL. Never writes history back. */
+  async function applyLocationView(): Promise<void> {
+    if (!storage || !workspace) return;
+    const parameters = new URLSearchParams(location.search);
+    const slug = parameters.get('topic') ?? '';
+    const known = workspace.topics.some((topic) => topic.slug === slug);
+    if (!known) return;
+    const view = parameters.get('view');
+    const path = parameters.get('path');
+    if (view === 'graph') openGraph(false);
+    else if (view === 'roadmap') await openRoadmap(slug, false);
+    else if (view === 'note' && path) await openGraphDocument(path, false);
+    else openToday(slug, false);
+  }
 
   async function registerServiceWorker(): Promise<void> {
     if ('serviceWorker' in navigator) {
@@ -127,24 +171,35 @@
       if (saved) {
         const adapter = new FsaStorageAdapter(saved);
         if (await adapter.read('dusori.json')) {
-          await activateStorage(adapter, `Folder · ${saved.name}`);
+          await activateStorage(adapter, `Folder · ${saved.name}`, true);
           return;
         }
       }
       const adapter = await createOpfsStorage();
       if (await adapter.read('dusori.json'))
-        await activateStorage(adapter, 'Browser workspace · private');
+        await activateStorage(adapter, 'Browser workspace · private', true);
     } catch {
       // Restoration is best-effort. Setup remains available.
     }
   }
 
-  async function activateStorage(adapter: StorageAdapter, label: string): Promise<void> {
+  /**
+   * `restoreView` is for the initial page load only. Creating or importing a workspace starts at
+   * Today instead of reviving a view that belonged to the workspace being replaced.
+   */
+  async function activateStorage(
+    adapter: StorageAdapter,
+    label: string,
+    restoreView = false,
+  ): Promise<void> {
     storage = adapter;
     storageLabel = label;
     workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
     const first = workspace.topics[0];
-    if (first) openToday(first.slug);
+    if (!first) return;
+    openToday(first.slug, false);
+    if (restoreView) await applyLocationView();
+    else syncLocation(true);
   }
 
   async function createBrowserWorkspace(): Promise<void> {
@@ -177,6 +232,9 @@
     await perform(async () => {
       const created = await createTopic(storage!, topicTitle.trim());
       workspace = created.workspace;
+      creatingTopic = false;
+      previousSlug = '';
+      topicTitle = '';
       await openTopic(created.topicSlug);
       status = created.workspaceHomeConflict
         ? 'Topic created. Home.md had external changes, so a proposal was written beside it.'
@@ -184,8 +242,27 @@
     });
   }
 
+  /** Reveals the topic form again once a workspace already has topics. */
+  function startNewTopic(): void {
+    previousSlug = selectedSlug;
+    creatingTopic = true;
+    selectedSlug = '';
+    notePath = '';
+    conflict = null;
+    mobileNavOpen = false;
+    syncLocation();
+  }
+
+  function cancelNewTopic(): void {
+    creatingTopic = false;
+    const slug = previousSlug;
+    previousSlug = '';
+    if (slug) openToday(slug);
+  }
+
   async function openTopic(slug: string): Promise<void> {
     if (!storage) return;
+    creatingTopic = false;
     selectedSlug = slug;
     await openDocument('Notes/001-first-look.md');
     conflict = null;
@@ -199,6 +276,7 @@
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
+    syncLocation();
   }
 
   function showImportedRoadmap(content: string): void {
@@ -207,6 +285,7 @@
     noteContent = content;
     learningRevision += 1;
     conflict = null;
+    syncLocation();
     announceStatus('Curriculum applied. The imported roadmap is open.');
   }
 
@@ -214,42 +293,49 @@
     sourceRevision += 1;
   }
 
-  function openToday(slug = selectedSlug): void {
+  function openToday(slug = selectedSlug, record = true): void {
     if (!slug) return;
+    creatingTopic = false;
     selectedSlug = slug;
     workspaceView = 'today';
     notePath = '';
     conflict = null;
     mobileNavOpen = false;
+    if (record) syncLocation();
   }
 
-  async function openRoadmap(slug = selectedSlug): Promise<void> {
+  async function openRoadmap(slug = selectedSlug, record = true): Promise<void> {
     if (!storage || !slug) return;
+    creatingTopic = false;
     selectedSlug = slug;
     workspaceView = 'roadmap';
     notePath = `Topics/${slug}/roadmap.md`;
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
+    if (record) syncLocation();
   }
 
-  function openGraph(): void {
+  function openGraph(record = true): void {
+    creatingTopic = false;
     workspaceView = 'graph';
     notePath = '';
     conflict = null;
-    inspectorOpen = false;
     mobileNavOpen = false;
+    if (record) syncLocation();
   }
 
-  async function openGraphDocument(path: string): Promise<void> {
+  async function openGraphDocument(path: string, record = true): Promise<void> {
     if (!storage) return;
     const match = /^Topics\/([^/]+)\//u.exec(path);
     if (match?.[1]) selectedSlug = match[1];
+    creatingTopic = false;
     workspaceView = 'note';
     notePath = path;
     noteContent = (await storage.read(path))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
+    if (record) syncLocation();
   }
 
   function handleRoadmapChanged(slug: string, content: string): void {
@@ -273,11 +359,27 @@
         proposed,
       );
       if ('proposalPath' in result) conflict = result;
+      // The proof is only convincing if its result is on screen: show the note the proposal
+      // concerns, then bring the diff and its accept action into view.
+      workspaceView = 'note';
       notePath = firstNotePath;
       noteContent = (await storage!.read(firstNotePath))?.content ?? externallyEdited;
+      syncLocation();
       status = 'External content stayed in place. Dusori wrote a separate proposal and update log.';
       if (window.innerWidth < 960) inspectorOpen = false;
+      await tick();
+      conflictPanel?.scrollIntoView({ block: 'start' });
     });
+  }
+
+  /** Brings an existing proposal back on screen from the inspector. */
+  async function showConflict(): Promise<void> {
+    if (!conflict) return;
+    workspaceView = 'note';
+    syncLocation();
+    if (window.innerWidth < 960) inspectorOpen = false;
+    await tick();
+    conflictPanel?.scrollIntoView({ block: 'start' });
   }
 
   async function acceptConflict(): Promise<void> {
@@ -547,6 +649,7 @@
           class:active={workspaceView === 'today'}
           class="rail-link"
           disabled={!selectedSlug}
+          title={selectedSlug ? undefined : unlockHint}
           onclick={() => openToday()}
         >
           <BookOpen aria-hidden="true" size={18} />
@@ -556,6 +659,7 @@
           class:active={workspaceView === 'roadmap'}
           class="rail-link"
           disabled={!selectedSlug}
+          title={selectedSlug ? undefined : unlockHint}
           onclick={() => openRoadmap()}
         >
           <ListChecks aria-hidden="true" size={18} />
@@ -565,11 +669,15 @@
           class:active={workspaceView === 'graph'}
           class="rail-link"
           disabled={!workspace.topics.length}
-          onclick={openGraph}
+          title={workspace.topics.length ? undefined : unlockHint}
+          onclick={() => openGraph()}
         >
           <Share2 aria-hidden="true" size={18} />
           Graph
         </button>
+        {#if !selectedSlug}
+          <p class="rail-hint">{unlockHint}</p>
+        {/if}
       </div>
       <div class="rail-section topic-list">
         <p>Topics</p>
@@ -577,12 +685,17 @@
           <button
             class:active={topic.slug === selectedSlug}
             class="rail-link"
+            title={topic.title}
             onclick={() => openTopic(topic.slug)}
           >
             <FileText aria-hidden="true" size={18} />
-            {topic.title}
+            <span class="rail-link-label">{topic.title}</span>
           </button>
         {/each}
+        <button class:active={creatingTopic} class="rail-link new-topic" onclick={startNewTopic}>
+          <Plus aria-hidden="true" size={18} />
+          <span class="rail-link-label">New topic</span>
+        </button>
       </div>
       <div class="rail-meta">
         <span>{storageLabel}</span>
@@ -658,7 +771,9 @@
       {:else}
         <section class="empty-topic" aria-labelledby="new-topic-title">
           <p class="kicker">One useful beginning</p>
-          <h1 id="new-topic-title">Create your first topic.</h1>
+          <h1 id="new-topic-title">
+            {workspace.topics.length ? 'Create another topic.' : 'Create your first topic.'}
+          </h1>
           <p>
             Dusori will create the note, roadmap, preferences, state, sources, and update history.
           </p>
@@ -682,12 +797,22 @@
               </button>
             </div>
             <p id="topic-help">Use a name that will still make sense as a folder.</p>
+            {#if previousSlug}
+              <button class="text-button" type="button" disabled={busy} onclick={cancelNewTopic}>
+                Cancel and go back
+              </button>
+            {/if}
           </form>
         </section>
       {/if}
 
       {#if conflict}
-        <section class="conflict-panel" aria-labelledby="conflict-title">
+        <section
+          class="conflict-panel"
+          bind:this={conflictPanel}
+          tabindex="-1"
+          aria-labelledby="conflict-title"
+        >
           <div class="conflict-heading">
             <ShieldCheck aria-hidden="true" size={24} strokeWidth={1.5} />
             <div>
@@ -722,86 +847,96 @@
         aria-label="Close workspace details"
         onclick={() => (inspectorOpen = false)}
       ></button>
-      <aside class:open={inspectorOpen} class="inspector" aria-label="Workspace details">
-        <button
-          class="inspector-close"
-          aria-label="Close workspace details"
-          onclick={() => (inspectorOpen = false)}
-        >
-          <X aria-hidden="true" size={20} />
-        </button>
-        <section>
-          <p class="kicker">Storage</p>
-          <h2>{storage?.kind === 'fsa' ? 'Connected folder' : 'Browser workspace'}</h2>
-          <p>{storageLabel}</p>
-        </section>
-
-        {#if selectedSlug && storage}
-          <div class="research-slot">
-            {#key `${selectedSlug}-${learningRevision}`}
-              <ResearchPanel
-                {storage}
-                topicSlug={selectedSlug}
-                topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
-                  selectedSlug}
-                onSourceSaved={refreshSources}
-                companion={companionClient}
-              />
-            {/key}
-          </div>
-
-          <div class="source-slot">
-            {#key `${selectedSlug}-${sourceRevision}`}
-              <SourceLibrary {storage} topicSlug={selectedSlug} companion={companionClient} />
-            {/key}
-          </div>
-
-          <div class="curriculum-slot">
-            {#key selectedSlug}
-              <CurriculumImporter
-                {storage}
-                topicSlug={selectedSlug}
-                onRoadmapApplied={showImportedRoadmap}
-                onSourceSaved={refreshSources}
-              />
-            {/key}
-          </div>
-        {/if}
-
-        <section>
-          <p class="kicker">Portability</p>
-          <button class="inspector-action" disabled={busy} onclick={downloadWorkspace}>
-            <Download aria-hidden="true" size={18} />
-            Export workspace
-          </button>
-          <label class="inspector-action file-action">
-            <Upload aria-hidden="true" size={18} />
-            Import workspace
-            <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
-          </label>
-        </section>
-
-        {#if selectedSlug}
-          <section>
-            <p class="kicker">Safety proof</p>
-            <p>Exercise the stale-write path without replacing the current note.</p>
-            <button
-              class="inspector-action"
-              disabled={busy || Boolean(conflict)}
-              onclick={runConflictProof}
-            >
-              <ShieldCheck aria-hidden="true" size={18} />
-              {conflict ? 'Conflict preserved' : 'Run conflict proof'}
-            </button>
-          </section>
-        {/if}
-
-        <section class="companion-state">
-          <p class="kicker">Local companion</p>
-          <p>{companionStatus}</p>
-        </section>
-      </aside>
     {/if}
+    <!-- Kept mounted while closed: unmounting would discard a pasted curriculum outline,
+         a half-written source, and any research results the user already consented to fetch. -->
+    <aside
+      class:open={inspectorOpen}
+      class="inspector"
+      aria-label="Workspace details"
+      inert={!inspectorOpen}
+    >
+      <button
+        class="inspector-close"
+        aria-label="Close workspace details"
+        onclick={() => (inspectorOpen = false)}
+      >
+        <X aria-hidden="true" size={20} />
+      </button>
+      <section>
+        <p class="kicker">Storage</p>
+        <h2>{storage?.kind === 'fsa' ? 'Connected folder' : 'Browser workspace'}</h2>
+        <p>{storageLabel}</p>
+      </section>
+
+      {#if selectedSlug && storage}
+        <div class="research-slot">
+          {#key `${selectedSlug}-${learningRevision}`}
+            <ResearchPanel
+              {storage}
+              topicSlug={selectedSlug}
+              topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                selectedSlug}
+              onSourceSaved={refreshSources}
+              companion={companionClient}
+            />
+          {/key}
+        </div>
+
+        <div class="source-slot">
+          {#key `${selectedSlug}-${sourceRevision}`}
+            <SourceLibrary {storage} topicSlug={selectedSlug} companion={companionClient} />
+          {/key}
+        </div>
+
+        <div class="curriculum-slot">
+          {#key selectedSlug}
+            <CurriculumImporter
+              {storage}
+              topicSlug={selectedSlug}
+              onRoadmapApplied={showImportedRoadmap}
+              onSourceSaved={refreshSources}
+            />
+          {/key}
+        </div>
+      {/if}
+
+      <section>
+        <p class="kicker">Portability</p>
+        <button class="inspector-action" disabled={busy} onclick={downloadWorkspace}>
+          <Download aria-hidden="true" size={18} />
+          Export workspace
+        </button>
+        <label class="inspector-action file-action">
+          <Upload aria-hidden="true" size={18} />
+          Import workspace
+          <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
+        </label>
+      </section>
+
+      {#if selectedSlug}
+        <section>
+          <p class="kicker">Safety proof</p>
+          <p>Exercise the stale-write path without replacing the current note.</p>
+          {#if conflict}
+            <button class="inspector-action" onclick={showConflict}>
+              <ShieldCheck aria-hidden="true" size={18} />
+              Review the proposal
+            </button>
+          {:else}
+            <button class="inspector-action" disabled={busy} onclick={runConflictProof}>
+              <ShieldCheck aria-hidden="true" size={18} />
+              Run conflict proof
+            </button>
+          {/if}
+        </section>
+      {/if}
+
+      <section class="companion-state">
+        <p class="kicker">Local companion</p>
+        <p>{companionStatus}</p>
+      </section>
+    </aside>
 
     {#if error || status}
       <div class="mobile-status" aria-live="polite">
@@ -1195,11 +1330,14 @@
     display: grid;
     gap: var(--space-xs);
     margin-block-start: var(--space-xl);
+    /* An auto track would grow to the longest topic name and push the rail over the canvas. */
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .rail-link {
     display: flex;
     width: 100%;
+    min-width: 0;
     min-height: 2.75rem;
     align-items: center;
     gap: var(--space-xs);
@@ -1213,6 +1351,26 @@
   .rail-link.active {
     border-color: var(--color-rule);
     background: var(--color-paper);
+  }
+
+  /* A topic name can run to 160 characters; truncate in place instead of spilling over the
+   * canvas. The full name stays in the button's title and in the graph artifact index. */
+  .rail-link-label {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .rail-link.new-topic {
+    color: var(--color-accent-text);
+    font-weight: 700;
+  }
+
+  .rail-hint {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    line-height: 1.45;
   }
 
   .rail-meta {
@@ -1430,6 +1588,11 @@
       height: 100dvh;
       flex-direction: column;
       background: var(--color-paper-2);
+    }
+
+    /* Closed means hidden, not unmounted, so inspector drafts survive. */
+    .inspector:not(.open) {
+      display: none;
     }
 
     .rail {

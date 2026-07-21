@@ -393,7 +393,8 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
 
   await page.getByRole('button', { name: 'Graph' }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
-  await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
+  // The inspector stays mounted and open across view changes so its unsaved drafts survive.
+  await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeVisible();
   const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
   await expect(graph).toBeVisible();
   await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText('First look');
@@ -420,6 +421,71 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
     .getByRole('button', { name: /First look/u })
     .click();
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
+});
+
+test('a workspace can grow past its first topic', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'New topic' }).click();
+  await expect(page.getByRole('heading', { name: 'Create another topic.' })).toBeVisible();
+  await page.getByLabel('Topic name').fill('Distributed Systems Consensus Protocols in Practice');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+
+  const rail = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(rail.getByRole('button', { name: 'AI Fundamentals' })).toBeVisible();
+  await expect(
+    rail.getByRole('button', { name: 'Distributed Systems Consensus Protocols in Practice' }),
+  ).toBeVisible();
+
+  // A long topic name truncates inside the rail instead of spilling across the canvas.
+  const railBox = (await rail.boundingBox())!;
+  const longTopic = (await rail
+    .getByRole('button', { name: 'Distributed Systems Consensus Protocols in Practice' })
+    .boundingBox())!;
+  expect(longTopic.x + longTopic.width).toBeLessThanOrEqual(railBox.x + railBox.width + 1);
+
+  await page.getByRole('button', { name: 'Today' }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.locator('.today-ledger')).toContainText('2');
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('closing the inspector keeps unsaved drafts and the open view survives reload', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await previewCurriculum(page);
+
+  await page.getByRole('button', { name: 'Edit' }).click();
+  const outline = page.getByLabel('Outline text');
+  await expect(outline).not.toHaveValue('');
+
+  // Every one of these used to unmount the inspector and destroy the pasted outline.
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page.getByRole('button', { name: 'Graph' }).click();
+  await page.getByRole('button', { name: 'Open inspector' }).click();
+  await expect(page.getByLabel('Outline text')).toHaveValue(/Skills measured/u);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('view')).toBe('graph');
+});
+
+test('the conflict proof brings its proposal on screen', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await page.getByRole('button', { name: 'Today' }).click();
+  await runConflictProof(page);
+
+  // Run from Today, the proof still lands on the note it protected, with the decision in view.
+  const accept = page.getByRole('button', { name: 'Accept this proposal' });
+  await expect(accept).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Review the proposal' })).toBeVisible();
+
+  await accept.click();
+  await expect(page.getByRole('heading', { name: 'Proposed next step' })).toBeVisible();
 });
 
 test('source library stores pasted text and URL references without remote fetching', async ({
@@ -500,7 +566,7 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
 
   let disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
   await expect(disclosure).toContainText(
-    "Searching sends this objective's text to Microsoft Learn (learn.microsoft.com) over HTTPS. Nothing else from your workspace is sent. Allow on this device?",
+    'Searching downloads the public Microsoft Learn module catalog (learn.microsoft.com) over HTTPS and ranks it on this device. Nothing from your workspace is sent. Allow on this device?',
   );
   await disclosure.getByRole('button', { name: 'Keep search off' }).click();
   await expect(searchMicrosoftLearn).toBeFocused();
@@ -532,9 +598,9 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Establish identity terms with Microsoft Entra',
   );
-  expect(await page.evaluate(() => localStorage.getItem('dusori-research-consent:mslearn'))).toBe(
-    'allowed',
-  );
+  expect(
+    await page.evaluate(() => localStorage.getItem('dusori-research-consent:v2:mslearn')),
+  ).toBe('allowed');
   await expectNoSeriousA11yViolations(page);
 
   await page.getByRole('button', { name: 'Graph' }).click();

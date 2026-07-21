@@ -92,7 +92,13 @@ async function catalogSearch(
 }
 
 export const MS_LEARN_DISCLOSURE =
-  "Searching sends this objective's text to Microsoft Learn (learn.microsoft.com) over HTTPS. Nothing else from your workspace is sent. Allow on this device?";
+  'Searching downloads the public Microsoft Learn module catalog (learn.microsoft.com) over HTTPS and ranks it on this device. Nothing from your workspace is sent. Allow on this device?';
+
+// The ranked path really does send the query, so it cannot reuse the catalog-only
+// disclosure or its consent. Its own scope makes the app ask again rather than
+// silently widen what an earlier "nothing is sent" answer authorised.
+export const MS_LEARN_RANKED_DISCLOSURE =
+  "Searching sends this topic's name and the objective's text to Microsoft Learn (learn.microsoft.com) over HTTPS, through the local companion. Nothing else from your workspace is sent. Allow on this device?";
 
 export type RankedMsLearnSearch = (query: ResearchQuery) => Promise<ResearchCandidate[]>;
 
@@ -100,7 +106,8 @@ export function createMsLearnProvider(
   options: { ranked?: RankedMsLearnSearch } = {},
 ): ResearchProvider {
   return {
-    disclosure: MS_LEARN_DISCLOSURE,
+    consentScope: options.ranked ? 'mslearn-ranked' : 'mslearn',
+    disclosure: options.ranked ? MS_LEARN_RANKED_DISCLOSURE : MS_LEARN_DISCLOSURE,
     id: 'mslearn',
     label: 'Microsoft Learn',
 

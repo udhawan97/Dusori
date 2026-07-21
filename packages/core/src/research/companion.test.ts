@@ -5,6 +5,7 @@ import type { ResearchQuery } from './types.js';
 
 const query: ResearchQuery = {
   objectiveTitle: 'Configure Entra ID',
+  searchText: 'AZ-104 Configure Entra ID',
   terms: ['entra'],
   topicTitle: 'AZ-104',
 };
@@ -67,7 +68,7 @@ describe('createCompanionResearchClient', () => {
   it('maps ranked search results into descending-score mslearn candidates', async () => {
     const results = await client((async (input: RequestInfo | URL) => {
       expect(String(input)).toBe(
-        'http://127.0.0.1:8000/api/research/mslearn-search?q=Configure%20Entra%20ID',
+        'http://127.0.0.1:8000/api/research/mslearn-search?q=AZ-104%20Configure%20Entra%20ID',
       );
       return Response.json({
         results: [

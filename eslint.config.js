@@ -15,6 +15,7 @@ export default tseslint.config(
       '**/packages/companion/public/**',
       '**/.playwright-cli/**',
       '**/.claude/worktrees/**',
+      '**/.remember/**',
       '**/playwright-report/**',
       '**/test-results/**',
       'output/**',

@@ -83,7 +83,7 @@ export function createCompanionResearchClient(
     },
 
     async searchMsLearnRanked(query) {
-      const url = `${base}/api/research/mslearn-search?q=${encodeURIComponent(query.objectiveTitle)}`;
+      const url = `${base}/api/research/mslearn-search?q=${encodeURIComponent(query.searchText)}`;
       const response = await fetchImpl(url, { headers: authorization }).catch(() => null);
       if (!response?.ok) throw new CompanionFetchError(fallbackSearchError, 'fetch-failed');
 

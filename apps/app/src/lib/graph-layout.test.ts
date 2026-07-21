@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceGraph, WorkspaceGraphNode, WorkspaceGraphNodeKind } from '@dusori/core';
 
-import { NODE_RADIUS, layoutWorkspaceGraph, neighborIds, wikilinkDegrees } from './graph-layout.js';
+import {
+  LABEL_MAX_CHARS,
+  NODE_RADIUS,
+  fitGraphLabel,
+  layoutWorkspaceGraph,
+  neighborIds,
+  wikilinkDegrees,
+} from './graph-layout.js';
 
 function node(id: string, kind: WorkspaceGraphNodeKind, topicSlug?: string): WorkspaceGraphNode {
   return { id, kind, label: id, path: id, ...(topicSlug ? { topicSlug } : {}) };
@@ -112,6 +119,30 @@ describe('layoutWorkspaceGraph', () => {
 
   it('returns positive finite bounds for an empty graph', () => {
     expect(layoutWorkspaceGraph(graph([]))).toEqual({ nodes: [], width: 80, height: 80 });
+  });
+});
+
+describe('fitGraphLabel', () => {
+  it('leaves a label that already fits the reserved width untouched', () => {
+    expect(fitGraphLabel('Roadmap')).toBe('Roadmap');
+    expect(fitGraphLabel('Preferences')).toBe('Preferences');
+  });
+
+  it('truncates a long title to the reserved width so it cannot cross a neighbouring node', () => {
+    const fitted = fitGraphLabel('How I Met Your Mother');
+    expect(fitted.length).toBeLessThanOrEqual(LABEL_MAX_CHARS);
+    expect(fitted.endsWith('…')).toBe(true);
+  });
+
+  it('honours a smaller budget for labels that carry a hub suffix', () => {
+    expect(fitGraphLabel('2026-07-21 update', LABEL_MAX_CHARS - 5).length).toBeLessThanOrEqual(
+      LABEL_MAX_CHARS - 5,
+    );
+  });
+
+  it('collapses whitespace and never returns an empty label', () => {
+    expect(fitGraphLabel('  spaced   out  ')).toBe('spaced out');
+    expect(fitGraphLabel('abc', 1)).toBe('…');
   });
 });
 

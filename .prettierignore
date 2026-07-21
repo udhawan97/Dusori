@@ -4,6 +4,7 @@ packages/companion/public
 .playwright-cli
 .claude/worktrees
 .superpowers
+.remember
 build
 .svelte-kit
 .astro
