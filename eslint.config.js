@@ -14,6 +14,7 @@ export default tseslint.config(
       '**/.astro/**',
       '**/packages/companion/public/**',
       '**/.playwright-cli/**',
+      '**/.claude/worktrees/**',
       '**/playwright-report/**',
       '**/test-results/**',
       'output/**',

@@ -2,6 +2,7 @@ node_modules
 dist
 packages/companion/public
 .playwright-cli
+.claude/worktrees
 build
 .svelte-kit
 .astro
