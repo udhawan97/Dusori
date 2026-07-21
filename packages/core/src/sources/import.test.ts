@@ -228,7 +228,11 @@ describe('source origin schema', () => {
       SourceRecordSchema.parse({
         fetchedAt: '2026-07-21T00:00:00.000Z',
         method: 'url',
-        origin: { capturedAt: '2026-07-21T00:00:00.000Z', capturedVia: 'page-extract', provider: '' },
+        origin: {
+          capturedAt: '2026-07-21T00:00:00.000Z',
+          capturedVia: 'page-extract',
+          provider: '',
+        },
         sha256: 'a'.repeat(64),
         title: 'Example',
         url: 'https://example.org/',

@@ -62,7 +62,10 @@ function metadataLines(candidate: ResearchCandidate): string[] {
   return lines;
 }
 
-async function catalogSearch(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]> {
+async function catalogSearch(
+  query: ResearchQuery,
+  fetchImpl: typeof fetch,
+): Promise<ResearchCandidate[]> {
   const modules = await readCatalog(fetchImpl);
   return modules
     .map((module) => ({

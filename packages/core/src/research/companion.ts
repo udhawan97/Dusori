@@ -41,10 +41,13 @@ export interface CompanionClientOptions {
   fetchImpl?: typeof fetch;
 }
 
-const fallbackFetchError = 'The companion could not fetch this page. Check that it is still running.';
+const fallbackFetchError =
+  'The companion could not fetch this page. Check that it is still running.';
 const fallbackSearchError = 'Microsoft Learn ranked search could not be reached.';
 
-export function createCompanionResearchClient(options: CompanionClientOptions): CompanionResearchClient {
+export function createCompanionResearchClient(
+  options: CompanionClientOptions,
+): CompanionResearchClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
   const authorization = { Authorization: `Bearer ${options.token}` };
@@ -71,7 +74,10 @@ export function createCompanionResearchClient(options: CompanionClientOptions): 
       const body: unknown = await response.json().catch(() => null);
       const parsed = FetchedPageSchema.safeParse(body);
       if (!parsed.success) {
-        throw new CompanionFetchError('The companion returned an unfamiliar fetch format.', 'fetch-failed');
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar fetch format.',
+          'fetch-failed',
+        );
       }
       return parsed.data;
     },
@@ -84,7 +90,10 @@ export function createCompanionResearchClient(options: CompanionClientOptions): 
       const body: unknown = await response.json().catch(() => null);
       const parsed = RankedResponseSchema.safeParse(body);
       if (!parsed.success) {
-        throw new CompanionFetchError('The companion returned an unfamiliar search format.', 'fetch-failed');
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar search format.',
+          'fetch-failed',
+        );
       }
 
       return parsed.data.results.map((result, index, all) => ({

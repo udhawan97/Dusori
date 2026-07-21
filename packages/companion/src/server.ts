@@ -146,12 +146,10 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
           .code(badRequestReasons.has(error.reason) ? 400 : 502)
           .send({ error: error.message, reason: error.reason });
       }
-      return reply
-        .code(500)
-        .send({
-          error: 'The research service failed unexpectedly. Paste the text instead.',
-          reason: 'fetch-failed',
-        });
+      return reply.code(500).send({
+        error: 'The research service failed unexpectedly. Paste the text instead.',
+        reason: 'fetch-failed',
+      });
     }
   });
 
@@ -166,13 +164,10 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
       if (error instanceof MsLearnProxyError) {
         return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
       }
-      return reply
-        .code(500)
-        .send({
-          error:
-            'The research service failed unexpectedly. Try again, or paste the summary instead.',
-          reason: 'fetch-failed',
-        });
+      return reply.code(500).send({
+        error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',
+        reason: 'fetch-failed',
+      });
     }
   });
 

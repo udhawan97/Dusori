@@ -114,7 +114,8 @@ function blockedV6(bytes: number[]): boolean {
   if (bytes[0] === 0x20 && bytes[1] === 0x01 && bytes[2] === 0x0d && bytes[3] === 0xb8) return true;
 
   // Discard-only 100::/64
-  if (bytes[0] === 0x01 && bytes[1] === 0x00 && bytes.slice(2, 8).every((b) => b === 0)) return true;
+  if (bytes[0] === 0x01 && bytes[1] === 0x00 && bytes.slice(2, 8).every((b) => b === 0))
+    return true;
 
   return false;
 }

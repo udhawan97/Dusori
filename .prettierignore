@@ -3,6 +3,7 @@ dist
 packages/companion/public
 .playwright-cli
 .claude/worktrees
+.superpowers
 build
 .svelte-kit
 .astro

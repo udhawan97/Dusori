@@ -24,10 +24,12 @@
 ### Task 1: Companion address guard
 
 **Files:**
+
 - Create: `packages/companion/src/address-guard.ts`
 - Test: `packages/companion/src/address-guard.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing (pure module, `node:net` only).
 - Produces: `isBlockedAddress(address: string): boolean` — `true` for every private/reserved/multicast IPv4 or IPv6 literal AND for any string that is not an IP literal (only resolved addresses may reach it).
 
@@ -71,7 +73,17 @@ const blocked = [
   'localhost',
 ];
 
-const allowed = ['1.1.1.1', '8.8.8.8', '93.184.215.14', '172.15.0.1', '172.32.0.1', '192.167.0.1', '198.17.0.1', '2606:4700:4700::1111', '2620:fe::fe'];
+const allowed = [
+  '1.1.1.1',
+  '8.8.8.8',
+  '93.184.215.14',
+  '172.15.0.1',
+  '172.32.0.1',
+  '192.167.0.1',
+  '198.17.0.1',
+  '2606:4700:4700::1111',
+  '2620:fe::fe',
+];
 
 describe('isBlockedAddress', () => {
   it.each(blocked)('blocks %s', (address) => {
@@ -161,12 +173,14 @@ git commit -m "feat(companion): add private-address guard for research fetching"
 ### Task 2: Companion guarded fetch + readability extraction
 
 **Files:**
+
 - Modify: `packages/companion/package.json` (via pnpm)
 - Create: `packages/companion/src/research-fetch.ts`
 - Create: `packages/companion/src/__fixtures__/article.html`
 - Test: `packages/companion/src/research-fetch.test.ts`
 
 **Interfaces:**
+
 - Consumes: `isBlockedAddress` (Task 1); `maxSourceBytes` from `@dusori/core`.
 - Produces:
   - `type FetchFailureReason = 'invalid-url' | 'blocked-host' | 'too-many-redirects' | 'timeout' | 'unsupported-type' | 'too-large' | 'fetch-failed' | 'extraction-failed'`
@@ -209,14 +223,14 @@ Readability needs ≳500 characters of article text; keep paragraphs long.
         Multi-head attention runs several of these scoring functions in parallel, each with its own
         learned projections. One head can track syntactic agreement while another follows
         coreference, and the model concatenates their outputs into a single representation. The
-        heads are cheap because the projections shrink the working dimension before the dot
-        products are taken, keeping the total cost close to a single full-width attention pass.
+        heads are cheap because the projections shrink the working dimension before the dot products
+        are taken, keeping the total cost close to a single full-width attention pass.
       </p>
       <p>
         The quadratic cost in sequence length remains the practical limit. Every token attends to
         every other token, so doubling the context quadruples the work. Most long-context variants
-        trade exactness for reach: sliding windows, low-rank approximations, or routing schemes
-        that let a token attend to a selected subset instead of the whole sequence.
+        trade exactness for reach: sliding windows, low-rank approximations, or routing schemes that
+        let a token attend to a selected subset instead of the whole sequence.
       </p>
     </article>
     <footer><p>© Example Journal. Subscribe for more.</p></footer>
@@ -233,13 +247,20 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { FetchPageError, fetchReadablePage, maxFetchBytes, type LookupImpl } from './research-fetch.js';
+import {
+  FetchPageError,
+  fetchReadablePage,
+  maxFetchBytes,
+  type LookupImpl,
+} from './research-fetch.js';
 
 const publicLookup: LookupImpl = async () => [{ address: '93.184.215.14', family: 4 }];
 const privateLookup: LookupImpl = async () => [{ address: '10.0.0.5', family: 4 }];
 
 function htmlResponse(body: string, headers: Record<string, string> = {}): Response {
-  return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8', ...headers } });
+  return new Response(body, {
+    headers: { 'content-type': 'text/html; charset=utf-8', ...headers },
+  });
 }
 
 async function reason(promise: Promise<unknown>): Promise<string> {
@@ -269,7 +290,8 @@ describe('fetchReadablePage', () => {
 
   it('returns plain text bodies without extraction', async () => {
     const page = await fetchReadablePage('https://example.org/notes.txt', {
-      fetchImpl: async () => new Response('plain body text', { headers: { 'content-type': 'text/plain' } }),
+      fetchImpl: async () =>
+        new Response('plain body text', { headers: { 'content-type': 'text/plain' } }),
       lookupImpl: publicLookup,
     });
     expect(page.text).toBe('plain body text');
@@ -277,9 +299,15 @@ describe('fetchReadablePage', () => {
   });
 
   it('rejects invalid and non-http URLs before any network use', async () => {
-    expect(await reason(fetchReadablePage('not a url', { lookupImpl: publicLookup }))).toBe('invalid-url');
-    expect(await reason(fetchReadablePage('ftp://example.org/x', { lookupImpl: publicLookup }))).toBe('invalid-url');
-    expect(await reason(fetchReadablePage('https://user:pw@example.org/', { lookupImpl: publicLookup }))).toBe('invalid-url');
+    expect(await reason(fetchReadablePage('not a url', { lookupImpl: publicLookup }))).toBe(
+      'invalid-url',
+    );
+    expect(
+      await reason(fetchReadablePage('ftp://example.org/x', { lookupImpl: publicLookup })),
+    ).toBe('invalid-url');
+    expect(
+      await reason(fetchReadablePage('https://user:pw@example.org/', { lookupImpl: publicLookup })),
+    ).toBe('invalid-url');
   });
 
   it('blocks private IP literals and privately-resolving hosts without fetching', async () => {
@@ -288,8 +316,16 @@ describe('fetchReadablePage', () => {
       fetched += 1;
       return htmlResponse('<p>x</p>');
     }) as unknown as typeof fetch;
-    expect(await reason(fetchReadablePage('http://127.0.0.1/admin', { fetchImpl: spy, lookupImpl: publicLookup }))).toBe('blocked-host');
-    expect(await reason(fetchReadablePage('http://internal.test/', { fetchImpl: spy, lookupImpl: privateLookup }))).toBe('blocked-host');
+    expect(
+      await reason(
+        fetchReadablePage('http://127.0.0.1/admin', { fetchImpl: spy, lookupImpl: publicLookup }),
+      ),
+    ).toBe('blocked-host');
+    expect(
+      await reason(
+        fetchReadablePage('http://internal.test/', { fetchImpl: spy, lookupImpl: privateLookup }),
+      ),
+    ).toBe('blocked-host');
     expect(fetched).toBe(0);
   });
 
@@ -297,13 +333,20 @@ describe('fetchReadablePage', () => {
     const fetchImpl = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === 'https://example.org/start') {
-        return new Response(null, { headers: { location: 'http://internal.test/secret' }, status: 302 });
+        return new Response(null, {
+          headers: { location: 'http://internal.test/secret' },
+          status: 302,
+        });
       }
       return htmlResponse('<p>x</p>');
     }) as unknown as typeof fetch;
     const lookupImpl: LookupImpl = async (hostname) =>
-      hostname === 'internal.test' ? [{ address: '192.168.0.9', family: 4 }] : [{ address: '93.184.215.14', family: 4 }];
-    expect(await reason(fetchReadablePage('https://example.org/start', { fetchImpl, lookupImpl }))).toBe('blocked-host');
+      hostname === 'internal.test'
+        ? [{ address: '192.168.0.9', family: 4 }]
+        : [{ address: '93.184.215.14', family: 4 }];
+    expect(
+      await reason(fetchReadablePage('https://example.org/start', { fetchImpl, lookupImpl })),
+    ).toBe('blocked-host');
   });
 
   it('gives up after three redirects', async () => {
@@ -312,14 +355,19 @@ describe('fetchReadablePage', () => {
         headers: { location: `${String(input)}0` },
         status: 301,
       })) as unknown as typeof fetch;
-    expect(await reason(fetchReadablePage('https://example.org/r', { fetchImpl, lookupImpl: publicLookup }))).toBe('too-many-redirects');
+    expect(
+      await reason(
+        fetchReadablePage('https://example.org/r', { fetchImpl, lookupImpl: publicLookup }),
+      ),
+    ).toBe('too-many-redirects');
   });
 
   it('rejects unsupported content types and oversized bodies', async () => {
     expect(
       await reason(
         fetchReadablePage('https://example.org/file.pdf', {
-          fetchImpl: async () => new Response('x', { headers: { 'content-type': 'application/pdf' } }),
+          fetchImpl: async () =>
+            new Response('x', { headers: { 'content-type': 'application/pdf' } }),
           lookupImpl: publicLookup,
         }),
       ),
@@ -428,7 +476,8 @@ export const maxFetchBytes = 4 * 1024 * 1024;
 const maxRedirects = 3;
 const redirectStatuses = [301, 302, 303, 307, 308];
 const allowedTypes = ['text/html', 'application/xhtml+xml', 'text/plain'];
-const blockedMessage = "This address points at a private network and won't be fetched. Paste the text instead.";
+const blockedMessage =
+  "This address points at a private network and won't be fetched. Paste the text instead.";
 const noTextMessage = 'No readable article text was found on this page. Paste the text instead.';
 
 function parseTarget(rawUrl: string): URL {
@@ -436,13 +485,19 @@ function parseTarget(rawUrl: string): URL {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new FetchPageError('That URL is not valid. Use a complete http:// or https:// address.', 'invalid-url');
+    throw new FetchPageError(
+      'That URL is not valid. Use a complete http:// or https:// address.',
+      'invalid-url',
+    );
   }
   if (!['http:', 'https:'].includes(url.protocol)) {
     throw new FetchPageError('Only http:// and https:// pages can be fetched.', 'invalid-url');
   }
   if (url.username || url.password) {
-    throw new FetchPageError('Remove the username or password from this URL before fetching it.', 'invalid-url');
+    throw new FetchPageError(
+      'Remove the username or password from this URL before fetching it.',
+      'invalid-url',
+    );
   }
   return url;
 }
@@ -457,7 +512,10 @@ async function assertPublicHost(url: URL, lookupImpl: LookupImpl): Promise<void>
   try {
     addresses = await lookupImpl(host, { all: true });
   } catch {
-    throw new FetchPageError('That address could not be resolved. Check the URL or your connection.', 'fetch-failed');
+    throw new FetchPageError(
+      'That address could not be resolved. Check the URL or your connection.',
+      'fetch-failed',
+    );
   }
   if (addresses.length === 0 || addresses.some((entry) => isBlockedAddress(entry.address))) {
     throw new FetchPageError(blockedMessage, 'blocked-host');
@@ -478,45 +536,72 @@ async function guardedResponse(
       response = await fetchImpl(current.toString(), { redirect: 'manual', signal });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new FetchPageError('This page took longer than 15 seconds. Try again, or paste the text instead.', 'timeout');
+        throw new FetchPageError(
+          'This page took longer than 15 seconds. Try again, or paste the text instead.',
+          'timeout',
+        );
       }
-      throw new FetchPageError('This page could not be fetched. Check the URL or your connection.', 'fetch-failed');
+      throw new FetchPageError(
+        'This page could not be fetched. Check the URL or your connection.',
+        'fetch-failed',
+      );
     }
     if (redirectStatuses.includes(response.status)) {
       const location = response.headers.get('location');
       if (!location) {
-        throw new FetchPageError('This page redirected without a destination. Save the URL as a reference instead.', 'fetch-failed');
+        throw new FetchPageError(
+          'This page redirected without a destination. Save the URL as a reference instead.',
+          'fetch-failed',
+        );
       }
       let next: URL;
       try {
         next = new URL(location, current);
       } catch {
-        throw new FetchPageError('This page redirected to an invalid address. Save the URL as a reference instead.', 'fetch-failed');
+        throw new FetchPageError(
+          'This page redirected to an invalid address. Save the URL as a reference instead.',
+          'fetch-failed',
+        );
       }
       current = parseTarget(next.toString());
       continue;
     }
     if (!response.ok) {
-      throw new FetchPageError(`This page answered with status ${response.status}. Check the URL, or paste the text instead.`, 'fetch-failed');
+      throw new FetchPageError(
+        `This page answered with status ${response.status}. Check the URL, or paste the text instead.`,
+        'fetch-failed',
+      );
     }
     return { finalUrl: current, response };
   }
-  throw new FetchPageError('This page redirected more than 3 times. Save the URL as a reference instead.', 'too-many-redirects');
+  throw new FetchPageError(
+    'This page redirected more than 3 times. Save the URL as a reference instead.',
+    'too-many-redirects',
+  );
 }
 
 function tooLarge(): FetchPageError {
-  return new FetchPageError('This page is larger than 4 MiB. Paste the part you need instead.', 'too-large');
+  return new FetchPageError(
+    'This page is larger than 4 MiB. Paste the part you need instead.',
+    'too-large',
+  );
 }
 
 async function readBody(response: Response): Promise<{ text: string; type: string }> {
   const type = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
   if (!allowedTypes.includes(type)) {
-    throw new FetchPageError('Only HTML and plain-text pages can be fetched. Keep the URL as a reference instead.', 'unsupported-type');
+    throw new FetchPageError(
+      'Only HTML and plain-text pages can be fetched. Keep the URL as a reference instead.',
+      'unsupported-type',
+    );
   }
   const declared = Number(response.headers.get('content-length') ?? '0');
   if (declared > maxFetchBytes) throw tooLarge();
   if (!response.body) {
-    throw new FetchPageError('This page had no readable content. Paste the text instead.', 'fetch-failed');
+    throw new FetchPageError(
+      'This page had no readable content. Paste the text instead.',
+      'fetch-failed',
+    );
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -630,11 +715,13 @@ git commit -m "feat(companion): add SSRF-guarded readability page fetching"
 ### Task 3: Companion MS Learn ranked-search module
 
 **Files:**
+
 - Create: `packages/companion/src/research-mslearn.ts`
 - Create: `packages/companion/src/__fixtures__/mslearn-search.json`
 - Test: `packages/companion/src/research-mslearn.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: `interface RankedResult { summary: string; title: string; url: string }`, `class MsLearnProxyError extends Error`, `searchMsLearnRanked(query: string, fetchImpl?: typeof fetch): Promise<RankedResult[]>`.
 
@@ -684,10 +771,14 @@ describe('searchMsLearnRanked', () => {
 
   it('throws MsLearnProxyError on upstream failure and unfamiliar shapes', async () => {
     await expect(
-      searchMsLearnRanked('x', (async () => new Response('down', { status: 503 })) as unknown as typeof fetch),
+      searchMsLearnRanked(
+        'x',
+        (async () => new Response('down', { status: 503 })) as unknown as typeof fetch,
+      ),
     ).rejects.toBeInstanceOf(MsLearnProxyError);
     await expect(
-      searchMsLearnRanked('x', (async () => Response.json({ unexpected: true })) as unknown as typeof fetch),
+      searchMsLearnRanked('x', (async () =>
+        Response.json({ unexpected: true })) as unknown as typeof fetch),
     ).rejects.toBeInstanceOf(MsLearnProxyError);
   });
 });
@@ -741,9 +832,11 @@ export async function searchMsLearnRanked(
   } catch {
     throw new MsLearnProxyError('Microsoft Learn ranked search could not be reached.');
   }
-  if (!response.ok) throw new MsLearnProxyError('Microsoft Learn ranked search could not be reached.');
+  if (!response.ok)
+    throw new MsLearnProxyError('Microsoft Learn ranked search could not be reached.');
   const parsed = UpstreamSchema.safeParse(await response.json().catch(() => null));
-  if (!parsed.success) throw new MsLearnProxyError('Microsoft Learn returned an unfamiliar search format.');
+  if (!parsed.success)
+    throw new MsLearnProxyError('Microsoft Learn returned an unfamiliar search format.');
   return parsed.data.results.slice(0, 8).map((result) => ({
     summary: result.description ?? '',
     title: result.title.replace(/\s+/gu, ' ').trim(),
@@ -769,10 +862,12 @@ git commit -m "feat(companion): add ranked Microsoft Learn search module"
 ### Task 4: Companion routes `/api/research/fetch` and `/api/research/mslearn-search`
 
 **Files:**
+
 - Modify: `packages/companion/src/server.ts`
 - Test: `packages/companion/src/server.test.ts`
 
 **Interfaces:**
+
 - Consumes: `fetchReadablePage`, `FetchPageError`, `LookupImpl` (Task 2); `searchMsLearnRanked`, `MsLearnProxyError` (Task 3).
 - Produces: `ServerOptions` gains `research?: { fetchImpl?: typeof fetch; lookupImpl?: LookupImpl }`. Routes (both behind the existing token + origin hook):
   - `POST /api/research/fetch` body `{ url }` → 200 `FetchedPageResult` | 400/502 `{ error, reason }`
@@ -788,88 +883,95 @@ import type { LookupImpl } from './research-fetch.js';
 Append inside the describe block:
 
 ```ts
-  it('guards the research routes with the same token and origin rules', async () => {
-    const { server } = await fixture();
-    expect(
-      (
-        await server.inject({
-          method: 'POST',
-          url: '/api/research/fetch',
-          payload: { url: 'https://example.org/' },
-        })
-      ).statusCode,
-    ).toBe(401);
-    expect(
-      (
-        await server.inject({
-          method: 'GET',
-          url: '/api/research/mslearn-search?q=entra',
-          headers: headers(token, 'https://evil.example'),
-        })
-      ).statusCode,
-    ).toBe(403);
+it('guards the research routes with the same token and origin rules', async () => {
+  const { server } = await fixture();
+  expect(
+    (
+      await server.inject({
+        method: 'POST',
+        url: '/api/research/fetch',
+        payload: { url: 'https://example.org/' },
+      })
+    ).statusCode,
+  ).toBe(401);
+  expect(
+    (
+      await server.inject({
+        method: 'GET',
+        url: '/api/research/mslearn-search?q=entra',
+        headers: headers(token, 'https://evil.example'),
+      })
+    ).statusCode,
+  ).toBe(403);
+});
+
+it('fetches, extracts, and reports typed failures on /api/research/fetch', async () => {
+  const html = await readFile(new URL('./__fixtures__/article.html', import.meta.url), 'utf8');
+  const publicLookup: LookupImpl = async () => [{ address: '93.184.215.14', family: 4 }];
+  const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+  const server = await createServer({
+    research: {
+      fetchImpl: (async () =>
+        new Response(html, {
+          headers: { 'content-type': 'text/html' },
+        })) as unknown as typeof fetch,
+      lookupImpl: publicLookup,
+    },
+    root,
+    staticDirectory: join(root, 'missing'),
+    token,
   });
+  servers.push(server);
 
-  it('fetches, extracts, and reports typed failures on /api/research/fetch', async () => {
-    const html = await readFile(new URL('./__fixtures__/article.html', import.meta.url), 'utf8');
-    const publicLookup: LookupImpl = async () => [{ address: '93.184.215.14', family: 4 }];
-    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
-    const server = await createServer({
-      research: {
-        fetchImpl: (async () =>
-          new Response(html, { headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch,
-        lookupImpl: publicLookup,
-      },
-      root,
-      staticDirectory: join(root, 'missing'),
-      token,
-    });
-    servers.push(server);
-
-    const ok = await server.inject({
-      method: 'POST',
-      url: '/api/research/fetch',
-      headers: { ...headers(), 'content-type': 'application/json' },
-      payload: { url: 'https://example.org/attention' },
-    });
-    expect(ok.statusCode).toBe(200);
-    expect(ok.json()).toMatchObject({ finalUrl: 'https://example.org/attention', truncated: false });
-    expect(ok.json().text).toContain('weigh the other tokens');
-
-    const blocked = await server.inject({
-      method: 'POST',
-      url: '/api/research/fetch',
-      headers: { ...headers(), 'content-type': 'application/json' },
-      payload: { url: 'http://127.0.0.1/admin' },
-    });
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json()).toMatchObject({ reason: 'blocked-host' });
+  const ok = await server.inject({
+    method: 'POST',
+    url: '/api/research/fetch',
+    headers: { ...headers(), 'content-type': 'application/json' },
+    payload: { url: 'https://example.org/attention' },
   });
+  expect(ok.statusCode).toBe(200);
+  expect(ok.json()).toMatchObject({ finalUrl: 'https://example.org/attention', truncated: false });
+  expect(ok.json().text).toContain('weigh the other tokens');
 
-  it('proxies ranked Microsoft Learn search behind the token', async () => {
-    const body = await readFile(new URL('./__fixtures__/mslearn-search.json', import.meta.url), 'utf8');
-    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
-    const server = await createServer({
-      research: {
-        fetchImpl: (async () =>
-          new Response(body, { headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch,
-      },
-      root,
-      staticDirectory: join(root, 'missing'),
-      token,
-    });
-    servers.push(server);
-    const response = await server.inject({
-      method: 'GET',
-      url: '/api/research/mslearn-search?q=entra%20id',
-      headers: headers(),
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json().results.length).toBeGreaterThan(0);
-    expect(response.json().results[0]).toHaveProperty('title');
-    expect(response.json().results[0]).toHaveProperty('url');
-    expect(response.json().results[0]).toHaveProperty('summary');
+  const blocked = await server.inject({
+    method: 'POST',
+    url: '/api/research/fetch',
+    headers: { ...headers(), 'content-type': 'application/json' },
+    payload: { url: 'http://127.0.0.1/admin' },
   });
+  expect(blocked.statusCode).toBe(400);
+  expect(blocked.json()).toMatchObject({ reason: 'blocked-host' });
+});
+
+it('proxies ranked Microsoft Learn search behind the token', async () => {
+  const body = await readFile(
+    new URL('./__fixtures__/mslearn-search.json', import.meta.url),
+    'utf8',
+  );
+  const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+  const server = await createServer({
+    research: {
+      fetchImpl: (async () =>
+        new Response(body, {
+          headers: { 'content-type': 'application/json' },
+        })) as unknown as typeof fetch,
+    },
+    root,
+    staticDirectory: join(root, 'missing'),
+    token,
+  });
+  servers.push(server);
+  const response = await server.inject({
+    method: 'GET',
+    url: '/api/research/mslearn-search?q=entra%20id',
+    headers: headers(),
+  });
+  expect(response.statusCode).toBe(200);
+  expect(response.json().results.length).toBeGreaterThan(0);
+  expect(response.json().results[0]).toHaveProperty('title');
+  expect(response.json().results[0]).toHaveProperty('url');
+  expect(response.json().results[0]).toHaveProperty('summary');
+});
 ```
 
 - [ ] **Step 2: Run tests to verify the new ones fail**
@@ -954,10 +1056,12 @@ git commit -m "feat(companion): expose research fetch and ranked-search routes"
 ### Task 5: Widen `SourceOriginSchema` to tolerant strings
 
 **Files:**
+
 - Modify: `packages/core/src/schemas/workspace.ts:34-38`
 - Test: `packages/core/src/sources/import.test.ts` (append)
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `SourceOrigin` becomes `{ provider: string; capturedVia: string; capturedAt: string }`. Existing writers (`'mslearn'`/`'wikipedia'` literals) remain assignable.
 
@@ -983,7 +1087,11 @@ describe('source origin schema', () => {
       SourceRecordSchema.parse({
         fetchedAt: '2026-07-21T00:00:00.000Z',
         method: 'url',
-        origin: { capturedAt: '2026-07-21T00:00:00.000Z', capturedVia: 'page-extract', provider: '' },
+        origin: {
+          capturedAt: '2026-07-21T00:00:00.000Z',
+          capturedVia: 'page-extract',
+          provider: '',
+        },
         sha256: 'a'.repeat(64),
         title: 'Example',
         url: 'https://example.org/',
@@ -1030,12 +1138,14 @@ git commit -m "feat(core): widen source origin provenance to tolerant strings"
 ### Task 6: Extract shared `cappedMarkdown` helper
 
 **Files:**
+
 - Create: `packages/core/src/sources/capped.ts`
 - Modify: `packages/core/src/research/providers/wikipedia.ts:3,66-82`
 - Modify: `packages/core/src/index.ts` (no change needed — `sources/import.js` already exported; add `export * from './sources/capped.js';` after it)
 - Test: `packages/core/src/sources/capped.test.ts`
 
 **Interfaces:**
+
 - Consumes: `maxSourceBytes` from `./import.js`.
 - Produces: `cappedMarkdown(prefix: string, body: string): string` — returns `prefix + body + '\n'`, byte-capped at `maxSourceBytes` with a trailing `'\n\n[truncated]\n'` marker when over.
 
@@ -1093,6 +1203,7 @@ export function cappedMarkdown(prefix: string, body: string): string {
 ```
 
 Then in `packages/core/src/research/providers/wikipedia.ts`:
+
 - Replace the import `import { maxSourceBytes } from '../../sources/import.js';` with `import { cappedMarkdown } from '../../sources/capped.js';`
 - Replace the whole `cappedContent` function (lines 66–82) with:
 
@@ -1125,11 +1236,13 @@ git commit -m "refactor(core): extract shared capped-markdown source helper"
 ### Task 7: Core companion research client
 
 **Files:**
+
 - Create: `packages/core/src/research/companion.ts`
 - Modify: `packages/core/src/research/index.ts` (add `export * from './companion.js';`)
 - Test: `packages/core/src/research/companion.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ResearchCandidate`, `ResearchQuery` from `./types.js`.
 - Produces:
   - `type FetchedPage = { title: string; text: string; byline?: string; siteName?: string; finalUrl: string; fetchedAt: string; truncated: boolean }`
@@ -1146,7 +1259,11 @@ import { describe, expect, it } from 'vitest';
 import { CompanionFetchError, createCompanionResearchClient } from './companion.js';
 import type { ResearchQuery } from './types.js';
 
-const query: ResearchQuery = { objectiveTitle: 'Configure Entra ID', terms: ['entra'], topicTitle: 'AZ-104' };
+const query: ResearchQuery = {
+  objectiveTitle: 'Configure Entra ID',
+  terms: ['entra'],
+  topicTitle: 'AZ-104',
+};
 
 const page = {
   fetchedAt: '2026-07-21T00:00:00.000Z',
@@ -1157,7 +1274,11 @@ const page = {
 };
 
 function client(fetchImpl: typeof fetch) {
-  return createCompanionResearchClient({ baseUrl: 'http://127.0.0.1:8000/', fetchImpl, token: 'secret' });
+  return createCompanionResearchClient({
+    baseUrl: 'http://127.0.0.1:8000/',
+    fetchImpl,
+    token: 'secret',
+  });
 }
 
 describe('createCompanionResearchClient', () => {
@@ -1171,23 +1292,32 @@ describe('createCompanionResearchClient', () => {
     expect(captured.input).toBe('http://127.0.0.1:8000/api/research/fetch');
     expect(captured.init?.method).toBe('POST');
     expect(new Headers(captured.init?.headers).get('authorization')).toBe('Bearer secret');
-    expect(JSON.parse(String(captured.init?.body))).toEqual({ url: 'https://example.org/attention' });
+    expect(JSON.parse(String(captured.init?.body))).toEqual({
+      url: 'https://example.org/attention',
+    });
   });
 
   it('surfaces companion failure sentences and reasons as CompanionFetchError', async () => {
     const failing = client((async () =>
       Response.json(
-        { error: "This address points at a private network and won't be fetched. Paste the text instead.", reason: 'blocked-host' },
+        {
+          error:
+            "This address points at a private network and won't be fetched. Paste the text instead.",
+          reason: 'blocked-host',
+        },
         { status: 400 },
       )) as unknown as typeof fetch);
     await expect(failing.fetchPage('http://10.0.0.5/')).rejects.toMatchObject({
-      message: "This address points at a private network and won't be fetched. Paste the text instead.",
+      message:
+        "This address points at a private network and won't be fetched. Paste the text instead.",
       reason: 'blocked-host',
     });
     const dead = client((async () => {
       throw new TypeError('fetch failed');
     }) as unknown as typeof fetch);
-    await expect(dead.fetchPage('https://example.org/')).rejects.toBeInstanceOf(CompanionFetchError);
+    await expect(dead.fetchPage('https://example.org/')).rejects.toBeInstanceOf(
+      CompanionFetchError,
+    );
   });
 
   it('maps ranked search results into descending-score mslearn candidates', async () => {
@@ -1197,8 +1327,16 @@ describe('createCompanionResearchClient', () => {
       );
       return Response.json({
         results: [
-          { summary: 'First summary.', title: 'First', url: 'https://learn.microsoft.com/en-us/first' },
-          { summary: 'Second summary.', title: 'Second', url: 'https://learn.microsoft.com/en-us/second' },
+          {
+            summary: 'First summary.',
+            title: 'First',
+            url: 'https://learn.microsoft.com/en-us/first',
+          },
+          {
+            summary: 'Second summary.',
+            title: 'Second',
+            url: 'https://learn.microsoft.com/en-us/second',
+          },
         ],
       });
     }) as unknown as typeof fetch).searchMsLearnRanked(query);
@@ -1270,7 +1408,9 @@ export interface CompanionClientOptions {
 
 const fallbackError = 'The companion could not fetch this page. Check that it is still running.';
 
-export function createCompanionResearchClient(options: CompanionClientOptions): CompanionResearchClient {
+export function createCompanionResearchClient(
+  options: CompanionClientOptions,
+): CompanionResearchClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
   const authorization = { Authorization: `Bearer ${options.token}` };
@@ -1294,7 +1434,10 @@ export function createCompanionResearchClient(options: CompanionClientOptions): 
       if (!response.ok) throw await failureFrom(response);
       const parsed = FetchedPageSchema.safeParse(await response.json().catch(() => null));
       if (!parsed.success) {
-        throw new CompanionFetchError('The companion returned an unfamiliar fetch format.', 'fetch-failed');
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar fetch format.',
+          'fetch-failed',
+        );
       }
       return parsed.data;
     },
@@ -1342,11 +1485,13 @@ git commit -m "feat(core): add zod-parsed companion research client"
 ### Task 8: Core `upgradeSource` with conflict-safe rewrite
 
 **Files:**
+
 - Create: `packages/core/src/sources/upgrade.ts`
 - Modify: `packages/core/src/index.ts` (add `export * from './sources/upgrade.js';`)
 - Test: `packages/core/src/sources/upgrade.test.ts`
 
 **Interfaces:**
+
 - Consumes: `cappedMarkdown` (Task 6), `FetchedPage` (Task 7), `appendTopicUpdate`, `readMachineFile`, workspace schemas, `topicRoot`, `StorageAdapter`, `StorageConflictError`.
 - Produces:
   - `buildUpgradedContent(record: SourceRecord, page: FetchedPage): string`
@@ -1383,7 +1528,12 @@ async function urlSourceFixture() {
   await createTopic(storage, 'Transformers', now);
   const added = await addSource(
     storage,
-    { method: 'url', title: 'Attention paper', topicSlug: 'transformers', url: 'https://example.org/attention' },
+    {
+      method: 'url',
+      title: 'Attention paper',
+      topicSlug: 'transformers',
+      url: 'https://example.org/attention',
+    },
     now,
   );
   return { added, storage };
@@ -1412,7 +1562,13 @@ describe('buildUpgradedContent', () => {
 
   it('caps oversized text with the shared truncation marker', () => {
     const content = buildUpgradedContent(
-      { fetchedAt: now.toISOString(), method: 'url', sha256: 'a'.repeat(64), title: 'Big', url: 'https://example.org/big' },
+      {
+        fetchedAt: now.toISOString(),
+        method: 'url',
+        sha256: 'a'.repeat(64),
+        title: 'Big',
+        url: 'https://example.org/big',
+      },
       { ...page, text: 'x'.repeat(maxSourceBytes + 1024) },
     );
     expect(new TextEncoder().encode(content).byteLength).toBeLessThanOrEqual(maxSourceBytes);
@@ -1453,7 +1609,10 @@ describe('upgradeSource', () => {
   it('raises StorageConflictError when the item file changed outside Dusori', async () => {
     const { added, storage } = await urlSourceFixture();
     const item = await storage.read(added.path);
-    storage.files.set(added.path, { content: `${item?.content ?? ''}external edit\n`, modifiedAt: 99 });
+    storage.files.set(added.path, {
+      content: `${item?.content ?? ''}external edit\n`,
+      modifiedAt: 99,
+    });
     await expect(
       upgradeSource(storage, { page, sha256: added.record.sha256, topicSlug: 'transformers' }, now),
     ).rejects.toBeInstanceOf(StorageConflictError);
@@ -1610,10 +1769,12 @@ git commit -m "feat(core): add conflict-safe URL source upgrade"
 ### Task 9: MS Learn provider factory with ranked path and silent fallback
 
 **Files:**
+
 - Modify: `packages/core/src/research/providers/mslearn.ts`
 - Test: `packages/core/src/research/providers/mslearn.test.ts` (append)
 
 **Interfaces:**
+
 - Consumes: `ResearchCandidate[]` produced by `CompanionResearchClient.searchMsLearnRanked` (Task 7).
 - Produces: `type RankedMsLearnSearch = (query: ResearchQuery) => Promise<ResearchCandidate[]>`; `createMsLearnProvider(options?: { ranked?: RankedMsLearnSearch }): ResearchProvider`; `msLearnProvider` stays exported and behaviorally identical (`msLearnProvider = createMsLearnProvider()`).
 
@@ -1692,7 +1853,10 @@ function metadataLines(candidate: ResearchCandidate): string[] {
   return lines;
 }
 
-async function catalogSearch(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]> {
+async function catalogSearch(
+  query: ResearchQuery,
+  fetchImpl: typeof fetch,
+): Promise<ResearchCandidate[]> {
   const modules = await readCatalog(fetchImpl);
   return modules
     .map((module) => ({
@@ -1787,9 +1951,11 @@ git commit -m "feat(core): let the MS Learn provider use companion ranked search
 ### Task 10: App companion client state
 
 **Files:**
+
 - Modify: `apps/app/src/routes/+page.svelte` (companion connection ~lines 60, 94-107, and the `ResearchPanel`/`SourceLibrary` instantiations ~lines 729-743)
 
 **Interfaces:**
+
 - Consumes: `createCompanionResearchClient`, `CompanionResearchClient` from `@dusori/core`.
 - Produces: `companionClient: CompanionResearchClient | null` page state, passed as the `companion` prop to both `ResearchPanel` and `SourceLibrary` (props created in Tasks 11 and 12).
 
@@ -1845,9 +2011,11 @@ async function connectCompanionFromUrl(): Promise<void> {
 ### Task 11: ResearchPanel ranked-search wiring
 
 **Files:**
+
 - Modify: `apps/app/src/lib/components/ResearchPanel.svelte`
 
 **Interfaces:**
+
 - Consumes: `CompanionResearchClient` (Task 7), `createMsLearnProvider` (Task 9), existing `researchProviders`, `wikipediaProvider`.
 - Produces: `export let companion: CompanionResearchClient | null = null;` — when set, MS Learn searches route through the companion proxy under the unchanged `mslearn` consent.
 
@@ -1865,6 +2033,7 @@ $: providers = companion
 ```
 
 Then replace the two remaining uses of `researchProviders` below the import with `providers`:
+
 - in `providerFor`: `providers.find((provider) => provider.id === candidate.provider)!`
 - in the template's provider-button loop (`{#each researchProviders as provider}` → `{#each providers as provider}` — locate with a search for `researchProviders` in the file; the import line keeps its name).
 
@@ -1879,9 +2048,11 @@ Run: `pnpm --filter @dusori/app typecheck` — expected: clean (this also type-c
 ### Task 12: SourceLibrary upgrade flow (confirm → fetch → preview → replace)
 
 **Files:**
+
 - Modify: `apps/app/src/lib/components/SourceLibrary.svelte`
 
 **Interfaces:**
+
 - Consumes: `CompanionResearchClient.fetchPage` (Task 7), `buildUpgradedContent`, `upgradeSource` (Task 8), `StorageConflictError`, `FetchedPage` from `@dusori/core`.
 - Produces: the user-facing upgrade flow; no exports.
 
@@ -2038,15 +2209,24 @@ At the end of the section (before `</section>`), add the two dialogs, following 
 
 ```svelte
 {#if confirming}
-  <dialog open class="upgrade-dialog" aria-labelledby="upgrade-confirm-title" onkeydown={dialogKeydown}>
+  <dialog
+    open
+    class="upgrade-dialog"
+    aria-labelledby="upgrade-confirm-title"
+    onkeydown={dialogKeydown}
+  >
     <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
     <p>
-      Sends this address to {hostOf(confirming)} from your machine via the local companion. The
-      page's readable text will replace this source's stub content.
+      Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
+      readable text will replace this source's stub content.
     </p>
     <p class="upgrade-url"><code>{confirming.url}</code></p>
     <div class="upgrade-actions">
-      <button bind:this={confirmFetchButton} class="primary-action" onclick={() => void confirmFetch()}>
+      <button
+        bind:this={confirmFetchButton}
+        class="primary-action"
+        onclick={() => void confirmFetch()}
+      >
         Fetch page
       </button>
       <button onclick={() => void cancelConfirm()}>Keep reference only</button>
@@ -2055,7 +2235,12 @@ At the end of the section (before `</section>`), add the two dialogs, following 
 {/if}
 
 {#if upgradePreview}
-  <dialog open class="upgrade-dialog" aria-labelledby="upgrade-preview-title" onkeydown={dialogKeydown}>
+  <dialog
+    open
+    class="upgrade-dialog"
+    aria-labelledby="upgrade-preview-title"
+    onkeydown={dialogKeydown}
+  >
     <h3 id="upgrade-preview-title">Preview fetched content</h3>
     {#if upgradePreview.page.truncated}
       <p>This page was longer than the 2 MiB source limit and was truncated.</p>
@@ -2066,7 +2251,11 @@ At the end of the section (before `</section>`), add the two dialogs, following 
       <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
         {replacing ? 'Replacing…' : 'Replace content'}
       </button>
-      <button bind:this={upgradeCloseButton} disabled={replacing} onclick={() => void closeUpgradePreview()}>
+      <button
+        bind:this={upgradeCloseButton}
+        disabled={replacing}
+        onclick={() => void closeUpgradePreview()}
+      >
         Keep the stub
       </button>
     </div>
@@ -2158,6 +2347,7 @@ git commit -m "feat(app): add companion-gated source upgrade and ranked search"
 ### Task 13: End-to-end coverage
 
 **Files:**
+
 - Modify: `tests/e2e/dusori.spec.ts` (append one test; reuse the existing helpers `createBrowserWorkspace`, `createTopic`, `expectNoSeriousA11yViolations`)
 
 - [ ] **Step 1: Append the test.** The app is served at `/Dusori/app/` (see `tests/e2e/dusori.spec.ts:77`); reloading with `?token=` makes `connectCompanionFromUrl` treat the page origin as the companion, so `page.route` fixtures are same-origin and CORS-free.
@@ -2192,7 +2382,9 @@ test('companion fetch upgrades a URL source after a per-fetch confirm', async ({
 
   // Without a companion token the upgrade action is absent and the hint shows.
   await expect(page.getByRole('button', { name: 'Fetch full content' })).toHaveCount(0);
-  await expect(page.getByText('Run the companion (npx dusori) to fetch full page content.')).toBeVisible();
+  await expect(
+    page.getByText('Run the companion (npx dusori) to fetch full page content.'),
+  ).toBeVisible();
 
   // Reload as if served by the companion.
   await page.goto('/Dusori/app/?token=e2e-companion-token');
@@ -2246,6 +2438,7 @@ git commit -m "test(e2e): cover companion source upgrade flow"
 ### Task 14: Documentation
 
 **Files:**
+
 - Modify: `README.md`, `docs/product/spec.md`, `docs/adr/003-portable-file-contract.md`, `docs/adr/004-loopback-companion.md`, `apps/site/src/content/docs/docs/sources.md`, `CHANGELOG.md`
 
 - [ ] **Step 1: README.** In the product table, extend the **Sources** row's second cell to end with "…and companion-powered full-content upgrades". Replace the roadmap sentence (README.md:60) with:

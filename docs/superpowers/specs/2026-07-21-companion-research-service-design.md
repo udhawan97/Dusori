@@ -220,11 +220,11 @@ scope now includes the research service); site docs page; CHANGELOG.
 
 ## Risks
 
-| Risk                                                                 | Mitigation                                                                                                    |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| SSRF via redirects or multi-address DNS                              | Scheme check, per-hop re-validation of every resolved address, redirect cap, private-range rejection, tests.  |
-| DNS rebinding between check and connect                              | Accepted residual risk (loopback-bound, token-gated, user-chosen URLs); per-hop re-validation; noted in ADR.  |
-| Stale v0.2.0 reader vs `'companion'` origin value                    | Visible friendly schema error, content files untouched, PWA self-updates; schemas widened so it never recurs. |
-| Readability output quality varies by site                            | Preview-first modal — the user sees exactly what will be written before accepting; dismiss stores nothing.    |
-| MS Learn ranked API shape drift (undocumented)                       | Lenient zod parsing, fixture tests, silent fallback to shipped catalog scoring.                               |
-| Large pages                                                          | 4 MiB streamed fetch cap; 2 MiB source cap with visible truncation marker.                                    |
+| Risk                                              | Mitigation                                                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| SSRF via redirects or multi-address DNS           | Scheme check, per-hop re-validation of every resolved address, redirect cap, private-range rejection, tests.  |
+| DNS rebinding between check and connect           | Accepted residual risk (loopback-bound, token-gated, user-chosen URLs); per-hop re-validation; noted in ADR.  |
+| Stale v0.2.0 reader vs `'companion'` origin value | Visible friendly schema error, content files untouched, PWA self-updates; schemas widened so it never recurs. |
+| Readability output quality varies by site         | Preview-first modal — the user sees exactly what will be written before accepting; dismiss stores nothing.    |
+| MS Learn ranked API shape drift (undocumented)    | Lenient zod parsing, fixture tests, silent fallback to shipped catalog scoring.                               |
+| Large pages                                       | 4 MiB streamed fetch cap; 2 MiB source cap with visible truncation marker.                                    |

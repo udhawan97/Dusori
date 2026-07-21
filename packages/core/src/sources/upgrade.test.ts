@@ -19,7 +19,11 @@ class FlakyOnceStorage extends MemoryStorageAdapter {
     super();
   }
 
-  override async write(path: string, content: string, options?: WriteOptions): Promise<FileSnapshot> {
+  override async write(
+    path: string,
+    content: string,
+    options?: WriteOptions,
+  ): Promise<FileSnapshot> {
     if (this.armed && path === this.failPath) {
       this.writeAttempts += 1;
       if (this.writeAttempts === 1) {
@@ -49,7 +53,12 @@ async function urlSourceFixture() {
   await createTopic(storage, 'Transformers', now);
   const added = await addSource(
     storage,
-    { method: 'url', title: 'Attention paper', topicSlug: 'transformers', url: 'https://example.org/attention' },
+    {
+      method: 'url',
+      title: 'Attention paper',
+      topicSlug: 'transformers',
+      url: 'https://example.org/attention',
+    },
     now,
   );
   return { added, storage };
@@ -81,7 +90,11 @@ async function catalogReferenceFixture() {
     {
       content: captureContent,
       method: 'url',
-      origin: { capturedAt: now.toISOString(), capturedVia: 'catalog-reference', provider: 'mslearn' },
+      origin: {
+        capturedAt: now.toISOString(),
+        capturedVia: 'catalog-reference',
+        provider: 'mslearn',
+      },
       title: 'Attention paper',
       topicSlug: 'transformers',
       url: 'https://example.org/attention',
@@ -114,7 +127,13 @@ describe('buildUpgradedContent', () => {
 
   it('caps oversized text with the shared truncation marker', () => {
     const content = buildUpgradedContent(
-      { fetchedAt: now.toISOString(), method: 'url', sha256: 'a'.repeat(64), title: 'Big', url: 'https://example.org/big' },
+      {
+        fetchedAt: now.toISOString(),
+        method: 'url',
+        sha256: 'a'.repeat(64),
+        title: 'Big',
+        url: 'https://example.org/big',
+      },
       { ...page, text: 'x'.repeat(maxSourceBytes + 1024) },
     );
     expect(new TextEncoder().encode(content).byteLength).toBeLessThanOrEqual(maxSourceBytes);
@@ -128,7 +147,12 @@ describe('upgradeSource', () => {
     const stub = await storage.read(added.path);
     const upgraded = await upgradeSource(
       storage,
-      { expectedContentHash: stub!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      {
+        expectedContentHash: stub!.hash,
+        page,
+        sha256: added.record.sha256,
+        topicSlug: 'transformers',
+      },
       now,
     );
 
@@ -164,7 +188,12 @@ describe('upgradeSource', () => {
 
     const upgraded = await upgradeSource(
       storage,
-      { expectedContentHash: captured!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      {
+        expectedContentHash: captured!.hash,
+        page,
+        sha256: added.record.sha256,
+        topicSlug: 'transformers',
+      },
       now,
     );
 
@@ -180,7 +209,12 @@ describe('upgradeSource', () => {
     await createTopic(storage, 'Transformers', now);
     const added = await addSource(
       storage,
-      { method: 'url', title: 'Attention paper', topicSlug: 'transformers', url: 'https://example.org/attention' },
+      {
+        method: 'url',
+        title: 'Attention paper',
+        topicSlug: 'transformers',
+        url: 'https://example.org/attention',
+      },
       now,
     );
     const stub = await storage.read(added.path);
@@ -190,7 +224,12 @@ describe('upgradeSource', () => {
     storage.armed = true;
     const upgraded = await upgradeSource(
       storage,
-      { expectedContentHash: stub!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      {
+        expectedContentHash: stub!.hash,
+        page,
+        sha256: added.record.sha256,
+        topicSlug: 'transformers',
+      },
       now,
     );
 
@@ -212,7 +251,10 @@ describe('upgradeSource', () => {
     const { added, storage } = await urlSourceFixture();
     const item = await storage.read(added.path);
     const expectedContentHash = item!.hash;
-    storage.files.set(added.path, { content: `${item?.content ?? ''}external edit\n`, modifiedAt: 99 });
+    storage.files.set(added.path, {
+      content: `${item?.content ?? ''}external edit\n`,
+      modifiedAt: 99,
+    });
     await expect(
       upgradeSource(
         storage,
@@ -227,7 +269,12 @@ describe('upgradeSource', () => {
     await expect(
       upgradeSource(
         storage,
-        { expectedContentHash: '0'.repeat(64), page, sha256: 'b'.repeat(64), topicSlug: 'transformers' },
+        {
+          expectedContentHash: '0'.repeat(64),
+          page,
+          sha256: 'b'.repeat(64),
+          topicSlug: 'transformers',
+        },
         now,
       ),
     ).rejects.toThrow('This URL source is missing from the manifest. Refresh and try again.');
