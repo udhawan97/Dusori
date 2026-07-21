@@ -223,12 +223,26 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   ).toBeVisible();
   await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
 
-  expect(await identityStage.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
+  expect(
+    await identityStage.evaluate((mark) => ({
+      arrival: getComputedStyle(mark).animationName,
+      arrivalCount: getComputedStyle(mark).animationIterationCount,
+      breath: getComputedStyle(mark.querySelector('img') as HTMLImageElement).animationName,
+      breathCount: getComputedStyle(mark.querySelector('img') as HTMLImageElement)
+        .animationIterationCount,
+    })),
+  ).toEqual({
+    arrival: 'enso-arrive',
+    arrivalCount: '1',
+    breath: 'enso-breathe',
+    breathCount: '2',
+  });
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
   await expect(identity).toBeVisible();
   expect(await identityStage.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
+  expect(await identity.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
 
   await page.goto('/Dusori/docs/knowledge-graph/');
   await expect(page.getByRole('heading', { name: 'Portable knowledge graph' })).toBeVisible();

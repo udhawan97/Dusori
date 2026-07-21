@@ -1,51 +1,125 @@
+<?xml version="1.0"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" role="img" aria-labelledby="title description">
+  <!-- Hallmark · component: README identity · genre: atmospheric editorial · theme: custom supplied identity · motion: finite reveal · critique: P5 H5 E5 S5 R5 V5 -->
   <title id="title">Dusori</title>
-  <desc id="description">The reversed monochrome Dusori ensō, rangoli, and katana mark with the Dusori wordmark on black.</desc>
-  <rect width="720" height="280" rx="24" fill="#14100d" />
+  <desc id="description">The reversed monochrome Dusori ens&#x14D;, rangoli, and katana mark wakes gently, then settles beside the Dusori wordmark on black.</desc>
+  <style>
+    :root {
+      --readme-dur-arrive: 1s;
+      --readme-dur-breathe: 1.5s;
+      --readme-dur-wordmark: 0.7s;
+      --readme-delay-breathe: 0.55s;
+      --readme-delay-wordmark: 0.2s;
+      --readme-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --readme-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    }
 
+    .readme-reveal {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: mark-awaken var(--readme-dur-arrive) var(--readme-ease-out) both;
+    }
+
+    .readme-breathe {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: mark-breathe var(--readme-dur-breathe) var(--readme-ease-in-out)
+        var(--readme-delay-breathe) 2 alternate;
+    }
+
+    .readme-wordmark {
+      animation: wordmark-reveal var(--readme-dur-wordmark) var(--readme-ease-out)
+        var(--readme-delay-wordmark) both;
+    }
+
+    @keyframes mark-awaken {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.94);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @keyframes mark-breathe {
+      from {
+        transform: none;
+      }
+      to {
+        transform: translateY(-4px) scale(1.012);
+      }
+    }
+
+    @keyframes wordmark-reveal {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .readme-reveal,
+      .readme-breathe,
+      .readme-wordmark {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+  <rect width="720" height="280" rx="24" fill="#14100d"/>
   <!-- Exact reversed-monochrome mark from the supplied Dusori identity set. -->
-  <g transform="translate(54 40) scale(3.125)">
-    <path d="M55.77 26.51 C57.03 31.96 58.05 38.06 55.43 43.43 C52.81 48.8 48.57 53.28 43.11 55.83 C37.65 58.38 31.48 59.05 25.62 57.59 C19.76 56.13 14.65 52.61 11.03 47.8 C7.41 42.99 5.8 37.05 6.01 31.09 C6.22 25.13 8.71 19.57 12.58 15.12 C16.45 10.67 21.8 7.86 27.56 6.84 C33.32 5.82 38.85 8.28 43.67 10.95 C44.92 11.64 43.88 13.51 42.63 12.82 C38.24 10.38 33.06 11.05 28.45 11.86 C23.84 12.67 19.75 15.2 16.7 18.7 C13.65 22.2 12.18 26.72 12.02 31.3 C11.86 35.88 13.52 40.27 16.24 43.88 C18.96 47.49 22.89 49.95 27.25 51.04 C31.61 52.13 36.24 51.77 40.33 49.86 C44.42 47.95 47.92 44.84 49.92 40.74 C51.92 36.64 54.16 31.96 53.05 27.14 C52.63 25.33 55.35 24.7 55.77 26.51Z" fill="#f7f1e8" />
-    <g fill="none" stroke="#f7f1e8" opacity="0.85">
-      <circle cx="32" cy="32" r="5.2" stroke-width="0.34" />
-      <circle cx="32" cy="32" r="1.9" stroke-width="0.3" />
-      <path d="M32 26.8 L32 37.2 M26.8 32 L37.2 32 M28.32 28.32 L35.68 35.68 M35.68 28.32 L28.32 35.68" stroke-width="0.3" />
-      <path d="M36.4 32 A2.2 2.2 0 0 1 35.11 35.11 A2.2 2.2 0 0 1 32 36.4 A2.2 2.2 0 0 1 28.89 35.11 A2.2 2.2 0 0 1 27.6 32 A2.2 2.2 0 0 1 28.89 28.89 A2.2 2.2 0 0 1 32 27.6 A2.2 2.2 0 0 1 35.11 28.89 A2.2 2.2 0 0 1 36.4 32" stroke-width="0.28" />
-      <path d="M32 29.6 L34.4 32 L32 34.4 L29.6 32 Z" stroke-width="0.26" />
-      <circle cx="32" cy="32" r="6.8" stroke-width="0.22" stroke-dasharray="1.1 2.3" opacity="0.7" />
-      <circle cx="32" cy="32" r="7.6" stroke-width="0.16" opacity="0.4" />
-    </g>
-    <g fill="#f7f1e8">
-      <circle cx="27.83" cy="27.83" r="0.32" />
-      <circle cx="36.17" cy="36.17" r="0.32" />
-      <circle cx="36.17" cy="27.83" r="0.32" />
-      <circle cx="27.83" cy="36.17" r="0.32" />
-      <circle cx="37.4" cy="34.24" r="0.22" />
-      <circle cx="34.24" cy="37.4" r="0.22" />
-      <circle cx="29.76" cy="37.4" r="0.22" />
-      <circle cx="26.6" cy="34.24" r="0.22" />
-      <circle cx="26.6" cy="29.76" r="0.22" />
-      <circle cx="29.76" cy="26.6" r="0.22" />
-      <circle cx="34.24" cy="26.6" r="0.22" />
-      <circle cx="37.4" cy="29.76" r="0.22" />
-    </g>
-    <g fill="none" stroke="#f7f1e8" stroke-width="0.26" stroke-linejoin="round" opacity="0.9">
-      <path d="M32 24.75 L32.6 25.4 L32 26.05 L31.4 25.4 Z" />
-      <path d="M39.25 32 L38.6 32.6 L37.95 32 L38.6 31.4 Z" />
-      <path d="M32 39.25 L32.6 38.6 L32 37.95 L31.4 38.6 Z" />
-      <path d="M24.75 32 L25.4 32.6 L26.05 32 L25.4 31.4 Z" />
-    </g>
-    <circle cx="32" cy="32" r="0.85" fill="#f7f1e8" />
-    <g transform="translate(8.7 -6.8) rotate(142 32 32)">
-      <path d="M7.1 30.9 L13.8 30.9 L13.8 33.1 L7.1 33.1 Q5.75 32 7.1 30.9 Z" fill="#f7f1e8" />
-      <path d="M9.3 31.1 L10.05 32 L9.3 32.9 L8.55 32 Z" fill="#14100d" />
-      <path d="M11.7 31.1 L12.45 32 L11.7 32.9 L10.95 32 Z" fill="#14100d" />
-      <ellipse cx="14.8" cy="32" rx="1.05" ry="3.35" fill="#f7f1e8" />
-      <path d="M15.75 30.95 L17.2 30.95 L17.2 33.05 L15.75 33.05 Z" fill="#f7f1e8" />
-      <path d="M17.2 30.95 L55.9 30.95 L58.2 31.3 L55.5 32.3 L17.2 33.05 Z" fill="#f7f1e8" />
-      <path d="M18.3 31.55 L53.2 31.55" fill="none" stroke="#14100d" stroke-width="0.5" stroke-linecap="round" />
+  <g class="readme-reveal">
+    <g class="readme-breathe">
+      <g transform="translate(54 40) scale(3.125)">
+        <path d="M55.77 26.51 C57.03 31.96 58.05 38.06 55.43 43.43 C52.81 48.8 48.57 53.28 43.11 55.83 C37.65 58.38 31.48 59.05 25.62 57.59 C19.76 56.13 14.65 52.61 11.03 47.8 C7.41 42.99 5.8 37.05 6.01 31.09 C6.22 25.13 8.71 19.57 12.58 15.12 C16.45 10.67 21.8 7.86 27.56 6.84 C33.32 5.82 38.85 8.28 43.67 10.95 C44.92 11.64 43.88 13.51 42.63 12.82 C38.24 10.38 33.06 11.05 28.45 11.86 C23.84 12.67 19.75 15.2 16.7 18.7 C13.65 22.2 12.18 26.72 12.02 31.3 C11.86 35.88 13.52 40.27 16.24 43.88 C18.96 47.49 22.89 49.95 27.25 51.04 C31.61 52.13 36.24 51.77 40.33 49.86 C44.42 47.95 47.92 44.84 49.92 40.74 C51.92 36.64 54.16 31.96 53.05 27.14 C52.63 25.33 55.35 24.7 55.77 26.51Z" fill="#f7f1e8"/>
+        <g fill="none" stroke="#f7f1e8" opacity="0.85">
+          <circle cx="32" cy="32" r="5.2" stroke-width="0.34"/>
+          <circle cx="32" cy="32" r="1.9" stroke-width="0.3"/>
+          <path d="M32 26.8 L32 37.2 M26.8 32 L37.2 32 M28.32 28.32 L35.68 35.68 M35.68 28.32 L28.32 35.68" stroke-width="0.3"/>
+          <path d="M36.4 32 A2.2 2.2 0 0 1 35.11 35.11 A2.2 2.2 0 0 1 32 36.4 A2.2 2.2 0 0 1 28.89 35.11 A2.2 2.2 0 0 1 27.6 32 A2.2 2.2 0 0 1 28.89 28.89 A2.2 2.2 0 0 1 32 27.6 A2.2 2.2 0 0 1 35.11 28.89 A2.2 2.2 0 0 1 36.4 32" stroke-width="0.28"/>
+          <path d="M32 29.6 L34.4 32 L32 34.4 L29.6 32 Z" stroke-width="0.26"/>
+          <circle cx="32" cy="32" r="6.8" stroke-width="0.22" stroke-dasharray="1.1 2.3" opacity="0.7"/>
+          <circle cx="32" cy="32" r="7.6" stroke-width="0.16" opacity="0.4"/>
+        </g>
+        <g fill="#f7f1e8">
+          <circle cx="27.83" cy="27.83" r="0.32"/>
+          <circle cx="36.17" cy="36.17" r="0.32"/>
+          <circle cx="36.17" cy="27.83" r="0.32"/>
+          <circle cx="27.83" cy="36.17" r="0.32"/>
+          <circle cx="37.4" cy="34.24" r="0.22"/>
+          <circle cx="34.24" cy="37.4" r="0.22"/>
+          <circle cx="29.76" cy="37.4" r="0.22"/>
+          <circle cx="26.6" cy="34.24" r="0.22"/>
+          <circle cx="26.6" cy="29.76" r="0.22"/>
+          <circle cx="29.76" cy="26.6" r="0.22"/>
+          <circle cx="34.24" cy="26.6" r="0.22"/>
+          <circle cx="37.4" cy="29.76" r="0.22"/>
+        </g>
+        <g fill="none" stroke="#f7f1e8" stroke-width="0.26" stroke-linejoin="round" opacity="0.9">
+          <path d="M32 24.75 L32.6 25.4 L32 26.05 L31.4 25.4 Z"/>
+          <path d="M39.25 32 L38.6 32.6 L37.95 32 L38.6 31.4 Z"/>
+          <path d="M32 39.25 L32.6 38.6 L32 37.95 L31.4 38.6 Z"/>
+          <path d="M24.75 32 L25.4 32.6 L26.05 32 L25.4 31.4 Z"/>
+        </g>
+        <circle cx="32" cy="32" r="0.85" fill="#f7f1e8"/>
+        <g transform="translate(8.7 -6.8) rotate(142 32 32)">
+          <path d="M7.1 30.9 L13.8 30.9 L13.8 33.1 L7.1 33.1 Q5.75 32 7.1 30.9 Z" fill="#f7f1e8"/>
+          <path d="M9.3 31.1 L10.05 32 L9.3 32.9 L8.55 32 Z" fill="#14100d"/>
+          <path d="M11.7 31.1 L12.45 32 L11.7 32.9 L10.95 32 Z" fill="#14100d"/>
+          <ellipse cx="14.8" cy="32" rx="1.05" ry="3.35" fill="#f7f1e8"/>
+          <path d="M15.75 30.95 L17.2 30.95 L17.2 33.05 L15.75 33.05 Z" fill="#f7f1e8"/>
+          <path d="M17.2 30.95 L55.9 30.95 L58.2 31.3 L55.5 32.3 L17.2 33.05 Z" fill="#f7f1e8"/>
+          <path d="M18.3 31.55 L53.2 31.55" fill="none" stroke="#14100d" stroke-width="0.5" stroke-linecap="round"/>
+        </g>
+      </g>
     </g>
   </g>
-
-  <text x="300" y="168" fill="#f7f1e8" font-family="'Shippori Mincho', Georgia, 'Times New Roman', serif" font-size="86" font-weight="600" letter-spacing="-2">Dusori</text>
+  <text class="readme-wordmark" x="300" y="168" fill="#f7f1e8" font-family="'Shippori Mincho', Georgia, 'Times New Roman', serif" font-size="86" font-weight="600" letter-spacing="-2">Dusori</text>
 </svg>

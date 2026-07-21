@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/dusori-readme-logo-inverted.svg" width="720" alt="Dusori — inverted ensō, rangoli, and katana mark" />
+  <img src="docs/assets/dusori-readme-logo-inverted.svg" width="720" alt="Dusori — animated inverted ensō, rangoli, and katana mark" />
 </p>
 
 <p align="center">
