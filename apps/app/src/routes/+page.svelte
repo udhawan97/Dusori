@@ -37,6 +37,7 @@
   import { FsaStorageAdapter, pickDirectory, restoreDirectoryHandle } from '@dusori/storage-fsa';
   import { createOpfsStorage } from '@dusori/storage-opfs';
 
+  import { resolveCompanionOrigin } from '$lib/companion-origin';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -98,7 +99,14 @@
     const parameters = new URLSearchParams(location.search);
     const token = parameters.get('token');
     if (!token) return;
-    const companion = parameters.get('companion') ?? location.origin;
+    const requested = parameters.get('companion') ?? location.origin;
+    const companion = resolveCompanionOrigin(requested, location.origin);
+    if (!companion) {
+      companionClient = null;
+      companionStatus =
+        'Connection was denied. Allow local-network access, or open the URL printed by npx dusori.';
+      return;
+    }
     try {
       const response = await fetch(`${companion}/api/health`, {
         headers: { Authorization: `Bearer ${token}` },
