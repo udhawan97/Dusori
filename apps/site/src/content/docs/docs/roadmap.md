@@ -12,6 +12,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Conflict-safe proposals and dated update logs
 - Local source library for pasted text, Markdown/text files, and unfetched URL references
 - Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
+- Interactive Markdown roadmap progress, explicit topic status, and deterministic Today summaries
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
@@ -23,7 +24,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Ollama discovery and source-bounded transformations
 - Model capability probes
 - Chat-to-`TUTOR.md` diff editing
-- On-open learning schedule and recap generation
+- Optional generated review schedules and recap suggestions
 - Optional best-effort search adapters
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

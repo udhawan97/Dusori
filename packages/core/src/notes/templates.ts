@@ -16,7 +16,7 @@ export function overviewTemplate(input: TopicTemplateInput): string {
 }
 
 export function roadmapTemplate(input: TopicTemplateInput): string {
-  return `---\ntitle: ${input.title} roadmap\ntopic: ${input.slug}\nstatus: draft\n---\n\n# Roadmap\n\n- [ ] Establish the terms and boundaries.\n- [ ] Explain the central mechanism in your own words.\n- [ ] Connect the topic to a practical example.\n\nThis first roadmap is deliberately manual. Automated syllabus import is not built yet.\n`;
+  return `---\ntitle: ${input.title} roadmap\ntopic: ${input.slug}\nstatus: draft\n---\n\n# Roadmap\n\n- [ ] Establish the terms and boundaries.\n- [ ] Explain the central mechanism in your own words.\n- [ ] Connect the topic to a practical example.\n\nImport a curriculum when you want a structured outline, or keep this roadmap manual.\n`;
 }
 
 export function tutorTemplate(input: TopicTemplateInput): string {
@@ -28,5 +28,5 @@ export function firstNoteTemplate(input: TopicTemplateInput): string {
 }
 
 export function initialUpdateTemplate(input: TopicTemplateInput): string {
-  return `---\ntitle: ${input.createdAt.slice(0, 10)} update\ntopic: ${input.slug}\ntype: dusori-update\n---\n\n# ${input.createdAt.slice(0, 10)}\n\n- Created [[../../Overview|${input.title}]].\n- Added [[../../Notes/001-first-look|First look]].\n- Created the roadmap, learning preferences, source manifest, and machine state.\n`;
+  return `---\ntitle: ${input.createdAt.slice(0, 10)} update\ntopic: ${input.slug}\ntype: dusori-update\n---\n\n# ${input.createdAt.slice(0, 10)}\n\n- Created [[../../../Overview|${input.title}]].\n- Added [[../../../Notes/001-first-look|First look]].\n- Created the roadmap, learning preferences, source manifest, and machine state.\n`;
 }

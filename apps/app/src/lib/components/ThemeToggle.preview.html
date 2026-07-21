@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>ThemeToggle — state contract</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: #14100d;
+        color: #f7f1e8;
+      }
+      body {
+        margin: 0;
+        padding: 2rem;
+      }
+      main {
+        max-width: 48rem;
+        margin: auto;
+      }
+      .states {
+        display: grid;
+        gap: 1.25rem;
+        margin-top: 2rem;
+      }
+      .state {
+        display: grid;
+        grid-template-columns: 8rem 1fr;
+        align-items: center;
+      }
+      button {
+        display: grid;
+        width: 2.75rem;
+        min-height: 2.75rem;
+        padding: 0;
+        border: 1px solid #775f50;
+        border-radius: 0.25rem;
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+        background: transparent;
+        color: #f7f1e8;
+        place-items: center;
+      }
+      button::before {
+        content: '☀';
+        font-size: 1.125rem;
+      }
+      .hover {
+        background: #211a16;
+        color: #e66b52;
+      }
+      .focus {
+        outline-color: #e66b52;
+      }
+      .active {
+        transform: translateY(1px);
+      }
+      .disabled,
+      .loading {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+      .loading::before {
+        content: '◌';
+      }
+      .error {
+        border-color: #dc745f;
+        color: #dc745f;
+      }
+      .success {
+        border-color: #8fb489;
+        color: #8fb489;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ThemeToggle — eight states</h1>
+      <p>Visual contract for the production component.</p>
+      <div class="states">
+        <div class="state"><span>Default</span><button aria-label="Default"></button></div>
+        <div class="state">
+          <span>Hover</span><button class="hover" aria-label="Hover"></button>
+        </div>
+        <div class="state">
+          <span>Focus</span><button class="focus" aria-label="Focus"></button>
+        </div>
+        <div class="state">
+          <span>Active</span><button class="active" aria-label="Active"></button>
+        </div>
+        <div class="state">
+          <span>Disabled</span><button class="disabled" disabled aria-label="Disabled"></button>
+        </div>
+        <div class="state">
+          <span>Loading</span
+          ><button class="loading" disabled aria-busy="true" aria-label="Loading"></button>
+        </div>
+        <div class="state">
+          <span>Error</span><button class="error" aria-label="Error"></button>
+        </div>
+        <div class="state">
+          <span>Success</span><button class="success" aria-label="Success"></button>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

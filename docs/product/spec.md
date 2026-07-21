@@ -22,10 +22,13 @@ The first milestone must prove:
 8. A loopback-only companion security foundation.
 9. Keyboard, responsive, contrast, and automated accessibility gates.
 10. A public GitHub repository, product page, documentation, and PWA on GitHub Pages.
+11. An interactive learning loop derived entirely from portable roadmap, state, and update files.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
 The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markdown with the English `Skills measured` hierarchy and general structured Markdown syllabi. It extracts at most 200 objectives locally, previews them before writing, preserves the original outline as a topic source, and updates `roadmap.md` through the same conflict-safe acceptance protocol. The optional official URL is provenance metadata only and is never fetched.
+
+The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress, next steps, and recent dated updates. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. No schedule or recap is generated.
 
 ## Explicitly not built yet
 
@@ -35,7 +38,7 @@ The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markd
 - Ollama or other model operations
 - AI-generated notes or diagrams
 - Chat-to-`TUTOR.md` editing
-- Closed-app or unattended scheduling
+- Generated schedules, recaps, or closed-app work
 - Accounts, sync, telemetry, or hosted storage
 
 ## Trust model
