@@ -68,6 +68,6 @@ describe('createCompanionResearchClient', () => {
       title: 'First',
       url: 'https://learn.microsoft.com/en-us/first',
     });
-    expect(results[1].score).toBe(1);
+    expect(results[1]!.score).toBe(1);
   });
 });
