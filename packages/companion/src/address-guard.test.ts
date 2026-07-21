@@ -45,6 +45,10 @@ const blocked = [
   // Benchmarking 2001:2::/48 (RFC 5180) — reserved, blocked outright.
   '2001:2::1',
   '2001:2:0:1::1',
+  // Teredo 2001::/32 (RFC 4380) — server IPv4 plain in bytes 4-7, client IPv4
+  // complemented in bytes 12-15. Either one blocked is enough to block.
+  '2001:0:808:808::3f57:fefe', // client complement decodes to 192.168.1.1
+  '2001:0:a00:5::a247:28f1', // server is 10.0.0.5
   '192.0.2.1',
   '198.51.100.1',
   '203.0.113.1',
@@ -65,6 +69,9 @@ const allowed = [
   // Public IPv4 embedded under the local-use NAT64 /48 prefix must stay
   // allowed — proves we unwrap and re-check, not blanket-block the prefix.
   '64:ff9b:1:808:8:800::', // embeds 8.8.8.8
+  // Teredo with both embedded IPv4s public — proves we unwrap both, not
+  // blanket-block the 2001::/32 prefix.
+  '2001:0:808:808::a247:28f1', // server 8.8.8.8, client complement 93.184.215.14
 ];
 
 describe('isBlockedAddress', () => {

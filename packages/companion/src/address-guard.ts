@@ -150,6 +150,14 @@ function blockedV6(bytes: number[]): boolean {
   )
     return true;
 
+  // Teredo 2001::/32 (RFC 4380) — server IPv4 plain in bytes 4-7, client IPv4
+  // bitwise-complemented in bytes 12-15. Unwrap both, block if either is blocked.
+  if (bytes[0] === 0x20 && bytes[1] === 0x01 && bytes[2] === 0x00 && bytes[3] === 0x00) {
+    const server = embeddedV4(bytes, 4);
+    const client = `${255 - bytes[12]!}.${255 - bytes[13]!}.${255 - bytes[14]!}.${255 - bytes[15]!}`;
+    return blockedV4(server) || blockedV4(client);
+  }
+
   // Discard-only 100::/64
   if (bytes[0] === 0x01 && bytes[1] === 0x00 && bytes.slice(2, 8).every((b) => b === 0))
     return true;
