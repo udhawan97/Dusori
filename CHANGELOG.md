@@ -4,6 +4,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
+
 ### Added
 
 - Consent-gated, objective-led research using the keyless Microsoft Learn catalog and English Wikipedia APIs.
@@ -13,6 +15,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 - Scale the browser-local knowledge constellation to workspace size and order topics by wikilink affinity, with deterministic geometry audits that prevent node collisions and clipping.
 - Mark wikilink hubs with marigold rings and let pointer and keyboard users focus a node, dim unrelated artifacts, and open the selection directly.
+- Refine the public Dusori identity with the supplied ensō, rangoli, and katana geometry plus reduced-motion-aware animation.
 
 ### Safety and portability
 
@@ -44,4 +47,6 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/udhawan97/Dusori/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/udhawan97/Dusori/releases/tag/v0.1.0

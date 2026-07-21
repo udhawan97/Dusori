@@ -2,7 +2,7 @@
 
 The optional Dusori companion serves the built web app from a loopback origin and exposes a token-protected, root-confined file API. It binds only to `127.0.0.1` and stops with its terminal process.
 
-The v0.1.0 GitHub release does not publish this package to npm. From the repository root:
+The v0.2.0 GitHub release does not publish this package to npm. From the repository root:
 
 ```sh
 pnpm install

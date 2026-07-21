@@ -1,6 +1,6 @@
 # Web-research second brain — design
 
-**Status:** proposed · **Date:** 2026-07-21 · **Target:** post-v0.1.0 milestone
+**Status:** implemented · **Date:** 2026-07-21 · **Release:** v0.2.0
 
 ## Goal
 

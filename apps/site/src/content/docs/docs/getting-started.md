@@ -47,7 +47,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 The optional companion currently proves the loopback security boundary. It does not yet provide Ollama or source fetching.
 
-The v0.1.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
+The v0.2.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
 
 ```sh
 corepack enable
