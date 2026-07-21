@@ -1,9 +1,13 @@
 <p align="center">
-  <img src="docs/assets/dusori-mark-animated.svg" width="640" alt="Dusori — local-first learning" />
+  <img src="docs/assets/dusori-mark-animated.svg" width="720" alt="Dusori neural ensō — local-first learning" />
 </p>
 
 <p align="center">
-  A free, local-first learning workspace built from files you can keep.<br />
+  <em>“A second brain should remember who owns the first.”</em>
+</p>
+
+<p align="center">
+  Free, local-first learning from Markdown and JSON.<br />
   No account · no telemetry · no hosted database · useful without AI
 </p>
 

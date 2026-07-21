@@ -117,18 +117,16 @@ async function applyCurriculum(page: Page): Promise<void> {
 
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
   await page.goto('/Dusori/');
-  await expect(
-    page.getByRole('heading', { name: 'Your learning files. Still yours.' }),
-  ).toBeVisible();
-  await expect(page.getByRole('link', { name: /open the app/iu })).toHaveAttribute(
+  await expect(page.getByRole('heading', { name: 'Learn deeply. Keep the files.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /open dusori/iu })).toHaveAttribute(
     'href',
     '/Dusori/app/',
   );
-  await expect(page.getByRole('link', { name: /read the documentation/iu })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: /read the docs/iu })).toHaveAttribute(
     'href',
     '/Dusori/docs/',
   );
-  await expect(page.getByText('v0.1.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('v0.1.0 · available now', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /release notes/iu })).toHaveAttribute(
     'href',
     'https://github.com/udhawan97/Dusori/releases/tag/v0.1.0',
@@ -215,13 +213,28 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   page,
 }) => {
   await page.goto('/Dusori/');
+  const identity = page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' });
+  await expect(identity).toBeVisible();
+  expect((await identity.boundingBox())?.width).toBeGreaterThan(360);
   await expect(
-    page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' }),
+    page.getByRole('heading', { name: 'Your notes, finally on speaking terms.' }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'See how your learning connects.' }),
-  ).toBeVisible();
-  await expect(page.getByText('Japanese restraint. Indian geometry.')).toBeVisible();
+  await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
+
+  expect(
+    await identity.evaluate(
+      (mark) => getComputedStyle(mark.querySelector('.enso-field') as SVGElement).animationName,
+    ),
+  ).toBe('enso-breathe');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  await expect(identity).toBeVisible();
+  expect(
+    await identity.evaluate(
+      (mark) => getComputedStyle(mark.querySelector('.enso-field') as SVGElement).animationName,
+    ),
+  ).toBe('none');
 
   await page.goto('/Dusori/docs/knowledge-graph/');
   await expect(page.getByRole('heading', { name: 'Portable knowledge graph' })).toBeVisible();

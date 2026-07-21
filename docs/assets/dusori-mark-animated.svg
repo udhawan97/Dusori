@@ -1,41 +1,129 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 180" role="img" aria-labelledby="title desc">
-  <title id="title">Dusori</title>
-  <desc id="desc">An animated open ensō around a rangoli wheel, crossed by a vermilion katana.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 286" role="img" aria-labelledby="title desc">
+  <title id="title">Dusori neural ensō</title>
+  <desc id="desc">A centered animated ensō with a connected neural pattern, rangoli geometry, and a vermilion katana above the Dusori wordmark.</desc>
   <style>
-    .enso { animation: reveal .9s cubic-bezier(.16,1,.3,1) both; transform-origin: 32px 32px; }
-    .wheel { animation: settle 1.2s .18s cubic-bezier(.16,1,.3,1) both; transform-origin: 32px 32px; }
-    .blade { animation: enter .85s .34s cubic-bezier(.16,1,.3,1) both; }
-    .name { animation: name-in .8s .55s ease-out both; }
     .ink { fill: #1a1511; }
     .paper { fill: #f7f1e8; }
-    @keyframes reveal { from { opacity: 0; transform: rotate(-18deg) scale(.92); } }
-    @keyframes settle { from { opacity: 0; transform: rotate(-52deg) scale(.55); } }
-    @keyframes enter { from { opacity: 0; transform: translate(-22px, 22px); } }
-    @keyframes name-in { from { opacity: 0; transform: translateX(-12px); } }
+    .marigold-fill { fill: #c9862e; }
+    .marigold-stroke { fill: none; stroke: #c9862e; stroke-linecap: round; stroke-linejoin: round; }
+    .blade { fill: #cb4832; }
+    .blade-shine { fill: none; stroke: #f7f1e8; }
+    .mark-arrive { animation: mark-arrive 760ms cubic-bezier(.16,1,.3,1) both; }
+    .mark-breathe { transform-box: fill-box; transform-origin: center; animation: breathe 7.56s cubic-bezier(.65,0,.35,1) infinite; }
+    .trace { opacity: .76; animation: trace-awaken 840ms cubic-bezier(.16,1,.3,1) both; }
+    .trace:nth-child(2) { animation-delay: 120ms; }
+    .trace:nth-child(3) { animation-delay: 240ms; }
+    .trace:nth-child(4) { animation-delay: 360ms; }
+    .trace:nth-child(5) { animation-delay: 480ms; }
+    .trace:nth-child(6) { animation-delay: 600ms; }
+    .signal { transform-box: fill-box; transform-origin: center; animation: signal 7.56s cubic-bezier(.65,0,.35,1) infinite; }
+    .signal:nth-child(2) { animation-delay: -1.26s; }
+    .signal:nth-child(3) { animation-delay: -2.52s; }
+    .signal:nth-child(4) { animation-delay: -3.78s; }
+    .signal:nth-child(5) { animation-delay: -5.04s; }
+    .signal:nth-child(6) { animation-delay: -6.3s; }
+    .blade-arrive { transform-box: fill-box; transform-origin: center; animation: blade-arrive 640ms 220ms cubic-bezier(.16,1,.3,1) both; }
+    .name { animation: name-arrive 640ms 420ms cubic-bezier(.16,1,.3,1) both; }
+
+    @keyframes mark-arrive {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes trace-awaken {
+      from { opacity: 0; }
+      to { opacity: .76; }
+    }
+    @keyframes blade-arrive {
+      from { opacity: 0; transform: translate(-8px, 8px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes name-arrive {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(.996); }
+      50% { transform: scale(1.008); }
+    }
+    @keyframes signal {
+      0%, 18%, 100% { opacity: .48; transform: scale(.82); }
+      8% { opacity: 1; transform: scale(1.5); }
+    }
+
     @media (prefers-color-scheme: dark) {
       .ink { fill: #f7f1e8; }
-      .paper { fill: #1a1511; }
+      .paper { fill: #14100d; }
+      .blade-shine { stroke: #14100d; }
     }
+
     @media (prefers-reduced-motion: reduce) {
-      .enso, .wheel, .blade, .name { animation: none; }
+      .mark-arrive, .mark-breathe, .trace, .signal, .blade-arrive, .name {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
     }
   </style>
-  <g transform="translate(24 16) scale(2.3)">
-    <path class="enso ink" d="M55.77 26.51 C57.03 31.96 58.05 38.06 55.43 43.43 C52.81 48.8 48.57 53.28 43.11 55.83 C37.65 58.38 31.48 59.05 25.62 57.59 C19.76 56.13 14.65 52.61 11.03 47.8 C7.41 42.99 5.8 37.05 6.01 31.09 C6.22 25.13 8.71 19.57 12.58 15.12 C16.45 10.67 21.8 7.86 27.56 6.84 C33.32 5.82 38.85 8.28 43.67 10.95 C44.92 11.64 43.88 13.51 42.63 12.82 C38.24 10.38 33.06 11.05 28.45 11.86 C23.84 12.67 19.75 15.2 16.7 18.7 C13.65 22.2 12.18 26.72 12.02 31.3 C11.86 35.88 13.52 40.27 16.24 43.88 C18.96 47.49 22.89 49.95 27.25 51.04 C31.61 52.13 36.24 51.77 40.33 49.86 C44.42 47.95 47.92 44.84 49.92 40.74 C51.92 36.64 54.16 31.96 53.05 27.14 C52.63 25.33 55.35 24.7 55.77 26.51Z"/>
-    <g class="wheel" fill="none" stroke="#c9862e" opacity=".9">
-      <circle cx="32" cy="32" r="5.2" stroke-width=".34"/><circle cx="32" cy="32" r="1.9" stroke-width=".3"/>
-      <path d="M32 26.8V37.2M26.8 32H37.2M28.32 28.32L35.68 35.68M35.68 28.32L28.32 35.68" stroke-width=".3"/>
-      <path d="M36.4 32a2.2 2.2 0 0 1-1.29 3.11A2.2 2.2 0 0 1 32 36.4a2.2 2.2 0 0 1-3.11-1.29A2.2 2.2 0 0 1 27.6 32a2.2 2.2 0 0 1 1.29-3.11A2.2 2.2 0 0 1 32 27.6a2.2 2.2 0 0 1 3.11 1.29A2.2 2.2 0 0 1 36.4 32" stroke-width=".28"/>
-      <circle cx="32" cy="32" r="6.8" stroke-width=".22" stroke-dasharray="1.1 2.3" opacity=".7"/><circle cx="32" cy="32" r="7.6" stroke-width=".16" opacity=".4"/>
-    </g>
-    <g class="blade" transform="translate(8.7 -6.8) rotate(142 32 32)">
-      <path class="ink" d="M7.1 30.9h6.7v2.2H7.1Q5.75 32 7.1 30.9Z"/><path class="paper" d="m9.3 31.1.75.9-.75.9-.75-.9Zm2.4 0 .75.9-.75.9-.75-.9Z"/>
-      <ellipse class="ink" cx="14.8" cy="32" rx="1.05" ry="3.35"/><path class="ink" d="M15.75 30.95h1.45v2.1h-1.45Z"/>
-      <path fill="#cb4832" d="M17.2 30.95h38.7l2.3.35-2.7 1H17.2Z"/><path d="M18.3 31.55h34.9" fill="none" stroke="#f7f1e8" stroke-width=".5" stroke-linecap="round"/>
+
+  <g transform="translate(273 16) scale(2.72)">
+    <g class="mark-arrive">
+      <g class="mark-breathe">
+        <path class="ink" d="M55.77 26.51 C57.03 31.96 58.05 38.06 55.43 43.43 C52.81 48.8 48.57 53.28 43.11 55.83 C37.65 58.38 31.48 59.05 25.62 57.59 C19.76 56.13 14.65 52.61 11.03 47.8 C7.41 42.99 5.8 37.05 6.01 31.09 C6.22 25.13 8.71 19.57 12.58 15.12 C16.45 10.67 21.8 7.86 27.56 6.84 C33.32 5.82 38.85 8.28 43.67 10.95 C44.92 11.64 43.88 13.51 42.63 12.82 C38.24 10.38 33.06 11.05 28.45 11.86 C23.84 12.67 19.75 15.2 16.7 18.7 C13.65 22.2 12.18 26.72 12.02 31.3 C11.86 35.88 13.52 40.27 16.24 43.88 C18.96 47.49 22.89 49.95 27.25 51.04 C31.61 52.13 36.24 51.77 40.33 49.86 C44.42 47.95 47.92 44.84 49.92 40.74 C51.92 36.64 54.16 31.96 53.05 27.14 C52.63 25.33 55.35 24.7 55.77 26.51Z"/>
+
+        <g class="marigold-stroke" stroke-width=".28">
+          <path class="trace" d="M32 32 C28.4 30.8 25.6 26 21.4 23.3 C19.1 21.8 18.2 18.8 19.2 16.7"/>
+          <path class="trace" d="M32 32 C34.4 28.4 38.1 26.5 42.5 22.2 C44.8 19.9 46.1 17.7 45.1 15.8"/>
+          <path class="trace" d="M32 32 C36.5 31.8 39.6 29.4 44.7 29.1 C47.2 29 49 27.8 50.2 25.8"/>
+          <path class="trace" d="M32 32 C36.2 34 39.3 37.5 43.5 39.7 C46.2 41.1 47.5 43.5 47.4 46"/>
+          <path class="trace" d="M32 32 C30.1 35.8 26.6 38.4 23 42.7 C21.2 44.8 18.8 45.7 16.7 45"/>
+          <path class="trace" d="M32 32 C27.7 33.5 24.3 34 19.8 36.6 C17.5 37.9 15.1 37.7 13.4 36.2"/>
+        </g>
+
+        <g class="marigold-fill">
+          <circle class="signal" cx="19.2" cy="16.7" r=".72"/>
+          <circle class="signal" cx="45.1" cy="15.8" r=".72"/>
+          <circle class="signal" cx="50.2" cy="25.8" r=".72"/>
+          <circle class="signal" cx="47.4" cy="46" r=".72"/>
+          <circle class="signal" cx="16.7" cy="45" r=".72"/>
+          <circle class="signal" cx="13.4" cy="36.2" r=".72"/>
+        </g>
+
+        <g class="marigold-stroke" opacity=".88">
+          <circle cx="32" cy="32" r="5.2" stroke-width=".34"/>
+          <circle cx="32" cy="32" r="1.9" stroke-width=".3"/>
+          <path d="M32 26.8V37.2M26.8 32H37.2M28.32 28.32L35.68 35.68M35.68 28.32L28.32 35.68" stroke-width=".3"/>
+          <path d="M36.4 32a2.2 2.2 0 0 1-1.29 3.11A2.2 2.2 0 0 1 32 36.4a2.2 2.2 0 0 1-3.11-1.29A2.2 2.2 0 0 1 27.6 32a2.2 2.2 0 0 1 1.29-3.11A2.2 2.2 0 0 1 32 27.6a2.2 2.2 0 0 1 3.11 1.29A2.2 2.2 0 0 1 36.4 32" stroke-width=".28"/>
+          <path d="M32 29.6 34.4 32 32 34.4 29.6 32Z" stroke-width=".26"/>
+          <circle cx="32" cy="32" r="6.8" stroke-width=".22" stroke-dasharray="1.1 2.3" opacity=".7"/>
+          <circle cx="32" cy="32" r="7.6" stroke-width=".16" opacity=".4"/>
+        </g>
+
+        <g class="marigold-fill">
+          <circle cx="27.83" cy="27.83" r=".32"/><circle cx="36.17" cy="36.17" r=".32"/>
+          <circle cx="36.17" cy="27.83" r=".32"/><circle cx="27.83" cy="36.17" r=".32"/>
+          <circle cx="37.4" cy="34.24" r=".22"/><circle cx="34.24" cy="37.4" r=".22"/>
+          <circle cx="29.76" cy="37.4" r=".22"/><circle cx="26.6" cy="34.24" r=".22"/>
+          <circle cx="26.6" cy="29.76" r=".22"/><circle cx="29.76" cy="26.6" r=".22"/>
+          <circle cx="34.24" cy="26.6" r=".22"/><circle cx="37.4" cy="29.76" r=".22"/>
+          <circle cx="32" cy="32" r=".85"/>
+        </g>
+      </g>
+
+      <g class="blade-arrive">
+        <g transform="translate(8.7 -6.8) rotate(142 32 32)">
+          <path class="ink" d="M7.1 30.9h6.7v2.2H7.1Q5.75 32 7.1 30.9Z"/>
+          <path class="paper" d="m9.3 31.1.75.9-.75.9-.75-.9Zm2.4 0 .75.9-.75.9-.75-.9Z"/>
+          <ellipse class="ink" cx="14.8" cy="32" rx="1.05" ry="3.35"/>
+          <path class="ink" d="M15.75 30.95h1.45v2.1h-1.45Z"/>
+          <path class="blade" d="M17.2 30.95h38.7l2.3.35-2.7 1H17.2Z"/>
+          <path class="blade-shine" d="M18.3 31.55h34.9" stroke-width=".5" stroke-linecap="round"/>
+        </g>
+      </g>
     </g>
   </g>
-  <g class="name">
-    <text class="ink" x="198" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="600" letter-spacing="-2">Dusori</text>
-    <text x="202" y="126" fill="#c9862e" font-family="ui-monospace, monospace" font-size="13" letter-spacing="2.4">LOCAL-FIRST LEARNING</text>
+
+  <g class="name" text-anchor="middle">
+    <text class="ink" x="360" y="238" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="600" letter-spacing="-1.6">Dusori</text>
+    <text x="360" y="266" fill="#c9862e" font-family="ui-monospace, monospace" font-size="12" letter-spacing="2.6">LOCAL-FIRST LEARNING</text>
   </g>
 </svg>
