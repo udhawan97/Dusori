@@ -31,6 +31,13 @@
 - Consumes: nothing (pure module, `node:net` only).
 - Produces: `isBlockedAddress(address: string): boolean` — `true` for every private/reserved/multicast IPv4 or IPv6 literal AND for any string that is not an IP literal (only resolved addresses may reach it).
 
+> ⚠️ **Superseded during execution.** The Step 3 code below failed its own contract:
+> the `::1` string comparison let `0::1` and `0:0:0:0:0:0:0:1` through (loopback
+> bypass), IPv6 multicast was unhandled, and 6to4 / NAT64 / IPv4-compatible
+> embeddings of private IPv4 space were never unwrapped. Commit `32d2abd` replaced
+> the IPv6 path with byte-level normalization. **Do not re-execute the Step 3 block
+> below** — read the shipped `packages/companion/src/address-guard.ts` instead.
+
 - [ ] **Step 1: Write the failing test**
 
 ```ts
