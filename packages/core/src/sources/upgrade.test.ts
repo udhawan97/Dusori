@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
 
-import { StorageConflictError } from '../adapters.js';
+import { StorageConflictError, type FileSnapshot, type WriteOptions } from '../adapters.js';
 import type { FetchedPage } from '../research/companion.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
+import { topicRoot } from '../workspace/paths.js';
 import { addSource, maxSourceBytes, readSourceManifest } from './import.js';
 import { buildUpgradedContent, upgradeSource } from './upgrade.js';
+
+// Fails the *first* write to a chosen path with StorageConflictError, then lets
+// every later write (including the retry) through normally. Used to drive
+// upgradeSource's manifest-conflict retry path without touching its logic.
+class FlakyOnceStorage extends MemoryStorageAdapter {
+  armed = false;
+  writeAttempts = 0;
+
+  constructor(private readonly failPath: string) {
+    super();
+  }
+
+  override async write(path: string, content: string, options?: WriteOptions): Promise<FileSnapshot> {
+    if (this.armed && path === this.failPath) {
+      this.writeAttempts += 1;
+      if (this.writeAttempts === 1) {
+        const current = await this.read(path);
+        throw new StorageConflictError(path, options?.expectedHash ?? null, current?.hash ?? null);
+      }
+    }
+    return super.write(path, content, options);
+  }
+}
 
 const now = new Date('2026-07-21T15:30:00.000Z');
 
@@ -146,6 +170,41 @@ describe('upgradeSource', () => {
 
     const item = await storage.read(upgraded.path);
     expect(item?.content).toContain('weigh the other tokens');
+    expect(upgraded.record.sha256).toBe(added.record.sha256);
+  });
+
+  it('retries once after a manifest write conflict, without double-writing the item file or the update log', async () => {
+    const manifestPath = `${topicRoot('transformers')}/Sources/manifest.json`;
+    const storage = new FlakyOnceStorage(manifestPath);
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'Transformers', now);
+    const added = await addSource(
+      storage,
+      { method: 'url', title: 'Attention paper', topicSlug: 'transformers', url: 'https://example.org/attention' },
+      now,
+    );
+    const stub = await storage.read(added.path);
+
+    // Arm the flake only for the upgrade call itself, so fixture setup above
+    // (which also writes the manifest) is unaffected.
+    storage.armed = true;
+    const upgraded = await upgradeSource(
+      storage,
+      { expectedContentHash: stub!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      now,
+    );
+
+    // The manifest write was actually intercepted once and retried: this
+    // proves the test drives the retry path rather than the happy path.
+    expect(storage.writeAttempts).toBeGreaterThanOrEqual(2);
+
+    const item = await storage.read(upgraded.path);
+    expect(item?.content).toBe(buildUpgradedContent(added.record, page));
+
+    const log = await storage.read(upgraded.updatePath ?? '');
+    const updateEntries = log?.content.split('Upgraded url source').length ?? 1;
+    expect(updateEntries - 1).toBe(1);
+
     expect(upgraded.record.sha256).toBe(added.record.sha256);
   });
 
