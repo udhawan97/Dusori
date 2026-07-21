@@ -214,27 +214,21 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
 }) => {
   await page.goto('/Dusori/');
   const identity = page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' });
+  const identityStage = page.locator('.hero-mark');
   await expect(identity).toBeVisible();
+  await expect(identity).toHaveAttribute('src', '/Dusori/brand/dusori-mark.svg');
   expect((await identity.boundingBox())?.width).toBeGreaterThan(360);
   await expect(
     page.getByRole('heading', { name: 'Your notes, finally on speaking terms.' }),
   ).toBeVisible();
   await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
 
-  expect(
-    await identity.evaluate(
-      (mark) => getComputedStyle(mark.querySelector('.enso-field') as SVGElement).animationName,
-    ),
-  ).toBe('enso-breathe');
+  expect(await identityStage.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.reload();
   await expect(identity).toBeVisible();
-  expect(
-    await identity.evaluate(
-      (mark) => getComputedStyle(mark.querySelector('.enso-field') as SVGElement).animationName,
-    ),
-  ).toBe('none');
+  expect(await identityStage.evaluate((mark) => getComputedStyle(mark).animationName)).toBe('none');
 
   await page.goto('/Dusori/docs/knowledge-graph/');
   await expect(page.getByRole('heading', { name: 'Portable knowledge graph' })).toBeVisible();
@@ -262,6 +256,9 @@ test('app starts dark and persists an explicit theme choice', async ({ page }) =
   await page.getByRole('button', { name: 'Switch to dark mode' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('dusori-theme'))).toBe('dark');
+  await page.getByRole('button', { name: 'Create workspace' }).evaluate(async (button) => {
+    await Promise.all(button.getAnimations().map((animation) => animation.finished));
+  });
   await expectNoSeriousA11yViolations(page);
 });
 
