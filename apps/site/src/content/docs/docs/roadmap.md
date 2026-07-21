@@ -17,10 +17,11 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
+- Companion-only page fetching with readability extraction, confirmed per fetch, and ranked Microsoft Learn search
 
 ## Planned—not built
 
-- Arbitrary remote-page fetching and readability extraction
+- Remote-page fetching from the hosted app alone, without the local companion
 - PDF and other non-text document import
 - Ollama discovery and source-bounded transformations
 - Model capability probes
