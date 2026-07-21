@@ -203,6 +203,25 @@ function positionedBounds(nodes: PositionedWorkspaceGraphNode[]): {
   return { bottom: maxY, left: minX, maxX, maxY, minX, minY };
 }
 
+export function wikilinkDegrees(graph: WorkspaceGraph): Map<string, number> {
+  const degrees = new Map(graph.nodes.map((node) => [node.id, 0]));
+  for (const edge of graph.edges) {
+    if (edge.kind !== 'links') continue;
+    degrees.set(edge.source, (degrees.get(edge.source) ?? 0) + 1);
+    degrees.set(edge.target, (degrees.get(edge.target) ?? 0) + 1);
+  }
+  return degrees;
+}
+
+export function neighborIds(graph: WorkspaceGraph, id: string): Set<string> {
+  const neighbors = new Set([id]);
+  for (const edge of graph.edges) {
+    if (edge.source === id) neighbors.add(edge.target);
+    if (edge.target === id) neighbors.add(edge.source);
+  }
+  return neighbors;
+}
+
 export function layoutWorkspaceGraph(graph: WorkspaceGraph): WorkspaceGraphLayout {
   if (graph.nodes.length === 0) return { nodes: [], width: 80, height: 80 };
 

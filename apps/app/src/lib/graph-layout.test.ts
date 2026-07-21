@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceGraph, WorkspaceGraphNode, WorkspaceGraphNodeKind } from '@dusori/core';
 
-import { NODE_RADIUS, layoutWorkspaceGraph } from './graph-layout.js';
+import { NODE_RADIUS, layoutWorkspaceGraph, neighborIds, wikilinkDegrees } from './graph-layout.js';
 
 function node(id: string, kind: WorkspaceGraphNodeKind, topicSlug?: string): WorkspaceGraphNode {
   return { id, kind, label: id, path: id, ...(topicSlug ? { topicSlug } : {}) };
@@ -112,5 +112,36 @@ describe('layoutWorkspaceGraph', () => {
 
   it('returns positive finite bounds for an empty graph', () => {
     expect(layoutWorkspaceGraph(graph([]))).toEqual({ nodes: [], width: 80, height: 80 });
+  });
+});
+
+describe('graph emphasis helpers', () => {
+  const fixture = graph(
+    [
+      node('a.md', 'document'),
+      node('b.md', 'document'),
+      node('c.md', 'document'),
+      node('d.md', 'document'),
+    ],
+    [
+      { id: 'contains:a-b', kind: 'contains', source: 'a.md', target: 'b.md' },
+      { id: 'links:a-c', kind: 'links', source: 'a.md', target: 'c.md' },
+      { id: 'links:b-c', kind: 'links', source: 'b.md', target: 'c.md' },
+    ],
+  );
+
+  it('counts only wikilink edges in both directions', () => {
+    expect([...wikilinkDegrees(fixture)]).toEqual([
+      ['a.md', 1],
+      ['b.md', 1],
+      ['c.md', 2],
+      ['d.md', 0],
+    ]);
+  });
+
+  it('includes both edge kinds, both directions, and self in neighbors', () => {
+    expect([...neighborIds(fixture, 'a.md')].sort()).toEqual(['a.md', 'b.md', 'c.md']);
+    expect([...neighborIds(fixture, 'c.md')].sort()).toEqual(['a.md', 'b.md', 'c.md']);
+    expect([...neighborIds(fixture, 'd.md')]).toEqual(['d.md']);
   });
 });

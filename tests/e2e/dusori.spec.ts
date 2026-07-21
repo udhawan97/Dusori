@@ -347,10 +347,26 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await page.getByRole('button', { name: 'Graph' }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
-  await expect(page.getByRole('img', { name: 'Workspace knowledge graph' })).toBeVisible();
+  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
+  await expect(graph).toBeVisible();
   await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText('First look');
   await expect(page.getByText(/6 artifacts · \d+ connections/u)).toBeVisible();
+
+  const hub = graph.getByRole('button', { name: /AI Fundamentals, overview, \d+ wikilinks, hub/u });
+  await expect(hub).toHaveClass(/hub/u);
+
+  for (let tabCount = 0; tabCount < 20; tabCount += 1) {
+    if (await page.locator('.node:focus').count()) break;
+    await page.keyboard.press('Tab');
+  }
+  const focusedNode = page.locator('.node:focus');
+  await expect(focusedNode).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(focusedNode).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.selection-action').getByRole('button')).toBeVisible();
   await expectNoSeriousA11yViolations(page);
+  await page.keyboard.press('Escape');
+  await expect(focusedNode).toHaveAttribute('aria-pressed', 'false');
 
   await page
     .getByRole('list', { name: 'Graph documents' })

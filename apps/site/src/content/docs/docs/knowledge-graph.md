@@ -25,6 +25,10 @@ Choose **Graph** in the workspace rail. The constellation is paired with an acce
 
 The constellation scales with workspace size and orders topics by their wikilink affinity. The layout remains deterministic and browser-local and writes no coordinates into your workspace, so opening the same folder in Obsidian remains clean.
 
+## Hubs and focus
+
+Notes touched by many wikilinks are hubs, marked with a marigold ring. Select a node to dim what it is not connected to and open the selected artifact directly; the same path works from the keyboard.
+
 ## Portability and privacy
 
 Exporting or connecting the workspace already carries everything needed to rebuild the graph. The graph works offline after the app is loaded and does not require an account, plugin, telemetry endpoint, or AI model.

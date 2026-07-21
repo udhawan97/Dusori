@@ -170,7 +170,8 @@ Dusori is released under the [Apache License 2.0](LICENSE). Bundled fonts retain
 
 ## Acknowledgements
 
-- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) for the constellation and link-affinity ideas.
+- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) for the constellation, link-affinity, and “god node” hub ideas.
 - [tt-a1i/archify](https://github.com/tt-a1i/archify) (MIT) for the geometry self-audit idea.
+- [chanhx/crabviz](https://github.com/chanhx/crabviz) (AGPL-3.0) for the focus-fade idea only; no code was copied or derived.
 
 These ideas were reimplemented independently; no code was copied.
