@@ -125,6 +125,21 @@ describe('buildUpgradedContent', () => {
     expect(content).toContain('weigh the other tokens');
   });
 
+  it('labels the fetched URL honestly instead of claiming it is the original when record.url is absent', () => {
+    const content = buildUpgradedContent(
+      {
+        fetchedAt: now.toISOString(),
+        method: 'url',
+        sha256: 'a'.repeat(64),
+        title: 'Attention paper',
+      },
+      page,
+    );
+    expect(content).not.toContain('Original URL:');
+    expect(content).toContain('Fetched URL: <https://example.org/attention-final>');
+    expect(content).not.toContain('Resolved URL:');
+  });
+
   it('caps oversized text with the shared truncation marker', () => {
     const content = buildUpgradedContent(
       {

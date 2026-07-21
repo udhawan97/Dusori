@@ -19,7 +19,7 @@ export function buildUpgradedContent(record: SourceRecord, page: FetchedPage): s
   const prefix = [
     `# ${record.title}`,
     '',
-    `Original URL: <${record.url ?? page.finalUrl}>`,
+    record.url ? `Original URL: <${record.url}>` : `Fetched URL: <${page.finalUrl}>`,
     ...(record.url && page.finalUrl !== record.url ? ['', `Resolved URL: <${page.finalUrl}>`] : []),
     ...(page.byline ? ['', `Byline: ${page.byline}`] : []),
     ...(page.siteName ? ['', `Site: ${page.siteName}`] : []),
