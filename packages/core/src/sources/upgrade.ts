@@ -1,6 +1,5 @@
 import { StorageConflictError, type StorageAdapter } from '../adapters.js';
 import { appendTopicUpdate } from '../conflict/write-protocol.js';
-import { sha256 } from '../hash.js';
 import type { FetchedPage } from '../research/companion.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import {
@@ -32,13 +31,6 @@ export function buildUpgradedContent(record: SourceRecord, page: FetchedPage): s
   return cappedMarkdown(prefix, page.text.replace(/\r\n?/gu, '\n'));
 }
 
-// The stub `addSource` writes for a bare `method: 'url'` source (see sources/import.ts),
-// reproduced deterministically so a stale item file can be told apart from a fresh one
-// without needing a separately-tracked "expected hash" for source items.
-function pristineStub(record: SourceRecord): string {
-  return `# ${record.title}\n\nOriginal URL: <${record.url}>\n\nDusori stored this reference without fetching its contents.\n`;
-}
-
 export interface UpgradedSource {
   path: string;
   record: SourceRecord;
@@ -47,7 +39,7 @@ export interface UpgradedSource {
 
 export async function upgradeSource(
   storage: StorageAdapter,
-  input: { topicSlug: string; sha256: string; page: FetchedPage },
+  input: { topicSlug: string; sha256: string; page: FetchedPage; expectedContentHash: string },
   now = new Date(),
 ): Promise<UpgradedSource> {
   const root = topicRoot(input.topicSlug);
@@ -80,16 +72,16 @@ export async function upgradeSource(
     // Idempotent guard: if a previous attempt in this same call (or an earlier,
     // partially-failed call) already wrote the exact upgraded content, skip
     // rewriting it. Recomputing content is deterministic, so this never masks
-    // a real difference. Otherwise, the current content must still be the
-    // pristine addSource stub -- anything else is either a genuine external
-    // edit or an unexpected prior state, and both must surface as a conflict
+    // a real difference. Otherwise, the file's current hash must still match
+    // what the caller last read (expectedContentHash) -- optimistic
+    // concurrency, the same idiom storage.write uses everywhere else. Any
+    // mismatch is a genuine external edit and must surface as a conflict
     // rather than being silently clobbered.
     if (itemFile.content !== content) {
-      const expectedHash = await sha256(pristineStub(record));
-      if (itemFile.hash !== expectedHash) {
-        throw new StorageConflictError(record.path, expectedHash, itemFile.hash);
+      if (itemFile.hash !== input.expectedContentHash) {
+        throw new StorageConflictError(record.path, input.expectedContentHash, itemFile.hash);
       }
-      await storage.write(record.path, content, { expectedHash: itemFile.hash });
+      await storage.write(record.path, content, { expectedHash: input.expectedContentHash });
     }
 
     const nextRecord = SourceRecordSchema.parse({

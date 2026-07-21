@@ -31,6 +31,42 @@ async function urlSourceFixture() {
   return { added, storage };
 }
 
+// Shaped like the Phase 1 mslearn provider's capture() output (see
+// research/providers/mslearn.ts): a `method: 'url'` source whose item file
+// already holds real catalog-reference markdown, not the bare addSource stub.
+async function catalogReferenceFixture() {
+  const storage = new MemoryStorageAdapter();
+  await createWorkspace(storage, 'Dusori', now);
+  await createTopic(storage, 'Transformers', now);
+  const captureContent = [
+    '# Attention paper',
+    '',
+    'Original URL: <https://example.org/attention>',
+    '',
+    'A short catalog snippet about attention mechanisms.',
+    '',
+    '## Catalog metadata',
+    '',
+    '- Module UID: attention-basics',
+    '',
+    'This is a Microsoft Learn catalog reference captured on 2026-07-20, not a snapshot of the module page.',
+    '',
+  ].join('\n');
+  const added = await addSource(
+    storage,
+    {
+      content: captureContent,
+      method: 'url',
+      origin: { capturedAt: now.toISOString(), capturedVia: 'catalog-reference', provider: 'mslearn' },
+      title: 'Attention paper',
+      topicSlug: 'transformers',
+      url: 'https://example.org/attention',
+    },
+    now,
+  );
+  return { added, storage };
+}
+
 describe('buildUpgradedContent', () => {
   it('writes provenance and the resolved URL when it differs', () => {
     const content = buildUpgradedContent(
@@ -65,9 +101,10 @@ describe('buildUpgradedContent', () => {
 describe('upgradeSource', () => {
   it('replaces the stub, updates the manifest record, and logs the update', async () => {
     const { added, storage } = await urlSourceFixture();
+    const stub = await storage.read(added.path);
     const upgraded = await upgradeSource(
       storage,
-      { page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      { expectedContentHash: stub!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
       now,
     );
 
@@ -92,19 +129,48 @@ describe('upgradeSource', () => {
     expect(log?.content).toContain('Attention paper');
   });
 
+  it('upgrades a Phase 1 research-capture source (not the bare stub) when the expected hash matches', async () => {
+    // Regression test: the guard must not assume pre-upgrade content is the
+    // addSource stub. Phase 1 research acceptance writes real capture markdown
+    // (catalog reference / plain-text extract) into method: 'url' item files,
+    // and upgrading exactly that content is the headline use case.
+    const { added, storage } = await catalogReferenceFixture();
+    const captured = await storage.read(added.path);
+    expect(captured?.content).toContain('catalog reference');
+
+    const upgraded = await upgradeSource(
+      storage,
+      { expectedContentHash: captured!.hash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+      now,
+    );
+
+    const item = await storage.read(upgraded.path);
+    expect(item?.content).toContain('weigh the other tokens');
+    expect(upgraded.record.sha256).toBe(added.record.sha256);
+  });
+
   it('raises StorageConflictError when the item file changed outside Dusori', async () => {
     const { added, storage } = await urlSourceFixture();
     const item = await storage.read(added.path);
+    const expectedContentHash = item!.hash;
     storage.files.set(added.path, { content: `${item?.content ?? ''}external edit\n`, modifiedAt: 99 });
     await expect(
-      upgradeSource(storage, { page, sha256: added.record.sha256, topicSlug: 'transformers' }, now),
+      upgradeSource(
+        storage,
+        { expectedContentHash, page, sha256: added.record.sha256, topicSlug: 'transformers' },
+        now,
+      ),
     ).rejects.toBeInstanceOf(StorageConflictError);
   });
 
   it('rejects unknown source ids with a friendly sentence', async () => {
     const { storage } = await urlSourceFixture();
     await expect(
-      upgradeSource(storage, { page, sha256: 'b'.repeat(64), topicSlug: 'transformers' }, now),
+      upgradeSource(
+        storage,
+        { expectedContentHash: '0'.repeat(64), page, sha256: 'b'.repeat(64), topicSlug: 'transformers' },
+        now,
+      ),
     ).rejects.toThrow('This URL source is missing from the manifest. Refresh and try again.');
   });
 });
