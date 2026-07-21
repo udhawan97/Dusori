@@ -12,6 +12,8 @@
   import {
     NODE_RADIUS,
     layoutWorkspaceGraph,
+    neighborIds,
+    wikilinkDegrees,
     type PositionedWorkspaceGraphNode,
   } from '$lib/graph-layout';
 
@@ -21,6 +23,7 @@
   let graph: WorkspaceGraph | null = null;
   let loading = true;
   let error = '';
+  let selectedId: string | null = null;
 
   function nodeRadius(node: WorkspaceGraphNode): number {
     if (node.kind === 'home') return NODE_RADIUS.home;
@@ -49,6 +52,50 @@
     return node.label;
   }
 
+  function wikilinkLabel(count: number): string {
+    return `${count} wikilink${count === 1 ? '' : 's'}`;
+  }
+
+  function isHub(node: WorkspaceGraphNode): boolean {
+    return (degrees.get(node.id) ?? 0) >= 3;
+  }
+
+  function nodeTitle(node: WorkspaceGraphNode): string {
+    const degree = degrees.get(node.id) ?? 0;
+    if (degree >= 3) return `${node.label}, hub - ${wikilinkLabel(degree)}`;
+    if (degree > 0) return `${node.label}, ${wikilinkLabel(degree)}`;
+    return node.label;
+  }
+
+  function nodeAriaLabel(node: WorkspaceGraphNode): string {
+    const degree = degrees.get(node.id) ?? 0;
+    return [
+      node.label,
+      node.kind,
+      ...(degree > 0 ? [wikilinkLabel(degree)] : []),
+      ...(degree >= 3 ? ['hub'] : []),
+    ].join(', ');
+  }
+
+  function toggleSelection(id: string): void {
+    selectedId = selectedId === id ? null : id;
+  }
+
+  function handleNodeClick(event: MouseEvent, id: string): void {
+    event.stopPropagation();
+    toggleSelection(id);
+  }
+
+  function handleNodeKeydown(event: KeyboardEvent, id: string): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleSelection(id);
+    } else if (event.key === 'Escape') {
+      selectedId = null;
+    }
+  }
+
   onMount(async () => {
     try {
       graph = await buildWorkspaceGraph(storage);
@@ -63,7 +110,18 @@
   $: positioned = layout.nodes;
   $: nodesById = new Map(positioned.map((node) => [node.id, node]));
   $: homeNode = positioned.find((node) => node.kind === 'home');
+  $: degrees = graph ? wikilinkDegrees(graph) : new Map<string, number>();
+  // Select-to-focus fading after chanhx/crabviz (AGPL-3.0): idea only,
+  // implemented from scratch; no code copied or derived.
+  $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
+  $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
 </script>
+
+<svelte:window
+  onkeydown={(event) => {
+    if (event.key === 'Escape') selectedId = null;
+  }}
+/>
 
 <section class="knowledge-graph" aria-labelledby="graph-title">
   <header>
@@ -92,13 +150,25 @@
   {:else if graph && graph.nodes.length === 0}
     <div class="graph-state">Create a topic to place its artifacts on the graph.</div>
   {:else if graph}
+    {#if selectedNode}
+      <div class="selection-action">
+        <button type="button" onclick={() => onOpen(selectedNode.path)}>
+          Open {selectedNode.label}
+        </button>
+      </div>
+    {/if}
     <div class="graph-stage">
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <svg
         class="constellation"
-        role="img"
+        role="group"
         aria-label="Workspace knowledge graph"
         viewBox={`0 0 ${layout.width} ${layout.height}`}
         preserveAspectRatio="xMidYMid meet"
+        onclick={() => (selectedId = null)}
+        onkeydown={(event) => {
+          if (event.key === 'Escape') selectedId = null;
+        }}
       >
         <defs>
           <radialGradient id="dusori-glow">
@@ -113,19 +183,37 @@
           {@const source = nodesById.get(edge.source)}
           {@const target = nodesById.get(edge.target)}
           {#if source && target}
-            <path class:link={edge.kind === 'links'} d={edgePath(source, target)} />
+            <path
+              class:link={edge.kind === 'links'}
+              class:faded={selectedId !== null &&
+                edge.source !== selectedId &&
+                edge.target !== selectedId}
+              d={edgePath(source, target)}
+            />
           {/if}
         {/each}
         {#each positioned as node (node.id)}
           <g
             class:home={node.kind === 'home'}
             class:overview={node.kind === 'overview'}
+            class:hub={isHub(node)}
+            class:selected={selectedId === node.id}
+            class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
             class="node"
+            role="button"
+            tabindex="0"
+            aria-label={nodeAriaLabel(node)}
+            aria-pressed={selectedId === node.id}
+            onclick={(event) => handleNodeClick(event, node.id)}
+            onkeydown={(event) => handleNodeKeydown(event, node.id)}
           >
-            <title>{node.label}</title>
+            <title>{nodeTitle(node)}</title>
             <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
             <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
-            <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}>{visualLabel(node)}</text
+            <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}
+              >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
+                  · hub</tspan
+                >{/if}</text
             >
           </g>
         {/each}
@@ -206,6 +294,28 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .selection-action {
+    display: flex;
+    width: min(100%, 76rem);
+    margin: var(--space-md) auto 0;
+  }
+
+  .selection-action button {
+    min-height: 2.75rem;
+    padding-inline: var(--space-md);
+    border: var(--rule-hair) solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-paper);
+    font: 700 var(--text-sm) / 1 var(--font-body);
+    cursor: pointer;
+  }
+
+  .selection-action button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
   .constellation {
     width: 100%;
     min-height: 25rem;
@@ -222,6 +332,7 @@
     fill: none;
     stroke: var(--color-rule);
     stroke-width: 1;
+    transition: opacity var(--dur-short) var(--ease-out);
   }
 
   path.link {
@@ -238,6 +349,12 @@
       stroke var(--dur-short) var(--ease-out);
   }
 
+  .node {
+    cursor: pointer;
+    outline: none;
+    transition: opacity var(--dur-short) var(--ease-out);
+  }
+
   .node.overview circle:first-child {
     fill: var(--color-marigold);
     stroke: var(--color-paper);
@@ -252,6 +369,36 @@
     fill: none;
     stroke: var(--color-rule);
     stroke-dasharray: 3 5;
+    transition:
+      stroke var(--dur-short) var(--ease-out),
+      stroke-width var(--dur-short) var(--ease-out);
+  }
+
+  .node.hub .node-ring {
+    stroke: var(--color-marigold);
+    stroke-width: 2;
+    stroke-dasharray: none;
+  }
+
+  .node:focus-visible .node-ring {
+    stroke: var(--color-focus);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  .node.selected .node-ring,
+  .node.selected:focus-visible .node-ring {
+    stroke: var(--color-accent);
+    stroke-width: 3;
+    stroke-dasharray: none;
+  }
+
+  .node.faded {
+    opacity: 0.25;
+  }
+
+  path.faded {
+    opacity: 0.15;
   }
 
   text {
@@ -259,6 +406,12 @@
     font-family: var(--font-mono);
     font-size: 14px;
     text-anchor: middle;
+  }
+
+  .hub-label {
+    fill: var(--color-marigold);
+    font-size: 0.72em;
+    font-weight: 700;
   }
 
   .artifact-index {
@@ -373,6 +526,11 @@
     }
     .node circle:first-child {
       transition: none;
+    }
+    path,
+    .node,
+    .node-ring {
+      transition: none !important;
     }
     .artifact-index button:active {
       transform: none;
