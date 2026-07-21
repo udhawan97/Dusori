@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Attention in transformers — Example Journal</title>
+    <meta name="author" content="A. Vaswani" />
+  </head>
+  <body>
+    <nav><a href="/">Home</a><a href="/archive">Archive</a><a href="/about">About</a></nav>
+    <article>
+      <h1>Attention in transformers</h1>
+      <p>
+        Attention lets each token weigh the other tokens in its context. Instead of compressing a
+        sequence into one fixed vector, the model computes a score between every pair of positions
+        and uses those scores to build a weighted mixture of value vectors. This single change is
+        what allows transformers to relate distant words directly, without stepping through every
+        intermediate position the way recurrent networks must.
+      </p>
+      <p>
+        Multi-head attention runs several of these scoring functions in parallel, each with its own
+        learned projections. One head can track syntactic agreement while another follows
+        coreference, and the model concatenates their outputs into a single representation. The
+        heads are cheap because the projections shrink the working dimension before the dot products
+        are taken, keeping the total cost close to a single full-width attention pass.
+      </p>
+      <p>
+        The quadratic cost in sequence length remains the practical limit. Every token attends to
+        every other token, so doubling the context quadruples the work. Most long-context variants
+        trade exactness for reach: sliding windows, low-rank approximations, or routing schemes that
+        let a token attend to a selected subset instead of the whole sequence.
+      </p>
+    </article>
+    <footer><p>© Example Journal. Subscribe for more.</p></footer>
+  </body>
+</html>
