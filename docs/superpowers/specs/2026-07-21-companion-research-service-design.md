@@ -138,11 +138,16 @@ responses zod-parsed in core, storage through the adapter interface.
   one where a new provenance value can break a reader.
 - **Known compatibility cost:** the shipped v0.2.0 schema validates
   `origin.provider` as a strict two-value enum, so a stale v0.2.0 reader that
-  opens a workspace containing an upgraded source will hit a friendly
-  machine-file schema error for that manifest until the app updates. Accepted for
-  a 0.x local-first product: the hosted PWA self-updates on next load, content
-  files are untouched, and the failure is visible rather than silent. Documented
-  in ADR-003's appendix alongside the existing `origin` metadata-loss note.
+  opens a workspace containing an upgraded source fails its schema check and
+  renames the manifest to `Sources/manifest.json.invalid-<timestamp>`. This does
+  **not** self-heal: nothing restores the file, so even an updated app then
+  reports the manifest as missing, and that topic's source library and ZIP export
+  stay broken until the user renames it back by hand. Accepted for a 0.x
+  local-first product because source content files are never touched — no
+  material is lost — and the failure is loud rather than silent. The realistic
+  trigger is a stale `npx dusori` companion serving its own bundled v0.2.0 app
+  copy at the same workspace root. Documented in ADR-003's appendix alongside the
+  existing `origin` metadata-loss note.
 
 ## App surface
 
@@ -220,11 +225,11 @@ scope now includes the research service); site docs page; CHANGELOG.
 
 ## Risks
 
-| Risk                                              | Mitigation                                                                                                    |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| SSRF via redirects or multi-address DNS           | Scheme check, per-hop re-validation of every resolved address, redirect cap, private-range rejection, tests.  |
-| DNS rebinding between check and connect           | Accepted residual risk (loopback-bound, token-gated, user-chosen URLs); per-hop re-validation; noted in ADR.  |
-| Stale v0.2.0 reader vs `'companion'` origin value | Visible friendly schema error, content files untouched, PWA self-updates; schemas widened so it never recurs. |
-| Readability output quality varies by site         | Preview-first modal — the user sees exactly what will be written before accepting; dismiss stores nothing.    |
-| MS Learn ranked API shape drift (undocumented)    | Lenient zod parsing, fixture tests, silent fallback to shipped catalog scoring.                               |
-| Large pages                                       | 4 MiB streamed fetch cap; 2 MiB source cap with visible truncation marker.                                    |
+| Risk                                              | Mitigation                                                                                                                                     |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| SSRF via redirects or multi-address DNS           | Scheme check, per-hop re-validation of every resolved address, redirect cap, private-range rejection, tests.                                   |
+| DNS rebinding between check and connect           | Accepted residual risk (loopback-bound, token-gated, user-chosen URLs); per-hop re-validation; noted in ADR.                                   |
+| Stale v0.2.0 reader vs `'companion'` origin value | Renames the manifest to `.invalid-<timestamp>`; needs a manual rename to recover. Content files untouched; schemas widened so it never recurs. |
+| Readability output quality varies by site         | Preview-first modal — the user sees exactly what will be written before accepting; dismiss stores nothing.                                     |
+| MS Learn ranked API shape drift (undocumented)    | Lenient zod parsing, fixture tests, silent fallback to shipped catalog scoring.                                                                |
+| Large pages                                       | 4 MiB streamed fetch cap; 2 MiB source cap with visible truncation marker.                                                                     |

@@ -10,7 +10,6 @@
     filterResearchSuggestions,
     readTopicProgress,
     researchProviders,
-    wikipediaProvider,
     type CompanionResearchClient,
     type ResearchCandidate,
     type ResearchCapture,
@@ -28,11 +27,14 @@
   export let onSourceSaved: () => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
 
+  // Swap the mslearn entry rather than re-listing the providers, so a provider
+  // added to the core registry is not silently dropped whenever a companion runs.
   $: providers = companion
-    ? [
-        createMsLearnProvider({ ranked: (query) => companion.searchMsLearnRanked(query) }),
-        wikipediaProvider,
-      ]
+    ? researchProviders.map((provider) =>
+        provider.id === 'mslearn'
+          ? createMsLearnProvider({ ranked: (query) => companion.searchMsLearnRanked(query) })
+          : provider,
+      )
     : [...researchProviders];
 
   const networkAlternative =

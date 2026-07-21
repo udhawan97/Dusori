@@ -122,6 +122,7 @@ export function createMsLearnProvider(
       const closing = isRanked
         ? `This is a Microsoft Learn search reference captured on ${date}, not a snapshot of the page.`
         : `This is a Microsoft Learn catalog reference captured on ${date}, not a snapshot of the module page.`;
+      const lines = metadataLines(candidate);
       const content = [
         `# ${candidate.title}`,
         '',
@@ -129,10 +130,9 @@ export function createMsLearnProvider(
         '',
         candidate.snippet,
         '',
-        '## Catalog metadata',
-        '',
-        ...metadataLines(candidate),
-        '',
+        // Ranked search results carry no catalog metadata; omit the heading
+        // rather than write an empty section into the user's source file.
+        ...(lines.length > 0 ? ['## Catalog metadata', '', ...lines, ''] : []),
         closing,
         '',
       ].join('\n');
