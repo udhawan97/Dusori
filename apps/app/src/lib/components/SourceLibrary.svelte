@@ -15,6 +15,8 @@
     type StorageAdapter,
   } from '@dusori/core';
 
+  import { modal } from '$lib/actions/modal';
+
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let companion: CompanionResearchClient | null = null;
@@ -394,57 +396,69 @@
 </section>
 
 {#if confirming}
-  <div class="dialog-backdrop">
-    <dialog open class="upgrade-dialog" aria-labelledby="upgrade-confirm-title">
-      <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
-      <p>
-        Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
-        readable text will replace this source's stub content.
-      </p>
-      <p class="upgrade-url"><code>{confirming.url}</code></p>
-      <div class="upgrade-actions">
-        <button
-          bind:this={confirmFetchButton}
-          class="primary-action"
-          onclick={() => void confirmFetch()}
-        >
-          Fetch page
-        </button>
-        <button onclick={() => void cancelConfirm()}>Keep reference only</button>
-      </div>
-    </dialog>
-  </div>
+  <dialog
+    use:modal
+    class="upgrade-dialog"
+    aria-labelledby="upgrade-confirm-title"
+    oncancel={(event) => {
+      event.preventDefault();
+      void cancelConfirm();
+    }}
+  >
+    <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
+    <p>
+      Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
+      readable text will replace this source's stub content.
+    </p>
+    <p class="upgrade-url"><code>{confirming.url}</code></p>
+    <div class="upgrade-actions">
+      <button
+        bind:this={confirmFetchButton}
+        class="primary-action"
+        onclick={() => void confirmFetch()}
+      >
+        Fetch page
+      </button>
+      <button onclick={() => void cancelConfirm()}>Keep reference only</button>
+    </div>
+  </dialog>
 {/if}
 
 {#if upgradePreview}
-  <div class="dialog-backdrop">
-    <dialog open class="upgrade-dialog" aria-labelledby="upgrade-preview-title">
-      <h3 id="upgrade-preview-title">Preview fetched content</h3>
-      {#if upgradePreview.page.truncated}
-        <p>This page was longer than the 2 MiB source limit and was truncated.</p>
-      {/if}
-      <p>Source markdown</p>
-      <pre>{upgradePreview.content}</pre>
-      {#if upgradeError}
-        <p class="source-message error" role="alert">
-          <AlertTriangle aria-hidden="true" size={17} />
-          <span>{upgradeError}</span>
-        </p>
-      {/if}
-      <div class="upgrade-actions">
-        <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
-          {replacing ? 'Replacing…' : 'Replace content'}
-        </button>
-        <button
-          bind:this={upgradeCloseButton}
-          disabled={replacing}
-          onclick={() => void closeUpgradePreview()}
-        >
-          Keep the stub
-        </button>
-      </div>
-    </dialog>
-  </div>
+  <dialog
+    use:modal
+    class="upgrade-dialog"
+    aria-labelledby="upgrade-preview-title"
+    oncancel={(event) => {
+      event.preventDefault();
+      if (!replacing) void closeUpgradePreview();
+    }}
+  >
+    <h3 id="upgrade-preview-title">Preview fetched content</h3>
+    {#if upgradePreview.page.truncated}
+      <p>This page was longer than the 2 MiB source limit and was truncated.</p>
+    {/if}
+    <p>Source markdown</p>
+    <pre>{upgradePreview.content}</pre>
+    {#if upgradeError}
+      <p class="source-message error" role="alert">
+        <AlertTriangle aria-hidden="true" size={17} />
+        <span>{upgradeError}</span>
+      </p>
+    {/if}
+    <div class="upgrade-actions">
+      <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
+        {replacing ? 'Replacing…' : 'Replace content'}
+      </button>
+      <button
+        bind:this={upgradeCloseButton}
+        disabled={replacing}
+        onclick={() => void closeUpgradePreview()}
+      >
+        Keep the stub
+      </button>
+    </div>
+  </dialog>
 {/if}
 
 <style>
@@ -701,27 +715,20 @@
     font: inherit;
   }
 
-  .dialog-backdrop {
-    position: fixed;
-    z-index: var(--z-modal);
-    display: grid;
-    inset: 0;
-    padding: var(--page-gutter);
-    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
-    place-items: center;
-  }
-
   .upgrade-dialog {
-    position: relative;
-    width: min(38rem, 100%);
+    width: min(38rem, calc(100% - 2 * var(--page-gutter)));
     max-height: calc(100dvh - 2 * var(--page-gutter));
-    margin: 0;
+    margin: auto;
     padding: var(--space-lg);
     overflow: auto;
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-paper);
     color: var(--color-ink);
+  }
+
+  .upgrade-dialog::backdrop {
+    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
   }
 
   .upgrade-dialog pre {

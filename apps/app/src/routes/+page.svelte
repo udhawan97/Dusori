@@ -39,7 +39,12 @@
   import { FsaStorageAdapter, pickDirectory, restoreDirectoryHandle } from '@dusori/storage-fsa';
   import { createOpfsStorage } from '@dusori/storage-opfs';
 
-  import { resolveCompanionOrigin } from '$lib/companion-origin';
+  import {
+    isCompanionHealth,
+    resolveCompanionOrigin,
+    stripCompanionCredentials,
+  } from '$lib/companion-origin';
+  import { modal } from '$lib/actions/modal';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -67,7 +72,8 @@
   let sourceRevision = 0;
   let learningRevision = 0;
   let obsidianGuideOpen = false;
-  let obsidianDialog: HTMLElement;
+  let obsidianDialog: HTMLDialogElement;
+  let obsidianCloseButton: HTMLButtonElement;
   let statusTimer: number | undefined;
   let creatingTopic = false;
   let previousSlug = '';
@@ -144,6 +150,12 @@
     const token = parameters.get('token');
     if (!token) return;
     const requested = parameters.get('companion') ?? location.origin;
+    const cleanQuery = stripCompanionCredentials(location.search);
+    history.replaceState(
+      history.state,
+      '',
+      `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`,
+    );
     const companion = resolveCompanionOrigin(requested, location.origin);
     if (!companion) {
       companionClient = null;
@@ -156,6 +168,8 @@
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error(`Companion returned ${response.status}.`);
+      const health: unknown = await response.json().catch(() => null);
+      if (!isCompanionHealth(health)) throw new Error('Unrecognized companion health response.');
       companionClient = createCompanionResearchClient({ baseUrl: companion, token });
       companionStatus = 'Connected for this session';
     } catch {
@@ -224,7 +238,11 @@
   async function openObsidianGuide(): Promise<void> {
     obsidianGuideOpen = true;
     await tick();
-    obsidianDialog?.focus();
+    obsidianCloseButton?.focus();
+  }
+
+  function closeObsidianGuide(): void {
+    obsidianGuideOpen = false;
   }
 
   async function addTopic(): Promise<void> {
@@ -545,58 +563,55 @@
     </section>
 
     {#if obsidianGuideOpen}
-      <div class="dialog-backdrop">
-        <div
-          class="obsidian-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="obsidian-title"
-          tabindex="-1"
-          bind:this={obsidianDialog}
-        >
-          <div class="dialog-heading">
-            <div>
-              <p class="kicker">Obsidian · least privilege</p>
-              <h2 id="obsidian-title">Connect only a Dusori folder.</h2>
-            </div>
-            <button
-              class="icon-button"
-              aria-label="Close Obsidian guide"
-              onclick={() => (obsidianGuideOpen = false)}
-            >
-              <X aria-hidden="true" size={20} />
-            </button>
+      <dialog
+        use:modal
+        class="obsidian-dialog"
+        aria-labelledby="obsidian-title"
+        bind:this={obsidianDialog}
+        oncancel={(event) => {
+          event.preventDefault();
+          closeObsidianGuide();
+        }}
+      >
+        <div class="dialog-heading">
+          <div>
+            <p class="kicker">Obsidian · least privilege</p>
+            <h2 id="obsidian-title">Connect only a Dusori folder.</h2>
           </div>
-          <ol>
-            <li>Open or create your vault in Obsidian.</li>
-            <li>Create a folder named <strong>Dusori</strong> inside that vault.</li>
-            <li>Select that Dusori folder here — never the whole vault.</li>
-          </ol>
-          <p class="privacy-note">
-            <span class="privacy-icon">
-              <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.5} />
-            </span>
-            <span
-              ><strong>No Obsidian plugin is required.</strong> Dusori reads and writes only the folder
-              you approve.</span
-            >
-          </p>
-          {#if 'showDirectoryPicker' in globalThis}
-            <button class="primary-button" disabled={busy} onclick={connectFolder}>
-              Select my Dusori folder
-            </button>
-          {:else}
-            <p class="message">Folder connection needs Chrome or Edge on desktop.</p>
-            <a
-              class="quiet-link"
-              href="#workspace-import"
-              onclick={() => (obsidianGuideOpen = false)}
-            >
-              Use ZIP import instead
-            </a>
-          {/if}
+          <button
+            class="icon-button"
+            bind:this={obsidianCloseButton}
+            aria-label="Close Obsidian guide"
+            onclick={closeObsidianGuide}
+          >
+            <X aria-hidden="true" size={20} />
+          </button>
         </div>
-      </div>
+        <ol>
+          <li>Open or create your vault in Obsidian.</li>
+          <li>Create a folder named <strong>Dusori</strong> inside that vault.</li>
+          <li>Select that Dusori folder here — never the whole vault.</li>
+        </ol>
+        <p class="privacy-note">
+          <span class="privacy-icon">
+            <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.5} />
+          </span>
+          <span
+            ><strong>No Obsidian plugin is required.</strong> Dusori reads and writes only the folder
+            you approve.</span
+          >
+        </p>
+        {#if 'showDirectoryPicker' in globalThis}
+          <button class="primary-button" disabled={busy} onclick={connectFolder}>
+            Select my Dusori folder
+          </button>
+        {:else}
+          <p class="message">Folder connection needs Chrome or Edge on desktop.</p>
+          <a class="quiet-link" href="#workspace-import" onclick={closeObsidianGuide}>
+            Use ZIP import instead
+          </a>
+        {/if}
+      </dialog>
     {/if}
 
     <label class="import-link" id="workspace-import">
@@ -1150,16 +1165,6 @@
     color: var(--color-error);
   }
 
-  .dialog-backdrop {
-    position: fixed;
-    z-index: var(--z-modal);
-    inset: 0;
-    display: grid;
-    padding: var(--space-md);
-    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
-    place-items: center;
-  }
-
   .obsidian-dialog {
     width: min(100%, 38rem);
     max-height: calc(100dvh - 2rem);
@@ -1170,6 +1175,10 @@
     outline: none;
     background: var(--color-paper);
     box-shadow: 0 2rem 6rem color-mix(in srgb, var(--color-ink) 55%, transparent);
+  }
+
+  .obsidian-dialog::backdrop {
+    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
   }
 
   .dialog-heading {

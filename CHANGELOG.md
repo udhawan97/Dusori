@@ -4,15 +4,24 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-21
+
 ### Added
 
 - Companion research service: `/api/research/fetch` turns a user-confirmed URL into readable text with SSRF guards (blocked-address checks against private, reserved, and other non-public ranges on every redirect hop, a 3-hop cap, HTML/plain-text only, a 4 MiB fetch cap, and a 15 s timeout), and `/api/research/mslearn-search` proxies Microsoft Learn's ranked search.
 - **Fetch full content** action on URL sources when the app runs through the companion: per-fetch confirmation naming the exact host, exact-content preview, conflict-safe replacement, and an update-log entry.
 - Research panel uses ranked Microsoft Learn results through the companion when available, falling back silently to local catalog scoring.
 
+### Changed
+
+- Companion launch credentials are consumed into memory and immediately removed from the address and current history entry without dropping normal topic or view parameters.
+- Connection status now requires a versioned Dusori companion health contract; an unrelated loopback server returning HTML or wrong-service JSON is no longer shown as connected.
+- Source, research, and Obsidian guide dialogs now use the browser's modal top layer, contain forward and reverse keyboard focus, close once on Escape, and restore focus to their invoker.
+
 ### Safety and portability
 
 - Source provenance (`origin.provider`, `origin.capturedVia`) widened to tolerant strings so future values never break a reader; upgraded sources record `companion` / `page-extract` provenance and keep their URL-hash identity.
+- **Compatibility:** v0.2.0 can rename `Sources/manifest.json` after reading the newer `companion` provenance value. Source content is untouched, but users should update before reopening an upgraded workspace; if the rename already happened, update and rename the `.invalid-<timestamp>` manifest back.
 
 ## [0.2.0] - 2026-07-21
 
@@ -57,6 +66,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/udhawan97/Dusori/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/udhawan97/Dusori/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/udhawan97/Dusori/releases/tag/v0.1.0

@@ -52,7 +52,11 @@ describe('companion boundary', () => {
     ).toBe(403);
     const allowed = await server.inject({ method: 'GET', url: '/api/health', headers: headers() });
     expect(allowed.statusCode).toBe(200);
-    expect(allowed.json()).toMatchObject({ version: '0.2.0' });
+    expect(allowed.json()).toMatchObject({
+      apiVersion: 1,
+      service: 'dusori-companion',
+      version: '0.3.0',
+    });
     expect(allowed.headers['access-control-allow-origin']).toBe(origin);
 
     const preflight = await server.inject({

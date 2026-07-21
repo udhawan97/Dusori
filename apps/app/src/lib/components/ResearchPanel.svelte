@@ -19,6 +19,7 @@
     type StorageAdapter,
   } from '@dusori/core';
 
+  import { modal } from '$lib/actions/modal';
   import MarkdownView from './MarkdownView.svelte';
 
   export let storage: StorageAdapter;
@@ -354,61 +355,73 @@
 </section>
 
 {#if consentProvider}
-  <div class="dialog-backdrop">
-    <dialog open class="research-dialog consent-dialog" aria-labelledby="consent-title">
-      <p class="dialog-kicker">Egress disclosure</p>
-      <h2 id="consent-title">Allow {consentProvider.label} search?</h2>
-      <p>{consentProvider.disclosure}</p>
-      <div class="dialog-actions">
-        <button class="quiet" onclick={declineSearch}>Keep search off</button>
-        <button class="primary" bind:this={consentAllowButton} onclick={allowSearch}
-          >Allow search</button
-        >
-      </div>
-    </dialog>
-  </div>
+  <dialog
+    use:modal
+    class="research-dialog consent-dialog"
+    aria-labelledby="consent-title"
+    oncancel={(event) => {
+      event.preventDefault();
+      void declineSearch();
+    }}
+  >
+    <p class="dialog-kicker">Egress disclosure</p>
+    <h2 id="consent-title">Allow {consentProvider.label} search?</h2>
+    <p>{consentProvider.disclosure}</p>
+    <div class="dialog-actions">
+      <button class="quiet" onclick={declineSearch}>Keep search off</button>
+      <button class="primary" bind:this={consentAllowButton} onclick={allowSearch}
+        >Allow search</button
+      >
+    </div>
+  </dialog>
 {/if}
 
 {#if preview}
-  <div class="dialog-backdrop">
-    <dialog open class="research-dialog preview-dialog" aria-labelledby="preview-title">
-      <div class="preview-heading">
-        <div>
-          <p class="dialog-kicker">{preview.provider.label}</p>
-          <h2 id="preview-title">Preview research source</h2>
-        </div>
-        <button
-          class="icon-action"
-          bind:this={previewCloseButton}
-          aria-label="Close preview"
-          onclick={() => void closePreview()}
-        >
-          <X aria-hidden="true" size={19} />
-        </button>
+  <dialog
+    use:modal
+    class="research-dialog preview-dialog"
+    aria-labelledby="preview-title"
+    oncancel={(event) => {
+      event.preventDefault();
+      if (!adding) void closePreview();
+    }}
+  >
+    <div class="preview-heading">
+      <div>
+        <p class="dialog-kicker">{preview.provider.label}</p>
+        <h2 id="preview-title">Preview research source</h2>
       </div>
-      <div class="preview-body">
-        <div class="rendered-preview"><MarkdownView content={preview.capture.content} /></div>
-        <details class="source-markdown">
-          <summary>Source markdown</summary>
-          <pre>{preview.capture.content}</pre>
-        </details>
-      </div>
-      {#if previewError}
-        <p class="dialog-error" role="alert">
-          <AlertTriangle aria-hidden="true" size={17} />
-          <span>{previewError}</span>
-        </p>
-      {/if}
-      <div class="dialog-actions">
-        <button class="quiet" disabled={adding} onclick={() => void closePreview()}
-          >Close preview</button
-        >
-        <button class="primary" disabled={adding} onclick={addPreviewToSources}>
-          {adding ? 'Adding source…' : 'Add to sources'}
-        </button>
-      </div>
-    </dialog>
-  </div>
+      <button
+        class="icon-action"
+        bind:this={previewCloseButton}
+        aria-label="Close preview"
+        onclick={() => void closePreview()}
+      >
+        <X aria-hidden="true" size={19} />
+      </button>
+    </div>
+    <div class="preview-body">
+      <div class="rendered-preview"><MarkdownView content={preview.capture.content} /></div>
+      <details class="source-markdown">
+        <summary>Source markdown</summary>
+        <pre>{preview.capture.content}</pre>
+      </details>
+    </div>
+    {#if previewError}
+      <p class="dialog-error" role="alert">
+        <AlertTriangle aria-hidden="true" size={17} />
+        <span>{previewError}</span>
+      </p>
+    {/if}
+    <div class="dialog-actions">
+      <button class="quiet" disabled={adding} onclick={() => void closePreview()}
+        >Close preview</button
+      >
+      <button class="primary" disabled={adding} onclick={addPreviewToSources}>
+        {adding ? 'Adding source…' : 'Add to sources'}
+      </button>
+    </div>
+  </dialog>
 {/if}
 
 <style>
@@ -607,30 +620,23 @@
     line-height: 1.45;
   }
 
-  .dialog-backdrop {
-    position: fixed;
-    z-index: var(--z-modal);
-    display: grid;
-    place-items: center;
-    padding: var(--page-gutter);
-    inset: 0;
-    background: color-mix(in oklch, var(--color-ink) 72%, transparent);
-  }
-
   .research-dialog {
-    position: relative;
     display: grid;
-    width: min(42rem, 100%);
+    width: min(42rem, calc(100% - 2 * var(--page-gutter)));
     max-height: calc(100dvh - (2 * var(--page-gutter)));
     padding: var(--space-lg);
     overflow: auto;
-    margin: 0;
+    margin: auto;
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-md);
     background: var(--color-paper);
     box-shadow: 0 var(--space-sm) var(--space-xl)
       color-mix(in oklch, var(--color-ink) 24%, transparent);
     gap: var(--space-lg);
+  }
+
+  .research-dialog::backdrop {
+    background: color-mix(in oklch, var(--color-ink) 72%, transparent);
   }
 
   .consent-dialog {

@@ -47,7 +47,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 The optional companion holds the loopback security boundary and adds the two things the browser cannot do on its own: fetching a page you explicitly confirm and turning it into readable text, and reaching Microsoft Learn's ranked search. Both appear only when the app is opened through the companion. See [Sources](../sources/) for the fetch flow. Ollama and model transformations are still not provided.
 
-The v0.2.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
+The v0.3.0 GitHub release does not publish the companion to npm. Build and run it from a clone:
 
 ```sh
 corepack enable
@@ -56,4 +56,6 @@ pnpm build
 pnpm --filter dusori dev -- --root /path/to/Dusori
 ```
 
-After a separate npm release, the equivalent public command will be `npx dusori --root /path/to/Dusori`. The companion binds only to `127.0.0.1`, uses a new token for each run, and stops when its terminal process exits.
+After a separate npm release, the equivalent public command will be `npx dusori --root /path/to/Dusori`. The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits.
+
+Do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older build can rename `Sources/manifest.json` after seeing the new provenance value. Update to v0.3.0 first; source content remains untouched, and a renamed manifest can be restored by renaming the `.invalid-<timestamp>` file back after updating.

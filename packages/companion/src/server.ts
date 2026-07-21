@@ -85,7 +85,9 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   });
 
   server.get('/api/health', async () => ({
-    version: '0.2.0',
+    apiVersion: 1,
+    service: 'dusori-companion',
+    version: '0.3.0',
     uptime: Math.floor((Date.now() - startedAt) / 1000),
   }));
 

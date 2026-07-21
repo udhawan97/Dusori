@@ -6,7 +6,7 @@
 
 Ship one static PWA with a universal browser-workspace baseline, optional direct folder access on supported Chromium browsers, and an optional local companion for capabilities browsers cannot provide consistently.
 
-The companion also serves the built app from its own origin so Safari can use future local capabilities without HTTPS-to-loopback mixed-content requests.
+The companion also serves the built app from its own origin so Safari can use local capabilities without HTTPS-to-loopback mixed-content requests.
 
 ## Consequences
 

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveCompanionOrigin } from './companion-origin.js';
+import {
+  companionApiVersion,
+  companionService,
+  isCompanionHealth,
+  resolveCompanionOrigin,
+  stripCompanionCredentials,
+} from './companion-origin.js';
 
 const pageOrigin = 'https://app.dusori.example';
 
@@ -37,5 +43,34 @@ describe('resolveCompanionOrigin', () => {
   it('returns null for an unparseable value instead of throwing', () => {
     expect(() => resolveCompanionOrigin('not a url', pageOrigin)).not.toThrow();
     expect(resolveCompanionOrigin('not a url', pageOrigin)).toBeNull();
+  });
+});
+
+describe('companion launch contract', () => {
+  it('recognizes only the Dusori service and protocol contract', () => {
+    expect(
+      isCompanionHealth({
+        apiVersion: companionApiVersion,
+        service: companionService,
+        version: '0.3.0',
+      }),
+    ).toBe(true);
+    expect(isCompanionHealth({ version: '0.3.0' })).toBe(false);
+    expect(isCompanionHealth('<html>not a companion</html>')).toBe(false);
+    expect(
+      isCompanionHealth({
+        apiVersion: companionApiVersion + 1,
+        service: companionService,
+        version: '0.3.0',
+      }),
+    ).toBe(false);
+  });
+
+  it('strips launch credentials while retaining the open workspace view', () => {
+    expect(
+      stripCompanionCredentials(
+        '?token=secret&companion=http%3A%2F%2F127.0.0.1%3A4173&topic=ai&view=graph',
+      ),
+    ).toBe('topic=ai&view=graph');
   });
 });

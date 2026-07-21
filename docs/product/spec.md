@@ -24,6 +24,7 @@ The first milestone must prove:
 10. A public GitHub repository, product page, documentation, and PWA on GitHub Pages.
 11. An interactive learning loop derived entirely from portable roadmap, state, and update files.
 12. Consent-gated, keyless research against Microsoft Learn and English Wikipedia.
+13. Optional companion-powered readable-page extraction and ranked Microsoft Learn search, with explicit per-fetch confirmation.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 

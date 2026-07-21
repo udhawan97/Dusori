@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml"><img alt="Verify and deploy" src="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.2.0"><img alt="Release v0.2.0" src="https://img.shields.io/badge/release-v0.2.0-cb4832" /></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.3.0"><img alt="Release v0.3.0" src="https://img.shields.io/badge/release-v0.3.0-cb4832" /></a>
   <a href="LICENSE"><img alt="Apache License 2.0" src="https://img.shields.io/badge/license-Apache--2.0-cb4832" /></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-c9862e" />
   <img alt="Progressive Web App" src="https://img.shields.io/badge/app-PWA-1a1511" />
@@ -26,7 +26,7 @@
   ·
   <a href="https://udhawan97.github.io/Dusori/">Product page</a>
   ·
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.2.0">v0.2.0 release</a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.3.0">v0.3.0 release</a>
 </p>
 
 ---
@@ -35,11 +35,11 @@ Dusori turns plain Markdown and JSON into a private learning workbench: notes, a
 
 The identity combines Japanese restraint—an open ensō and blade—with rangoli-like Indian geometry at the center. Vermilion marks action; marigold marks connected knowledge. The app starts in black mode and keeps an explicit light/dark choice locally.
 
-## v0.2.0 — the research constellation
+## v0.3.0 — the bounded companion
 
-Dusori v0.2.0 turns a roadmap objective into a deliberate research loop. After explicit per-provider consent, search Microsoft Learn or English Wikipedia, inspect a sanitized result and exact source preview, then accept it into the same portable source library and knowledge graph. The constellation now scales with the workspace, emphasizes wikilink hubs, and supports focused keyboard and pointer exploration.
+Dusori v0.3.0 adds an optional, session-scoped local companion for capabilities a static browser app cannot safely provide alone. It can proxy Microsoft Learn's ranked search and turn a URL source into readable text only after an exact-host confirmation and preview. Every redirect is checked against non-public address ranges, content stays capped, writes remain conflict-safe, and the launch token is consumed from the address as soon as the companion connects.
 
-[Read the release notes](https://github.com/udhawan97/Dusori/releases/tag/v0.2.0) · [Review the changelog](CHANGELOG.md)
+[Read the release notes](https://github.com/udhawan97/Dusori/releases/tag/v0.3.0) · [Review the changelog](CHANGELOG.md)
 
 ## The product today
 
@@ -115,11 +115,11 @@ apps/site                 Astro + Starlight product and documentation site
 packages/core             Storage-neutral domain, learning loop, research, graph, conflicts
 packages/storage-opfs     Private browser workspace adapter
 packages/storage-fsa      User-approved folder adapter
-packages/companion        Optional token-protected loopback foundation
+packages/companion        Optional token-protected loopback research service
 tests/e2e                 Built Pages artifact and user-flow verification
 ```
 
-The browser app calls storage-neutral core modules. Storage adapters provide the same interface to OPFS, the File System Access API, memory tests, and the optional local companion. There is no hosted application backend.
+The browser app calls storage-neutral core modules. OPFS, the File System Access API, and memory tests implement the same storage interface; the optional companion is a separate, token-protected loopback transport for bounded research operations. There is no hosted application backend.
 
 ## Browser support
 
@@ -162,7 +162,9 @@ pnpm build
 pnpm --filter dusori dev -- --root /path/to/Dusori
 ```
 
-The v0.2.0 release is the hosted browser app and its source. `npx dusori` remains the intended public companion command, but the companion is not published to npm yet. Build it from this repository using the command above.
+The v0.3.0 GitHub release includes the hosted browser app and companion source, but does not publish the companion to npm. `npx dusori` remains the intended public command after a separate npm release; for now, build it from this repository using the command above. The companion binds only to `127.0.0.1`, issues a new token for each run, removes that token from the browser address after connection, and stops with its terminal process.
+
+**Compatibility note:** do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older reader can rename `Sources/manifest.json` to an `.invalid-<timestamp>` file after seeing the newer provenance value. Source content remains untouched; update to v0.3.0 and rename the manifest back if this has already happened.
 
 See [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), the [architecture decisions](docs/adr/), and the [product specification](docs/product/spec.md).
 
