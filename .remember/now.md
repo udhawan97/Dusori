@@ -1,3 +1,3 @@
 
-## 11:49 | friendly-wizard-claude/high-confidence-features-b9983b
-Identified 4 high-conf features, spec'd Phase 2 companion research svc (companion extraction + per-fetch consent), wrote 15-task impl plan (8a15150/b0c6a20), selected subagent-driven execution.
+## 21:49 | friendly-wizard-claude/userflow-research-agent-05e55b
+Grilled 10 decisions for Dusori Phase 3 research-agent (web search + vetting + optional AI), wrote spec (2026-07-21-research-agent-design.md), ran arch scan identifying refactor prep (companion server→Fastify plugins, AIProvider redesign), committed design doc to worktree, started impl.
