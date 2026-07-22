@@ -6,7 +6,7 @@ import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/s
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const screenshotHref = `${projectBasePath}/app-workspace.png`;
-const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.3.0';
+const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
 ---
 
 <!doctype html>
@@ -83,7 +83,7 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.3.0';
             />
           </picture>
           <figcaption class="stage-caption">
-            <span>v0.3.0 · available now</span>
+            <span>v0.4.0 · available now</span>
             <strong>Your notes stay ordinary files. A surprisingly radical idea.</strong>
             <a href={releaseHref}>Read the release notes →</a>
           </figcaption>
@@ -136,11 +136,12 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.3.0';
             src={screenshotHref}
             width="1440"
             height="960"
-            alt="Dusori Today view showing local topic progress, the next roadmap objective, and recent activity"
+            alt="Dusori Today view showing local progress, the deterministic review queue, and seven-day recap"
             fetchpriority="high"
           />
           <figcaption>
-            Today is assembled from the topic’s roadmap, status, and dated update files.
+            Review order and the seven-day recap are assembled from roadmap, status, and dated
+            update files—never an invented deadline.
           </figcaption>
         </figure>
       </section>
@@ -185,8 +186,8 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.3.0';
         <dl>
           <div>
             <dt>Modern browsers</dt><dd>
-              Private workspace, interactive roadmap progress, Today summaries, pasted/file/URL
-              sources, consent-gated research, curriculum previews, ZIP portability, offline reload.
+              Private workspace, note authoring, local search and backlinks, deterministic review,
+              pasted/file/URL sources, consent-gated research, ZIP portability, offline reload.
             </dd>
           </div>
           <div>
@@ -210,16 +211,16 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.3.0';
         <a href="https://github.com/udhawan97/Dusori"
           ><span>Inspect</span>Review the source on GitHub →</a
         >
-        <a href={releaseHref}><span>Release</span>What shipped in v0.3.0 →</a>
+        <a href={releaseHref}><span>Release</span>What shipped in v0.4.0 →</a>
       </section>
     </main>
 
     <footer class="colophon">
       <p>
         Dusori is open-source software under the Apache License 2.0. No account, no telemetry, no
-        hosted application backend—and no footnote quietly changing those facts. Version 0.3.0 adds
-        an optional local companion for confirmed page extraction and ranked Microsoft Learn search;
-        AI, general web search, and unattended scheduling remain future work.
+        hosted application backend—and no footnote quietly changing those facts. Version 0.4.0 adds
+        conflict-safe note authoring, local search, backlinks, health checks, and deterministic
+        review; AI, general web search, and unattended scheduling remain future work.
       </p>
       <span>Built in public · 2026</span>
     </footer>

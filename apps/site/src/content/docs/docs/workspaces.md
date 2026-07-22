@@ -37,3 +37,9 @@ Firefox and Safari use the browser workspace plus ZIP import/export. The optiona
 Every topic keeps its own source files and manifest, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
 
 The [portable knowledge graph](../knowledge-graph/) reads these same files and does not add a graph database or hidden sync layer.
+
+## Import and replacement safety
+
+Before replacing a browser workspace from ZIP, Dusori validates the archive in memory: normalized paths, 64 MiB compressed and expanded limits, at most 5,000 files, the workspace schema, every topic schema, and each required topic/source file. The confirmation names the incoming workspace and reports topic and file counts.
+
+An invalid archive does not touch the current workspace. If a storage write fails after replacement starts, Dusori clears the partial import and restores its previous snapshot before reporting the failure. Keep an independent ZIP backup anyway: rollback protects a failed Dusori write, not browser data clearing or device loss.

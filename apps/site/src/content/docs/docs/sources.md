@@ -24,7 +24,7 @@ Results remain suggestions until you choose **Add to sources**. Microsoft Learn 
 
 URL references stay unfetched by default. When the app is opened through the local companion, each URL source gains a **Fetch full content** action — including a Microsoft Learn catalog reference accepted from Research. A confirmation names the exact host before anything is sent; every redirect is rechecked against private, reserved, and other non-public address ranges; the fetched page is capped at 4 MiB, reduced to readable text, previewed exactly as it will be written, and only replaces the stub when you choose **Replace content**. The preview ends with `[truncated]` if the extracted text would exceed the 2 MiB source limit. If the source file changed outside Dusori since it was last read, Dusori refuses the replacement as a conflict instead of overwriting it silently. The upgrade is recorded in the topic's update log, and the source keeps its URL, title, and place in the graph.
 
-The v0.3.0 GitHub release provides the companion as source, not as an npm publication. Build it from a clone as described in [Getting started](../getting-started/); `npx dusori` is the intended command only after a separate npm release.
+Run the published companion with `npx dusori@0.4.0 --root /path/to/Dusori`, or build it from a clone as described in [Getting started](../getting-started/). Omit `--root` to keep folder access off.
 
 ## Topic file contract
 

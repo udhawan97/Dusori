@@ -17,11 +17,17 @@ The graph uses normalized relative file paths as stable node IDs. Labels come fr
 
 - Topic containment connects an overview to the files carried by that topic.
 - Obsidian-style `[[wikilinks]]` connect the source file to the resolved target.
-- Links that cannot be resolved stay visible as an unresolved-link count; Dusori does not invent a destination.
+- Links that cannot be resolved stay visible as explicit workspace-health issues; Dusori does not invent a destination.
+
+## Search, backlinks, and health
+
+The inspector's **Search workspace** action scans readable Markdown and text in the current session. Every query word must match; case and accents do not affect matching. Dusori stores neither an index nor query history and makes no network request.
+
+Backlinks reverse the graph's resolved `links` edges for the current document. **Workspace health** refreshes that same graph and adds source consistency checks: invalid or missing manifests, tracked source files that are missing, and untracked files under `Sources/items/`. Inspection is read-only. An invalid manifest stays exactly where it is until you choose how to recover it.
 
 ## Open a document
 
-Choose **Graph** in the workspace rail. The constellation is paired with an accessible artifact index. Select an artifact there to open the original Markdown or text file in Dusori.
+Choose **Graph** in the workspace rail. The constellation is paired with an accessible artifact index. Select an artifact there to open the original Markdown or text file in Dusori. Search results, backlinks, and actionable health issues open the same exact file paths.
 
 The constellation scales with workspace size and orders topics by their wikilink affinity. The layout remains deterministic and browser-local and writes no coordinates into your workspace, so opening the same folder in Obsidian remains clean.
 

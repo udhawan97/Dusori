@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** web-research Phase 1 and Phase 2 (companion research service) implementation · **Date:** 2026-07-21
+**Status:** v0.4.0 local workbench implementation · **Date:** 2026-07-21
 
 ## Product contract
 
@@ -25,12 +25,23 @@ The first milestone must prove:
 11. An interactive learning loop derived entirely from portable roadmap, state, and update files.
 12. Consent-gated, keyless research against Microsoft Learn and English Wikipedia.
 13. Optional companion-powered readable-page extraction and ranked Microsoft Learn search, with explicit per-fetch confirmation.
+14. In-app creation and conflict-safe editing of portable Markdown notes.
+15. Local full-text search, backlinks, and a non-mutating workspace health report.
+16. Deterministic review ordering and a bounded recap derived from dated local updates.
+17. Whole-archive import validation with rollback if replacement storage fails.
+18. A version-aligned, packed-tarball-tested npm companion command.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
 The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markdown with the English `Skills measured` hierarchy and general structured Markdown syllabi. It extracts at most 200 objectives locally, previews them before writing, preserves the original outline as a topic source, and updates `roadmap.md` through the same conflict-safe acceptance protocol. The optional official URL is provenance metadata only and is never fetched.
 
-The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress, next steps, and recent dated updates. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. No schedule or recap is generated.
+The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress and next steps. **Review next** orders active topics before paused topics and then uses oldest `state.json.updatedAt` first. The seven-day recap reads bounded recent entries from dated update files. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. No deadline, calendar, spaced-repetition interval, or background schedule is generated.
+
+The shipped note editor creates Markdown under `Topics/<slug>/Notes/`, records it in `state.json`, and opens it directly for editing. Existing note saves use the same tracked-hash protocol as roadmap writes. An external edit remains active; Dusori stores the user's draft as a sibling proposal and requires an explicit acceptance step.
+
+The shipped workspace search scans `.md` and `.txt` files in the current session. Matching is case- and accent-insensitive and requires every query term. Results are bounded, source titles are read from valid manifests when available, and no index, query log, database, or network request is created. Backlinks reverse resolved wikilink edges. Workspace health combines unresolved wikilinks with source-manifest/file consistency checks and never repairs or quarantines an invalid manifest implicitly.
+
+The shipped ZIP import path normalizes and validates the entire archive before replacement confirmation, including required workspace/topic schemas, file count, and compressed/expanded size limits. The destination is untouched when preflight fails. If a storage write fails during replacement, Dusori restores the previous snapshot before surfacing the error.
 
 The shipped Research panel starts from a selected roadmap objective and defaults to the next unchecked item. Ranking combines the topic name with the objective text, so the scaffold objectives Dusori writes for a new topic still return on-subject sources. Searching Microsoft Learn downloads its public module catalog and ranks modules locally; an accepted module remains honestly labeled as a catalog reference, not a page snapshot. Wikipedia provides ranked English search plus a plain-text page extract, truncated when necessary to stay inside the 2 MiB source limit. Both providers are keyless and browser-callable.
 
@@ -45,7 +56,7 @@ With the local companion running, Microsoft Learn search instead proxies Microso
 - Ollama or other model operations
 - AI-generated notes or diagrams
 - Chat-to-`TUTOR.md` editing
-- Generated schedules, recaps, or closed-app work
+- Generated schedules, due dates, spaced-repetition intervals, or closed-app work
 - Accounts, sync, telemetry, or hosted storage
 
 ## Trust model
