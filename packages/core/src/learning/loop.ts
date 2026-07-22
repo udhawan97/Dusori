@@ -46,6 +46,34 @@ export interface TodayTopicSummary {
   updatedAt: string;
 }
 
+export interface ReviewQueueItem {
+  objective: string;
+  progressPercent: number;
+  reason: string;
+  slug: string;
+  status: TopicState['status'];
+  title: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceRecapEntry extends RecentTopicActivity {
+  slug: string;
+  title: string;
+}
+
+export interface WorkspaceRecap {
+  entries: WorkspaceRecapEntry[];
+  from: string;
+  to: string;
+  topicsTouched: number;
+}
+
+export interface WorkspaceRecapOptions {
+  days?: number;
+  limit?: number;
+  now?: Date;
+}
+
 export type RoadmapUpdateResult =
   | { conflict: MarkdownConflict; progress: TopicProgress; status: 'conflict' }
   | { content: string; progress: TopicProgress; state: TopicState; status: 'updated' };
@@ -250,4 +278,96 @@ export async function buildTodaySummary(
       };
     }),
   );
+}
+
+/** Orders unfinished topics from explicit local state; it creates no deadlines or schedule. */
+export function buildReviewQueue(summaries: TodayTopicSummary[], limit = 5): ReviewQueueItem[] {
+  const statusPriority: Record<TopicState['status'], number> = {
+    active: 0,
+    paused: 1,
+    complete: 2,
+  };
+  return summaries
+    .filter((summary) => summary.status !== 'complete')
+    .sort(
+      (left, right) =>
+        statusPriority[left.status] - statusPriority[right.status] ||
+        left.updatedAt.localeCompare(right.updatedAt) ||
+        left.title.localeCompare(right.title) ||
+        left.slug.localeCompare(right.slug),
+    )
+    .slice(0, Math.max(0, limit))
+    .map((summary) => ({
+      objective:
+        summary.progress.nextObjective?.title ??
+        (summary.progress.total
+          ? 'Review the finished roadmap and decide whether to complete this topic.'
+          : 'Add the first reviewable objective to this roadmap.'),
+      progressPercent: summary.progress.percent,
+      reason:
+        summary.status === 'active'
+          ? 'Active · least recently updated first'
+          : 'Paused · resume when ready',
+      slug: summary.slug,
+      status: summary.status,
+      title: summary.title,
+      updatedAt: summary.updatedAt,
+    }));
+}
+
+/** Reads a bounded, recent-first recap from dated update files without writing summary state. */
+export async function buildWorkspaceRecap(
+  storage: StorageAdapter,
+  workspace: Workspace,
+  options: WorkspaceRecapOptions = {},
+): Promise<WorkspaceRecap> {
+  const days = Math.min(90, Math.max(1, Math.trunc(options.days ?? 7)));
+  const limit = Math.min(100, Math.max(1, Math.trunc(options.limit ?? 12)));
+  const now = options.now ?? new Date();
+  const to = now.toISOString().slice(0, 10);
+  const fromDate = new Date(`${to}T00:00:00.000Z`);
+  fromDate.setUTCDate(fromDate.getUTCDate() - (days - 1));
+  const from = fromDate.toISOString().slice(0, 10);
+  const entries: Array<WorkspaceRecapEntry & { sequence: number }> = [];
+  let sequence = 0;
+
+  for (const topic of workspace.topics) {
+    const updateRoot = `${topicRoot(topic.slug)}/Updates`;
+    const files = (await storage.list(updateRoot, true))
+      .filter((entry) => entry.kind === 'file' && entry.path.endsWith('.md'))
+      .sort((left, right) => right.path.localeCompare(left.path));
+    for (const entry of files) {
+      const date = /(\d{4}-\d{2}-\d{2})\.md$/u.exec(entry.path)?.[1];
+      if (!date || date < from || date > to) continue;
+      const file = await storage.read(entry.path);
+      if (!file) continue;
+      for (const line of file.content.split('\n').reverse()) {
+        const match = updateLine.exec(line);
+        if (!match) continue;
+        entries.push({
+          date,
+          sequence: sequence++,
+          slug: topic.slug,
+          text: plainActivityText(match[1] ?? ''),
+          title: topic.title,
+        });
+      }
+    }
+  }
+
+  const bounded = entries
+    .sort(
+      (left, right) =>
+        right.date.localeCompare(left.date) ||
+        left.title.localeCompare(right.title) ||
+        left.sequence - right.sequence,
+    )
+    .slice(0, limit)
+    .map(({ date, slug, text, title }) => ({ date, slug, text, title }));
+  return {
+    entries: bounded,
+    from,
+    to,
+    topicsTouched: new Set(bounded.map((entry) => entry.slug)).size,
+  };
 }

@@ -1,17 +1,30 @@
 <script lang="ts">
-  import { AlertTriangle, ArrowRight, Check, Pause, Play, RotateCcw } from '@lucide/svelte';
+  import {
+    AlertTriangle,
+    ArrowRight,
+    CalendarDays,
+    Check,
+    ListOrdered,
+    Pause,
+    Play,
+    RotateCcw,
+  } from '@lucide/svelte';
 
   import {
     acceptMarkdownUpdate,
+    buildReviewQueue,
     buildTodaySummary,
+    buildWorkspaceRecap,
     lineDiff,
     setTopicStatus,
     updateRoadmapObjective,
     type MarkdownConflict,
+    type ReviewQueueItem,
     type StorageAdapter,
     type TodayTopicSummary,
     type TopicState,
     type Workspace,
+    type WorkspaceRecap,
   } from '@dusori/core';
 
   export let storage: StorageAdapter;
@@ -24,6 +37,8 @@
   export let onStatus: (message: string) => void = () => undefined;
 
   let summaries: TodayTopicSummary[] = [];
+  let reviewQueue: ReviewQueueItem[] = [];
+  let recap: WorkspaceRecap | null = null;
   let loading = true;
   let workingIndex: number | null = null;
   let statusWorking = false;
@@ -54,7 +69,13 @@
     loading = true;
     error = '';
     try {
-      summaries = await buildTodaySummary(storage, workspace);
+      const [nextSummaries, nextRecap] = await Promise.all([
+        buildTodaySummary(storage, workspace),
+        buildWorkspaceRecap(storage, workspace),
+      ]);
+      summaries = nextSummaries;
+      reviewQueue = buildReviewQueue(nextSummaries);
+      recap = nextRecap;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not read learning progress.';
     } finally {
@@ -119,7 +140,7 @@
         conflict.proposalContent,
         conflict.currentContentHash,
         new Date(),
-        `- ${pendingObjective.completed ? 'Completed' : 'Reopened'} “${pendingObjective.title}” in [[../../roadmap]] after reviewing an external edit.`,
+        `- ${pendingObjective.completed ? 'Completed' : 'Reopened'} “${pendingObjective.title}” in [[../../../roadmap]] after reviewing an external edit.`,
       );
       const content = conflict.proposalContent;
       success = 'Progress choice accepted after your review.';
@@ -187,6 +208,73 @@
         <p>Create a topic to start a durable learning loop.</p>
       </div>
     {:else}
+      <div class="today-focus-grid">
+        <section class="review-queue" aria-labelledby="review-queue-title">
+          <div class="focus-heading">
+            <ListOrdered aria-hidden="true" size={22} />
+            <div>
+              <p class="section-label">Deterministic queue</p>
+              <h2 id="review-queue-title">Review next</h2>
+            </div>
+          </div>
+          <p class="focus-explainer">
+            Active topics come first, least recently updated first. Dusori creates no deadlines.
+          </p>
+          {#if reviewQueue.length === 0}
+            <p class="focus-empty">No unfinished active or paused topics.</p>
+          {:else}
+            <ol aria-label="Review queue">
+              {#each reviewQueue as item, index (item.slug)}
+                <li>
+                  <span class="queue-rank">{String(index + 1).padStart(2, '0')}</span>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.objective}</p>
+                    <small>{item.reason} · {item.progressPercent}% complete</small>
+                  </div>
+                  <button
+                    aria-label={`Open ${item.title} roadmap`}
+                    onclick={() => onOpenRoadmap(item.slug)}
+                  >
+                    <ArrowRight aria-hidden="true" size={16} />
+                  </button>
+                </li>
+              {/each}
+            </ol>
+          {/if}
+        </section>
+
+        <section class="workspace-recap" aria-labelledby="workspace-recap-title">
+          <div class="focus-heading">
+            <CalendarDays aria-hidden="true" size={22} />
+            <div>
+              <p class="section-label">Dated update files</p>
+              <h2 id="workspace-recap-title">7-day recap</h2>
+            </div>
+          </div>
+          {#if recap}
+            <p class="focus-explainer">
+              {recap.entries.length}
+              {recap.entries.length === 1 ? 'event' : 'events'} across
+              {recap.topicsTouched}
+              {recap.topicsTouched === 1 ? 'topic' : 'topics'}.
+            </p>
+            {#if recap.entries.length === 0}
+              <p class="focus-empty">No update entries in this date range.</p>
+            {:else}
+              <ul aria-label="Workspace recap">
+                {#each recap.entries as entry, index (`${index}-${entry.slug}-${entry.date}-${entry.text}`)}
+                  <li>
+                    <time datetime={entry.date}>{activityDate(entry.date)}</time>
+                    <span><strong>{entry.title}</strong>{entry.text}</span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          {/if}
+        </section>
+      </div>
+
       <div class="topic-ledger">
         {#each summaries as summary (summary.slug)}
           <article class:muted={summary.status !== 'active'}>
@@ -455,6 +543,96 @@
   .topic-ledger {
     margin-block-start: var(--space-2xl);
     border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .today-focus-grid {
+    display: grid;
+    gap: var(--space-xl);
+    margin-block-start: var(--space-2xl);
+  }
+
+  .review-queue,
+  .workspace-recap {
+    min-width: 0;
+    padding: var(--space-lg);
+    border-block: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper-2);
+  }
+
+  .focus-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    color: var(--color-accent-text);
+  }
+
+  .focus-heading h2 {
+    margin-block-start: var(--space-2xs);
+    color: var(--color-ink);
+    font-size: var(--text-lg);
+  }
+
+  .focus-explainer,
+  .focus-empty {
+    margin-block-start: var(--space-sm);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .review-queue ol,
+  .workspace-recap ul {
+    margin: var(--space-md) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .review-queue li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-sm);
+    padding-block: var(--space-sm);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .queue-rank,
+  .review-queue small,
+  .workspace-recap time {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .review-queue li strong,
+  .workspace-recap li strong {
+    display: block;
+    font-family: var(--font-display);
+  }
+
+  .review-queue li p {
+    margin-block: var(--space-2xs);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+
+  .review-queue li button {
+    display: grid;
+    width: 2.75rem;
+    padding: 0;
+    background: var(--color-paper);
+    color: var(--color-accent-text);
+    place-items: center;
+  }
+
+  .workspace-recap li {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: var(--space-sm);
+    padding-block: var(--space-xs);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    font-size: var(--text-sm);
+    line-height: 1.45;
   }
 
   .topic-ledger article {
@@ -856,6 +1034,10 @@
 
     .conflict-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .today-focus-grid {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     }
   }
 
