@@ -13,7 +13,20 @@ import {
 import { topicRoot } from '../workspace/paths.js';
 import { cappedMarkdown } from './capped.js';
 
-export function buildUpgradedContent(record: SourceRecord, page: FetchedPage): string {
+/** The parts of a source this builder actually reads. */
+export interface UpgradableSource {
+  title: string;
+  url?: string;
+}
+
+/**
+ * Accepts a bare title and URL as well as a manifest record, so a research capture that has no
+ * record yet produces the same document shape as an upgrade of one that does.
+ */
+export function buildUpgradedContent(
+  record: SourceRecord | UpgradableSource,
+  page: FetchedPage,
+): string {
   const host = new URL(page.finalUrl).host;
   const fetchedOn = page.fetchedAt.slice(0, 10);
   const prefix = [

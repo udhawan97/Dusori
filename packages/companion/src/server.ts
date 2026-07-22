@@ -8,8 +8,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { appBasePath } from '../../../config/site.mjs';
 
 import { canonicalRoot } from './filesystem.js';
-import type { LookupImpl } from './research-fetch.js';
-import { researchRoutes } from './routes/research.js';
+import { researchRoutes, type ResearchRoutesOptions } from './routes/research.js';
 import { workspaceRoutes } from './routes/workspace.js';
 import { companionVersion } from './version.js';
 
@@ -18,7 +17,7 @@ export interface ServerOptions {
   staticDirectory?: string;
   token: string;
   hostedOrigin?: string;
-  research?: { fetchImpl?: typeof fetch; lookupImpl?: LookupImpl };
+  research?: ResearchRoutesOptions;
 }
 
 function bearerToken(header: string | undefined): string | null {

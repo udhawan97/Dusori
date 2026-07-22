@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/WJPbc7+UlCDA6eDa9e+Ancuw65o</id>
+  <title>arXiv Query: search_query=all:attention OR all:is OR all:all OR all:you OR all:need&amp;id_list=&amp;start=0&amp;max_results=3</title>
+  <updated>2026-07-22T02:57:22Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:attention+OR+(all:is+OR+(all:all+OR+(all:you+OR+all:need)))&amp;start=0&amp;max_results=3&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>3</opensearch:itemsPerPage>
+  <opensearch:totalResults>674998</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2105.02723v1</id>
+    <title>Do You Even Need Attention? A Stack of Feed-Forward Layers Does Surprisingly Well on ImageNet</title>
+    <updated>2021-05-06T14:42:39Z</updated>
+    <link href="https://arxiv.org/abs/2105.02723v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2105.02723v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The strong performance of vision transformers on image classification and other vision tasks is often attributed to the design of their multi-head attention layers. However, the extent to which attention is responsible for this strong performance remains unclear. In this short report, we ask: is the attention layer even necessary? Specifically, we replace the attention layer in a vision transformer with a feed-forward layer applied over the patch dimension. The resulting architecture is simply a series of feed-forward layers applied over the patch and feature dimensions in an alternating fashion. In experiments on ImageNet, this architecture performs surprisingly well: a ViT/DeiT-base-sized model obtains 74.9\% top-1 accuracy, compared to 77.9\% and 79.9\% for ViT and DeiT respectively. These results indicate that aspects of vision transformers other than attention, such as the patch embedding, may be more responsible for their strong performance than previously thought. We hope these results prompt the community to spend more time trying to understand why our current models are as effective as they are.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2021-05-06T14:42:39Z</published>
+    <arxiv:comment>Short Technical Report. GitHub: https://github.com/lukemelas/do-you-even-need-attention</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>Luke Melas-Kyriazi</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2512.19700v1</id>
+    <title>"All You Need" is Not All You Need for a Paper Title: On the Origins of a Scientific Meme</title>
+    <updated>2025-12-03T17:36:45Z</updated>
+    <link href="https://arxiv.org/abs/2512.19700v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2512.19700v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The 2017 paper ''Attention Is All You Need'' introduced the Transformer architecture-and inadvertently spawned one of machine learning's most persistent naming conventions. We analyze 717 arXiv preprints containing ''All You Need'' in their titles (2009-2025), finding exponential growth ($R^2$ &gt; 0.994) following the original paper, with 200 titles in 2025 alone. Among papers following the canonical ''X [Is] All You Need'' structure, ''Attention'' remains the most frequently claimed necessity (28 occurrences). Situating this phenomenon within memetic theory, we argue the pattern's success reflects competitive pressures in scientific communication that increasingly favor memorability over precision. Whether this trend represents harmless academic whimsy or symptomatic sensationalism, we leave-with appropriate self-awareness-to the reader.</summary>
+    <category term="cs.CY" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.DL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-12-03T17:36:45Z</published>
+    <arxiv:primary_category term="cs.CY"/>
+    <author>
+      <name>Anton Alyakin</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/1806.11202v1</id>
+    <title>Quit When You Can: Efficient Evaluation of Ensembles with Ordering Optimization</title>
+    <updated>2018-06-28T21:29:23Z</updated>
+    <link href="https://arxiv.org/abs/1806.11202v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1806.11202v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Given a classifier ensemble and a set of examples to be classified, many examples may be confidently and accurately classified after only a subset of the base models in the ensemble are evaluated. This can reduce both mean latency and CPU while maintaining the high accuracy of the original ensemble. To achieve such gains, we propose jointly optimizing a fixed evaluation order of the base models and early-stopping thresholds. Our proposed objective is a combinatorial optimization problem, but we provide a greedy algorithm that achieves a 4-approximation of the optimal solution for certain cases. For those cases, this is also the best achievable polynomial time approximation bound unless $P = NP$. Experiments on benchmark and real-world problems show that the proposed Quit When You Can (QWYC) algorithm can speed-up average evaluation time by $2$x--$4$x, and is around $1.5$x faster than prior work. QWYC's joint optimization of ordering and thresholds also performed better in experiments than various fixed orderings, including gradient boosted trees' ordering.</summary>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="stat.ML" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2018-06-28T21:29:23Z</published>
+    <arxiv:primary_category term="cs.LG"/>
+    <author>
+      <name>Serena Wang</name>
+    </author>
+    <author>
+      <name>Maya Gupta</name>
+    </author>
+    <author>
+      <name>Seungil You</name>
+    </author>
+  </entry>
+</feed>

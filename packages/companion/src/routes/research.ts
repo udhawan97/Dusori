@@ -1,8 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { ArxivProxyError, searchArxiv } from '../research-arxiv.js';
 import { FetchPageError, fetchReadablePage, type LookupImpl } from '../research-fetch.js';
 import { MsLearnProxyError, searchMsLearnRanked } from '../research-mslearn.js';
+import { WebSearchError, searchWeb, type WebSearchEnv } from '../research-websearch.js';
 
 const FetchBody = z.object({ url: z.string().min(1) });
 const SearchQuery = z.object({ q: z.string().min(1) });
@@ -15,6 +17,7 @@ const badRequestReasons = new Set([
 ]);
 
 export interface ResearchRoutesOptions {
+  env?: WebSearchEnv;
   fetchImpl?: typeof fetch;
   lookupImpl?: LookupImpl;
 }
@@ -53,6 +56,46 @@ export async function researchRoutes(
     } catch (error) {
       if (error instanceof MsLearnProxyError) {
         return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
+      }
+      return reply.code(500).send({
+        error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',
+        reason: 'fetch-failed',
+      });
+    }
+  });
+
+  server.get('/api/research/arxiv', async (request, reply) => {
+    const query = SearchQuery.safeParse(request.query);
+    if (!query.success) {
+      return reply.code(400).send({ error: 'A search query is required.' });
+    }
+    try {
+      return { results: await searchArxiv(query.data.q, options.fetchImpl) };
+    } catch (error) {
+      if (error instanceof ArxivProxyError) {
+        return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
+      }
+      return reply.code(500).send({
+        error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',
+        reason: 'fetch-failed',
+      });
+    }
+  });
+
+  server.get('/api/research/web-search', async (request, reply) => {
+    const query = SearchQuery.safeParse(request.query);
+    if (!query.success) {
+      return reply.code(400).send({ error: 'A search query is required.' });
+    }
+    try {
+      return {
+        results: await searchWeb(query.data.q, { env: options.env, fetchImpl: options.fetchImpl }),
+      };
+    } catch (error) {
+      if (error instanceof WebSearchError) {
+        return reply
+          .code(error.reason === 'not-configured' ? 503 : 502)
+          .send({ error: error.message, reason: error.reason });
       }
       return reply.code(500).send({
         error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',

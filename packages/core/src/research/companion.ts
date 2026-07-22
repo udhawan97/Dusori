@@ -18,6 +18,29 @@ const RankedResponseSchema = z.object({
   results: z.array(z.object({ summary: z.string(), title: z.string(), url: z.url() })),
 });
 
+const ArxivResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      id: z.string(),
+      publishedAt: z.string().optional(),
+      summary: z.string(),
+      title: z.string(),
+      url: z.url(),
+    }),
+  ),
+});
+
+const WebSearchResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      publishedAt: z.string().optional(),
+      summary: z.string(),
+      title: z.string(),
+      url: z.url(),
+    }),
+  ),
+});
+
 const FailureSchema = z.object({ error: z.string().optional(), reason: z.string().optional() });
 
 export class CompanionFetchError extends Error {
@@ -33,6 +56,8 @@ export class CompanionFetchError extends Error {
 export interface CompanionResearchClient {
   fetchPage(url: string): Promise<FetchedPage>;
   searchMsLearnRanked(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  searchArxiv(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  searchWeb(query: ResearchQuery): Promise<ResearchCandidate[]>;
 }
 
 export interface CompanionClientOptions {
@@ -107,5 +132,82 @@ export function createCompanionResearchClient(
         url: result.url,
       }));
     },
+
+    async searchArxiv(query) {
+      const parsed = ArxivResponseSchema.safeParse(
+        await readJson(
+          `${base}/api/research/arxiv?q=${encodeURIComponent(query.searchText)}`,
+          'arXiv search could not be reached through the companion.',
+        ),
+      );
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar arXiv format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data.results.map((result, index, all) => {
+        const meta: Record<string, string> = {};
+        if (result.publishedAt) meta.published = result.publishedAt.slice(0, 10);
+        return {
+          key: `arxiv:${result.id}`,
+          kind: 'paper' as const,
+          meta,
+          provider: 'arxiv',
+          ...(result.publishedAt === undefined ? {} : { publishedAt: result.publishedAt }),
+          score: all.length - index,
+          snippet: result.summary,
+          title: result.title,
+          url: result.url,
+        };
+      });
+    },
+
+    async searchWeb(query) {
+      const parsed = WebSearchResponseSchema.safeParse(
+        await readJson(
+          `${base}/api/research/web-search?q=${encodeURIComponent(query.searchText)}`,
+          'Web search could not be reached through the companion.',
+        ),
+      );
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar web search format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data.results.map((result, index, all) => {
+        const meta: Record<string, string> = { host: hostOf(result.url) };
+        if (result.publishedAt) meta.published = result.publishedAt.slice(0, 10);
+        return {
+          key: `websearch:${result.url}`,
+          kind: 'article' as const,
+          meta,
+          provider: 'websearch',
+          ...(result.publishedAt === undefined ? {} : { publishedAt: result.publishedAt }),
+          score: all.length - index,
+          snippet: result.summary,
+          title: result.title,
+          url: result.url,
+        };
+      });
+    },
   };
+
+  async function readJson(url: string, fallbackMessage: string): Promise<unknown> {
+    const response = await fetchImpl(url, { headers: authorization }).catch(() => null);
+    if (!response) throw new CompanionFetchError(fallbackMessage, 'fetch-failed');
+    // A configuration problem (no search key set) is a different conversation from an
+    // outage, so the reason the companion gives is carried through rather than flattened.
+    if (!response.ok) throw await failureFrom(response);
+    return response.json().catch(() => null);
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host.replace(/^www\./u, '');
+  } catch {
+    return '';
+  }
 }

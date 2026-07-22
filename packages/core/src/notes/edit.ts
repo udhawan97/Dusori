@@ -27,11 +27,21 @@ function noteTemplate(title: string, topicSlug: string, now: Date): string {
   return `---\ntitle: ${JSON.stringify(title)}\ntopic: ${topicSlug}\ncreated: ${now.toISOString().slice(0, 10)}\n---\n\n# ${title}\n\nStart with one idea, one source, and one question.\n`;
 }
 
+export interface CreateNoteOptions {
+  /**
+   * Complete note body, frontmatter included, for callers that generate a note rather than
+   * opening a blank one. The caller owns the whole document so a generated note can mark
+   * itself as generated in its own frontmatter.
+   */
+  content?: string;
+}
+
 export async function createNote(
   storage: StorageAdapter,
   topicSlug: string,
   titleInput: string,
   now = new Date(),
+  options: CreateNoteOptions = {},
 ): Promise<CreatedNote> {
   const title = cleanNoteTitle(titleInput);
   const root = topicRoot(topicSlug);
@@ -42,7 +52,7 @@ export async function createNote(
   const stateFile = await storage.read(statePath);
   if (!stateFile) throw new Error('The topic state is missing.');
   const state = await readMachineFile(storage, statePath, TopicStateSchema, now);
-  const content = noteTemplate(title, topicSlug, now);
+  const content = options.content ?? noteTemplate(title, topicSlug, now);
   const written = await storage.write(path, content, { expectedHash: null });
 
   let stateWritten = false;

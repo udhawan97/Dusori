@@ -16,14 +16,30 @@ export const DismissedResearchSuggestionSchema = z.object({
   url: z.url().max(2048).optional(),
 });
 
+// One candidate a past run already showed. `at` is when it was first seen, so a
+// candidate missing from this list is genuinely new since the last run.
+export const SeenResearchCandidateSchema = z.object({
+  at: z.string().datetime(),
+  key: z.string().min(1).max(320),
+  url: z.url().max(2048).optional(),
+});
+
 export const ResearchFileSchema = z.object({
   schemaVersion: z.literal(schemaVersion),
   topicSlug: z.string().min(1).max(80),
   dismissed: z.array(DismissedResearchSuggestionSchema),
+  // Optional so every research.json written before run memory existed still
+  // parses unchanged, which is why adding them needs no schemaVersion bump.
+  lastRunAt: z.string().datetime().optional(),
+  seen: z.array(SeenResearchCandidateSchema).optional(),
 });
 
 export type DismissedResearchSuggestion = z.infer<typeof DismissedResearchSuggestionSchema>;
+export type SeenResearchCandidate = z.infer<typeof SeenResearchCandidateSchema>;
 export type ResearchFile = z.infer<typeof ResearchFileSchema>;
+
+/** Keeps the file bounded; oldest entries are dropped first. */
+const maxSeenEntries = 500;
 
 // Normalizes a URL for comparison so equivalent references (e.g. differing
 // only in how the URL constructor formats them) match. Falls back to the raw
@@ -97,4 +113,56 @@ export async function writeDismissedResearchSuggestion(
   }
 
   throw new Error('Research dismissals changed repeatedly. Try dismissing this suggestion again.');
+}
+
+export async function recordResearchRun(
+  storage: StorageAdapter,
+  topicSlug: string,
+  candidates: { key: string; url?: string }[],
+  now = new Date(),
+): Promise<ResearchFile> {
+  const normalizedSlug = topicRoot(topicSlug).slice('Topics/'.length);
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+  const at = now.toISOString();
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const currentSnapshot = await storage.read(path);
+    const current = currentSnapshot
+      ? await readMachineFile(storage, path, ResearchFileSchema, now)
+      : ResearchFileSchema.parse({ dismissed: [], schemaVersion, topicSlug: normalizedSlug });
+    // An already-seen key keeps its original `at`: re-stamping it every run
+    // would make nothing ever count as new again.
+    const merged = new Map((current.seen ?? []).map((entry) => [entry.key, entry]));
+    for (const candidate of candidates) {
+      if (merged.has(candidate.key)) continue;
+      merged.set(candidate.key, { at, key: candidate.key, url: candidate.url });
+    }
+    const next = ResearchFileSchema.parse({
+      ...current,
+      lastRunAt: at,
+      seen: [...merged.values()]
+        .sort((left, right) => left.at.localeCompare(right.at))
+        .slice(-maxSeenEntries),
+    });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: currentSnapshot?.hash ?? null,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+    }
+  }
+
+  throw new Error('Research run history changed repeatedly. Try running research again.');
+}
+
+export async function readSeenKeys(
+  storage: StorageAdapter,
+  topicSlug: string,
+  now = new Date(),
+): Promise<Set<string>> {
+  const file = await readResearchFile(storage, topicSlug, now);
+  return new Set((file?.seen ?? []).map((entry) => entry.key));
 }

@@ -23,6 +23,19 @@ describe('note authoring', () => {
     );
   });
 
+  it('writes a supplied body verbatim so a generated note keeps its own frontmatter', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const topic = await createTopic(storage, 'AI Fundamentals', now);
+    const content = '---\ngenerated: research-brief\n---\n\n# Research brief\n\nOne source.\n';
+
+    const created = await createNote(storage, topic.topicSlug, 'Research brief', now, { content });
+
+    expect(created.content).toBe(content);
+    expect((await storage.read(created.path))?.content).toBe(content);
+    expect(created.state.fileIndex[created.path]?.hash).toMatch(/^[a-f0-9]{64}$/u);
+  });
+
   it('refuses to replace an existing note with the same portable name', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);

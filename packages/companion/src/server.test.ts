@@ -128,6 +128,158 @@ describe('companion boundary', () => {
         })
       ).statusCode,
     ).toBe(403);
+    expect(
+      (await server.inject({ method: 'GET', url: '/api/research/arxiv?q=attention' })).statusCode,
+    ).toBe(401);
+    expect(
+      (await server.inject({ method: 'GET', url: '/api/research/web-search?q=entra' })).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: 'GET',
+          url: '/api/research/arxiv?q=attention',
+          headers: headers(token, 'https://evil.example'),
+        })
+      ).statusCode,
+    ).toBe(403);
+  });
+
+  it('proxies arXiv search behind the token and reports upstream failure as 502', async () => {
+    const body = await readFile(
+      new URL('./__fixtures__/arxiv-search.xml', import.meta.url),
+      'utf8',
+    );
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: {
+        fetchImpl: (async () =>
+          new Response(body, {
+            headers: { 'content-type': 'application/atom+xml' },
+          })) as unknown as typeof fetch,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const ok = await server.inject({
+      method: 'GET',
+      url: '/api/research/arxiv?q=attention',
+      headers: headers(),
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().results.length).toBeGreaterThan(0);
+    expect(ok.json().results[0]).toMatchObject({
+      title: expect.any(String),
+      url: expect.any(String),
+    });
+
+    const missingQuery = await server.inject({
+      method: 'GET',
+      url: '/api/research/arxiv',
+      headers: headers(),
+    });
+    expect(missingQuery.statusCode).toBe(400);
+
+    const failing = await createServer({
+      research: {
+        fetchImpl: (async () => new Response('down', { status: 503 })) as unknown as typeof fetch,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(failing);
+    const upstreamDown = await failing.inject({
+      method: 'GET',
+      url: '/api/research/arxiv?q=attention',
+      headers: headers(),
+    });
+    expect(upstreamDown.statusCode).toBe(502);
+    expect(upstreamDown.json().reason).toBe('fetch-failed');
+  });
+
+  it('answers /api/research/web-search with 503 when no provider env var is set', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: { env: {} },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/api/research/web-search?q=entra',
+      headers: headers(),
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().reason).toBe('not-configured');
+    expect(response.json().error).toContain('BRAVE_API_KEY');
+    expect(response.json().error).toContain('TAVILY_API_KEY');
+    expect(response.json().error).toContain('SEARXNG_URL');
+
+    const missingQuery = await server.inject({
+      method: 'GET',
+      url: '/api/research/web-search',
+      headers: headers(),
+    });
+    expect(missingQuery.statusCode).toBe(400);
+  });
+
+  it('proxies web search through the configured provider without echoing the key', async () => {
+    const apiKey = 'super-secret-brave-key';
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: {
+        env: { BRAVE_API_KEY: apiKey },
+        fetchImpl: (async () =>
+          Response.json({
+            web: {
+              results: [
+                { description: 'A summary', title: 'A result', url: 'https://example.org/a' },
+              ],
+            },
+          })) as unknown as typeof fetch,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const ok = await server.inject({
+      method: 'GET',
+      url: '/api/research/web-search?q=entra%20id',
+      headers: headers(),
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().results).toEqual([
+      { summary: 'A summary', title: 'A result', url: 'https://example.org/a' },
+    ]);
+    expect(ok.body).not.toContain(apiKey);
+
+    const failing = await createServer({
+      research: {
+        env: { BRAVE_API_KEY: apiKey },
+        fetchImpl: (async () => new Response('nope', { status: 401 })) as unknown as typeof fetch,
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(failing);
+    const upstreamDown = await failing.inject({
+      method: 'GET',
+      url: '/api/research/web-search?q=entra',
+      headers: headers(),
+    });
+    expect(upstreamDown.statusCode).toBe(502);
+    expect(upstreamDown.json().reason).toBe('fetch-failed');
+    expect(upstreamDown.body).not.toContain(apiKey);
   });
 
   it('fetches, extracts, and reports typed failures on /api/research/fetch', async () => {
