@@ -5,7 +5,7 @@ import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/s
 
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
-const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
+const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.5.0';
 const githubHref = 'https://github.com/udhawan97/Dusori';
 const licenseHref = 'https://github.com/udhawan97/Dusori/blob/main/LICENSE';
 const graphShotHref = `${projectBasePath}/app-graph.png`;
@@ -519,7 +519,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
           </picture>
 
           <figcaption class="stage-caption">
-            <span class="release-flag">v0.4.0 · available now</span>
+            <span class="release-flag">v0.5.0 · available now</span>
             <span>Japanese restraint · Indian geometry</span>
             <a href={releaseHref}>Read the release notes →</a>
           </figcaption>
@@ -542,9 +542,10 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             >
             <h2>Today decides what to review next.</h2>
             <p>
-              Active topics come first, least recently updated first. The queue and the seven-day
-              recap are derived from your roadmap, topic state, and dated update files — Dusori
-              invents no deadlines and sends no reminders at 6 a.m.
+              Due spaced reviews come first, then active topics least recently updated first. The
+              queue and the seven-day recap are derived from your roadmap, topic state, and dated
+              update files — a schedule exists only where you made one, and Dusori sends no
+              reminders at 6 a.m.
             </p>
             <a class="chapter-link" href={`${docsHref}learning-loop/`}
               >How the learning loop works →</a
@@ -677,7 +678,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             />
             <figcaption>
               Today, assembled from roadmap, state, and dated updates — review order and the
-              seven-day recap, never an invented deadline.
+              seven-day recap, with due dates only where you made one.
             </figcaption>
           </figure>
         </div>
@@ -761,7 +762,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             >Optional loopback companion — one explicit folder, a fresh token each run, gone when
             the terminal closes:
           </p>
-          <pre><code>npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori</code></pre>
+          <pre><code>npx @udhawan97/dusori@0.5.0 --root /path/to/Dusori</code></pre>
         </div>
       </section>
     </main>

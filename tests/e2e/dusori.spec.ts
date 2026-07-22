@@ -163,18 +163,18 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     'href',
     '/Dusori/docs/',
   );
-  await expect(page.getByText('v0.4.0 · available now', { exact: true })).toBeVisible();
+  await expect(page.getByText('v0.5.0 · available now', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /release notes/iu })).toHaveAttribute(
     'href',
-    'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0',
+    'https://github.com/udhawan97/Dusori/releases/tag/v0.5.0',
   );
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/docs/');
   await expect(page.getByRole('heading', { name: 'Dusori documentation' })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: /v0\.4\.0 release notes/iu }).first(),
-  ).toHaveAttribute('href', './releases/v0-4-0/');
+    page.getByRole('link', { name: /v0\.5\.0 release notes/iu }).first(),
+  ).toHaveAttribute('href', './releases/v0-5-0/');
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/app/');

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createServer } from './server.js';
+import { companionVersion } from './version.js';
 import type { LookupImpl } from './research-fetch.js';
 
 const token = 'test-token';
@@ -55,7 +56,7 @@ describe('companion boundary', () => {
     expect(allowed.json()).toMatchObject({
       apiVersion: 1,
       service: 'dusori-companion',
-      version: '0.4.0',
+      version: companionVersion,
     });
     expect(allowed.headers['access-control-allow-origin']).toBe(origin);
 

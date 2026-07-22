@@ -4,9 +4,18 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-22
+
 ### Added
 
 - Optional spaced review on the **Review next** queue: marking a topic reviewed ("Got it" / "Needs work") schedules its next due date from a fixed 1–60 day interval ladder, stored in a new machine-owned `Topics/<slug>/review.json`. Due topics rise to the top of the queue, scheduled topics rest until due, and topics never marked reviewed keep the existing deterministic order. Review actions append to the dated update log, so they appear in recent activity and the seven-day recap.
+- A cross-platform local runner: `npm run setup` and `npm start` build and launch Dusori from a clone on macOS, Windows, and Linux without a manual pnpm bootstrap.
+
+### Safety and portability
+
+- The review schedule is derived from the device's local calendar day, so a one-day interval means the next local day rather than the next UTC boundary.
+- `review.json` is machine-owned, schema-versioned, and written under the same expected-hash guard as every other machine file; a conflicting write re-reads the current schedule and reapplies the outcome instead of overwriting it. Older builds ignore the file, ZIP export and import carry it through untouched, and deleting it only forgets the schedule.
+- Scheduling stays explicit: no calendar entry, notification, background task, or closed-app work is created.
 
 ## [0.4.0] - 2026-07-21
 
@@ -92,7 +101,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/udhawan97/Dusori/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/udhawan97/Dusori/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/udhawan97/Dusori/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/udhawan97/Dusori/compare/v0.1.0...v0.2.0

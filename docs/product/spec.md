@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.4.0 local workbench implementation · **Date:** 2026-07-21
+**Status:** v0.5.0 local workbench implementation · **Date:** 2026-07-22
 
 ## Product contract
 

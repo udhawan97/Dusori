@@ -16,7 +16,9 @@ The optional local companion:
 - rejects parent traversal, absolute paths, and symlinks resolving outside that root;
 - performs atomic same-directory writes;
 - leaves no daemon running after the process exits;
-- contains no Ollama, fetching, scheduling, or telemetry behavior in the current milestone.
+- contains no Ollama or telemetry behavior in the current milestone;
+- fetches a page only when the user confirms that exact host, validating every address and redirect hop against private, reserved, and other non-public ranges;
+- creates no schedule of its own: review due dates come only from explicit in-app review actions, and nothing runs while the app is closed.
 
 Imported Markdown is sanitized before rendering. Raw HTML is removed. Mermaid definitions use strict security mode and their rendered SVG is isolated inside a sandboxed iframe.
 
@@ -24,6 +26,6 @@ Imported Markdown is sanitized before rendering. Raw HTML is removed. Mermaid de
 
 | Version | Supported |
 | ------- | --------- |
-| 0.1.x   | Yes       |
+| 0.5.x   | Yes       |
 
-Security fixes target the latest `0.1.x` release and `main`. Older prerelease snapshots are not supported.
+Security fixes target the latest `0.5.x` release and `main`. Older releases and prerelease snapshots are not supported.

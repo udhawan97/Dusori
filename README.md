@@ -314,9 +314,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.4.0` release adds conflict-safe Markdown note authoring, local full-text search, backlinks, explicit workspace health, a deterministic review queue, and a seven-day recap. ZIP replacement validates the complete archive before confirmation and rolls back if a write fails.
+The current `v0.5.0` release adds optional spaced review to the **Review next** queue — mark a topic "Got it" or "Needs work" and it rests until its next due date, on a fixed 1, 3, 7, 14, 30, 60 day ladder — plus a cross-platform `npm start` path for running Dusori from a clone.
 
-[Read the v0.4.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.4.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.5.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.5.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 
