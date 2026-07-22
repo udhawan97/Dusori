@@ -18,6 +18,7 @@ import {
 } from './filesystem.js';
 import { FetchPageError, fetchReadablePage, type LookupImpl } from './research-fetch.js';
 import { MsLearnProxyError, searchMsLearnRanked } from './research-mslearn.js';
+import { companionVersion } from './version.js';
 
 const WriteBody = z.object({
   path: z.string().min(1),
@@ -87,7 +88,7 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   server.get('/api/health', async () => ({
     apiVersion: 1,
     service: 'dusori-companion',
-    version: '0.3.0',
+    version: companionVersion,
     uptime: Math.floor((Date.now() - startedAt) / 1000),
   }));
 
