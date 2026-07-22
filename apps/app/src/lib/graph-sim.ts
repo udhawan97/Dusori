@@ -14,9 +14,29 @@ import {
  * the same workspace always settles into the same picture.
  */
 
-export interface GraphViewSettings {
+export interface GraphForceParams {
   linkDistance: number;
   repelStrength: number;
+}
+
+/** Artifact kinds the filter chips may hide; home and overview stay structural. */
+export const FILTERABLE_KINDS = [
+  'note',
+  'source',
+  'update',
+  'document',
+  'roadmap',
+  'tutor',
+] as const;
+
+export type FilterableKind = (typeof FILTERABLE_KINDS)[number];
+
+export type GraphColorMode = 'kind' | 'topic';
+
+export interface GraphViewSettings extends GraphForceParams {
+  colorMode: GraphColorMode;
+  hiddenKinds: FilterableKind[];
+  hideOrphans: boolean;
 }
 
 export const GRAPH_VIEW_LIMITS = {
@@ -42,7 +62,19 @@ export function readGraphViewSettings(storage: Pick<Storage, 'getItem'>): GraphV
   }
   const record =
     typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
+  const hiddenKinds = Array.isArray(record['hiddenKinds'])
+    ? [
+        ...new Set(
+          record['hiddenKinds'].filter((kind): kind is FilterableKind =>
+            (FILTERABLE_KINDS as readonly unknown[]).includes(kind),
+          ),
+        ),
+      ]
+    : [];
   return {
+    colorMode: record['colorMode'] === 'topic' ? 'topic' : 'kind',
+    hiddenKinds,
+    hideOrphans: record['hideOrphans'] === true,
     linkDistance: clampNumber(
       record['linkDistance'],
       GRAPH_VIEW_LIMITS.linkDistance.min,
@@ -198,8 +230,12 @@ export function graphBounds(
 
 export interface GraphRelaxation {
   readonly nodes: PositionedWorkspaceGraphNode[];
-  reheat(params: GraphViewSettings): void;
+  hasUserPins(): boolean;
+  moveNode(id: string, x: number, y: number): void;
+  reheat(params: GraphForceParams): void;
+  releasePins(): void;
   settle(): number;
+  stir(minStep?: number): void;
   tick(count?: number): boolean;
 }
 
@@ -222,6 +258,11 @@ interface SimBody {
   node: PositionedWorkspaceGraphNode;
   pinned: boolean;
   radius: number;
+  userPinned: boolean;
+}
+
+function isHeld(body: SimBody): boolean {
+  return body.pinned || body.userPinned;
 }
 
 function unitBetween(
@@ -246,7 +287,7 @@ function unitBetween(
 export function createGraphRelaxation(
   seed: PositionedWorkspaceGraphNode[],
   edges: WorkspaceGraphEdge[],
-  params: GraphViewSettings,
+  params: GraphForceParams,
   degrees: Map<string, number>,
 ): GraphRelaxation {
   const nodes = seed.map((entry) => ({ ...entry }));
@@ -257,6 +298,7 @@ export function createGraphRelaxation(
     node: entry,
     pinned: entry.kind === 'home',
     radius: nodeVisualRadius(entry, degrees.get(entry.id) ?? 0),
+    userPinned: false,
   }));
   const indexById = new Map(bodies.map((body, index) => [body.node.id, index]));
   const springs = edges.flatMap((edge) => {
@@ -268,10 +310,16 @@ export function createGraphRelaxation(
     return [{ kind: edge.kind, sourceIndex, targetIndex }];
   });
 
-  let current: GraphViewSettings = { ...params };
+  let current: GraphForceParams = { linkDistance: params.linkDistance, repelStrength: params.repelStrength };
   let step = 1;
   let ticksRun = 0;
   let settled = false;
+
+  function stir(minStep = 0.3): void {
+    step = Math.max(step, minStep);
+    ticksRun = 0;
+    settled = false;
+  }
 
   function projectSeparation(): void {
     for (let round = 0; round < 12; round += 1) {
@@ -283,13 +331,14 @@ export function createGraphRelaxation(
           const floor = left.radius + right.radius;
           const { distance, ux, uy } = unitBetween(left, right, a * bodies.length + b);
           if (distance >= floor) continue;
+          if (isHeld(left) && isHeld(right)) continue;
           corrected = true;
-          const push = (floor - distance) / (left.pinned || right.pinned ? 1 : 2);
-          if (!left.pinned) {
+          const push = (floor - distance) / (isHeld(left) || isHeld(right) ? 1 : 2);
+          if (!isHeld(left)) {
             left.node.x -= ux * push;
             left.node.y -= uy * push;
           }
-          if (!right.pinned) {
+          if (!isHeld(right)) {
             right.node.x += ux * push;
             right.node.y += uy * push;
           }
@@ -338,7 +387,7 @@ export function createGraphRelaxation(
     let maxShift = 0;
     for (let index = 0; index < bodies.length; index += 1) {
       const body = bodies[index]!;
-      if (body.pinned) continue;
+      if (isHeld(body)) continue;
       let dx = moves[index]!.x + (body.anchorX - body.node.x) * body.anchorStrength * step;
       let dy = moves[index]!.y + (body.anchorY - body.node.y) * body.anchorStrength * step;
       const travel = Math.hypot(dx, dy);
@@ -370,12 +419,26 @@ export function createGraphRelaxation(
   }
 
   return {
+    hasUserPins(): boolean {
+      return bodies.some((body) => body.userPinned);
+    },
+    moveNode(id: string, x: number, y: number): void {
+      const index = indexById.get(id);
+      if (index === undefined) return;
+      const body = bodies[index]!;
+      body.node.x = x;
+      body.node.y = y;
+      body.userPinned = true;
+      stir();
+    },
     nodes,
-    reheat(next: GraphViewSettings): void {
-      current = { ...next };
-      step = Math.max(step, REHEAT_STEP);
-      ticksRun = 0;
-      settled = false;
+    reheat(next: GraphForceParams): void {
+      current = { linkDistance: next.linkDistance, repelStrength: next.repelStrength };
+      stir(REHEAT_STEP);
+    },
+    releasePins(): void {
+      for (const body of bodies) body.userPinned = false;
+      stir();
     },
     settle(): number {
       while (!tick(16)) {
@@ -383,6 +446,7 @@ export function createGraphRelaxation(
       }
       return ticksRun;
     },
+    stir,
     tick,
   };
 }
@@ -390,7 +454,7 @@ export function createGraphRelaxation(
 export function relaxGraphLayout(
   seed: PositionedWorkspaceGraphNode[],
   edges: WorkspaceGraphEdge[],
-  params: GraphViewSettings,
+  params: GraphForceParams,
   degrees: Map<string, number>,
 ): { nodes: PositionedWorkspaceGraphNode[]; ticks: number } {
   const simulation = createGraphRelaxation(seed, edges, params, degrees);
