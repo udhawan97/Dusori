@@ -378,23 +378,39 @@ export async function markTopicReviewed(
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
         expectedHash: snapshot?.hash ?? null,
       });
-      await appendTopicUpdate(
-        storage,
-        topicSlug,
-        outcome === 'good'
-          ? `- Reviewed this topic; the next review is ${next.dueOn}.`
-          : `- Reviewed this topic for another pass on ${next.dueOn}.`,
-        now,
-      );
-      return next;
     } catch (error) {
-      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+      if (!(error instanceof StorageConflictError)) throw error;
+      continue;
     }
+
+    // The review.json write is definitively committed at this point, so a
+    // log-append conflict below must propagate as its own error rather than
+    // re-triggering the schedule recompute above (that would double-apply
+    // the outcome against the write we already made).
+    await appendTopicUpdate(
+      storage,
+      topicSlug,
+      outcome === 'good'
+        ? `- Reviewed this topic; the next review is ${next.dueOn}.`
+        : `- Reviewed this topic for another pass on ${next.dueOn}.`,
+      now,
+    );
+    return next;
   }
 
   throw new Error('The review schedule changed repeatedly. Try marking this review again.');
 }
 ```
+
+> **Corrected during execution.** An earlier draft of this block wrapped
+> `appendTopicUpdate` inside the same `try` and rethrew on `attempt === 2`.
+> Both were defects: a log-append conflict re-entered the retry loop after the
+> schedule write had already committed (double-advancing the ladder), and the
+> `attempt === 2` rethrow made the "changed repeatedly" message unreachable, so
+> a genuine triple conflict leaked a raw `StorageConflictError`. Commits
+> `731d200` and `bcd67a4` fixed both, with tests forcing real conflicts.
+> `packages/core/src/research/research-file.ts` still carries the second
+> pattern; it is tracked separately, out of this branch's scope.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
