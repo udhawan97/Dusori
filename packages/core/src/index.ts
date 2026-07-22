@@ -4,6 +4,7 @@ export * from './curriculum/import.js';
 export * from './graph/workspace-graph.js';
 export * from './hash.js';
 export * from './learning/loop.js';
+export * from './notes/edit.js';
 export * from './portable.js';
 export * from './research/index.js';
 export * from './schemas/read-machine-file.js';
