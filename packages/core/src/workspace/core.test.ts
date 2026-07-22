@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { acceptMarkdownUpdate, proposeMarkdownUpdate } from '../conflict/write-protocol.js';
-import { clearWorkspace, exportWorkspace, importWorkspace } from '../portable.js';
+import {
+  clearWorkspace,
+  exportWorkspace,
+  importWorkspace,
+  prepareWorkspaceImport,
+  replaceWorkspace,
+} from '../portable.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { WorkspaceSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
@@ -79,7 +85,7 @@ describe('workspace vertical slice', () => {
     }
   });
 
-  it('quarantines an invalid topic state during import', async () => {
+  it('rejects an invalid topic state without writing partial files', async () => {
     const source = new MemoryStorageAdapter();
     await createWorkspace(source, 'Dusori', now);
     const created = await createTopic(source, 'AI Fundamentals', now);
@@ -87,11 +93,9 @@ describe('workspace vertical slice', () => {
 
     const target = new MemoryStorageAdapter();
     await expect(importWorkspace(target, await exportWorkspace(source))).rejects.toThrow(
-      /quarantined/u,
+      /topic state is invalid/u,
     );
-    expect(
-      (await target.list('', true)).some((entry) => entry.path.includes('state.json.invalid-')),
-    ).toBe(true);
+    expect(await target.list('', true)).toEqual([]);
   });
 
   it('exports, clears, and imports a logically identical workspace', async () => {
@@ -103,6 +107,77 @@ describe('workspace vertical slice', () => {
     await clearWorkspace(storage);
     await importWorkspace(storage, archive);
     expect(await workspaceFingerprint(storage)).toBe(before);
+  });
+
+  it('preflights an archive without touching the destination workspace', async () => {
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+
+    const destination = new MemoryStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    await createTopic(destination, 'Typography', now);
+    const before = await workspaceFingerprint(destination);
+
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    expect(prepared.preview).toMatchObject({
+      fileCount: 9,
+      topicCount: 1,
+      workspaceName: 'Imported learning',
+    });
+    expect(prepared.preview.totalBytes).toBeGreaterThan(0);
+    expect(await workspaceFingerprint(destination)).toBe(before);
+  });
+
+  it('rejects an invalid archive before replacing the destination workspace', async () => {
+    const invalid = new MemoryStorageAdapter();
+    await createWorkspace(invalid, 'Invalid import', now);
+    const created = await createTopic(invalid, 'Broken topic', now);
+    await invalid.externalWrite(`Topics/${created.topicSlug}/state.json`, '{broken');
+
+    const destination = new MemoryStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    const before = await workspaceFingerprint(destination);
+
+    await expect(prepareWorkspaceImport(await exportWorkspace(invalid))).rejects.toThrow(
+      /topic state is invalid/u,
+    );
+    expect(await workspaceFingerprint(destination)).toBe(before);
+  });
+
+  it('restores the destination when applying a valid archive fails', async () => {
+    class FailingStorageAdapter extends MemoryStorageAdapter {
+      failNextImport = false;
+
+      override async write(
+        path: string,
+        content: string,
+        options?: Parameters<MemoryStorageAdapter['write']>[2],
+      ) {
+        if (this.failNextImport && path.endsWith('/state.json')) {
+          this.failNextImport = false;
+          throw new Error('simulated storage failure');
+        }
+        return super.write(path, content, options);
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new FailingStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    await createTopic(destination, 'Typography', now);
+    const before = await workspaceFingerprint(destination);
+    destination.failNextImport = true;
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /simulated storage failure/u,
+    );
+    expect(await workspaceFingerprint(destination)).toBe(before);
   });
 
   it('quarantines invalid machine state instead of rewriting it', async () => {

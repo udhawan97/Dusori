@@ -759,7 +759,15 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   const archive = await download.path();
   expect(archive).not.toBeNull();
 
-  page.once('dialog', (dialog) => dialog.accept());
+  page.once('dialog', (dialog) => {
+    expect(dialog.message()).toContain(
+      'Replace this browser workspace with “My learning workspace”?',
+    );
+    expect(dialog.message()).toContain('1 topic');
+    expect(dialog.message()).toMatch(/\d+ files/u);
+    expect(dialog.message()).toContain('validated before this confirmation');
+    dialog.accept();
+  });
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
@@ -769,7 +777,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   await expect(page.locator('.learning-loop')).toContainText(
     'Identify AI concepts and capabilities',
   );
-  await expect(page.getByText('Workspace imported and schema-checked.')).toBeVisible();
+  await expect(page.getByText('Workspace validated and imported safely.')).toBeVisible();
 });
 
 test('learning loop persists roadmap progress, topic status, and Today activity', async ({

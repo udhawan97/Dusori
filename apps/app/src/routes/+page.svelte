@@ -22,15 +22,15 @@
   import {
     WorkspaceSchema,
     acceptMarkdownUpdate,
-    clearWorkspace,
     createCompanionResearchClient,
     createTopic,
     createWorkspace,
     exportWorkspace,
-    importWorkspace,
     lineDiff,
+    prepareWorkspaceImport,
     proposeMarkdownUpdate,
     readMachineFile,
+    replaceWorkspace,
     type CompanionResearchClient,
     type MarkdownConflict,
     type StorageAdapter,
@@ -440,16 +440,22 @@
     if (!file) return;
     await perform(async () => {
       const adapter = storage ?? (await createOpfsStorage());
-      if (await adapter.read('dusori.json')) {
-        const replace = window.confirm(
-          'Importing replaces this browser workspace. Export it first if you need a backup. Continue?',
-        );
-        if (!replace) return;
-        await clearWorkspace(adapter);
-      }
-      await importWorkspace(adapter, await file.arrayBuffer());
+      const prepared = await prepareWorkspaceImport(await file.arrayBuffer());
+      const { fileCount, topicCount, workspaceName } = prepared.preview;
+      const replacing = Boolean(await adapter.read('dusori.json'));
+      const confirmed = window.confirm(
+        `${replacing ? 'Replace this browser workspace with' : 'Import'} “${workspaceName}”?\n\n` +
+          `${topicCount} topic${topicCount === 1 ? '' : 's'} · ${fileCount} files\n\n` +
+          `The archive was validated before this confirmation.${
+            replacing
+              ? ' If storage fails during replacement, Dusori will restore the current workspace.'
+              : ''
+          }`,
+      );
+      if (!confirmed) return;
+      await replaceWorkspace(adapter, prepared);
       await activateStorage(adapter, 'Browser workspace · imported');
-      status = 'Workspace imported and schema-checked.';
+      status = 'Workspace validated and imported safely.';
     });
     input.value = '';
   }
