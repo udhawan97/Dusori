@@ -193,7 +193,7 @@
         aria-describedby="curriculum-outline-help"
         aria-invalid={error && !outline.trim() ? 'true' : undefined}></textarea>
       <p class="field-help" id="curriculum-outline-help">
-        Markdown headings and lists · up to 512 KiB
+        Markdown, Microsoft Learn, or AWS exam guide text · up to 512 KiB
       </p>
 
       <button class:loading={working} class="curriculum-action" disabled={working}>
@@ -211,7 +211,8 @@
         Edit
       </button>
     </div>
-    <ol class="objective-list" aria-label="Curriculum preview">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+    <ol class="objective-list" aria-label="Curriculum preview" tabindex="0">
       {#each draft.objectives as objective, index (`${index}-${objective.depth}-${objective.title}`)}
         <li class:depth-two={objective.depth === 2} class:depth-three={objective.depth === 3}>
           <span aria-hidden="true">{objective.depth === 1 ? '§' : '□'}</span>
@@ -235,7 +236,8 @@
         <p>Dusori kept that edit and wrote the imported version beside it.</p>
       </div>
     </div>
-    <div class="curriculum-diff" aria-label="Imported roadmap changes">
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+    <div class="curriculum-diff" role="region" aria-label="Imported roadmap changes" tabindex="0">
       {#each changedRows as row, index (`${index}-${row.kind}`)}
         <div class:added={row.kind === 'add'} class:removed={row.kind === 'remove'}>
           <span aria-hidden="true">{row.kind === 'add' ? '+' : '−'}</span>
@@ -465,6 +467,12 @@
     overflow-y: auto;
     border-block: var(--rule-hair) solid var(--color-rule);
     list-style: none;
+  }
+
+  .objective-list:focus-visible,
+  .curriculum-diff:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
   }
 
   .objective-list li {

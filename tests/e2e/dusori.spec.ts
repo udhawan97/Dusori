@@ -34,6 +34,29 @@ This paragraph is not an objective.
 - Find documentation
 `;
 
+const awsExamGuide = `AWS Certified Solutions Architect - Associate (SAA-C03) Exam Guide
+
+Content outline
+The exam has the following content domains and weightings:
+• Domain 1: Design Secure Architectures (30% of scored content)
+• Domain 2: Design Resilient Architectures (26% of scored content)
+• Domain 3: Design High-Performing Architectures (24% of scored content)
+• Domain 4: Design Cost-Optimized Architectures (20% of scored content)
+
+Domain 1: Design Secure Architectures
+Task Statement 1.1: Design secure access to AWS resources.
+Knowledge of:
+• Access controls and management across multiple accounts
+Task Statement 1.2: Design secure workloads and
+applications.
+Domain 2: Design Resilient Architectures
+Task Statement 2.1: Design scalable and loosely coupled architectures.
+Domain 3: Design High-Performing Architectures
+Task Statement 3.1: Determine high-performing and/or scalable storage solutions.
+Domain 4: Design Cost-Optimized Architectures
+Task Statement 4.1: Design cost-optimized storage solutions.
+`;
+
 const microsoftLearnCatalog = {
   modules: [
     {
@@ -773,6 +796,35 @@ test('curriculum import previews official objectives, applies explicitly, and ne
   expect(files.manifest).toContain('AI-901 official study guide');
 });
 
+test('curriculum import recognizes AWS exam guide text pasted from the PDF', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  if (!(await page.getByRole('heading', { name: 'Curriculum' }).isVisible())) {
+    await page.getByRole('button', { name: 'Open inspector' }).click();
+  }
+  await page.getByRole('button', { name: 'Import curriculum' }).click();
+  await page.getByLabel('Source title').last().fill('SAA-C03 exam guide');
+  await page
+    .getByLabel('Official page')
+    .fill('https://aws.amazon.com/certification/certified-solutions-architect-associate/');
+  await page.getByLabel('Outline text').fill(awsExamGuide);
+  await page.getByRole('button', { name: 'Preview roadmap' }).click();
+
+  await expect(page.getByText('AWS Certification exam guide', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '9 roadmap items' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Curriculum preview' })).toContainText(
+    'Design Secure Architectures (30%)',
+  );
+  await expect(page.getByRole('list', { name: 'Curriculum preview' })).toContainText(
+    'Design secure workloads and applications',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Apply roadmap' }).click();
+  await expect(page.locator('.learning-loop')).toContainText('Design Secure Architectures');
+  await expect(page.getByRole('heading', { name: 'Curriculum ready.' })).toBeVisible();
+});
+
 test('curriculum import explains invalid URLs and unstructured input before writing', async ({
   page,
 }) => {
@@ -794,6 +846,7 @@ test('curriculum import explains invalid URLs and unstructured input before writ
   await page.getByLabel('Outline text').fill('A paragraph without headings or list items.');
   await page.getByRole('button', { name: 'Preview roadmap' }).click();
   await expect(page.getByRole('alert')).toContainText('Dusori could not recognize this outline.');
+  await expect(page.getByRole('alert')).toContainText('AWS exam guide');
   await expectNoSeriousA11yViolations(page);
 
   const roadmap = await page.evaluate(async () => {

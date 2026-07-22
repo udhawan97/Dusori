@@ -9,7 +9,7 @@ import { topicRoot } from '../workspace/paths.js';
 
 export const maxCurriculumBytes = 512 * 1024;
 
-export type CurriculumAdapterId = 'microsoft-learn' | 'structured-markdown';
+export type CurriculumAdapterId = 'aws-exam-guide' | 'microsoft-learn' | 'structured-markdown';
 export type CurriculumAdapterSelection = 'auto' | CurriculumAdapterId;
 
 export interface CurriculumImportInput {
@@ -198,6 +198,112 @@ const microsoftLearnAdapter: CurriculumAdapter = {
   },
 };
 
+const awsBulletPrefix = /^(?:[•◦▪‣·o]|[-*+]|\d+[.)])\s+/u;
+const awsDomainLine = /^Domain\s+(\d{1,2})\s*:\s*(.+)$/iu;
+const awsTaskLine = /^Task\s+Statement\s+(\d{1,2})\.\d{1,2}\s*[:.]?\s*(.*)$/iu;
+const awsSectionLabel = /^(?:Knowledge\s+of|Skills\s+in)\s*:?$/iu;
+const awsTrailingWeight = /\(?\s*(\d{1,3}(?:\.\d+)?)\s*%[^)]*\)?\s*$/u;
+
+interface AwsTask {
+  domainNumber: number;
+  title: string;
+}
+
+function awsPlainLine(rawLine: string): { hadBullet: boolean; text: string } {
+  const unhashed = rawLine.trim().replace(/^#{1,6}\s+/u, '');
+  const hadBullet = awsBulletPrefix.test(unhashed);
+  const text = (hadBullet ? unhashed.replace(awsBulletPrefix, '') : unhashed)
+    .replace(/^[*_]+\s*/u, '')
+    .replace(/\s*[*_]+$/u, '')
+    .trim();
+  return { hadBullet, text };
+}
+
+const awsExamGuideAdapter: CurriculumAdapter = {
+  id: 'aws-exam-guide',
+  label: 'AWS Certification exam guide',
+  matches(input) {
+    const lines = input.content.split('\n').map((line) => awsPlainLine(line).text);
+    return (
+      lines.some((line) => awsDomainLine.test(line)) &&
+      lines.some((line) => awsTaskLine.test(line) || /%\s+of\s+scored\s+content/iu.test(line))
+    );
+  },
+  parse(input) {
+    const domains = new Map<number, { title: string; weight?: string }>();
+    const domainOrder: number[] = [];
+    const tasks: AwsTask[] = [];
+    let openTask: AwsTask | null = null;
+
+    for (const rawLine of input.content.split('\n')) {
+      const { hadBullet, text } = awsPlainLine(rawLine);
+      if (!text) {
+        openTask = null;
+        continue;
+      }
+      const domain = awsDomainLine.exec(text);
+      if (domain?.[1] && domain[2] !== undefined) {
+        const domainNumber = Number(domain[1]);
+        const weightMatch = awsTrailingWeight.exec(domain[2]);
+        const weight = weightMatch?.[1] ? `${weightMatch[1]}%` : undefined;
+        const title = cleanObjectiveTitle(
+          weightMatch ? domain[2].slice(0, weightMatch.index) : domain[2],
+        );
+        const existing = domains.get(domainNumber);
+        if (existing) {
+          if (!existing.title && title) existing.title = title;
+          if (!existing.weight && weight) existing.weight = weight;
+        } else {
+          domains.set(domainNumber, { title, ...(weight ? { weight } : {}) });
+          domainOrder.push(domainNumber);
+        }
+        openTask = null;
+        continue;
+      }
+      const task = awsTaskLine.exec(text);
+      if (task?.[1]) {
+        const record: AwsTask = { domainNumber: Number(task[1]), title: task[2] ?? '' };
+        tasks.push(record);
+        openTask = /\.$/u.test(record.title.trim()) ? null : record;
+        continue;
+      }
+      if (hadBullet || awsSectionLabel.test(text)) {
+        openTask = null;
+        continue;
+      }
+      if (openTask) {
+        openTask.title = `${openTask.title} ${text}`.trim();
+        if (/\.$/u.test(openTask.title)) openTask = null;
+      }
+    }
+
+    const taskTitle = (task: AwsTask): string =>
+      cleanObjectiveTitle(task.title.replace(/\.\s*$/u, ''));
+    const objectives: CurriculumObjective[] = [];
+    for (const domainNumber of domainOrder) {
+      const entry = domains.get(domainNumber);
+      if (entry?.title) {
+        objectives.push({
+          depth: 1,
+          title: entry.title,
+          ...(entry.weight ? { weight: entry.weight } : {}),
+        });
+      }
+      for (const task of tasks) {
+        if (task.domainNumber !== domainNumber) continue;
+        const title = taskTitle(task);
+        if (title) objectives.push({ depth: 2, title });
+      }
+    }
+    for (const task of tasks) {
+      if (domains.has(task.domainNumber)) continue;
+      const title = taskTitle(task);
+      if (title) objectives.push({ depth: domains.size > 0 ? 2 : 1, title });
+    }
+    return objectives;
+  },
+};
+
 const structuredMarkdownAdapter: CurriculumAdapter = {
   id: 'structured-markdown',
   label: 'Structured Markdown syllabus',
@@ -238,6 +344,7 @@ const structuredMarkdownAdapter: CurriculumAdapter = {
 
 export const curriculumAdapters: readonly CurriculumAdapter[] = [
   microsoftLearnAdapter,
+  awsExamGuideAdapter,
   structuredMarkdownAdapter,
 ];
 
@@ -255,7 +362,7 @@ export function parseCurriculum(input: CurriculumImportInput): CurriculumDraft {
       : curriculumAdapters.find((candidate) => candidate.id === input.adapterId);
   if (!adapter) {
     throw new Error(
-      'Dusori could not recognize this outline. Include Markdown headings and list items, or choose an adapter.',
+      'Dusori could not recognize this outline. Paste a Microsoft Learn study guide, an AWS exam guide, or Markdown with headings and list items — or choose the format manually.',
     );
   }
   const objectives = adapter.parse({ ...input, content, sourceTitle, sourceUrl });

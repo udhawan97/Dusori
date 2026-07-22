@@ -8,10 +8,11 @@ Curriculum import is an offline transformation. Dusori reads text you paste, sho
 ## Supported outlines
 
 - **Microsoft Learn study guide:** recognizes the English `Skills measured` section, ignores the duplicated “Skills at a glance” list, and keeps skill-group percentages when present.
+- **AWS Certification exam guide:** recognizes the plain text copied out of an official AWS exam guide PDF — `Domain N:` lines with their percentages and `Task Statement N.N:` sentences, including lines the PDF wraps mid-sentence. The duplicated content-outline summary is merged, and “Knowledge of” / “Skills in” bullets are left out so the roadmap stays reviewable.
 - **Structured Markdown syllabus:** accepts ordinary Markdown headings followed by bullet, numbered, or checklist items. This adapter is language-neutral.
-- **Automatic detection:** tries the Microsoft Learn structure first, then structured Markdown.
+- **Automatic detection:** tries the Microsoft Learn structure first, then the AWS exam guide structure, then structured Markdown.
 
-Paste only the useful outline. The input limit is 512 KiB and one import can create at most 200 roadmap items. PDF extraction, page fetching, and provider-specific formats without Markdown structure are not supported yet.
+Paste only the useful outline. The input limit is 512 KiB and one import can create at most 200 roadmap items. Dusori reads pasted text only: open a PDF exam guide, select the content outline, and copy it — attaching the PDF file itself or fetching a page is not supported.
 
 ## Preview and apply
 
