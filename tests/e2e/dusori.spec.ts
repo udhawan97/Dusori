@@ -739,26 +739,31 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
 
   await expect(page.getByRole('heading', { name: 'Research' })).toBeVisible();
   await expect(page.getByLabel('Research objective')).toHaveValue('0');
-  const searchMicrosoftLearn = page.getByRole('button', { name: 'Search Microsoft Learn' });
-  await searchMicrosoftLearn.click();
-  expect(catalogRequests).toBe(0);
+  const runResearch = page.getByRole('button', { name: 'Run research' });
+  await expect(runResearch).toBeDisabled();
 
+  const allowMicrosoftLearn = page.getByRole('button', { name: 'Allow Microsoft Learn' });
+  await allowMicrosoftLearn.click();
   let disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
   await expect(disclosure).toContainText(
     'Searching downloads the public Microsoft Learn module catalog (learn.microsoft.com) over HTTPS and ranks it on this device. Nothing from your workspace is sent. Allow on this device?',
   );
   await disclosure.getByRole('button', { name: 'Keep search off' }).click();
-  await expect(searchMicrosoftLearn).toBeFocused();
+  await expect(allowMicrosoftLearn).toBeFocused();
   expect(catalogRequests).toBe(0);
 
-  await searchMicrosoftLearn.click();
+  await allowMicrosoftLearn.click();
   disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
   await disclosure.getByRole('button', { name: 'Allow search' }).click();
+  // Consent alone must not reach the network; only running the research does.
+  expect(catalogRequests).toBe(0);
+
+  await runResearch.click();
   await expect(page.getByText('Establish identity terms with Microsoft Entra')).toBeVisible();
   expect(catalogRequests).toBe(1);
 
   const result = page
-    .getByRole('list', { name: 'Research suggestions' })
+    .getByRole('list', { name: 'Research shortlist' })
     .getByRole('listitem')
     .filter({ hasText: 'Establish identity terms with Microsoft Entra' });
   await result.getByRole('button', { name: 'Preview' }).click();
@@ -801,19 +806,20 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await page.getByRole('button', { name: 'Search Wikipedia' }).click();
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
   const disclosure = page.getByRole('dialog', { name: 'Allow Wikipedia search?' });
   await disclosure.getByRole('button', { name: 'Allow search' }).click();
+  await page.getByRole('button', { name: 'Run research' }).click();
   const result = page
-    .getByRole('list', { name: 'Research suggestions' })
+    .getByRole('list', { name: 'Research shortlist' })
     .getByRole('listitem')
     .filter({ hasText: 'Microsoft Entra Connect' });
   await result.getByRole('button', { name: 'Dismiss' }).click();
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
 
   await page.reload();
-  await page.getByRole('button', { name: 'Search Wikipedia' }).click();
-  await expect(page.getByText('No suggestions matched this objective.')).toBeVisible();
+  await page.getByRole('button', { name: 'Run research' }).click();
+  await expect(page.getByText('No new suggestions matched this objective.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
 });
 

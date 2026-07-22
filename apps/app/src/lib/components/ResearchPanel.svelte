@@ -1,20 +1,24 @@
 <script lang="ts">
-  import { AlertTriangle, BookMarked, Eye, Search, X } from '@lucide/svelte';
+  import { AlertTriangle, BookMarked, Check, Eye, Search, Sparkles, X } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
 
   import {
     addSource,
+    briefNoteTitle,
+    buildDeterministicBrief,
     buildResearchQuery,
-    createMsLearnProvider,
+    buildUpgradedContent,
+    createNote,
+    createResearchProviders,
     dismissSuggestion,
-    filterResearchSuggestions,
     readTopicProgress,
-    researchProviders,
+    runResearchAgent,
+    type BriefSource,
     type CompanionResearchClient,
-    type ResearchCandidate,
+    type RankedCandidate,
     type ResearchCapture,
     type ResearchProvider,
-    type ResearchProviderId,
+    type ResearchRunResult,
     type RoadmapObjective,
     type StorageAdapter,
   } from '@dusori/core';
@@ -28,15 +32,9 @@
   export let onSourceSaved: () => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
 
-  // Swap the mslearn entry rather than re-listing the providers, so a provider
-  // added to the core registry is not silently dropped whenever a companion runs.
-  $: providers = companion
-    ? researchProviders.map((provider) =>
-        provider.id === 'mslearn'
-          ? createMsLearnProvider({ ranked: (query) => companion.searchMsLearnRanked(query) })
-          : provider,
-      )
-    : [...researchProviders];
+  // A companion upgrades Microsoft Learn to ranked search and unlocks the two providers the
+  // browser cannot reach itself, so the list is built rather than declared.
+  $: providers = createResearchProviders({ companion });
 
   const networkAlternative =
     'Search needs a network connection. Paste text or add a URL reference from the source library instead.';
@@ -44,26 +42,37 @@
   let objectives: RoadmapObjective[] = [];
   let objectiveIndex = 0;
   let loadingObjectives = true;
-  let loadingProvider: ResearchProviderId | null = null;
-  let searchedProvider: ResearchProviderId | null = null;
-  let results: ResearchCandidate[] = [];
-  let searchErrors: Partial<Record<ResearchProviderId, string>> = {};
+  let running = false;
+  let runResult: ResearchRunResult | null = null;
+  let runError = '';
+  let showOverflow = false;
+  let notices: string[] = [];
   let actionError: { key: string; message: string } | null = null;
   let previewingKey = '';
   let consentProvider: ResearchProvider | null = null;
   let consentInvoker: HTMLButtonElement | null = null;
   let consentAllowButton: HTMLButtonElement;
+  let consentTick = 0;
   let preview: {
-    candidate: ResearchCandidate;
+    candidate: RankedCandidate;
     capture: ResearchCapture;
     provider: ResearchProvider;
   } | null = null;
   let previewInvoker: HTMLButtonElement | null = null;
   let previewCloseButton: HTMLButtonElement;
+  let fetchFullContent = true;
   let adding = false;
   let previewError = '';
+  let approved: BriefSource[] = [];
+  let writingBrief = false;
+  let briefPath = '';
+  let briefError = '';
 
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
+  $: consented = readConsented(providers, consentTick);
+  $: enabledProviders = providers.filter((provider) => consented.has(provider.id));
+  $: shortlist = runResult?.shortlist ?? [];
+  $: overflow = runResult?.overflow ?? [];
 
   onMount(() => {
     void loadObjectives();
@@ -97,72 +106,99 @@
     }
   }
 
-  async function requestSearch(
+  // The tick argument is what re-runs this after a consent is granted; localStorage itself
+  // cannot be a reactive dependency.
+  function readConsented(list: ResearchProvider[], tick: number): Set<string> {
+    void tick;
+    return new Set(list.filter(hasConsent).map((provider) => provider.id));
+  }
+
+  async function requestConsent(
     provider: ResearchProvider,
     invoker: HTMLButtonElement,
   ): Promise<void> {
-    if (!selectedObjective) return;
-    if (hasConsent(provider)) {
-      await searchProvider(provider);
-      return;
-    }
     consentProvider = provider;
     consentInvoker = invoker;
     await tick();
     consentAllowButton?.focus();
   }
 
-  async function allowSearch(): Promise<void> {
+  async function allowProvider(): Promise<void> {
     if (!consentProvider) return;
-    const provider = consentProvider;
     try {
-      localStorage.setItem(consentKey(provider), 'allowed');
+      localStorage.setItem(consentKey(consentProvider), 'allowed');
+      consentTick += 1;
     } catch {
-      searchErrors = { ...searchErrors, [provider.id]: networkAlternative };
-      return;
+      runError = networkAlternative;
     }
-    consentProvider = null;
-    await searchProvider(provider);
-  }
-
-  async function declineSearch(): Promise<void> {
     consentProvider = null;
     await tick();
     consentInvoker?.focus();
     consentInvoker = null;
   }
 
-  async function searchProvider(provider: ResearchProvider): Promise<void> {
-    if (!selectedObjective) return;
-    loadingProvider = provider.id;
-    searchedProvider = provider.id;
-    searchErrors = { ...searchErrors, [provider.id]: '' };
+  async function declineProvider(): Promise<void> {
+    consentProvider = null;
+    await tick();
+    consentInvoker?.focus();
+    consentInvoker = null;
+  }
+
+  async function run(): Promise<void> {
+    if (!selectedObjective || enabledProviders.length === 0) return;
+    running = true;
+    runError = '';
+    notices = [];
+    showOverflow = false;
     actionError = null;
-    results = [];
     try {
-      const candidates = await provider.search(
-        buildResearchQuery(topicTitle, selectedObjective),
-        fetch,
-      );
-      results = await filterResearchSuggestions(storage, topicSlug, candidates);
+      runResult = await runResearchAgent({
+        fetchImpl: fetch,
+        providers: enabledProviders,
+        query: buildResearchQuery(topicTitle, selectedObjective),
+        storage,
+        topicSlug,
+      });
     } catch {
-      searchErrors = { ...searchErrors, [provider.id]: networkAlternative };
+      runError = networkAlternative;
+      runResult = null;
     } finally {
-      loadingProvider = null;
-      consentInvoker = null;
+      running = false;
     }
   }
 
-  function providerFor(candidate: ResearchCandidate): ResearchProvider {
+  function providerFor(candidate: RankedCandidate): ResearchProvider {
     return providers.find((provider) => provider.id === candidate.provider)!;
   }
 
-  function metadata(candidate: ResearchCandidate): string {
-    return providerFor(candidate).describeMeta(candidate);
+  function kindLabel(candidate: RankedCandidate): string {
+    const labels: Record<string, string> = {
+      article: 'Article',
+      course: 'Course',
+      docs: 'Docs',
+      paper: 'Paper',
+      qa: 'Q&A',
+      repo: 'Repository',
+    };
+    return candidate.kind ? (labels[candidate.kind] ?? candidate.kind) : '';
+  }
+
+  // A reference stub is worth upgrading to the page's real text; a capture that already holds
+  // the content (a Wikipedia extract, a README) is not.
+  function isReferenceStub(candidate: RankedCandidate, provider: ResearchProvider): boolean {
+    return provider.capturedVia(candidate) === 'search-reference';
+  }
+
+  function hostOf(url: string): string {
+    try {
+      return new URL(url).host.replace(/^www\./u, '');
+    } catch {
+      return url;
+    }
   }
 
   async function openPreview(
-    candidate: ResearchCandidate,
+    candidate: RankedCandidate,
     invoker: HTMLButtonElement,
   ): Promise<void> {
     const provider = providerFor(candidate);
@@ -173,6 +209,7 @@
       preview = { candidate, capture, provider };
       previewInvoker = invoker;
       previewError = '';
+      fetchFullContent = Boolean(companion) && isReferenceStub(candidate, provider);
       await tick();
       previewCloseButton?.focus();
     } catch {
@@ -194,21 +231,55 @@
     if (!preview) return;
     adding = true;
     previewError = '';
+    const { candidate, capture, provider } = preview;
+    let content = capture.content;
+    let capturedVia = provider.capturedVia(candidate);
+    let notice = '';
+
+    if (companion && fetchFullContent && isReferenceStub(candidate, provider)) {
+      try {
+        const page = await companion.fetchPage(capture.url);
+        content = buildUpgradedContent({ title: capture.title, url: capture.url }, page);
+        capturedVia = 'page-extract';
+      } catch (caught) {
+        // The reference is still worth keeping; say plainly that the full text is missing.
+        notice = `${capture.title} was saved as a reference. ${
+          caught instanceof Error ? caught.message : 'The full page could not be fetched.'
+        }`;
+      }
+    }
+
     try {
       await addSource(storage, {
-        content: preview.capture.content,
+        content,
         method: 'url',
         origin: {
           capturedAt: new Date().toISOString(),
-          capturedVia: preview.provider.capturedVia(preview.candidate),
-          provider: preview.provider.id,
+          capturedVia,
+          provider: provider.id,
         },
-        title: preview.capture.title,
+        title: capture.title,
         topicSlug,
-        url: preview.capture.url,
+        url: capture.url,
       });
-      const acceptedKey = preview.candidate.key;
-      results = results.filter((candidate) => candidate.key !== acceptedKey);
+      approved = [
+        ...approved,
+        {
+          providerLabel: provider.label,
+          reasons: candidate.reasons,
+          title: capture.title,
+          url: capture.url,
+          ...(candidate.kind === undefined ? {} : { kind: candidate.kind }),
+        },
+      ];
+      if (runResult) {
+        runResult = {
+          ...runResult,
+          overflow: runResult.overflow.filter((item) => item.key !== candidate.key),
+          shortlist: runResult.shortlist.filter((item) => item.key !== candidate.key),
+        };
+      }
+      if (notice) notices = [...notices, notice];
       onSourceSaved();
       await closePreview(false);
     } catch (caught) {
@@ -219,7 +290,7 @@
     }
   }
 
-  async function dismiss(candidate: ResearchCandidate): Promise<void> {
+  async function dismiss(candidate: RankedCandidate): Promise<void> {
     actionError = null;
     try {
       await dismissSuggestion(storage, topicSlug, {
@@ -227,7 +298,13 @@
         title: candidate.title,
         url: candidate.url,
       });
-      results = results.filter((result) => result.key !== candidate.key);
+      if (runResult) {
+        runResult = {
+          ...runResult,
+          overflow: runResult.overflow.filter((item) => item.key !== candidate.key),
+          shortlist: runResult.shortlist.filter((item) => item.key !== candidate.key),
+        };
+      }
     } catch {
       actionError = {
         key: candidate.key,
@@ -236,19 +313,36 @@
     }
   }
 
+  async function writeBrief(): Promise<void> {
+    if (!selectedObjective || approved.length === 0) return;
+    writingBrief = true;
+    briefError = '';
+    try {
+      const now = new Date();
+      const query = buildResearchQuery(topicTitle, selectedObjective);
+      const title = briefNoteTitle(query, now);
+      const note = await createNote(storage, topicSlug, title, now, {
+        content: buildDeterministicBrief(query, approved, now),
+      });
+      briefPath = note.path;
+      onSourceSaved();
+    } catch (caught) {
+      briefError =
+        caught instanceof Error ? caught.message : 'Dusori could not write the research brief.';
+    } finally {
+      writingBrief = false;
+    }
+  }
+
   function handleEscape(): void {
     if (preview) void closePreview();
-    else if (consentProvider) void declineSearch();
+    else if (consentProvider) void declineProvider();
   }
 </script>
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && handleEscape()} />
 
-<section
-  class="research-panel"
-  aria-labelledby="research-title"
-  aria-busy={Boolean(loadingProvider)}
->
+<section class="research-panel" aria-labelledby="research-title" aria-busy={running}>
   <div class="research-heading">
     <div>
       <h2 id="research-title">Research</h2>
@@ -266,7 +360,7 @@
     </div>
   {:else}
     <label for="research-objective">Research objective</label>
-    <select id="research-objective" bind:value={objectiveIndex} disabled={Boolean(loadingProvider)}>
+    <select id="research-objective" bind:value={objectiveIndex} disabled={running}>
       {#each objectives as objective (objective.index)}
         <option value={objective.index}>
           {objective.completed ? 'Complete · ' : ''}{objective.title}
@@ -274,41 +368,89 @@
       {/each}
     </select>
 
-    <div class="provider-actions" aria-label="Research providers">
-      {#each providers as provider (provider.id)}
-        <div class="provider-action">
-          <button
-            disabled={Boolean(loadingProvider)}
-            onclick={(event) => void requestSearch(provider, event.currentTarget)}
-          >
-            <Search aria-hidden="true" size={17} />
-            {loadingProvider === provider.id
-              ? `Searching ${provider.label}…`
-              : `Search ${provider.label}`}
-          </button>
-          {#if searchErrors[provider.id]}
-            <p class="action-error" role="alert">{searchErrors[provider.id]}</p>
-          {/if}
-        </div>
-      {/each}
+    <div class="provider-consents" aria-label="Research providers">
+      <p class="field-label">
+        Providers
+        <span class="quiet-note">
+          {enabledProviders.length} of {providers.length} allowed
+        </span>
+      </p>
+      <ul class="consent-list">
+        {#each providers as provider (provider.id)}
+          <li>
+            {#if consented.has(provider.id)}
+              <span class="provider-chip allowed">
+                <Check aria-hidden="true" size={14} />
+                {provider.label}
+              </span>
+            {:else}
+              <button
+                class="provider-chip"
+                disabled={running}
+                onclick={(event) => void requestConsent(provider, event.currentTarget)}
+              >
+                Allow {provider.label}
+              </button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
     </div>
 
-    {#if results.length > 0}
-      <ol class="result-list" aria-label="Research suggestions">
-        {#each results as candidate, index (candidate.key)}
+    <button
+      class="primary run-action"
+      disabled={running || enabledProviders.length === 0}
+      onclick={run}
+    >
+      <Search aria-hidden="true" size={17} />
+      {running ? 'Searching the allowed providers…' : 'Run research'}
+    </button>
+
+    {#if enabledProviders.length === 0}
+      <p class="quiet-note">Allow at least one provider above. Each states what it receives.</p>
+    {/if}
+
+    {#if runError}
+      <p class="action-error" role="alert">{runError}</p>
+    {/if}
+
+    {#each notices as notice (notice)}
+      <p class="notice" role="status">{notice}</p>
+    {/each}
+
+    {#if runResult?.skipped.length}
+      <ul class="skipped-list" aria-label="Skipped providers">
+        {#each runResult.skipped as skip (skip.id)}
+          <li><strong>{skip.label} skipped.</strong> {skip.message}</li>
+        {/each}
+      </ul>
+    {/if}
+
+    {#if shortlist.length > 0}
+      <ol class="result-list" aria-label="Research shortlist">
+        {#each shortlist as candidate, index (candidate.key)}
           <li>
             <div class="result-heading">
               <span class="rank" aria-label={`Rank ${index + 1}`}
                 >{String(index + 1).padStart(2, '0')}</span
               >
               <div>
-                <span class="provider-tag">{providerFor(candidate).label}</span>
+                <span class="provider-tag">
+                  {providerFor(candidate).label}
+                  {#if kindLabel(candidate)}· {kindLabel(candidate)}{/if}
+                </span>
+                {#if candidate.isNew}<span class="new-badge">New</span>{/if}
                 <h3>{candidate.title}</h3>
               </div>
             </div>
-            <div class="result-snippet"><MarkdownView content={candidate.snippet} /></div>
-            {#if metadata(candidate)}
-              <p class="result-meta">{metadata(candidate)}</p>
+            {#if candidate.snippet}
+              <div class="result-snippet"><MarkdownView content={candidate.snippet} /></div>
+            {/if}
+            {#if candidate.reasons.length > 0}
+              <p class="result-signals">{candidate.reasons.join(' · ')}</p>
+            {/if}
+            {#if providerFor(candidate).describeMeta(candidate)}
+              <p class="result-meta">{providerFor(candidate).describeMeta(candidate)}</p>
             {/if}
             <div class="result-actions">
               <button
@@ -326,15 +468,79 @@
           </li>
         {/each}
       </ol>
-    {:else if searchedProvider && !loadingProvider && !searchErrors[searchedProvider]}
+
+      {#if overflow.length > 0 && !showOverflow}
+        <button class="quiet" onclick={() => (showOverflow = true)}>
+          Show {overflow.length} more {overflow.length === 1 ? 'result' : 'results'}
+        </button>
+      {/if}
+
+      {#if showOverflow}
+        <ol class="result-list" aria-label="Further research results">
+          {#each overflow as candidate (candidate.key)}
+            <li>
+              <div class="result-heading">
+                <div>
+                  <span class="provider-tag">
+                    {providerFor(candidate).label}
+                    {#if kindLabel(candidate)}· {kindLabel(candidate)}{/if}
+                  </span>
+                  {#if candidate.isNew}<span class="new-badge">New</span>{/if}
+                  <h3>{candidate.title}</h3>
+                </div>
+              </div>
+              {#if candidate.reasons.length > 0}
+                <p class="result-signals">{candidate.reasons.join(' · ')}</p>
+              {/if}
+              <div class="result-actions">
+                <button
+                  disabled={previewingKey === candidate.key}
+                  onclick={(event) => void openPreview(candidate, event.currentTarget)}
+                >
+                  <Eye aria-hidden="true" size={16} />
+                  {previewingKey === candidate.key ? 'Preparing…' : 'Preview'}
+                </button>
+                <button class="quiet" onclick={() => void dismiss(candidate)}>Dismiss</button>
+              </div>
+              {#if actionError?.key === candidate.key}
+                <p class="action-error" role="alert">{actionError.message}</p>
+              {/if}
+            </li>
+          {/each}
+        </ol>
+      {/if}
+    {:else if runResult && !running}
       <div class="research-empty">
-        <p>No suggestions matched this objective.</p>
+        <p>No new suggestions matched this objective.</p>
         <span>Paste text or add a URL reference from the source library instead.</span>
       </div>
-    {:else}
+    {:else if !running}
       <div class="research-empty">
-        <p>The web stays quiet until you choose a provider.</p>
+        <p>The web stays quiet until you run a search.</p>
         <span>Each provider states exactly what it receives before its first search.</span>
+      </div>
+    {/if}
+
+    {#if approved.length > 0}
+      <div class="brief-action">
+        <p class="field-label">
+          Research brief
+          <span class="quiet-note">
+            {approved.length}
+            {approved.length === 1 ? 'source' : 'sources'} approved this session
+          </span>
+        </p>
+        {#if briefPath}
+          <p class="notice" role="status">Brief written to {briefPath}.</p>
+        {:else}
+          <button disabled={writingBrief} onclick={writeBrief}>
+            <Sparkles aria-hidden="true" size={16} />
+            {writingBrief ? 'Writing brief…' : 'Write research brief'}
+          </button>
+        {/if}
+        {#if briefError}
+          <p class="action-error" role="alert">{briefError}</p>
+        {/if}
       </div>
     {/if}
   {/if}
@@ -347,15 +553,15 @@
     aria-labelledby="consent-title"
     oncancel={(event) => {
       event.preventDefault();
-      void declineSearch();
+      void declineProvider();
     }}
   >
     <p class="dialog-kicker">Egress disclosure</p>
     <h2 id="consent-title">Allow {consentProvider.label} search?</h2>
     <p>{consentProvider.disclosure}</p>
     <div class="dialog-actions">
-      <button class="quiet" onclick={declineSearch}>Keep search off</button>
-      <button class="primary" bind:this={consentAllowButton} onclick={allowSearch}
+      <button class="quiet" onclick={declineProvider}>Keep search off</button>
+      <button class="primary" bind:this={consentAllowButton} onclick={allowProvider}
         >Allow search</button
       >
     </div>
@@ -394,6 +600,15 @@
         <pre role="region" aria-label="Source markdown" tabindex="0">{preview.capture.content}</pre>
       </details>
     </div>
+    {#if companion && isReferenceStub(preview.candidate, preview.provider)}
+      <label class="fetch-option">
+        <input type="checkbox" bind:checked={fetchFullContent} disabled={adding} />
+        <span>
+          Also fetch the readable text from <strong>{hostOf(preview.capture.url)}</strong> through the
+          local companion, replacing this reference with the page itself.
+        </span>
+      </label>
+    {/if}
     {#if previewError}
       <p class="dialog-error" role="alert">
         <AlertTriangle aria-hidden="true" size={17} />
@@ -456,10 +671,21 @@
     line-height: 1.5;
   }
 
-  label {
+  label,
+  .field-label {
     margin-block-end: calc(-1 * var(--space-md));
     font-size: var(--text-sm);
     font-weight: 700;
+  }
+
+  .field-label {
+    margin-block-end: 0;
+  }
+
+  .quiet-note {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 400;
   }
 
   select,
@@ -502,12 +728,43 @@
     opacity: 0.55;
   }
 
-  .provider-actions,
-  .provider-action,
   .result-list,
-  .result-actions {
+  .result-actions,
+  .provider-consents,
+  .brief-action {
     display: grid;
     gap: var(--space-xs);
+  }
+
+  .run-action {
+    width: 100%;
+  }
+
+  .consent-list {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    gap: var(--space-xs);
+    list-style: none;
+  }
+
+  .provider-chip {
+    min-height: calc(var(--space-lg) + var(--space-2xs));
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-accent-text);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+
+  span.provider-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    color: var(--color-muted);
   }
 
   .source-markdown > summary {
@@ -523,10 +780,6 @@
 
   .source-markdown[open] > summary {
     margin-block-end: var(--space-xs);
-  }
-
-  .provider-action > button {
-    width: 100%;
   }
 
   .research-empty {
@@ -573,6 +826,18 @@
     text-transform: uppercase;
   }
 
+  .new-badge {
+    margin-inline-start: var(--space-xs);
+    padding-inline: var(--space-2xs);
+    border: var(--rule-hair) solid var(--color-accent-text);
+    border-radius: var(--radius-sm);
+    color: var(--color-accent-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   .result-snippet {
     color: var(--color-muted);
     font-size: var(--text-sm);
@@ -584,10 +849,35 @@
     line-height: 1.5;
   }
 
+  .result-signals {
+    color: var(--color-accent-text);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
   .result-meta {
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+  }
+
+  .skipped-list {
+    display: grid;
+    margin: 0;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper-2);
+    gap: var(--space-2xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    list-style: none;
+  }
+
+  .notice {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
   }
 
   .result-actions {
@@ -634,7 +924,7 @@
    * and both dialog actions stay reachable without leaving the accept decision below the fold. */
   .preview-dialog {
     overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
 
   .preview-body {
@@ -642,6 +932,29 @@
     overflow: auto;
     gap: var(--space-lg);
     overscroll-behavior: contain;
+  }
+
+  .fetch-option {
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    gap: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: 1.45;
+  }
+
+  .fetch-option input {
+    min-width: 1.15rem;
+    min-height: 1.15rem;
+    margin-block-start: 0.15rem;
+    accent-color: var(--color-accent-text);
+  }
+
+  .fetch-option input:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   .consent-dialog > p:not(.dialog-kicker) {
@@ -710,13 +1023,14 @@
 
   @media (hover: hover) and (pointer: fine) {
     button.quiet:hover,
+    .provider-chip:hover,
     .icon-action:hover,
     select:hover {
       background: var(--color-paper-2);
       color: var(--color-ink);
     }
 
-    button:not(.quiet, .icon-action):hover {
+    button:not(.quiet, .icon-action, .provider-chip):hover {
       transform: translateY(-1px);
     }
   }
