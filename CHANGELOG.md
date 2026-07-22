@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Added
+
+- Curriculum import now recognizes AWS Certification exam guides: paste the content outline copied from an official AWS exam guide PDF and Dusori extracts the weighted `Domain N:` sections and `Task Statement N.N:` items, merging the duplicated summary table and rejoining lines the PDF wraps mid-sentence. When no format matches, the error now names every supported outline instead of a generic hint.
+
 ## [0.5.0] - 2026-07-22
 
 ### Added
