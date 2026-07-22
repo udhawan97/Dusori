@@ -286,9 +286,8 @@ describe('spaced review persistence', () => {
 
     const logPath = updateLogPath(topic.topicSlug, new Date('2026-07-21T09:00:00.000Z'));
     const log = await storage.read(logPath);
-    const occurrences = (
-      log?.content.match(/- Reviewed this topic; the next review is/gu) ?? []
-    ).length;
+    const occurrences = (log?.content.match(/- Reviewed this topic; the next review is/gu) ?? [])
+      .length;
     expect(occurrences).toBe(1);
   });
 

@@ -42,12 +42,7 @@
 // packages/core/src/learning/review.test.ts
 import { describe, expect, it } from 'vitest';
 
-import {
-  addDaysUtc,
-  nextReviewSchedule,
-  utcDateOf,
-  type ReviewSchedule,
-} from './review.js';
+import { addDaysUtc, nextReviewSchedule, utcDateOf, type ReviewSchedule } from './review.js';
 
 const on = new Date('2026-07-21T12:00:00.000Z');
 
@@ -447,7 +442,11 @@ describe('spaced review queue', () => {
   it('promotes due reviews, keeps unscheduled order, and hides future-due topics', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);
-    const overdue = await createTopic(storage, 'Overdue topic', new Date('2026-07-10T12:00:00.000Z'));
+    const overdue = await createTopic(
+      storage,
+      'Overdue topic',
+      new Date('2026-07-10T12:00:00.000Z'),
+    );
     const dueToday = await createTopic(
       storage,
       'Due today topic',
@@ -460,15 +459,30 @@ describe('spaced review queue', () => {
       new Date('2026-07-13T12:00:00.000Z'),
     );
     const workspace = scheduled.workspace;
-    await markTopicReviewed(storage, overdue.topicSlug, 'good', new Date('2026-07-15T12:00:00.000Z'));
+    await markTopicReviewed(
+      storage,
+      overdue.topicSlug,
+      'good',
+      new Date('2026-07-15T12:00:00.000Z'),
+    );
     await markTopicReviewed(
       storage,
       dueToday.topicSlug,
       'good',
       new Date('2026-07-19T12:00:00.000Z'),
     );
-    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date('2026-07-18T12:00:00.000Z'));
-    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date('2026-07-19T12:00:00.000Z'));
+    await markTopicReviewed(
+      storage,
+      scheduled.topicSlug,
+      'good',
+      new Date('2026-07-18T12:00:00.000Z'),
+    );
+    await markTopicReviewed(
+      storage,
+      scheduled.topicSlug,
+      'good',
+      new Date('2026-07-19T12:00:00.000Z'),
+    );
 
     const summaries = await buildTodaySummary(storage, workspace);
     const asOf = new Date('2026-07-20T12:00:00.000Z');
@@ -504,8 +518,18 @@ describe('spaced review queue', () => {
       'Paused scheduled',
       new Date('2026-07-17T12:00:00.000Z'),
     );
-    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date('2026-07-18T12:00:00.000Z'));
-    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date('2026-07-19T12:00:00.000Z'));
+    await markTopicReviewed(
+      storage,
+      paused.topicSlug,
+      'good',
+      new Date('2026-07-18T12:00:00.000Z'),
+    );
+    await markTopicReviewed(
+      storage,
+      paused.topicSlug,
+      'good',
+      new Date('2026-07-19T12:00:00.000Z'),
+    );
     await setTopicStatus(storage, paused.topicSlug, 'paused', new Date('2026-07-19T13:00:00.000Z'));
 
     const summaries = await buildTodaySummary(storage, paused.workspace);
@@ -537,13 +561,13 @@ import { readReviewSchedule, utcDateOf, type ReviewSchedule } from './review.js'
 2. In `interface TodayTopicSummary`, add one field after `recentActivity`:
 
 ```ts
-  review: ReviewSchedule | null;
+review: ReviewSchedule | null;
 ```
 
 3. In `interface ReviewQueueItem`, add one field before `objective`:
 
 ```ts
-  dueOn: string | null;
+dueOn: string | null;
 ```
 
 4. Add after the `WorkspaceRecapOptions` interface:
@@ -559,21 +583,21 @@ export interface NextScheduledReview {
 5. In `buildTodaySummary`, replace the destructured `Promise.all` and returned object:
 
 ```ts
-      const [state, progress, recentActivity, review] = await Promise.all([
-        readMachineFile(storage, `${root}/state.json`, TopicStateSchema),
-        readTopicProgress(storage, topic.slug),
-        readRecentTopicActivity(storage, topic.slug),
-        readReviewSchedule(storage, topic.slug),
-      ]);
-      return {
-        progress,
-        recentActivity,
-        review,
-        slug: topic.slug,
-        status: state.status,
-        title: topic.title,
-        updatedAt: state.updatedAt,
-      };
+const [state, progress, recentActivity, review] = await Promise.all([
+  readMachineFile(storage, `${root}/state.json`, TopicStateSchema),
+  readTopicProgress(storage, topic.slug),
+  readRecentTopicActivity(storage, topic.slug),
+  readReviewSchedule(storage, topic.slug),
+]);
+return {
+  progress,
+  recentActivity,
+  review,
+  slug: topic.slug,
+  status: state.status,
+  title: topic.title,
+  updatedAt: state.updatedAt,
+};
 ```
 
 6. Replace the whole `buildReviewQueue` function (including its doc comment) with:
@@ -690,13 +714,13 @@ In the `@dusori/core` import block, add `markTopicReviewed,` and `nextScheduledR
 After the line `let reviewQueue: ReviewQueueItem[] = [];` add:
 
 ```ts
-  let nextReview: NextScheduledReview | null = null;
+let nextReview: NextScheduledReview | null = null;
 ```
 
 After the line `let workingIndex: number | null = null;` add:
 
 ```ts
-  let reviewWorkingSlug: string | null = null;
+let reviewWorkingSlug: string | null = null;
 ```
 
 - [ ] **Step 2: Compute the next scheduled review during refresh**
@@ -704,18 +728,18 @@ After the line `let workingIndex: number | null = null;` add:
 In `refresh()`, replace:
 
 ```ts
-      summaries = nextSummaries;
-      reviewQueue = buildReviewQueue(nextSummaries);
-      recap = nextRecap;
+summaries = nextSummaries;
+reviewQueue = buildReviewQueue(nextSummaries);
+recap = nextRecap;
 ```
 
 with:
 
 ```ts
-      summaries = nextSummaries;
-      reviewQueue = buildReviewQueue(nextSummaries);
-      nextReview = nextScheduledReview(nextSummaries);
-      recap = nextRecap;
+summaries = nextSummaries;
+reviewQueue = buildReviewQueue(nextSummaries);
+nextReview = nextScheduledReview(nextSummaries);
+recap = nextRecap;
 ```
 
 - [ ] **Step 3: Add the review handler**
@@ -723,23 +747,23 @@ with:
 Directly before `function activityDate(value: string): string {`, add:
 
 ```ts
-  async function markReviewed(item: ReviewQueueItem, outcome: ReviewOutcome): Promise<void> {
-    reviewWorkingSlug = item.slug;
-    error = '';
-    success = '';
-    try {
-      const schedule = await markTopicReviewed(storage, item.slug, outcome);
-      success =
-        outcome === 'good'
-          ? `Reviewed “${item.title}”. The next review is ${activityDate(schedule.dueOn)}.`
-          : `Reviewed “${item.title}”. It returns tomorrow.`;
-      await refresh();
-    } catch (caught) {
-      error = caught instanceof Error ? caught.message : 'Dusori could not record this review.';
-    } finally {
-      reviewWorkingSlug = null;
-    }
+async function markReviewed(item: ReviewQueueItem, outcome: ReviewOutcome): Promise<void> {
+  reviewWorkingSlug = item.slug;
+  error = '';
+  success = '';
+  try {
+    const schedule = await markTopicReviewed(storage, item.slug, outcome);
+    success =
+      outcome === 'good'
+        ? `Reviewed “${item.title}”. The next review is ${activityDate(schedule.dueOn)}.`
+        : `Reviewed “${item.title}”. It returns tomorrow.`;
+    await refresh();
+  } catch (caught) {
+    error = caught instanceof Error ? caught.message : 'Dusori could not record this review.';
+  } finally {
+    reviewWorkingSlug = null;
   }
+}
 ```
 
 - [ ] **Step 4: Update the queue markup**
@@ -747,18 +771,18 @@ Directly before `function activityDate(value: string): string {`, add:
 Replace the explainer paragraph:
 
 ```svelte
-          <p class="focus-explainer">
-            Active topics come first, least recently updated first. Dusori creates no deadlines.
-          </p>
+<p class="focus-explainer">
+  Active topics come first, least recently updated first. Dusori creates no deadlines.
+</p>
 ```
 
 with:
 
 ```svelte
-          <p class="focus-explainer">
-            Due reviews come first, then active topics least recently updated first. Deadlines
-            exist only for topics you mark reviewed.
-          </p>
+<p class="focus-explainer">
+  Due reviews come first, then active topics least recently updated first. Deadlines exist only for
+  topics you mark reviewed.
+</p>
 ```
 
 Replace the empty state:
@@ -786,43 +810,39 @@ with:
 Replace the queue item body (the whole `<li>` content inside the `{#each reviewQueue …}` block):
 
 ```svelte
-                <li>
-                  <span class="queue-rank">{String(index + 1).padStart(2, '0')}</span>
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p>{item.objective}</p>
-                    <small
-                      >{item.reason} · {item.progressPercent}% complete{item.status === 'paused' &&
-                      item.dueOn
-                        ? ` · returns ${activityDate(item.dueOn)}`
-                        : ''}</small
-                    >
-                  </div>
-                  <div class="queue-actions">
-                    <button
-                      class="queue-review"
-                      aria-label={`Got it — mark ${item.title} reviewed`}
-                      disabled={reviewWorkingSlug !== null}
-                      onclick={() => markReviewed(item, 'good')}
-                    >
-                      Got it
-                    </button>
-                    <button
-                      class="queue-review"
-                      aria-label={`Needs work — review ${item.title} again tomorrow`}
-                      disabled={reviewWorkingSlug !== null}
-                      onclick={() => markReviewed(item, 'again')}
-                    >
-                      Needs work
-                    </button>
-                    <button
-                      aria-label={`Open ${item.title} roadmap`}
-                      onclick={() => onOpenRoadmap(item.slug)}
-                    >
-                      <ArrowRight aria-hidden="true" size={16} />
-                    </button>
-                  </div>
-                </li>
+<li>
+  <span class="queue-rank">{String(index + 1).padStart(2, '0')}</span>
+  <div>
+    <strong>{item.title}</strong>
+    <p>{item.objective}</p>
+    <small
+      >{item.reason} · {item.progressPercent}% complete{item.status === 'paused' && item.dueOn
+        ? ` · returns ${activityDate(item.dueOn)}`
+        : ''}</small
+    >
+  </div>
+  <div class="queue-actions">
+    <button
+      class="queue-review"
+      aria-label={`Got it — mark ${item.title} reviewed`}
+      disabled={reviewWorkingSlug !== null}
+      onclick={() => markReviewed(item, 'good')}
+    >
+      Got it
+    </button>
+    <button
+      class="queue-review"
+      aria-label={`Needs work — review ${item.title} again tomorrow`}
+      disabled={reviewWorkingSlug !== null}
+      onclick={() => markReviewed(item, 'again')}
+    >
+      Needs work
+    </button>
+    <button aria-label={`Open ${item.title} roadmap`} onclick={() => onOpenRoadmap(item.slug)}>
+      <ArrowRight aria-hidden="true" size={16} />
+    </button>
+  </div>
+</li>
 ```
 
 - [ ] **Step 5: Style the action group**
@@ -830,41 +850,41 @@ Replace the queue item body (the whole `<li>` content inside the `{#each reviewQ
 Replace the `.review-queue li button` rule:
 
 ```css
-  .review-queue li button {
-    display: grid;
-    width: 2.75rem;
-    padding: 0;
-    background: var(--color-paper);
-    color: var(--color-accent-text);
-    place-items: center;
-  }
+.review-queue li button {
+  display: grid;
+  width: 2.75rem;
+  padding: 0;
+  background: var(--color-paper);
+  color: var(--color-accent-text);
+  place-items: center;
+}
 ```
 
 with:
 
 ```css
-  .review-queue li button {
-    display: grid;
-    min-height: 2.75rem;
-    width: 2.75rem;
-    padding: 0;
-    background: var(--color-paper);
-    color: var(--color-accent-text);
-    place-items: center;
-  }
+.review-queue li button {
+  display: grid;
+  min-height: 2.75rem;
+  width: 2.75rem;
+  padding: 0;
+  background: var(--color-paper);
+  color: var(--color-accent-text);
+  place-items: center;
+}
 
-  .queue-actions {
-    display: grid;
-    gap: var(--space-2xs);
-    justify-items: stretch;
-  }
+.queue-actions {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: stretch;
+}
 
-  .queue-actions .queue-review {
-    width: auto;
-    padding-inline: var(--space-sm);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
+.queue-actions .queue-review {
+  width: auto;
+  padding-inline: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
 ```
 
 - [ ] **Step 6: Update the preview contract comment**
@@ -1075,7 +1095,7 @@ Match the tree's existing indentation and alignment exactly (the `research.json`
 
 In `docs/adr/003-portable-file-contract.md`, after the paragraph that ends "it never uses last-write-wins." (the `research.json` section), add:
 
-```md
+````md
 The first explicit review action creates `Topics/<topic-slug>/review.json`:
 
 ```json
@@ -1087,9 +1107,11 @@ The first explicit review action creates `Topics/<topic-slug>/review.json`:
   "dueOn": "2026-07-28"
 }
 ```
+````
 
 `review.json` is machine-owned, schema-validated, and written with the storage adapter's expected-hash guard. `repetition` indexes a fixed interval ladder (1, 3, 7, 14, 30, 60 days); `dueOn` is stored rather than derived so a future ladder change never moves an already-made promise. Dates are UTC calendar dates, matching the dated update files. A conflicting write re-reads the current schedule and reapplies the recorded outcome on top of it. Older readers never open the file, and deleting it only forgets the schedule.
-```
+
+````
 
 (Keep the fenced JSON block exactly as shown; the surrounding text is part of the appendix.)
 
@@ -1101,7 +1123,7 @@ In `CHANGELOG.md`, under `## [Unreleased]`, add:
 ### Added
 
 - Optional spaced review on the **Review next** queue: marking a topic reviewed ("Got it" / "Needs work") schedules its next due date from a fixed 1–60 day interval ladder, stored in a new machine-owned `Topics/<slug>/review.json`. Due topics rise to the top of the queue, scheduled topics rest until due, and topics never marked reviewed keep the existing deterministic order. Review actions append to the dated update log, so they appear in recent activity and the seven-day recap.
-```
+````
 
 - [ ] **Step 6: Verify and commit**
 

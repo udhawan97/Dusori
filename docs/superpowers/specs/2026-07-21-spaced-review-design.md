@@ -89,7 +89,11 @@ export type ReviewOutcome = 'good' | 'again';
 export const ReviewScheduleSchema = z.object({
   schemaVersion: z.literal(schemaVersion), // stays 1
   topicSlug: z.string().min(1).max(80),
-  repetition: z.number().int().min(0).max(REVIEW_INTERVALS_DAYS.length - 1),
+  repetition: z
+    .number()
+    .int()
+    .min(0)
+    .max(REVIEW_INTERVALS_DAYS.length - 1),
   lastReviewedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
   dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
 });
@@ -267,11 +271,11 @@ E2E (Playwright, built app, no network):
 
 ## Risks
 
-| Risk                                                             | Mitigation                                                                                                                                          |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Old builds encountering `review.json`                            | They never read unknown files; import validation ignores it (verified `research.json` precedent). No schema widening of existing files is involved. |
-| UTC dates vs the learner's local day                             | Same convention as update logs and recap; worst case a review near local midnight lands on the adjacent calendar date. Documented, cosmetic.        |
-| Fixed ladder fits some topics poorly                             | Stored `dueOn` keeps every existing promise if the ladder changes; per-topic ease factor is the named upgrade path.                                 |
-| Future-due topics vanishing from the queue surprises users       | New explainer sentence, empty-state naming the next return date, and the topic ledger still lists every topic.                                      |
-| Concurrent review writes (second tab, external sync)             | Same three-attempt expected-hash retry as `research.json`, recomputing from the fresh schedule so the outcome is never silently dropped.            |
-| Copy drift ("no deadlines" promise appears in docs and UI)       | The implementing PR updates the doc comment, UI explainer, product spec, roadmap page, and README in one change; e2e asserts the new explainer.      |
+| Risk                                                       | Mitigation                                                                                                                                          |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old builds encountering `review.json`                      | They never read unknown files; import validation ignores it (verified `research.json` precedent). No schema widening of existing files is involved. |
+| UTC dates vs the learner's local day                       | Same convention as update logs and recap; worst case a review near local midnight lands on the adjacent calendar date. Documented, cosmetic.        |
+| Fixed ladder fits some topics poorly                       | Stored `dueOn` keeps every existing promise if the ladder changes; per-topic ease factor is the named upgrade path.                                 |
+| Future-due topics vanishing from the queue surprises users | New explainer sentence, empty-state naming the next return date, and the topic ledger still lists every topic.                                      |
+| Concurrent review writes (second tab, external sync)       | Same three-attempt expected-hash retry as `research.json`, recomputing from the fresh schedule so the outcome is never silently dropped.            |
+| Copy drift ("no deadlines" promise appears in docs and UI) | The implementing PR updates the doc comment, UI explainer, product spec, roadmap page, and README in one change; e2e asserts the new explainer.     |
