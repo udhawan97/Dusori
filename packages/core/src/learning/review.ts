@@ -97,18 +97,24 @@ export async function markTopicReviewed(
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
         expectedHash: snapshot?.hash ?? null,
       });
-      await appendTopicUpdate(
-        storage,
-        topicSlug,
-        outcome === 'good'
-          ? `- Reviewed this topic; the next review is ${next.dueOn}.`
-          : `- Reviewed this topic for another pass on ${next.dueOn}.`,
-        now,
-      );
-      return next;
     } catch (error) {
       if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+      continue;
     }
+
+    // The review.json write is definitively committed at this point, so a
+    // log-append conflict below must propagate as its own error rather than
+    // re-triggering the schedule recompute above (that would double-apply
+    // the outcome against the write we already made).
+    await appendTopicUpdate(
+      storage,
+      topicSlug,
+      outcome === 'good'
+        ? `- Reviewed this topic; the next review is ${next.dueOn}.`
+        : `- Reviewed this topic for another pass on ${next.dueOn}.`,
+      now,
+    );
+    return next;
   }
 
   throw new Error('The review schedule changed repeatedly. Try marking this review again.');
