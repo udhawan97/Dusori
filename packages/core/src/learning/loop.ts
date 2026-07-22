@@ -276,7 +276,12 @@ export async function buildTodaySummary(
         readMachineFile(storage, `${root}/state.json`, TopicStateSchema),
         readTopicProgress(storage, topic.slug),
         readRecentTopicActivity(storage, topic.slug),
-        readReviewSchedule(storage, topic.slug),
+        // A corrupt review.json for one topic must not blank the whole Today
+        // view: readMachineFile already quarantines the bad file, so treat
+        // the read failure here as "no schedule" rather than propagating it
+        // through this Promise.all. readReviewSchedule's own contract for
+        // other callers is untouched.
+        readReviewSchedule(storage, topic.slug).catch(() => null),
       ]);
       return {
         progress,

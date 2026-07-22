@@ -183,7 +183,16 @@
           : `Reviewed “${item.title}”. It returns tomorrow.`;
       await refresh();
     } catch (caught) {
-      error = caught instanceof Error ? caught.message : 'Dusori could not record this review.';
+      const message =
+        caught instanceof Error ? caught.message : 'Dusori could not record this review.';
+      // markTopicReviewed may have already written the schedule and only
+      // failed on the update-log append, so the queue can be stale here.
+      // Refresh so it reflects what was actually persisted — otherwise the
+      // natural next click double-applies the outcome. refresh() resets
+      // `error` at its own start, so set the message after it settles, and
+      // guard the call itself so a refresh failure can't escape this catch.
+      await refresh().catch(() => undefined);
+      error = message;
     } finally {
       reviewWorkingSlug = null;
     }
@@ -265,7 +274,7 @@
                     <small
                       >{item.reason} · {item.progressPercent}% complete{item.status === 'paused' &&
                       item.dueOn
-                        ? ` · returns ${activityDate(item.dueOn)}`
+                        ? ` · scheduled for ${activityDate(item.dueOn)}`
                         : ''}</small
                     >
                   </div>

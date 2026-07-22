@@ -135,6 +135,31 @@ describe('today summary', () => {
     expect(summary?.recentActivity[1]?.text).toContain('Completed “Establish the terms');
   });
 
+  it('keeps the rest of Today rendering when one topic has a corrupt review.json', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const healthy = await createTopic(storage, 'Healthy topic', now);
+    const corrupt = await createTopic(
+      storage,
+      'Corrupt topic',
+      new Date('2026-07-19T12:00:00.000Z'),
+    );
+    await storage.externalWrite(`Topics/${corrupt.topicSlug}/review.json`, 'not json');
+
+    const currentWorkspace = { ...corrupt.workspace, topics: corrupt.workspace.topics };
+    const summaries = await buildTodaySummary(storage, currentWorkspace);
+
+    expect(summaries).toHaveLength(2);
+    expect(summaries.find((summary) => summary.slug === healthy.topicSlug)).toMatchObject({
+      title: 'Healthy topic',
+      review: null,
+    });
+    expect(summaries.find((summary) => summary.slug === corrupt.topicSlug)).toMatchObject({
+      title: 'Corrupt topic',
+      review: null,
+    });
+  });
+
   it('orders active topics by oldest local update, then paused topics, and excludes complete work', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);
