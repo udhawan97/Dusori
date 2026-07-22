@@ -1,0 +1,40 @@
+name: Publish companion to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing verified release tag to publish (for example v0.4.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag and package version match
+        shell: bash
+        run: |
+          package_version=$(node -p "require('./packages/companion/package.json').version")
+          test "${{ inputs.tag }}" = "v${package_version}"
+      - run: pnpm check
+      - run: pnpm smoke:companion
+      - run: npm publish packages/companion --access public --provenance

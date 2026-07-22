@@ -3,6 +3,22 @@
   "version": "0.3.0",
   "description": "Optional loopback-only companion for the Dusori local-first learning app.",
   "license": "Apache-2.0",
+  "homepage": "https://udhawan97.github.io/Dusori/docs/getting-started/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/udhawan97/Dusori.git",
+    "directory": "packages/companion"
+  },
+  "bugs": {
+    "url": "https://github.com/udhawan97/Dusori/issues"
+  },
+  "keywords": [
+    "local-first",
+    "learning",
+    "markdown",
+    "obsidian",
+    "pwa"
+  ],
   "type": "module",
   "bin": {
     "dusori": "dist/cli.js"
@@ -15,7 +31,13 @@
   "scripts": {
     "build": "node scripts/copy-app.mjs && tsup",
     "dev": "tsx src/cli.ts",
+    "pack:check": "node scripts/verify-package.mjs",
+    "prepack": "pnpm pack:check",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",

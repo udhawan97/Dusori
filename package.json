@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "preview": "node scripts/serve-pages.mjs",
+    "smoke:companion": "pnpm build && node scripts/smoke-companion-package.mjs",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
     "typecheck": "pnpm -r typecheck"
