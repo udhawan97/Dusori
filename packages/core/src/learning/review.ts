@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { schemaVersion } from '../schemas/workspace.js';
+import { StorageConflictError, type StorageAdapter } from '../adapters.js';
+import { appendTopicUpdate } from '../conflict/write-protocol.js';
+import { readMachineFile } from '../schemas/read-machine-file.js';
+import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
 import { topicRoot } from '../workspace/paths.js';
 
 // ponytail: fixed Leitner-style ladder, two outcomes. A per-topic ease factor
@@ -58,4 +61,55 @@ export function nextReviewSchedule(
     lastReviewedOn,
     dueOn: addDaysUtc(lastReviewedOn, REVIEW_INTERVALS_DAYS[repetition] ?? 1),
   });
+}
+
+/** Null when the topic has never been reviewed; state.json guards topic existence. */
+export async function readReviewSchedule(
+  storage: StorageAdapter,
+  topicSlug: string,
+  now = new Date(),
+): Promise<ReviewSchedule | null> {
+  const root = topicRoot(topicSlug);
+  await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
+  const path = reviewFilePath(topicSlug);
+  if (!(await storage.read(path))) return null;
+  return readMachineFile(storage, path, ReviewScheduleSchema, now);
+}
+
+/** Records one explicit review outcome: hash-guarded write plus a dated update entry. */
+export async function markTopicReviewed(
+  storage: StorageAdapter,
+  topicSlug: string,
+  outcome: ReviewOutcome,
+  now = new Date(),
+): Promise<ReviewSchedule> {
+  const normalizedSlug = topicRoot(topicSlug).slice('Topics/'.length);
+  const path = reviewFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    const current = snapshot
+      ? await readMachineFile(storage, path, ReviewScheduleSchema, now)
+      : null;
+    const next = nextReviewSchedule(current, outcome, normalizedSlug, now);
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot?.hash ?? null,
+      });
+      await appendTopicUpdate(
+        storage,
+        topicSlug,
+        outcome === 'good'
+          ? `- Reviewed this topic; the next review is ${next.dueOn}.`
+          : `- Reviewed this topic for another pass on ${next.dueOn}.`,
+        now,
+      );
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+    }
+  }
+
+  throw new Error('The review schedule changed repeatedly. Try marking this review again.');
 }
