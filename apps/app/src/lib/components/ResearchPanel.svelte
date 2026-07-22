@@ -404,7 +404,8 @@
       <div class="rendered-preview"><MarkdownView content={preview.capture.content} /></div>
       <details class="source-markdown">
         <summary>Source markdown</summary>
-        <pre>{preview.capture.content}</pre>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+        <pre role="region" aria-label="Source markdown" tabindex="0">{preview.capture.content}</pre>
       </details>
     </div>
     {#if previewError}
@@ -708,6 +709,11 @@
     font-size: var(--text-xs);
     line-height: 1.5;
     white-space: pre-wrap;
+  }
+
+  pre:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
   }
 
   .dialog-error {

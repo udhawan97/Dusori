@@ -3,6 +3,23 @@ import { mkdir } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
+// Axe's scrollable-region-focusable check only reports a region once it really
+// overflows, so short fixtures hide the violation instead of proving its
+// absence. Every scroll region under test is fed content past its own
+// max-height, and diff rows additionally carry a token no soft wrap can break
+// so the horizontal axis overflows too.
+const overflowingLines = Array.from(
+  { length: 60 },
+  (_, index) => `Filler line ${index + 1} pushes this scroll region past its own max-height.`,
+).join('\n');
+
+const unbreakableToken = `token-${'x'.repeat(220)}`;
+
+const longObjectiveTitle = Array.from(
+  { length: 24 },
+  (_, index) => `Explain identity boundary case ${index + 1} in complete sentences`,
+).join('; ');
+
 const microsoftLearnGuide = `# Study guide for Exam AI-901
 
 ## Skills measured as of April 15, 2026
@@ -64,7 +81,7 @@ const microsoftLearnCatalog = {
       levels: ['beginner'],
       popularity: 0.92,
       products: ['azure-active-directory'],
-      summary: 'Learn the terms and boundaries of Microsoft Entra identity management.',
+      summary: `Learn the terms and boundaries of Microsoft Entra identity management.\n${overflowingLines}`,
       title: 'Establish identity terms with Microsoft Entra',
       uid: 'learn.identity-terms',
       url: 'https://learn.microsoft.com/en-us/training/modules/identity-terms/',
@@ -539,10 +556,10 @@ test('creates, edits, and conflict-protects a Markdown note', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Edit note' })).toBeVisible();
   const editor = page.getByLabel('Markdown note');
   await editor.fill(
-    '# Evidence map\n\nDusori draft with [[../Sources/items/example|one source]].\n',
+    `# Evidence map\n\nDusori draft with [[../Sources/items/example|one source]].\n\n\`\`\`\nconst attention = ${unbreakableToken};\n\`\`\`\n`,
   );
 
-  await page.evaluate(async () => {
+  await page.evaluate(async (token) => {
     const origin = await navigator.storage.getDirectory();
     const root = await origin.getDirectoryHandle('Dusori');
     const topic = await (
@@ -551,20 +568,26 @@ test('creates, edits, and conflict-protects a Markdown note', async ({ page }) =
     const notes = await topic.getDirectoryHandle('Notes');
     const handle = await notes.getFileHandle('evidence-map.md');
     const writable = await handle.createWritable();
-    await writable.write('# Evidence map\n\nExternal editor wins until I review the proposal.\n');
+    await writable.write(
+      `# Evidence map\n\nExternal editor wins until I review the proposal: ${token}\n`,
+    );
     await writable.close();
-  });
+  }, unbreakableToken);
 
   await page.getByRole('button', { name: 'Save note' }).click();
   await expect(
     page.getByRole('heading', { name: 'Your external edit stayed untouched.' }),
   ).toBeVisible();
   await expect(
-    page.getByText('External editor wins until I review the proposal.').first(),
+    page.getByText('External editor wins until I review the proposal').first(),
   ).toBeVisible();
+  // The diff is on screen and overflowing here; the assertion after acceptance
+  // would only see the rendered note.
+  await expectNoSeriousA11yViolations(page);
 
   await page.getByRole('button', { name: 'Accept this proposal' }).click();
   await expect(page.getByText('Dusori draft with')).toBeVisible();
+  await expect(page.locator('.markdown pre')).toContainText(unbreakableToken);
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -711,9 +734,15 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
   await result.getByRole('button', { name: 'Preview' }).click();
   let preview = page.getByRole('dialog', { name: 'Preview research source' });
   await expect(preview.getByText('Source markdown')).toBeVisible();
+  // The raw capture sits in a collapsed <details>; expand it so the scrollable
+  // <pre> is actually rendered when axe runs.
+  await preview.getByText('Source markdown').click();
+  await expect(preview.locator('pre')).toBeVisible();
   await expect(preview.locator('pre')).toContainText(
     '# Establish identity terms with Microsoft Entra',
   );
+  await expect(preview.locator('pre')).toContainText('Filler line 60');
+  await expectNoSeriousA11yViolations(page);
   await preview.getByRole('button', { name: 'Close preview', exact: true }).first().click();
   await expect(result.getByRole('button', { name: 'Preview' })).toBeFocused();
 
@@ -1039,6 +1068,39 @@ test('learning loop protects an externally edited roadmap before accepting progr
   await expectNoSeriousA11yViolations(page);
 });
 
+test('an overflowing roadmap proposal diff stays reachable by keyboard', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  // A proposal diff always shows just the toggled line, so the scroll region
+  // overflows on title length rather than row count.
+  await page.evaluate(async (title) => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const handle = await topic.getFileHandle('roadmap.md');
+    const current = await (await handle.getFile()).text();
+    const writable = await handle.createWritable();
+    await writable.write(`${current.trimEnd()}\n- [ ] ${title}\n`);
+    await writable.close();
+  }, longObjectiveTitle);
+
+  await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
+  await page.getByLabel(longObjectiveTitle).check();
+
+  const proposal = page.getByRole('region', { name: 'Progress proposal changes' });
+  await expect(proposal).toBeVisible();
+  await expect(proposal).toContainText(longObjectiveTitle);
+  expect(await proposal.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+    true,
+  );
+
+  await proposal.focus();
+  await expect(proposal).toBeFocused();
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('spaced review schedules a topic and explains the resting queue', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -1240,7 +1302,7 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
 const attentionFetchedPage = {
   fetchedAt: '2026-07-21T00:00:00.000Z',
   finalUrl: 'https://example.org/attention',
-  text: 'Attention lets each token weigh the other tokens in its context.',
+  text: `Attention lets each token weigh the other tokens in its context.\n${overflowingLines}`,
   title: 'Attention in transformers',
   truncated: false,
 };
@@ -1335,6 +1397,9 @@ test.describe('companion flows', () => {
     const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
     await expect(preview.locator('pre')).toContainText('weigh the other tokens');
     await expect(preview.locator('pre')).toContainText('# Attention paper');
+    await expect(preview.locator('pre')).toContainText('Filler line 60');
+    // The overflowing preview is only on screen until the replace lands.
+    await expectNoSeriousA11yViolations(page);
     await preview.getByRole('button', { name: 'Replace content' }).click();
 
     await expect(
@@ -1454,6 +1519,10 @@ test.describe('companion flows', () => {
     const previewReplace = preview.getByRole('button', { name: 'Replace content' });
     await expect(previewKeepStub).toBeFocused();
 
+    // The scrollable capture is a tab stop of its own, so a keyboard user can
+    // reach and scroll it before deciding.
+    await page.keyboard.press('Tab');
+    await expect(preview.getByRole('region', { name: 'Source markdown' })).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(previewReplace).toBeFocused();
 
