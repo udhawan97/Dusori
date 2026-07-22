@@ -8,16 +8,20 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Browser workspace in origin-private storage
 - Direct folder connection on supported Chromium desktop browsers
 - Canonical Markdown/JSON topic structure
-- ZIP import/export
+- Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export
 - Conflict-safe proposals and dated update logs
 - Local source library for pasted text, Markdown/text files, and unfetched URL references
 - Consent-gated Microsoft Learn catalog and English Wikipedia research with preview-first source capture
 - Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
-- Interactive Markdown roadmap progress, explicit topic status, and deterministic Today summaries
+- In-app creation and conflict-safe editing of portable Markdown notes
+- Local full-text workspace search with no stored index or remote query
+- Backlinks and non-mutating workspace health for wikilinks and source manifests/files
+- Interactive Markdown roadmap progress, explicit topic status, deterministic review order, and a seven-day recap
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
 - Companion-only page fetching with readability extraction, confirmed per fetch, and ranked Microsoft Learn search
+- Version-aligned, packed-tarball-tested `dusori` companion package and provenance-ready publish workflow
 
 ## Planned—not built
 
@@ -26,7 +30,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Ollama discovery and source-bounded transformations
 - Model capability probes
 - Chat-to-`TUTOR.md` diff editing
-- Optional generated review schedules and recap suggestions
+- Optional generated review schedules, due dates, or spaced-repetition intervals
 - Key-based or general-purpose search adapters
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

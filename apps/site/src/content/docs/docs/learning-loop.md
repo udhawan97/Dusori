@@ -6,7 +6,7 @@ description: Track roadmap progress and recent work without giving up portable f
 Dusori’s learning loop has two views backed by the files already inside each topic:
 
 - **Roadmap** reads section headings and `- [ ]` / `- [x]` tasks from `roadmap.md`.
-- **Today** combines roadmap progress, the topic status in `state.json`, and recent entries from `Updates/`.
+- **Today** combines roadmap progress, the topic status in `state.json`, a deterministic review queue, and recent entries from `Updates/`.
 
 There is no hosted task database and no generated schedule. The same progress remains readable in Obsidian or any Markdown editor.
 
@@ -22,7 +22,9 @@ Choose **Active**, **Paused**, or **Complete** from the roadmap header. Status i
 
 ## Review Today
 
-Today shows every topic’s status, completed-task count, next unchecked objective, and three most recent local update entries. It is a current-file summary rather than a planner. Optional generated scheduling and recap suggestions remain planned work.
+Today shows every topic’s status, completed-task count, next unchecked objective, and recent local activity. **Review next** excludes complete topics, puts active topics before paused topics, and orders each group by the oldest `state.json.updatedAt` value before using title and slug as stable tie-breakers.
+
+The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first. It writes no summary file. Dusori does not generate deadlines, due dates, spaced-repetition intervals, calendars, or closed-app work.
 
 ## External edits
 

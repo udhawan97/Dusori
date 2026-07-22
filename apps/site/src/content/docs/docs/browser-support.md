@@ -6,6 +6,7 @@ description: The capability matrix for browser workspaces, real folders, offline
 | Capability                    | Chrome/Edge desktop                 | Chrome Android | Firefox desktop           | Safari macOS                    | Safari iOS         |
 | ----------------------------- | ----------------------------------- | -------------- | ------------------------- | ------------------------------- | ------------------ |
 | Browser workspace (OPFS)      | Yes                                 | Yes            | Yes                       | Yes¹                            | Yes¹               |
+| Local search/backlinks/health | Yes                                 | Yes            | Yes                       | Yes                             | Yes                |
 | ZIP import/export             | Yes                                 | Yes            | Yes                       | Yes                             | Yes                |
 | Connect a real folder         | Yes                                 | Yes²           | No → import/export        | No → import/export              | No                 |
 | Companion from hosted origin  | Local-network permission may appear | Not supported  | Supported                 | Blocked by mixed-content policy | Not supported      |

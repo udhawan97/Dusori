@@ -4,6 +4,28 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-21
+
+### Added
+
+- Create and edit portable Markdown study notes inside Dusori, using the existing proposal-and-explicit-acceptance protocol when another editor changes a file first.
+- Local full-text search across Markdown and text files, with case- and accent-insensitive matching, source titles from manifests, bounded snippets, and no persisted index or network request.
+- Backlinks derived from resolved wikilink edges plus an explicit, non-mutating workspace health check for unresolved links, invalid or missing source manifests, missing tracked sources, and untracked source files.
+- Deterministic **Review next** ordering and a bounded seven-day workspace recap derived from topic state, roadmaps, and dated update files; no deadlines or background schedule are generated.
+- Companion package metadata, `--help` / `--version`, packed-tarball smoke verification, and a provenance-ready manual npm publish workflow.
+
+### Changed
+
+- ZIP imports are fully validated in memory before confirmation and replacement; if a storage write fails, Dusori restores the previous workspace snapshot.
+- Import confirmation now names the incoming workspace and reports topic and file counts.
+- Generated roadmap, conflict, accepted-update, note, and source log wikilinks resolve correctly from nested dated update folders.
+
+### Safety and portability
+
+- Search, backlinks, health, review ordering, and recap remain read-only local projections; none creates a database, index, schedule, or hidden summary file.
+- Workspace health never quarantines or repairs an invalid manifest implicitly. It reports the exact file and leaves recovery to the user.
+- The public companion command is `npx dusori@0.4.0 --root /path/to/Dusori`; the loopback, per-run token, root confinement, and terminal-lifetime boundaries are unchanged.
+
 ## [0.3.0] - 2026-07-21
 
 ### Added
@@ -66,7 +88,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/udhawan97/Dusori/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/udhawan97/Dusori/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/udhawan97/Dusori/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/udhawan97/Dusori/releases/tag/v0.1.0

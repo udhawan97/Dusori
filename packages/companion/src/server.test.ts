@@ -55,7 +55,7 @@ describe('companion boundary', () => {
     expect(allowed.json()).toMatchObject({
       apiVersion: 1,
       service: 'dusori-companion',
-      version: '0.3.0',
+      version: '0.4.0',
     });
     expect(allowed.headers['access-control-allow-origin']).toBe(origin);
 
