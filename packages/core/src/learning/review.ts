@@ -98,7 +98,7 @@ export async function markTopicReviewed(
         expectedHash: snapshot?.hash ?? null,
       });
     } catch (error) {
-      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+      if (!(error instanceof StorageConflictError)) throw error;
       continue;
     }
 

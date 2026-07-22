@@ -292,6 +292,21 @@ describe('spaced review persistence', () => {
     expect(occurrences).toBe(1);
   });
 
+  it('surfaces the retry-exhausted message when the review.json write conflicts on all three attempts', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', created);
+    const topic = await createTopic(storage, 'AI Fundamentals', created);
+    const path = reviewFilePath(topic.topicSlug);
+    // Every one of markTopicReviewed's three attempts conflicts, so the loop
+    // must exhaust naturally and surface the mandated user-facing message
+    // instead of the raw StorageConflictError from the final attempt.
+    const conflicting = new ConflictNTimesThenCount(storage, path, path, 3);
+
+    await expect(
+      markTopicReviewed(conflicting, topic.topicSlug, 'good', new Date('2026-07-21T09:00:00.000Z')),
+    ).rejects.toThrow('The review schedule changed repeatedly. Try marking this review again.');
+  });
+
   it('does not double-apply the outcome when the update-log append exhausts its own retry', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', created);
