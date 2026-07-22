@@ -533,6 +533,25 @@ test('creates, edits, and conflict-protects a Markdown note', async ({ page }) =
   await expectNoSeriousA11yViolations(page);
 });
 
+test('searches local workspace prose and opens the matching document', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addPastedSource(page);
+
+  await page.getByLabel('Words to find').fill('each token weigh');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+
+  const results = page.getByRole('list', { name: 'Workspace search results' });
+  await expect(results).toContainText('Transformer notes');
+  await expect(results).toContainText('each token weigh the other tokens');
+  await results.getByRole('button', { name: /Transformer notes/u }).click();
+  await expect(page.locator('article')).toContainText(
+    'Attention lets each token weigh the other tokens in its context.',
+  );
+  await expect(page.locator('.path-label')).toContainText('/Sources/items/');
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('source library stores pasted text and URL references without remote fetching', async ({
   page,
 }) => {

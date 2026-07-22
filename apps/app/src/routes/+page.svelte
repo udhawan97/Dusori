@@ -55,6 +55,7 @@
   import ResearchPanel from '$lib/components/ResearchPanel.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -373,6 +374,11 @@
     conflict = null;
     mobileNavOpen = false;
     if (record) syncLocation();
+  }
+
+  async function openSearchDocument(path: string): Promise<void> {
+    await openGraphDocument(path);
+    if (window.innerWidth < 960) inspectorOpen = false;
   }
 
   function handleRoadmapChanged(slug: string, content: string): void {
@@ -999,6 +1005,10 @@
         <h2>{storage?.kind === 'fsa' ? 'Connected folder' : 'Browser workspace'}</h2>
         <p>{storageLabel}</p>
       </section>
+
+      {#if storage}
+        <WorkspaceSearch {storage} onOpen={(path) => void openSearchDocument(path)} />
+      {/if}
 
       {#if selectedSlug && storage}
         <section class="new-note-panel">

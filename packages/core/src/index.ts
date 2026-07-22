@@ -9,6 +9,7 @@ export * from './portable.js';
 export * from './research/index.js';
 export * from './schemas/read-machine-file.js';
 export * from './schemas/workspace.js';
+export * from './search/workspace-search.js';
 export * from './sources/import.js';
 export * from './sources/capped.js';
 export * from './sources/upgrade.js';
