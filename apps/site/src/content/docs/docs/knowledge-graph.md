@@ -35,6 +35,12 @@ The constellation scales with workspace size and orders topics by their wikilink
 
 Notes touched by many wikilinks are hubs, marked with a marigold ring. Select a node to dim what it is not connected to and open the selected artifact directly; the same path works from the keyboard.
 
+## Adjust the view
+
+Zoom with the mouse wheel or a trackpad pinch, drag the background to pan, and open **View controls** on the stage for the same actions as buttons and sliders: zoom in and out, **Link length**, **Spacing**, and **Fit view**. Labels appear progressively as you zoom in, and hovering a node highlights its direct connections.
+
+Zoom, pan, and the sliders are local view settings; they never touch your files. The slider positions persist in this browser only, and the settled layout stays deterministic for the same workspace and settings.
+
 ## Portability and privacy
 
 Exporting or connecting the workspace already carries everything needed to rebuild the graph. The graph works offline after the app is loaded and does not require an account, plugin, telemetry endpoint, or AI model.
