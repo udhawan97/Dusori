@@ -5,8 +5,11 @@ import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/s
 
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
-const screenshotHref = `${projectBasePath}/app-workspace.png`;
 const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
+const githubHref = 'https://github.com/udhawan97/Dusori';
+const licenseHref = 'https://github.com/udhawan97/Dusori/blob/main/LICENSE';
+const graphShotHref = `${projectBasePath}/app-graph.png`;
+const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
 ---
 
 <!doctype html>
@@ -28,39 +31,471 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
     <title>Dusori — learn deeply, keep the files</title>
   </head>
   <body>
-    <header class="edge-nav">
-      <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">
-        <picture>
-          <source
-            srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
-            media="(prefers-color-scheme: dark)"
-          />
-          <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
-        </picture>
-        <span>Dusori</span>
-      </a>
-      <a class="nav-action" href={appHref}>Open app</a>
+    <svg class="page-defs" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="grainf">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"
+          ></feTurbulence>
+          <feColorMatrix type="saturate" values="0"></feColorMatrix>
+        </filter>
+
+        <g
+          id="icon-wheel"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+        >
+          <path d="M12 4 a8 8 0 1 1 -7.8 9.8"></path>
+          <path d="M4.6 10.4 L4.2 13.8 L7.4 13"></path>
+          <circle cx="12" cy="12" r="2"></circle>
+        </g>
+        <g
+          id="icon-roadmap"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="4" y="4" width="6.5" height="6.5" rx="1"></rect>
+          <path d="M5.8 7.2 l1.4 1.5 2.4 -2.9"></path>
+          <path d="M14 7.2 H20"></path>
+          <rect x="4" y="13.5" width="6.5" height="6.5" rx="1"></rect>
+          <path d="M14 16.7 H20"></path>
+        </g>
+        <g
+          id="icon-graph"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+        >
+          <circle cx="6" cy="17" r="2.2"></circle>
+          <circle cx="12" cy="6" r="2.2"></circle>
+          <circle cx="18" cy="16" r="2.2"></circle>
+          <path d="M7 15 L10.9 8 M13.2 7.9 L16.9 14.1 M8.2 17.4 L15.8 16.6"></path>
+        </g>
+        <g
+          id="icon-blade"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 5 h8 v4 M4 5 v13 h5 M4 9 h4"></path>
+          <rect x="12" y="7" width="8" height="12" rx="1"></rect>
+          <path d="M3 21 L21 3"></path>
+        </g>
+        <g
+          id="icon-source"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 3 h8 l4 4 v14 H6 z"></path>
+          <path d="M14 3 v4 h4"></path>
+          <path d="M9 12 h6 M9 16 h4"></path>
+        </g>
+        <g
+          id="icon-browser"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+        >
+          <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+          <path d="M3 9 H21"></path>
+          <path d="M6 7 h0.01 M8.6 7 h0.01"></path>
+        </g>
+        <g
+          id="icon-folder"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M3 7 a1 1 0 0 1 1 -1 h5 l2 2 h9 a1 1 0 0 1 1 1 v8 a2 2 0 0 1 -2 2 H5 a2 2 0 0 1 -2 -2 z"
+          ></path>
+        </g>
+        <g
+          id="icon-terminal"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+          <path d="M7 9 l3 3 -3 3 M12.5 15 H17"></path>
+        </g>
+        <g
+          id="icon-file"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M7 3 h7 l4 4 v14 H7 z"></path>
+          <path d="M14 3 v4 h4"></path>
+        </g>
+        <g
+          id="icon-json"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M9.5 4 c-2 0 -3 1 -3 3 v2 c0 1.6 -0.9 2.4 -2 3 c1.1 0.6 2 1.4 2 3 v2 c0 2 1 3 3 3"
+          ></path>
+          <path
+            d="M14.5 4 c2 0 3 1 3 3 v2 c0 1.6 0.9 2.4 2 3 c-1.1 0.6 -2 1.4 -2 3 v2 c0 2 -1 3 -3 3"
+          ></path>
+        </g>
+
+        <g id="scene-wheel">
+          <circle
+            cx="200"
+            cy="200"
+            r="168"
+            style="fill: none; stroke: var(--sc-rule); stroke-width: 1; stroke-dasharray: 2 10;"
+          ></circle>
+          <circle
+            cx="200"
+            cy="200"
+            r="118"
+            pathLength="100"
+            transform="rotate(-90 200 200)"
+            style="fill: none; stroke: var(--sc-rule); stroke-width: 2; stroke-dasharray: 9.5 3;"
+          ></circle>
+          <circle
+            class="wheel-arc"
+            cx="200"
+            cy="200"
+            r="118"
+            pathLength="100"
+            transform="rotate(-90 200 200)"
+            style="fill: none; stroke: var(--sc-gold); stroke-width: 7; stroke-dasharray: 34.5 65.5;"
+          ></circle>
+          <circle cx="200" cy="200" r="9" style="fill: var(--sc-gold);"></circle>
+          <circle
+            class="wheel-halo"
+            cx="200"
+            cy="200"
+            r="20"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1; stroke-dasharray: 3 5;"
+          ></circle>
+          <circle cx="200" cy="32" r="3" style="fill: var(--sc-line);"></circle>
+          <circle cx="345" cy="283" r="3" style="fill: var(--sc-line);"></circle>
+          <circle cx="55" cy="283" r="3" style="fill: var(--sc-line);"></circle>
+        </g>
+
+        <g id="scene-roadmap">
+          <rect
+            x="54"
+            y="97"
+            width="26"
+            height="26"
+            rx="3"
+            style="fill: none; stroke: var(--sc-line); stroke-width: 1.5;"></rect>
+          <path
+            class="check check-1"
+            d="M60 110 l7 8 l13 -15"
+            pathLength="100"
+            style="fill: none; stroke: var(--sc-red); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round;"
+          ></path>
+          <path d="M100 104 H330" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+          <path d="M100 118 H270" style="stroke: var(--sc-rule); stroke-width: 2; opacity: 0.55;"
+          ></path>
+          <rect
+            x="54"
+            y="182"
+            width="26"
+            height="26"
+            rx="3"
+            style="fill: none; stroke: var(--sc-line); stroke-width: 1.5;"></rect>
+          <path
+            class="check check-2"
+            d="M60 195 l7 8 l13 -15"
+            pathLength="100"
+            style="fill: none; stroke: var(--sc-red); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round;"
+          ></path>
+          <path d="M100 189 H322" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+          <path d="M100 203 H252" style="stroke: var(--sc-rule); stroke-width: 2; opacity: 0.55;"
+          ></path>
+          <rect
+            x="54"
+            y="267"
+            width="26"
+            height="26"
+            rx="3"
+            style="fill: none; stroke: var(--sc-line); stroke-width: 1.5;"></rect>
+          <path d="M100 274 H310" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+          <path d="M100 288 H240" style="stroke: var(--sc-rule); stroke-width: 2; opacity: 0.55;"
+          ></path>
+          <circle
+            class="next-ring"
+            cx="340"
+            cy="281"
+            r="7"
+            style="fill: none; stroke: var(--sc-gold); stroke-width: 2;"></circle>
+        </g>
+
+        <g id="scene-constellation">
+          <path
+            class="thread"
+            d="M200 210 Q 150 150 118 108"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="thread"
+            d="M200 210 Q 250 140 282 88"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="thread"
+            d="M200 210 Q 270 220 322 232"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="thread"
+            d="M200 210 Q 230 280 252 322"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="thread"
+            d="M200 210 Q 148 254 108 282"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="thread"
+            d="M200 210 Q 136 196 86 186"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            d="M118 108 Q 200 60 282 88"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3; stroke-dasharray: 1 6; stroke-linecap: round;"
+          ></path>
+          <circle
+            cx="200"
+            cy="210"
+            r="15"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 2;"></circle>
+          <circle
+            class="hub-ring"
+            cx="200"
+            cy="210"
+            r="26"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1; stroke-dasharray: 3 6;"
+          ></circle>
+          <circle
+            class="sat"
+            cx="118"
+            cy="108"
+            r="8"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            class="sat"
+            cx="282"
+            cy="88"
+            r="7"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            class="sat"
+            cx="322"
+            cy="232"
+            r="9"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            class="sat"
+            cx="252"
+            cy="322"
+            r="7"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            class="sat"
+            cx="108"
+            cy="282"
+            r="8"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            class="sat"
+            cx="86"
+            cy="186"
+            r="6"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+        </g>
+
+        <g id="scene-blade">
+          <g class="sheet-a">
+            <rect
+              x="64"
+              y="96"
+              width="148"
+              height="198"
+              style="fill: var(--sc-node); stroke: var(--sc-line); stroke-width: 1.5;"></rect>
+            <path d="M84 136 H192" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+            <path d="M84 166 H192" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+            <path d="M84 196 H168" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+          </g>
+          <g class="sheet-b" transform="translate(212 118) rotate(1.5)">
+            <rect
+              width="148"
+              height="198"
+              style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></rect>
+            <rect
+              y="-16"
+              width="64"
+              height="16"
+              style="fill: none; stroke: var(--sc-gold); stroke-width: 1.5;"></rect>
+            <path d="M20 40 H128" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+            <path d="M20 70 H128" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+            <path d="M20 100 H104" style="stroke: var(--sc-rule); stroke-width: 2;"></path>
+          </g>
+          <path
+            class="blade-line"
+            d="M52 330 L348 62"
+            pathLength="100"
+            style="fill: none; stroke: var(--sc-red); stroke-width: 2.5; stroke-linecap: round;"
+          ></path>
+        </g>
+
+        <g id="scene-sources">
+          <path
+            class="thread"
+            d="M92 108 Q 200 120 268 178"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <path
+            class="consent-thread"
+            d="M100 200 Q 190 200 264 200"
+            style="fill: none; stroke: var(--sc-red); stroke-width: 1.3; stroke-dasharray: 5 5;"
+          ></path>
+          <path
+            class="thread"
+            d="M92 292 Q 200 282 268 224"
+            style="fill: none; stroke: var(--sc-gold-soft); stroke-width: 1.3;"></path>
+          <circle
+            cx="84"
+            cy="108"
+            r="8"
+            style="fill: var(--sc-node); stroke: var(--sc-gold); stroke-width: 1.5;"></circle>
+          <circle
+            cx="84"
+            cy="200"
+            r="8"
+            style="fill: var(--sc-node); stroke: var(--sc-line); stroke-width: 1.5;"></circle>
+          <circle
+            class="consent-ring"
+            cx="84"
+            cy="200"
+            r="16"
+            style="fill: none; stroke: var(--sc-red); stroke-width: 1.5; stroke-dasharray: 4 4;"
+          ></circle>
+          <circle
+            cx="84"
+            cy="292"
+            r="8"
+            style="fill: var(--sc-node); stroke: var(--sc-line); stroke-width: 1.5;"></circle>
+          <circle
+            class="intake-arc"
+            cx="312"
+            cy="200"
+            r="46"
+            pathLength="100"
+            transform="rotate(-90 312 200)"
+            style="fill: none; stroke: var(--sc-gold); stroke-width: 5; stroke-dasharray: 62 38;"
+          ></circle>
+          <circle cx="312" cy="200" r="6" style="fill: var(--sc-gold);"></circle>
+        </g>
+      </defs>
+    </svg>
+
+    <header class="site-nav">
+      <div class="nav-inner">
+        <a class="wordmark" href={`${projectBasePath}/`} aria-label="Dusori home">
+          <picture>
+            <source
+              srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
+              media="(prefers-color-scheme: dark)"
+            />
+            <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+          </picture>
+          <span>Dusori</span>
+        </a>
+        <nav class="nav-links" aria-label="Site">
+          <a href={docsHref}>Docs</a>
+          <a class="nav-gh" href={githubHref}>GitHub</a>
+          <a class="nav-cta" href={appHref}>Open app</a>
+        </nav>
+      </div>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="hero-kicker">A second brain with excellent boundaries.</p>
-          <h1 id="hero-title">Learn deeply. Keep the files.</h1>
+          <p class="hero-kicker">Free. Local-first. Useful without AI.</p>
+          <h1 id="hero-title">Learn deeply. <span class="keyline">Keep the files.</span></h1>
           <p class="lede">
             Dusori turns plain Markdown and JSON into a paced learning workspace. It works offline,
             exports cleanly, and never develops mysterious opinions about who owns your notes.
           </p>
           <div class="hero-links">
-            <a href={appHref}>Open Dusori →</a>
-            <a href={docsHref}>Read the docs →</a>
+            <a class="cta-primary" href={appHref}>Open Dusori →</a>
+            <a class="cta-ghost" href={docsHref}>Read the docs →</a>
           </div>
         </div>
-        <figure class="neural-stage">
-          <div class="stage-heading" aria-hidden="true">
-            <span>Dusori Ensō</span>
-            <span>Japanese restraint · Indian geometry</span>
+
+        <figure class="orbit-stage">
+          <div class="bloom" aria-hidden="true"></div>
+          <div class="grain" aria-hidden="true"></div>
+
+          <div class="armature" aria-hidden="true">
+            <div class="ring-tilt tilt-a">
+              <div class="ring-spin spin-a">
+                <div class="ring-face"></div>
+                <i class="rn" style="--a: 10deg"></i>
+                <i class="rn" style="--a: 150deg"></i>
+                <i class="rn" style="--a: 260deg"></i>
+              </div>
+            </div>
+            <div class="ring-tilt tilt-b">
+              <div class="ring-spin spin-b">
+                <div class="ring-face"></div>
+                <i class="rn" style="--a: 70deg"></i>
+                <i class="rn" style="--a: 230deg"></i>
+              </div>
+            </div>
+            <div class="ring-tilt tilt-c">
+              <div class="ring-spin spin-c">
+                <div class="ring-face"></div>
+                <i class="rn rn-big" style="--a: 330deg"></i>
+                <i class="rn" style="--a: 120deg"></i>
+                <i class="rn" style="--a: 200deg"></i>
+              </div>
+            </div>
           </div>
+
+          <div class="drift-chips" aria-hidden="true">
+            <span class="chip chip-1" style="--dz: 1.4; --dur: 9s"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-file"></use></svg
+              >Overview.md</span
+            >
+            <span class="chip chip-2" style="--dz: 0.8; --dur: 7s"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-json"></use></svg
+              >state.json</span
+            >
+            <span class="chip chip-3" style="--dz: 1.1; --dur: 11s"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-file"></use></svg
+              >roadmap.md</span
+            >
+            <span class="chip chip-4" style="--dz: 0.6; --dur: 8s"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-json"></use></svg
+              >Sources/manifest.json</span
+            >
+          </div>
+
           <picture class="hero-mark">
             <source
               srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
@@ -82,78 +517,173 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
               fetchpriority="high"
             />
           </picture>
+
           <figcaption class="stage-caption">
-            <span>v0.4.0 · available now</span>
-            <strong>Your notes stay ordinary files. A surprisingly radical idea.</strong>
+            <span class="release-flag">v0.4.0 · available now</span>
+            <span>Japanese restraint · Indian geometry</span>
             <a href={releaseHref}>Read the release notes →</a>
           </figcaption>
         </figure>
+
+        <ul class="truth-strip" role="list">
+          <li>No account</li>
+          <li>No telemetry</li>
+          <li>No hosted backend</li>
+          <li>Offline after first load</li>
+          <li>Apache-2.0</li>
+        </ul>
       </section>
 
-      <section class="graph-proof" aria-labelledby="graph-proof-title">
-        <div>
-          <h2 id="graph-proof-title">Your notes, finally on speaking terms.</h2>
-          <p>
-            Dusori maps Markdown artifacts, topic structure, and Obsidian wikilinks directly in the
-            browser. Select any artifact to open the file behind it. No graph database, sync
-            account, or proprietary export ritual.
-          </p>
-          <a href={`${docsHref}knowledge-graph/`}>How the portable graph works →</a>
+      <section class="cinema" aria-label="What the workspace does">
+        <div class="chapters">
+          <article class="chapter" data-chapter="wheel">
+            <span class="ch-icon" aria-hidden="true"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-wheel"></use></svg></span
+            >
+            <h2>Today decides what to review next.</h2>
+            <p>
+              Active topics come first, least recently updated first. The queue and the seven-day
+              recap are derived from your roadmap, topic state, and dated update files — Dusori
+              invents no deadlines and sends no reminders at 6 a.m.
+            </p>
+            <a class="chapter-link" href={`${docsHref}learning-loop/`}
+              >How the learning loop works →</a
+            >
+            <svg class="chapter-art" viewBox="0 0 400 400" aria-hidden="true">
+              <use href="#scene-wheel"></use>
+            </svg>
+          </article>
+
+          <article class="chapter" data-chapter="roadmap">
+            <span class="ch-icon" aria-hidden="true"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-roadmap"></use></svg></span
+            >
+            <h2>A roadmap that is just Markdown.</h2>
+            <p>
+              Checkboxes in <code>roadmap.md</code> are the plan. Check one in Dusori or in any other
+              editor; topics move between active, paused, and complete without a project-management ceremony.
+            </p>
+            <a class="chapter-link" href={`${docsHref}getting-started/`}>Start your first topic →</a
+            >
+            <svg class="chapter-art" viewBox="0 0 400 400" aria-hidden="true">
+              <use href="#scene-roadmap"></use>
+            </svg>
+          </article>
+
+          <article class="chapter" data-chapter="constellation">
+            <span class="ch-icon" aria-hidden="true"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-graph"></use></svg></span
+            >
+            <h2>Your notes, finally on speaking terms.</h2>
+            <p>
+              Every artifact, topic, and Obsidian-style [[wikilink]] becomes a constellation drawn
+              in your browser. Select a node, open the file behind it. No graph database — backlinks
+              are just resolved edges, reversed.
+            </p>
+            <a class="chapter-link" href={`${docsHref}knowledge-graph/`}
+              >How the portable graph works →</a
+            >
+            <svg class="chapter-art" viewBox="0 0 400 400" aria-hidden="true">
+              <use href="#scene-constellation"></use>
+            </svg>
+          </article>
+
+          <article class="chapter" data-chapter="blade">
+            <span class="ch-icon" aria-hidden="true"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-blade"></use></svg></span
+            >
+            <h2>Your editor gets the last word.</h2>
+            <p>
+              Dusori remembers the last content hash it saw. If a file changed elsewhere, that file
+              stays untouched and the suggestion becomes a dated <code>.proposed-</code> version beside
+              it. Acceptance is explicit, and recorded in <code>Updates/</code>.
+            </p>
+            <a class="chapter-link" href={`${docsHref}conflict-safety/`}
+              >The conflict-safety contract →</a
+            >
+            <svg class="chapter-art" viewBox="0 0 400 400" aria-hidden="true">
+              <use href="#scene-blade"></use>
+            </svg>
+          </article>
+
+          <article class="chapter" data-chapter="sources">
+            <span class="ch-icon" aria-hidden="true"
+              ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-source"></use></svg></span
+            >
+            <h2>Research that asks first.</h2>
+            <p>
+              Paste a source, add a file, or keep a URL reference with provenance. Microsoft Learn
+              and Wikipedia suggestions are consent-gated; full-page extraction needs the optional
+              local companion, and AI stays on the roadmap — not in your workspace.
+            </p>
+            <a class="chapter-link" href={`${docsHref}sources/`}>How sources and research work →</a>
+            <svg class="chapter-art" viewBox="0 0 400 400" aria-hidden="true">
+              <use href="#scene-sources"></use>
+            </svg>
+          </article>
         </div>
-        <figure class="graph-art" aria-label="A constellation of connected learning artifacts">
-          <svg viewBox="0 0 620 420" aria-hidden="true">
-            <circle class="orbit" cx="310" cy="210" r="154"></circle>
-            <path
-              d="M310 210 Q250 130 195 92 M310 210 Q386 140 455 98 M310 210 Q425 240 512 288 M310 210 Q274 320 224 350 M195 92 Q164 184 128 238 M455 98 Q490 168 512 288"
-            ></path>
-            <g class="home"
-              ><circle cx="310" cy="210" r="18"></circle><circle cx="310" cy="210" r="28"
-              ></circle></g
-            >
-            <g class="topic"
-              ><circle cx="195" cy="92" r="13"></circle><circle cx="195" cy="92" r="20"></circle></g
-            >
-            <g
-              ><circle cx="455" cy="98" r="8"></circle><circle cx="512" cy="288" r="8"
-              ></circle><circle cx="224" cy="350" r="8"></circle><circle cx="128" cy="238" r="8"
-              ></circle></g
-            >
-          </svg>
-          <figcaption>Rangoli-like order for notes that remain ordinary Markdown.</figcaption>
-        </figure>
+
+        <div class="stage-rail" aria-hidden="true">
+          <div class="scene-stage" data-scene="wheel">
+            <div class="grain" aria-hidden="true"></div>
+            <svg class="scene scene--wheel" viewBox="0 0 400 400">
+              <use href="#scene-wheel"></use>
+            </svg>
+            <svg class="scene scene--roadmap" viewBox="0 0 400 400">
+              <use href="#scene-roadmap"></use>
+            </svg>
+            <svg class="scene scene--constellation" viewBox="0 0 400 400">
+              <use href="#scene-constellation"></use>
+            </svg>
+            <svg class="scene scene--blade" viewBox="0 0 400 400">
+              <use href="#scene-blade"></use>
+            </svg>
+            <svg class="scene scene--sources" viewBox="0 0 400 400">
+              <use href="#scene-sources"></use>
+            </svg>
+          </div>
+        </div>
       </section>
 
-      <section class="product-view" aria-labelledby="product-title">
-        <div class="section-heading">
-          <h2 id="product-title">Less tab archaeology. More learning.</h2>
+      <section class="showcase" aria-labelledby="showcase-title">
+        <div class="showcase-head">
+          <h2 id="showcase-title">Less tab archaeology. More learning.</h2>
           <p>
-            The workspace rail, reading canvas, and inspector below come from the real app. A
-            fictional screenshot would be a strange way to sell local-first software.
+            Both captures below come from the real app. A fictional screenshot would be a strange
+            way to sell local-first software.
           </p>
         </div>
-        <figure>
-          <img
-            src={screenshotHref}
-            width="1440"
-            height="960"
-            alt="Dusori Today view showing local progress, the deterministic review queue, and seven-day recap"
-            fetchpriority="high"
-          />
-          <figcaption>
-            Review order and the seven-day recap are assembled from roadmap, status, and dated
-            update files—never an invented deadline.
-          </figcaption>
-        </figure>
+        <div class="showcase-grid">
+          <figure class="shot shot-graph">
+            <img
+              src={graphShotHref}
+              width="1440"
+              height="1000"
+              loading="lazy"
+              alt="Dusori dark knowledge graph showing portable learning artifacts"
+            />
+            <figcaption>
+              The graph view as shipped — 7 artifacts and 13 connections from one topic, counted
+              from files, not a database.
+            </figcaption>
+          </figure>
+          <figure class="shot shot-work">
+            <img
+              src={workspaceShotHref}
+              width="1440"
+              height="960"
+              loading="lazy"
+              alt="Dusori Today view showing local progress, the deterministic review queue, and seven-day recap"
+            />
+            <figcaption>
+              Today, assembled from roadmap, state, and dated updates — review order and the
+              seven-day recap, never an invented deadline.
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       <section class="contract" aria-labelledby="contract-title">
-        <div>
-          <h2 id="contract-title">Leave anytime. The files know the way out.</h2>
-          <p>
-            Each topic carries its overview, roadmap, preferences, notes, readable source files,
-            machine state, and dated update history. Obsidian is welcome, never required.
-          </p>
-        </div>
         <pre
           aria-label="Dusori topic folder structure"><code>Topics/topic-name/
   Overview.md
@@ -165,39 +695,49 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
   Sources/
     manifest.json
     items/hash-source.md</code></pre>
-      </section>
-
-      <section class="proof" aria-labelledby="proof-title">
-        <div class="section-heading">
-          <h2 id="proof-title">Your editor gets the last word.</h2>
-          <p>Dusori does not start a custody battle with your Markdown.</p>
-        </div>
-        <div class="proof-flow">
-          <div><span>1</span><p>Dusori remembers the last-seen content hash.</p></div>
-          <div><span>2</span><p>If a file changed elsewhere, Dusori leaves it alone.</p></div>
-          <div><span>3</span><p>The suggested version becomes a dated proposal beside it.</p></div>
+        <div class="contract-copy">
+          <span class="ch-icon" aria-hidden="true"
+            ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-folder"></use></svg></span
+          >
+          <h2 id="contract-title">Leave anytime. The files know the way out.</h2>
+          <p>
+            Each topic carries its overview, roadmap, preferences, notes, readable source files,
+            machine state, and dated update history. Obsidian is welcome, never required — and a ZIP
+            export is always one click away.
+          </p>
+          <a class="chapter-link" href={`${docsHref}workspaces/`}>Workspaces and folders →</a>
         </div>
       </section>
 
       <section class="capabilities" aria-labelledby="capability-title">
-        <div class="section-heading">
-          <h2 id="capability-title">Useful everywhere. Extra local where browsers allow it.</h2>
-        </div>
+        <h2 id="capability-title">Useful everywhere. Extra local where browsers allow it.</h2>
         <dl>
           <div>
-            <dt>Modern browsers</dt><dd>
+            <dt>
+              <svg class="icon dt-icon" viewBox="0 0 24 24" aria-hidden="true"
+                ><use href="#icon-browser"></use></svg
+              >Modern browsers
+            </dt><dd>
               Private workspace, note authoring, local search and backlinks, deterministic review,
               pasted/file/URL sources, consent-gated research, ZIP portability, offline reload.
             </dd>
           </div>
           <div>
-            <dt>Chromium desktop</dt><dd>
-              Everything above, plus direct access to one user-approved folder. One folder—not your
-              entire digital attic.
+            <dt>
+              <svg class="icon dt-icon" viewBox="0 0 24 24" aria-hidden="true"
+                ><use href="#icon-folder"></use></svg
+              >Chromium desktop
+            </dt><dd>
+              Everything above, plus direct access to one user-approved folder. One folder — not
+              your entire digital attic.
             </dd>
           </div>
           <div>
-            <dt>Local companion</dt><dd>
+            <dt>
+              <svg class="icon dt-icon" viewBox="0 0 24 24" aria-hidden="true"
+                ><use href="#icon-terminal"></use></svg
+              >Local companion
+            </dt><dd>
               Optional, session-scoped loopback service for exact-host-confirmed page extraction and
               ranked Microsoft Learn search. Ollama and unattended work remain future work.
             </dd>
@@ -205,41 +745,169 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
         </dl>
       </section>
 
-      <section class="utility-index" aria-label="Project links">
-        <a href={appHref}><span>Use</span>Open the browser app →</a>
-        <a href={docsHref}><span>Understand</span>Read the file and browser contracts →</a>
-        <a href="https://github.com/udhawan97/Dusori"
-          ><span>Inspect</span>Review the source on GitHub →</a
-        >
-        <a href={releaseHref}><span>Release</span>What shipped in v0.4.0 →</a>
+      <section class="finale" aria-labelledby="finale-title">
+        <div class="finale-copy">
+          <h2 id="finale-title">The desk is ready when you are.</h2>
+          <p>
+            No account between you and the first topic. Start in browser storage, connect one folder
+            later, export a ZIP whenever you like.
+          </p>
+          <a class="cta-primary" href={appHref}>Start in your browser →</a>
+        </div>
+        <div class="companion">
+          <p>
+            <svg class="icon dt-icon" viewBox="0 0 24 24" aria-hidden="true"
+              ><use href="#icon-terminal"></use></svg
+            >Optional loopback companion — one explicit folder, a fresh token each run, gone when
+            the terminal closes:
+          </p>
+          <pre><code>npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori</code></pre>
+        </div>
       </section>
     </main>
 
-    <footer class="colophon">
-      <p>
-        Dusori is open-source software under the Apache License 2.0. No account, no telemetry, no
-        hosted application backend—and no footnote quietly changing those facts. Version 0.4.0 adds
-        conflict-safe note authoring, local search, backlinks, health checks, and deterministic
-        review; AI, general web search, and unattended scheduling remain future work.
-      </p>
-      <span>Built in public · 2026</span>
+    <footer class="statement">
+      <div class="grain" aria-hidden="true"></div>
+      <div class="foot-orbit" aria-hidden="true"></div>
+      <p class="statement-line">A second brain should remember who owns the first.</p>
+      <div class="statement-meta">
+        <span class="foot-mark">
+          <picture>
+            <source
+              srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
+              media="(prefers-color-scheme: dark)"
+            />
+            <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="20" height="20" />
+          </picture>
+          <span>Dusori</span>
+        </span>
+        <nav class="foot-links" aria-label="Project">
+          <a href={docsHref}>Documentation</a>
+          <a href={githubHref}>GitHub</a>
+          <a href={releaseHref}>Releases</a>
+          <a href={licenseHref}>License</a>
+        </nav>
+        <span class="foot-tail"
+          >Apache-2.0 · No account · No telemetry · Built in public · 2026</span
+        >
+      </div>
     </footer>
   </body>
 </html>
 
+<script>
+  const nav = document.querySelector('.site-nav');
+  if (nav) {
+    const THRESHOLD = 80;
+    let floating = false;
+    let ticking = false;
+    const update = () => {
+      const next = window.scrollY > THRESHOLD;
+      if (next !== floating) {
+        floating = next;
+        nav.classList.toggle('is-floating', floating);
+      }
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    update();
+  }
+
+  const stage = document.querySelector<HTMLElement>('.scene-stage');
+  const chapters = document.querySelectorAll<HTMLElement>('.chapter');
+  if (stage && chapters.length > 0 && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.target instanceof HTMLElement) {
+            const scene = entry.target.dataset.chapter;
+            if (scene) stage.dataset.scene = scene;
+          }
+        }
+      },
+      { rootMargin: '-45% 0px -45% 0px' },
+    );
+    for (const chapter of chapters) observer.observe(chapter);
+  }
+
+  // Pointer tilt on the hero observatory; fine pointers only, never under reduced motion.
+  const hero = document.querySelector<HTMLElement>('.orbit-stage');
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (hero && finePointer.matches && !reducedMotion.matches) {
+    hero.addEventListener('pointermove', (event) => {
+      const rect = hero.getBoundingClientRect();
+      const px = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+      const py = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+      hero.style.setProperty('--px', px.toFixed(3));
+      hero.style.setProperty('--py', py.toFixed(3));
+    });
+    hero.addEventListener('pointerleave', () => {
+      hero.style.setProperty('--px', '0');
+      hero.style.setProperty('--py', '0');
+    });
+  }
+
+  // Rest the observatory while it is off screen.
+  if (hero && 'IntersectionObserver' in window) {
+    const rest = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) hero.classList.toggle('is-resting', !entry.isIntersecting);
+      },
+      { threshold: 0.05 },
+    );
+    rest.observe(hero);
+  }
+</script>
+
 <style>
   /* Hallmark · genre: atmospheric editorial · tone: dry, warm, quietly witty
-   * anchor: vermilion action + marigold knowledge · structure: Marquee Hero with H2 split diptych
-   * design-system: design.md · enrichment: supplied original Dusori Ensō at presentation scale
-   * motion: finite chakra revolution + blade strike; exact supplied geometry settles intact
-   * theme: custom supplied identity · nav: N9 · footer: Ft4 · designed-as-app
-   * pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · slop: 58/58
-   * responsive: pass (34, 49, 50–57)
+   * macrostructure: Marquee Hero with orbital scroll cinema (F2 sticky stage · 5 scenes)
+   * design-system: design.md · theme: custom supplied identity · axes: dual / roman-serif / vermilion-action + marigold-knowledge
+   * enrichment: user-directed 3D observatory — CSS-3D orbital armature (3 tilted revolving rings + riding
+   *   nodes), floating artifact chips at parallax depth, dot-grid + feTurbulence grain, supplied animated
+   *   Dusori Ensō still at center (finite reveal, geometry untouched) + tier-B scene SVGs + real captures
+   * motion: user-directed ambient (ring revolutions · chip drift · active-scene play · 3D scene flip ·
+   *   pointer tilt) — transform/opacity/stroke only · hero rests off-screen · reduced-motion = fully static
+   * icons: hand-built single-voice stroke set (wheel roadmap graph blade source browser folder terminal file json)
+   * nav: N10 scroll-morph (rectangular hairline slab — no pills) · footer: Ft5 statement (README epigraph)
+   * pre-emit critique: P5 H4 E5 S5 R3 V5 · contrast: pass (40–41) · honest copy: pass (46)
+   * chrome: pass (47) · tokens: pass (48) · icons: pass (30) · slop: pass (58 gates)
+   * mobile: pass (34, 49, 50–57) · e2e: landing + themes + identity pass · axe: no serious violations
    */
   *,
   *::before,
   *::after {
     box-sizing: border-box;
+  }
+
+  :root {
+    --nav-h: 5rem;
+    --dur-morph: 520ms;
+    --gold-text: light-dark(oklch(50% 0.12 72), oklch(70% 0.13 75));
+    --bloom-gold: light-dark(
+      color-mix(in srgb, var(--color-marigold) 8%, transparent),
+      color-mix(in srgb, var(--color-marigold) 16%, transparent)
+    );
+    --nav-veil: color-mix(in srgb, var(--color-paper) 84%, transparent);
+    --gold-soft: color-mix(in srgb, var(--color-marigold) 62%, var(--color-rule));
+    --gold-glow: light-dark(
+      color-mix(in srgb, var(--color-marigold) 18%, transparent),
+      color-mix(in srgb, var(--color-marigold) 38%, transparent)
+    );
+    --dot-grid: color-mix(in srgb, var(--color-rule) 55%, transparent);
+    --shadow-ink: light-dark(oklch(20% 0.02 60 / 0.45), oklch(0% 0 0 / 0.7));
+    --glow-vermilion: light-dark(oklch(46% 0.16 32 / 0.5), oklch(72% 0.13 32 / 0.45));
   }
 
   html,
@@ -256,7 +924,6 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
 
   a {
     color: inherit;
-    white-space: nowrap;
   }
 
   a:active {
@@ -268,66 +935,6 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
     outline-offset: 3px;
   }
 
-  .edge-nav,
-  main,
-  .colophon {
-    width: min(100%, 92rem);
-    margin-inline: auto;
-    padding-inline: var(--page-gutter);
-  }
-
-  .edge-nav {
-    display: flex;
-    min-height: 5rem;
-    align-items: center;
-    justify-content: space-between;
-    border-block-end: var(--rule-hair) solid var(--color-rule);
-  }
-
-  .wordmark {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-weight: 600;
-    text-decoration: none;
-  }
-
-  .wordmark img {
-    flex: none;
-    inline-size: 1.75rem;
-    block-size: 1.75rem;
-  }
-
-  .wordmark picture {
-    display: grid;
-    place-items: center;
-  }
-
-  .nav-action {
-    min-height: 2.75rem;
-    padding: var(--space-xs) var(--space-md);
-    border: var(--rule-hair) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-accent-text);
-    text-decoration: none;
-    transition: background-color var(--dur-short) var(--ease-out);
-  }
-
-  .hero {
-    display: grid;
-    min-height: min(82dvh, 52rem);
-    align-items: center;
-    gap: var(--space-xl);
-    padding-block: var(--space-2xl) var(--space-4xl);
-    border-block-end: var(--rule-hair) solid var(--color-rule);
-  }
-
-  .hero-copy {
-    min-width: 0;
-  }
-
   h1,
   h2 {
     min-width: 0;
@@ -336,22 +943,186 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
     font-style: normal;
     font-weight: 600;
     line-height: 1.08;
+    letter-spacing: -0.02em;
     overflow-wrap: anywhere;
+  }
+
+  main > section,
+  .statement {
+    width: min(100%, 92rem);
+    margin-inline: auto;
+    padding-inline: var(--page-gutter);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  .page-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .icon {
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+    flex: none;
+  }
+
+  .grain {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-base);
+    filter: url('#grainf');
+    opacity: 0.05;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+
+  /* ---------- Nav · N10 scroll-morph ---------- */
+
+  .site-nav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: var(--z-sticky);
+    height: var(--nav-h);
+    display: grid;
+    align-items: center;
+    padding-inline: var(--page-gutter);
+  }
+
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    width: 100%;
+    max-width: 92rem;
+    min-height: 3.25rem;
+    margin-inline: auto;
+    padding-inline: 0;
+    border: var(--rule-hair) solid transparent;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    backdrop-filter: blur(0);
+    transform: translateY(0);
+    transition:
+      background-color var(--dur-morph) var(--ease-out),
+      border-color var(--dur-morph) var(--ease-out),
+      backdrop-filter var(--dur-morph) var(--ease-out),
+      box-shadow var(--dur-morph) var(--ease-out),
+      transform var(--dur-morph) var(--ease-out),
+      max-width var(--dur-morph) var(--ease-out),
+      padding var(--dur-morph) var(--ease-out);
+  }
+
+  .site-nav.is-floating .nav-inner {
+    max-width: 46rem;
+    padding-inline: var(--space-md);
+    transform: translateY(10px);
+    border-color: var(--color-rule);
+    background-color: var(--nav-veil);
+    backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: 0 12px 32px -20px var(--shadow-ink);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.75rem;
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .wordmark picture {
+    display: grid;
+    place-items: center;
+  }
+
+  .wordmark img {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .nav-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: var(--space-2xs) var(--space-sm);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav-links a:not(.nav-cta):hover {
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+  }
+
+  .nav-cta {
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding-inline: var(--space-md);
+    color: var(--color-accent-text);
+    transition: background-color var(--dur-short) var(--ease-out);
+  }
+
+  /* ---------- Hero · the observatory ---------- */
+
+  .hero {
+    display: grid;
+    align-items: center;
+    gap: var(--space-xl);
+    min-height: clamp(34rem, 94dvh, 58rem);
+    padding-block: calc(var(--nav-h) + var(--space-lg)) var(--space-2xl);
+  }
+
+  .hero-copy {
+    min-width: 0;
   }
 
   h1 {
     max-width: 12ch;
-    font-size: clamp(3rem, 3.75vw + 0.5rem, 4.75rem);
-    letter-spacing: -0.02em;
+    font-size: var(--text-display);
   }
 
-  h2 {
-    max-width: 18ch;
-    font-size: clamp(2rem, 3vw + 0.5rem, 3.75rem);
+  .keyline {
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .keyline::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -0.08em;
+    block-size: 0.045em;
+    background: var(--color-marigold);
+    transform: scaleX(0);
+    transform-origin: left;
+    animation: keyline-draw 600ms var(--ease-out) 500ms forwards;
+  }
+
+  @keyframes keyline-draw {
+    to {
+      transform: scaleX(1);
+    }
   }
 
   .hero-kicker {
-    max-width: 36ch;
+    max-width: 40ch;
     margin: 0 0 var(--space-lg);
     color: var(--color-accent-text);
     font-family: var(--font-mono);
@@ -360,7 +1131,7 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
 
   .lede {
     max-width: 54ch;
-    margin-block-start: var(--space-lg);
+    margin-block: var(--space-lg) 0;
     font-size: var(--text-md);
   }
 
@@ -368,245 +1139,634 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-sm);
-    margin-block-start: var(--space-lg);
+    margin-block-start: var(--space-xl);
   }
 
-  .hero-links a {
+  .cta-primary,
+  .cta-ghost {
     display: inline-flex;
-    min-height: 2.75rem;
     align-items: center;
-    padding: var(--space-xs) var(--space-md);
+    min-height: 2.75rem;
+    padding: var(--space-xs) var(--space-lg);
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-accent-text);
     text-decoration: none;
-    transition: transform var(--dur-micro) var(--ease-out);
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-short) var(--ease-out),
+      box-shadow var(--dur-short) var(--ease-out),
+      transform var(--dur-micro) var(--ease-out);
   }
 
-  .hero-links a:first-child {
+  .cta-primary {
     border-color: var(--color-ink);
     background: var(--color-ink);
     color: var(--color-paper);
   }
 
-  .hero-links a:active {
+  .cta-primary:active,
+  .cta-ghost:active {
     transform: translateY(1px);
   }
 
-  .neural-stage {
+  .orbit-stage {
     position: relative;
     isolation: isolate;
     display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
     min-width: 0;
-    min-height: clamp(25rem, 72vw, 36rem);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: clamp(24rem, 66dvh, 42rem);
+    margin: 0;
     overflow: clip;
-    padding: var(--space-md) 0 0 var(--space-lg);
-    border-block-start: var(--rule-hair) solid var(--color-rule);
-    background: var(--color-paper-2);
+    border: var(--rule-hair) solid var(--color-rule);
+    background-color: var(--color-paper-2);
+    background-image: radial-gradient(var(--dot-grid) 1px, transparent 1.5px);
+    background-size: 26px 26px;
   }
 
-  .neural-stage::before,
-  .neural-stage::after {
+  .bloom {
     position: absolute;
+    inset: -12%;
     z-index: -1;
-    background: var(--color-rule);
-    content: '';
+    background: radial-gradient(closest-side at 50% 44%, var(--bloom-gold), transparent 72%);
     pointer-events: none;
   }
 
-  .neural-stage::before {
-    inset: 50% 0 auto;
-    block-size: var(--rule-hair);
-  }
+  /* The armature — three tilted rings revolving around the still ensō. */
 
-  .neural-stage::after {
-    inset: 0 auto 0 50%;
-    inline-size: var(--rule-hair);
-  }
-
-  .stage-heading {
-    z-index: var(--z-base);
+  .armature {
+    position: absolute;
+    inset: 0 0 auto;
+    block-size: 100%;
     display: grid;
-    min-width: 0;
+    place-items: center;
+    perspective: 1100px;
+    pointer-events: none;
+    transform: translate3d(calc(var(--px, 0) * -8px), calc(var(--py, 0) * -6px), 0);
+    transition: transform 240ms var(--ease-out);
+  }
+
+  .ring-tilt {
+    position: absolute;
+    inline-size: var(--d);
+    aspect-ratio: 1;
+    transform-style: preserve-3d;
+  }
+
+  .tilt-a {
+    --d: min(78%, 34rem);
+    transform: rotateX(calc(72deg + var(--py, 0) * 5deg)) rotateY(calc(var(--px, 0) * 6deg));
+  }
+
+  .tilt-b {
+    --d: min(58%, 26rem);
+    transform: rotateX(calc(64deg + var(--py, 0) * 5deg)) rotateY(calc(28deg + var(--px, 0) * 6deg));
+  }
+
+  .tilt-c {
+    --d: min(102%, 44rem);
+    transform: rotateX(calc(78deg + var(--py, 0) * 5deg))
+      rotateY(calc(-22deg + var(--px, 0) * 6deg));
+  }
+
+  .ring-spin {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    animation: ring-revolve linear infinite;
+  }
+
+  .spin-a {
+    animation-duration: 52s;
+  }
+
+  .spin-b {
+    animation-duration: 34s;
+    animation-direction: reverse;
+  }
+
+  .spin-c {
+    animation-duration: 78s;
+  }
+
+  @keyframes ring-revolve {
+    to {
+      transform: rotateZ(360deg);
+    }
+  }
+
+  .ring-face {
+    position: absolute;
+    inset: 0;
+    border: 1px dashed var(--gold-soft);
+    border-radius: 50%;
+    opacity: 0.55;
+  }
+
+  .rn {
+    position: absolute;
+    inset: 0;
+    transform: rotate(var(--a, 0deg));
+  }
+
+  .rn::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    inline-size: 8px;
+    block-size: 8px;
+    margin-inline-start: -4px;
+    border-radius: 50%;
+    background: var(--color-marigold);
+    box-shadow: 0 0 12px 2px var(--gold-glow);
+  }
+
+  .rn-big::before {
+    inline-size: 12px;
+    block-size: 12px;
+    margin-inline-start: -6px;
+    top: -6px;
+    box-shadow: 0 0 18px 4px var(--gold-glow);
+  }
+
+  .orbit-stage.is-resting .ring-spin,
+  .orbit-stage.is-resting .chip {
+    animation-play-state: paused;
+  }
+
+  /* Drifting artifact chips — the files themselves, floating at depth. */
+
+  .drift-chips {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-raised);
+    pointer-events: none;
+  }
+
+  .chip {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
     gap: var(--space-2xs);
-    padding-inline-end: var(--space-md);
-    color: var(--color-muted);
+    padding: var(--space-2xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-paper) 88%, transparent);
+    color: var(--gold-text);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    white-space: nowrap;
+    box-shadow: 0 10px 26px -18px var(--shadow-ink);
+    translate: calc(var(--px, 0) * var(--dz, 1) * -12px) calc(var(--py, 0) * var(--dz, 1) * -9px);
+    animation: chip-float var(--dur, 8s) var(--ease-in-out) infinite alternate;
   }
 
-  .stage-heading span:first-child {
-    color: var(--color-ink);
-    font-family: var(--font-display);
-    font-size: var(--text-sm);
-    font-weight: 600;
+  .chip .icon {
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+  }
+
+  @keyframes chip-float {
+    from {
+      transform: translateY(-5px);
+    }
+    to {
+      transform: translateY(6px);
+    }
+  }
+
+  .chip-1 {
+    top: 12%;
+    left: 6%;
+  }
+
+  .chip-2 {
+    top: 22%;
+    right: 7%;
+    animation-delay: -3s;
+  }
+
+  .chip-3 {
+    bottom: 26%;
+    left: 9%;
+    animation-delay: -5s;
+  }
+
+  .chip-4 {
+    bottom: 14%;
+    right: 6%;
+    animation-delay: -2s;
   }
 
   .hero-mark {
     z-index: var(--z-base);
     display: grid;
-    width: min(100%, 34rem, 62dvh);
+    width: min(74%, 26rem, 52dvh);
     place-self: center;
+    padding-block: var(--space-lg);
   }
 
   .hero-mark img {
-    display: block;
     width: 100%;
     height: auto;
-    transition: transform var(--dur-long) var(--ease-out);
   }
 
   .stage-caption {
-    z-index: var(--z-base);
-    display: grid;
-    gap: var(--space-2xs);
-    margin: 0;
+    z-index: var(--z-raised);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-lg);
+    align-items: baseline;
     padding: var(--space-md);
     border-block-start: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper);
-  }
-
-  .stage-caption span,
-  figcaption,
-  .colophon {
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
   }
 
-  .stage-caption strong {
-    color: var(--color-ink);
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
+  .release-flag {
+    color: var(--gold-text);
   }
 
-  .stage-caption a,
-  .utility-index a {
+  .stage-caption a {
     color: var(--color-accent-text);
     text-decoration-thickness: 1px;
     text-underline-offset: 0.25em;
+    white-space: nowrap;
   }
 
-  .product-view,
-  .contract,
-  .graph-proof,
-  .proof,
-  .capabilities,
-  .utility-index {
+  .truth-strip {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin: 0;
+    padding: var(--space-md) 0 0;
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    list-style: none;
+  }
+
+  .truth-strip li {
+    padding: var(--space-2xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
+  /* ---------- Cinema · sticky 3D stage + chapters ---------- */
+
+  .cinema {
+    position: relative;
+    display: grid;
+    gap: var(--space-2xl);
+    padding-block: var(--space-3xl) var(--space-2xl);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .chapters {
+    display: grid;
+    gap: var(--space-3xl);
+    min-width: 0;
+  }
+
+  .chapter {
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: var(--space-lg);
+    min-width: 0;
+  }
+
+  .ch-icon {
+    display: grid;
+    place-items: center;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper-2);
+    color: var(--gold-text);
+  }
+
+  .chapter h2,
+  .showcase h2,
+  .contract h2,
+  .capabilities h2,
+  .finale h2 {
+    max-width: 18ch;
+    font-size: clamp(1.9rem, 2.6vw + 0.6rem, 3.1rem);
+  }
+
+  .chapter p {
+    max-width: 56ch;
+    margin: 0;
+  }
+
+  .chapter-link {
+    color: var(--color-accent-text);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.3em;
+  }
+
+  .chapter-art,
+  .scene-stage {
+    --sc-rule: var(--color-rule);
+    --sc-line: var(--color-border);
+    --sc-gold: var(--color-marigold);
+    --sc-gold-soft: var(--gold-soft);
+    --sc-red: var(--color-accent);
+    --sc-node: var(--color-paper);
+  }
+
+  .chapter-art {
+    width: min(100%, 20rem);
+    height: auto;
+    border: var(--rule-hair) solid var(--color-rule);
+    background-color: var(--color-paper-2);
+    background-image: radial-gradient(var(--dot-grid) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+  }
+
+  .stage-rail {
+    display: none;
+  }
+
+  .scene-stage {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    aspect-ratio: 1;
+    overflow: clip;
+    border: var(--rule-hair) solid var(--color-rule);
+    background-color: var(--color-paper-2);
+    background-image: radial-gradient(var(--dot-grid) 1px, transparent 1.5px);
+    background-size: 26px 26px;
+    perspective: 1200px;
+  }
+
+  .scene-stage::before {
+    position: absolute;
+    inset: -10%;
+    z-index: -1;
+    background: radial-gradient(closest-side at 50% 42%, var(--bloom-gold), transparent 74%);
+    content: '';
+    pointer-events: none;
+  }
+
+  .scene {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform: rotateY(-16deg) translateZ(-56px);
+    backface-visibility: hidden;
+    transition:
+      opacity var(--dur-long) var(--ease-out),
+      transform var(--dur-long) var(--ease-out);
+  }
+
+  .scene-stage[data-scene='wheel'] .scene--wheel,
+  .scene-stage[data-scene='roadmap'] .scene--roadmap,
+  .scene-stage[data-scene='constellation'] .scene--constellation,
+  .scene-stage[data-scene='blade'] .scene--blade,
+  .scene-stage[data-scene='sources'] .scene--sources {
+    opacity: 1;
+    transform: rotateY(0) translateZ(0);
+  }
+
+  /* Active-scene play — each instrument runs only while on stage. */
+
+  .scene use {
+    transform-box: fill-box;
+  }
+
+  .scene-stage[data-scene='wheel'] .scene--wheel .wheel-arc,
+  .scene-stage[data-scene='wheel'] .scene--wheel .wheel-halo {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .scene-stage[data-scene='wheel'] .scene--wheel .wheel-arc {
+    animation: sweep 26s linear infinite;
+  }
+
+  .scene-stage[data-scene='wheel'] .scene--wheel .wheel-halo {
+    animation: sweep 14s linear infinite reverse;
+  }
+
+  @keyframes sweep {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .scene-stage[data-scene='roadmap'] .scene--roadmap .check {
+    stroke-dasharray: 100 100;
+    stroke-dashoffset: 100;
+    animation: draw-check 500ms var(--ease-out) forwards;
+  }
+
+  .scene-stage[data-scene='roadmap'] .scene--roadmap .check-2 {
+    animation-delay: 320ms;
+  }
+
+  @keyframes draw-check {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .scene-stage[data-scene='roadmap'] .scene--roadmap .next-ring {
+    animation: ring-pulse 2.6s var(--ease-in-out) infinite;
+  }
+
+  @keyframes ring-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .scene-stage[data-scene='constellation'] .scene--constellation .hub-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sweep 22s linear infinite;
+  }
+
+  .scene-stage[data-scene='constellation'] .scene--constellation .sat {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sat-breathe 4.4s var(--ease-in-out) infinite alternate;
+  }
+
+  .scene-stage[data-scene='constellation'] .scene--constellation .sat:nth-of-type(2n) {
+    animation-delay: -2.2s;
+  }
+
+  @keyframes sat-breathe {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.12);
+    }
+  }
+
+  .scene-stage[data-scene='blade'] .scene--blade .blade-line {
+    stroke-dasharray: 100 100;
+    stroke-dashoffset: 100;
+    animation: draw-check 640ms var(--ease-out) 180ms forwards;
+  }
+
+  .scene-stage[data-scene='blade'] .scene--blade .sheet-b {
+    animation: sheet-in 520ms var(--ease-out) both;
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translate(224px, 118px) rotate(1.5deg);
+      opacity: 0;
+    }
+    to {
+      transform: translate(212px, 118px) rotate(1.5deg);
+      opacity: 1;
+    }
+  }
+
+  .scene-stage[data-scene='sources'] .scene--sources .consent-thread {
+    animation: dash-march 1.4s linear infinite;
+  }
+
+  @keyframes dash-march {
+    to {
+      stroke-dashoffset: -20;
+    }
+  }
+
+  .scene-stage[data-scene='sources'] .scene--sources .consent-ring {
+    animation: ring-pulse 2.4s var(--ease-in-out) infinite;
+  }
+
+  .scene-stage[data-scene='sources'] .scene--sources .intake-arc {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sweep 18s linear infinite;
+  }
+
+  /* ---------- Showcase · captures floating in 3D ---------- */
+
+  .showcase {
     padding-block: var(--space-3xl);
-    border-block-end: var(--rule-hair) solid var(--color-rule);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .section-heading {
+  .showcase-head {
     display: grid;
     gap: var(--space-md);
     margin-block-end: var(--space-xl);
   }
 
-  .section-heading > p:last-child,
-  .contract p {
+  .showcase-head p {
     max-width: 58ch;
-  }
-
-  figure {
     margin: 0;
   }
 
-  figure img {
+  .showcase-grid {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: start;
+    perspective: 1600px;
+  }
+
+  .shot {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .shot img {
     display: block;
     width: 100%;
     height: auto;
     border: var(--rule-hair) solid var(--color-rule);
+    transition:
+      transform var(--dur-long) var(--ease-out),
+      box-shadow var(--dur-long) var(--ease-out);
   }
 
-  figcaption {
-    margin-block-start: var(--space-sm);
+  .shot-graph img {
+    box-shadow: 0 30px 70px -38px var(--gold-glow);
   }
+
+  .shot-work img {
+    box-shadow: 0 24px 60px -36px var(--shadow-ink);
+  }
+
+  .shot figcaption,
+  .companion p {
+    margin-block-start: var(--space-sm);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  /* ---------- Contract · the portable tree ---------- */
 
   .contract {
     display: grid;
     gap: var(--space-xl);
+    padding-block: var(--space-3xl) var(--space-2xl);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .graph-proof {
+  .contract-copy {
     display: grid;
-    align-items: center;
-    gap: var(--space-xl);
+    justify-items: start;
+    gap: var(--space-lg);
   }
 
-  .graph-proof > div > p:not(.kicker) {
-    max-width: 56ch;
-  }
-
-  .graph-proof > div > a {
-    display: inline-block;
-    margin-block-start: var(--space-md);
-    color: var(--color-accent-text);
-  }
-
-  .graph-art {
-    padding: var(--space-md);
-    border: var(--rule-hair) solid var(--color-rule);
-    background: color-mix(in srgb, var(--color-marigold) 5%, var(--color-paper-2));
-  }
-
-  .graph-art svg {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-
-  .graph-art .orbit {
-    fill: none;
-    stroke: var(--color-rule);
-    stroke-dasharray: 2 12;
-  }
-
-  .graph-art path {
-    fill: none;
-    stroke: color-mix(in srgb, var(--color-marigold) 72%, var(--color-rule));
-    stroke-width: 1.25;
-  }
-
-  .graph-art circle:first-child {
-    fill: var(--color-paper);
-    stroke: var(--color-border);
-  }
-
-  .graph-art g circle:last-child {
-    fill: none;
-    stroke: var(--color-rule);
-    stroke-dasharray: 3 5;
-  }
-
-  .graph-art .home circle:first-child {
-    fill: var(--color-accent);
-  }
-
-  .graph-art .topic circle:first-child {
-    fill: var(--color-marigold);
+  .contract-copy p {
+    max-width: 52ch;
+    margin: 0;
   }
 
   pre {
     min-width: 0;
-    overflow: auto;
+    overflow-x: auto;
     margin: 0;
     padding: var(--space-lg);
     border-block: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper-2);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
+    line-height: 1.7;
   }
 
-  .proof-flow,
+  /* ---------- Capabilities · honest ledger ---------- */
+
+  .capabilities {
+    padding-block: var(--space-3xl) var(--space-2xl);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .capabilities h2 {
+    margin-block-end: var(--space-xl);
+  }
+
   .capabilities dl {
     display: grid;
     margin: 0;
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .proof-flow > div,
   .capabilities dl > div {
     display: grid;
     gap: var(--space-sm);
@@ -614,140 +1774,295 @@ const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.4.0';
     border-block-end: var(--rule-hair) solid var(--color-rule);
   }
 
-  .proof-flow span {
-    color: var(--color-accent);
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-  }
-
-  .proof-flow p,
-  .capabilities dd {
-    margin: 0;
-  }
-
   .capabilities dt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
     font-weight: 700;
   }
 
+  .dt-icon {
+    color: var(--gold-text);
+  }
+
   .capabilities dd {
+    max-width: 64ch;
+    margin: 0;
     color: var(--color-muted);
   }
 
-  .utility-index {
-    display: grid;
-  }
+  /* ---------- Finale · CTA + companion ---------- */
 
-  .utility-index a {
+  .finale {
     display: grid;
-    min-height: 4.5rem;
+    gap: var(--space-2xl);
     align-items: center;
-    gap: var(--space-xs);
-    padding-block: var(--space-md);
-    border-block-end: var(--rule-hair) solid var(--color-rule);
+    padding-block: var(--space-3xl) var(--space-4xl);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .utility-index span {
-    color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-  }
-
-  .colophon {
+  .finale-copy {
     display: grid;
-    gap: var(--space-md);
-    padding-block: var(--space-xl);
+    justify-items: start;
+    gap: var(--space-lg);
   }
 
-  .colophon p {
-    max-width: 72ch;
+  .finale-copy p {
+    max-width: 46ch;
     margin: 0;
   }
 
+  .companion {
+    min-width: 0;
+  }
+
+  .companion p {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-xs);
+    margin-block: 0 var(--space-sm);
+    max-width: 52ch;
+  }
+
+  /* ---------- Footer · Ft5 statement ---------- */
+
+  .statement {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    padding-block: var(--space-3xl) var(--space-xl);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper);
+  }
+
+  .foot-orbit {
+    position: absolute;
+    right: -14rem;
+    bottom: -26rem;
+    z-index: -1;
+    inline-size: 44rem;
+    aspect-ratio: 1;
+    border: 1px dashed var(--gold-soft);
+    border-radius: 50%;
+    opacity: 0.5;
+    animation: sweep 110s linear infinite;
+    pointer-events: none;
+  }
+
+  .statement-line {
+    max-width: 24ch;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 4.4vw, 3.3rem);
+    font-style: normal;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+
+  .statement-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md) var(--space-xl);
+    align-items: center;
+    margin-block-start: var(--space-2xl);
+    padding-block-start: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .foot-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: var(--text-base);
+    font-weight: 600;
+  }
+
+  .foot-mark picture {
+    display: grid;
+    place-items: center;
+  }
+
+  .foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs) var(--space-md);
+  }
+
+  .foot-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.3em;
+    white-space: nowrap;
+  }
+
+  .foot-tail {
+    margin-inline-start: auto;
+  }
+
+  /* ---------- Hover · fine pointers only ---------- */
+
   @media (hover: hover) and (pointer: fine) {
-    .nav-action:hover {
+    .nav-cta:hover {
       background: var(--color-paper-2);
     }
 
-    .hero-links a:hover {
-      transform: translateY(-1px);
-    }
-
-    .hero-links a:first-child:hover {
+    .cta-primary:hover {
       background: var(--color-accent-text);
+      border-color: var(--color-accent-text);
       color: var(--color-paper);
+      box-shadow: 0 10px 34px -14px var(--glow-vermilion);
     }
 
-    .hero-links a:last-child:hover {
+    .cta-ghost:hover {
       background: var(--color-paper-2);
       color: var(--color-ink);
     }
 
+    .chapter-link:hover,
     .stage-caption a:hover,
-    .utility-index a:hover {
+    .foot-links a:hover {
       color: var(--color-ink);
       text-decoration-thickness: 2px;
     }
 
-    .neural-stage:hover .hero-mark img {
-      transform: translateY(calc(var(--space-2xs) * -1));
+    .shot-graph:hover img,
+    .shot-work:hover img {
+      transform: rotateY(0) rotateX(0);
     }
   }
+
+  /* ---------- ≥ 40rem ---------- */
 
   @media (min-width: 40rem) {
-    .stage-heading {
-      display: flex;
-      justify-content: space-between;
-      gap: var(--space-sm);
-    }
-
     .contract {
       grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+      align-items: center;
     }
 
-    .graph-proof {
-      grid-template-columns: minmax(0, 5fr) minmax(20rem, 4fr);
-    }
-
-    .proof-flow > div,
     .capabilities dl > div {
-      grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
-    }
-
-    .utility-index a {
-      grid-template-columns: 7rem minmax(0, 1fr);
-    }
-
-    .colophon {
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end;
+      grid-template-columns: minmax(10rem, 1fr) minmax(0, 2fr);
     }
   }
+
+  @media (max-width: 40rem) {
+    .nav-gh {
+      display: none;
+    }
+
+    .chip-3,
+    .chip-4 {
+      display: none;
+    }
+  }
+
+  /* ---------- ≥ 64rem ---------- */
 
   @media (min-width: 64rem) {
     .hero {
-      grid-template-columns: minmax(0, 9fr) minmax(30rem, 11fr);
+      grid-template-columns: minmax(0, 8fr) minmax(28rem, 9fr);
       gap: var(--space-2xl);
     }
 
-    .neural-stage {
-      min-height: min(72dvh, 42rem);
-      border-block-start: 0;
-      border-inline-start: var(--rule-hair) solid var(--color-rule);
+    .cinema {
+      grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+      gap: var(--space-2xl);
+    }
+
+    .chapter {
+      min-block-size: min(72dvh, 44rem);
+    }
+
+    .chapter-art {
+      display: none;
+    }
+
+    .stage-rail {
+      display: block;
+      min-width: 0;
+    }
+
+    .scene-stage {
+      position: sticky;
+      top: calc(var(--nav-h) + var(--space-lg));
+    }
+
+    .showcase-grid {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    }
+
+    .shot-graph img {
+      transform: rotateY(-6deg) rotateX(1.5deg);
+    }
+
+    .shot-work img {
+      transform: rotateY(6.5deg) rotateX(1deg);
+    }
+
+    .shot-work {
+      margin-block-start: var(--space-3xl);
+    }
+
+    .finale {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
     }
   }
 
+  /* ---------- Reduced motion · the observatory holds still ---------- */
+
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      scroll-behavior: auto !important;
-      transition-duration: 150ms !important;
+    .keyline::after {
+      animation: none;
+      transform: scaleX(1);
     }
 
-    .hero-mark img {
-      transform: none !important;
-      transition: none !important;
+    .ring-spin,
+    .chip,
+    .foot-orbit,
+    .scene-stage[data-scene] .scene .wheel-arc,
+    .scene-stage[data-scene] .scene .wheel-halo,
+    .scene-stage[data-scene] .scene .check,
+    .scene-stage[data-scene] .scene .next-ring,
+    .scene-stage[data-scene] .scene .hub-ring,
+    .scene-stage[data-scene] .scene .sat,
+    .scene-stage[data-scene] .scene .blade-line,
+    .scene-stage[data-scene] .scene .sheet-b,
+    .scene-stage[data-scene] .scene .consent-thread,
+    .scene-stage[data-scene] .scene .consent-ring,
+    .scene-stage[data-scene] .scene .intake-arc {
+      animation: none;
+    }
+
+    .scene-stage[data-scene='roadmap'] .scene--roadmap .check,
+    .scene-stage[data-scene='blade'] .scene--blade .blade-line {
+      stroke-dasharray: none;
+      stroke-dashoffset: 0;
+    }
+
+    .armature,
+    .chip {
+      transform: none;
+      translate: 0 0;
+      transition: none;
+    }
+
+    .nav-inner,
+    .site-nav.is-floating .nav-inner {
+      transform: none;
+      transition-duration: 150ms;
+    }
+
+    .scene {
+      transform: none;
+      transition: opacity 150ms linear;
     }
   }
 </style>
