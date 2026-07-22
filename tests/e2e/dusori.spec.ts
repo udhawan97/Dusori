@@ -153,8 +153,13 @@ async function applyCurriculum(page: Page): Promise<void> {
 }
 
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
+  const cspViolations: string[] = [];
+  page.on('console', (message) => {
+    if (message.text().includes('Content Security Policy')) cspViolations.push(message.text());
+  });
   await page.goto('/Dusori/');
   await expect(page.getByRole('heading', { name: 'Learn deeply. Keep the files.' })).toBeVisible();
+  expect(cspViolations).toEqual([]);
   await expect(page.getByRole('link', { name: /open dusori/iu })).toHaveAttribute(
     'href',
     '/Dusori/app/',
@@ -270,6 +275,13 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
     page.getByRole('heading', { name: 'Your notes, finally on speaking terms.' }),
   ).toBeVisible();
   await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
+
+  const sceneStage = page.locator('.scene-stage');
+  await expect(sceneStage).toHaveAttribute('data-scene', 'wheel');
+  await page
+    .locator('.chapter[data-chapter="blade"]')
+    .evaluate((chapter) => chapter.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  await expect(sceneStage).toHaveAttribute('data-scene', 'blade');
 
   await page.goto('/Dusori/brand/dusori-mark-animated.svg');
   const chakra = page.locator('.chakra-motion');

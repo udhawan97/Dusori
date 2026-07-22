@@ -6,6 +6,13 @@ import { projectBasePath, hostedOrigin } from '../../config/site.mjs';
 export default defineConfig({
   base: projectBasePath,
   site: hostedOrigin,
+  vite: {
+    build: {
+      // The landing page ships a strict CSP (script-src 'self'); inlined module
+      // scripts are blocked there, so every script must emit as an external file.
+      assetsInlineLimit: 0,
+    },
+  },
   integrations: [
     starlight({
       title: 'Dusori',
