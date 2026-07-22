@@ -10,7 +10,9 @@
     Menu,
     PanelRightClose,
     PanelRightOpen,
+    Pencil,
     Plus,
+    Save,
     ShieldCheck,
     Share2,
     Upload,
@@ -23,6 +25,7 @@
     WorkspaceSchema,
     acceptMarkdownUpdate,
     createCompanionResearchClient,
+    createNote,
     createTopic,
     createWorkspace,
     exportWorkspace,
@@ -60,6 +63,10 @@
   let selectedSlug = '';
   let notePath = '';
   let noteContent = '';
+  let noteDraft = '';
+  let editingNote = false;
+  let editableNote = false;
+  let newNoteTitle = '';
   let workspaceView: 'graph' | 'note' | 'roadmap' | 'today' = 'note';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
@@ -86,6 +93,12 @@
         (row) => row.kind !== 'same',
       )
     : [];
+  $: editableNote = Boolean(
+    selectedSlug &&
+    workspaceView === 'note' &&
+    notePath.startsWith(`Topics/${selectedSlug}/Notes/`) &&
+    notePath.endsWith('.md'),
+  );
 
   onMount(() => {
     const desktop = window.matchMedia('(min-width: 60rem)');
@@ -280,6 +293,7 @@
 
   async function openTopic(slug: string): Promise<void> {
     if (!storage) return;
+    stopEditingNote();
     creatingTopic = false;
     selectedSlug = slug;
     await openDocument('Notes/001-first-look.md');
@@ -289,6 +303,7 @@
 
   async function openDocument(relativePath: string): Promise<void> {
     if (!storage || !selectedSlug) return;
+    stopEditingNote();
     workspaceView = 'note';
     notePath = `Topics/${selectedSlug}/${relativePath}`;
     noteContent = (await storage.read(notePath))?.content ?? '';
@@ -313,6 +328,7 @@
 
   function openToday(slug = selectedSlug, record = true): void {
     if (!slug) return;
+    stopEditingNote();
     creatingTopic = false;
     selectedSlug = slug;
     workspaceView = 'today';
@@ -324,6 +340,7 @@
 
   async function openRoadmap(slug = selectedSlug, record = true): Promise<void> {
     if (!storage || !slug) return;
+    stopEditingNote();
     creatingTopic = false;
     selectedSlug = slug;
     workspaceView = 'roadmap';
@@ -335,6 +352,7 @@
   }
 
   function openGraph(record = true): void {
+    stopEditingNote();
     creatingTopic = false;
     workspaceView = 'graph';
     notePath = '';
@@ -345,6 +363,7 @@
 
   async function openGraphDocument(path: string, record = true): Promise<void> {
     if (!storage) return;
+    stopEditingNote();
     const match = /^Topics\/([^/]+)\//u.exec(path);
     if (match?.[1]) selectedSlug = match[1];
     creatingTopic = false;
@@ -359,6 +378,69 @@
   function handleRoadmapChanged(slug: string, content: string): void {
     if (slug === selectedSlug) noteContent = content;
     learningRevision += 1;
+  }
+
+  function stopEditingNote(): void {
+    editingNote = false;
+    noteDraft = '';
+  }
+
+  function beginEditingNote(): void {
+    if (!editableNote) return;
+    noteDraft = noteContent;
+    editingNote = true;
+  }
+
+  function noteRelativePath(path = notePath): string {
+    const prefix = `Topics/${selectedSlug}/`;
+    if (!path.startsWith(prefix)) throw new Error('This note is outside the selected topic.');
+    return path.slice(prefix.length);
+  }
+
+  async function saveNote(): Promise<void> {
+    if (!storage || !selectedSlug || !editableNote) return;
+    await perform(async () => {
+      const relativePath = noteRelativePath();
+      const result = await proposeMarkdownUpdate(storage!, selectedSlug, relativePath, noteDraft);
+      if ('proposalPath' in result) {
+        conflict = result;
+        noteContent = result.currentContent;
+        stopEditingNote();
+        status = 'An external edit stayed active. Review the proposed note before accepting it.';
+        await tick();
+        conflictPanel?.scrollIntoView({ block: 'start' });
+        return;
+      }
+      await acceptMarkdownUpdate(
+        storage!,
+        selectedSlug,
+        relativePath,
+        noteDraft,
+        result.currentHash,
+        new Date(),
+        `- Saved an explicit edit to [[../../../${relativePath.replace(/\.md$/u, '')}]].`,
+      );
+      noteContent = noteDraft;
+      stopEditingNote();
+      status = 'Note saved locally and recorded in the update log.';
+    });
+  }
+
+  async function createStudyNote(): Promise<void> {
+    if (!storage || !selectedSlug || !newNoteTitle.trim()) return;
+    await perform(async () => {
+      const created = await createNote(storage!, selectedSlug, newNoteTitle);
+      newNoteTitle = '';
+      workspaceView = 'note';
+      notePath = created.path;
+      noteContent = created.content;
+      noteDraft = created.content;
+      editingNote = true;
+      conflict = null;
+      mobileNavOpen = false;
+      syncLocation();
+      status = 'Note created. Add the first useful idea, then save it.';
+    });
   }
 
   async function runConflictProof(): Promise<void> {
@@ -407,7 +489,7 @@
       await acceptMarkdownUpdate(
         storage!,
         selectedSlug,
-        'Notes/001-first-look.md',
+        noteRelativePath(pending.currentPath),
         pending.proposalContent,
         pending.currentContentHash,
       );
@@ -754,6 +836,11 @@
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
         <div class="canvas-actions">
+          {#if editableNote && !editingNote}
+            <button class="icon-button" aria-label="Edit note" onclick={beginEditingNote}>
+              <Pencil aria-hidden="true" size={19} />
+            </button>
+          {/if}
           <ThemeToggle />
           <button
             class="icon-button"
@@ -772,9 +859,32 @@
 
       {#if selectedSlug}
         {#if workspaceView === 'note'}
-          <div class="note-sheet">
-            <MarkdownView content={noteContent} />
-          </div>
+          {#if editingNote}
+            <section class="note-editor" aria-labelledby="note-editor-title">
+              <div class="note-editor-heading">
+                <div>
+                  <p class="kicker">Local Markdown</p>
+                  <h1 id="note-editor-title">Edit note</h1>
+                </div>
+                <p>External changes remain protected by a reviewable proposal.</p>
+              </div>
+              <label for="note-markdown">Markdown note</label>
+              <textarea id="note-markdown" bind:value={noteDraft} spellcheck="true"></textarea>
+              <div class="note-editor-actions">
+                <button class="secondary-button" disabled={busy} onclick={stopEditingNote}
+                  >Cancel</button
+                >
+                <button class="primary-button" disabled={busy} onclick={saveNote}>
+                  <Save aria-hidden="true" size={18} />
+                  {busy ? 'Saving…' : 'Save note'}
+                </button>
+              </div>
+            </section>
+          {:else}
+            <div class="note-sheet">
+              <MarkdownView content={noteContent} />
+            </div>
+          {/if}
         {:else if workspaceView === 'graph' && storage}
           <KnowledgeGraph {storage} onOpen={(path) => void openGraphDocument(path)} />
         {:else if storage && workspace}
@@ -891,6 +1001,31 @@
       </section>
 
       {#if selectedSlug && storage}
+        <section class="new-note-panel">
+          <p class="kicker">Notes</p>
+          <h2>Create a study note</h2>
+          <p>Dusori writes portable Markdown and records the new file in this topic.</p>
+          <form
+            onsubmit={(event) => {
+              event.preventDefault();
+              void createStudyNote();
+            }}
+          >
+            <label for="new-note-title">New note title</label>
+            <input
+              id="new-note-title"
+              bind:value={newNoteTitle}
+              maxlength="160"
+              required
+              placeholder="Evidence map"
+            />
+            <button class="inspector-action" disabled={busy || !newNoteTitle.trim()}>
+              <Plus aria-hidden="true" size={18} />
+              Create note
+            </button>
+          </form>
+        </section>
+
         <div class="research-slot">
           {#key `${selectedSlug}-${learningRevision}`}
             <ResearchPanel
@@ -1449,11 +1584,77 @@
   }
 
   .note-sheet,
+  .note-editor,
   .empty-topic,
   .conflict-panel {
     width: min(100%, 54rem);
     margin-inline: auto;
     padding: var(--space-2xl) var(--page-gutter);
+  }
+
+  .note-editor {
+    display: grid;
+    gap: var(--space-md);
+  }
+
+  .note-editor-heading {
+    display: flex;
+    align-items: end;
+    gap: var(--space-lg);
+    justify-content: space-between;
+  }
+
+  .note-editor-heading h1 {
+    margin-block-start: var(--space-xs);
+  }
+
+  .note-editor-heading > p {
+    max-width: 24rem;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .note-editor label,
+  .new-note-panel label {
+    font-weight: 700;
+  }
+
+  .note-editor textarea {
+    width: 100%;
+    min-height: min(62dvh, 40rem);
+    resize: vertical;
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.65;
+  }
+
+  .note-editor textarea:focus-visible {
+    outline-color: var(--color-focus);
+  }
+
+  .note-editor-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+  }
+
+  .note-editor-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .new-note-panel form {
+    display: grid;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-md);
   }
 
   .empty-topic {

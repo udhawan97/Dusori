@@ -495,6 +495,44 @@ test('the conflict proof brings its proposal on screen', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Proposed next step' })).toBeVisible();
 });
 
+test('creates, edits, and conflict-protects a Markdown note', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByLabel('New note title').fill('Evidence map');
+  await page.getByRole('button', { name: 'Create note' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit note' })).toBeVisible();
+  const editor = page.getByLabel('Markdown note');
+  await editor.fill(
+    '# Evidence map\n\nDusori draft with [[../Sources/items/example|one source]].\n',
+  );
+
+  await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const root = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await root.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const notes = await topic.getDirectoryHandle('Notes');
+    const handle = await notes.getFileHandle('evidence-map.md');
+    const writable = await handle.createWritable();
+    await writable.write('# Evidence map\n\nExternal editor wins until I review the proposal.\n');
+    await writable.close();
+  });
+
+  await page.getByRole('button', { name: 'Save note' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Your external edit stayed untouched.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('External editor wins until I review the proposal.').first(),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Accept this proposal' }).click();
+  await expect(page.getByText('Dusori draft with')).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('source library stores pasted text and URL references without remote fetching', async ({
   page,
 }) => {
