@@ -5,6 +5,7 @@ export * from './graph/workspace-graph.js';
 export * from './graph/workspace-health.js';
 export * from './hash.js';
 export * from './learning/loop.js';
+export * from './learning/review.js';
 export * from './notes/edit.js';
 export * from './portable.js';
 export * from './research/index.js';
