@@ -29,7 +29,7 @@ No plugin is required. On browsers without folder access, keep the browser works
 2. Set the topic to **Active**, **Paused**, or **Complete**. This state is stored in the topic’s `state.json`.
 3. Open **Today** to see the next unchecked objective, overall progress, and recent entries from `Updates/`.
 
-The Today view is deterministic: **Review next** orders active topics before paused topics and then shows the least recently updated first. The seven-day recap reads dated update entries. Neither feature generates a deadline or schedule. If another editor changes `roadmap.md`, Dusori keeps that version active and asks you to review a separate progress proposal.
+The Today view is deterministic: **Review next** orders due spaced reviews first, then active topics before paused topics, showing the least recently updated next. The seven-day recap reads dated update entries. Marking a review (**Got it** or **Needs work**) is the only way a schedule is created — Dusori never invents one on its own. If another editor changes `roadmap.md`, Dusori keeps that version active and asks you to review a separate progress proposal.
 
 Open **Graph** to see the topic’s Markdown artifacts and wikilinks. The visual graph and its keyboard-accessible artifact index are both created locally from the workspace folder.
 

@@ -974,6 +974,43 @@ test('learning loop protects an externally edited roadmap before accepting progr
   await expectNoSeriousA11yViolations(page);
 });
 
+test('spaced review schedules a topic and explains the resting queue', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText('AI Fundamentals');
+
+  await page.getByRole('button', { name: 'Got it — mark AI Fundamentals reviewed' }).click();
+  await expect(page.getByText('Reviewed “AI Fundamentals”. The next review is')).toBeVisible();
+  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
+    'Reviewed this topic; the next review is',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+
+  const persisted = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const review = await (await topic.getFileHandle('review.json')).getFile();
+    return JSON.parse(await review.text()) as {
+      dueOn: string;
+      repetition: number;
+      schemaVersion: number;
+    };
+  });
+  expect(persisted.schemaVersion).toBe(1);
+  expect(persisted.repetition).toBe(0);
+  expect(persisted.dueOn >= new Date().toISOString().slice(0, 10)).toBe(true);
+});
+
 test('curriculum preview remains usable without horizontal overflow at supported narrow widths', async ({
   browser,
 }) => {

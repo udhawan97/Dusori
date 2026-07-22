@@ -8,7 +8,7 @@ Dusori’s learning loop has two views backed by the files already inside each t
 - **Roadmap** reads section headings and `- [ ]` / `- [x]` tasks from `roadmap.md`.
 - **Today** combines roadmap progress, the topic status in `state.json`, a deterministic review queue, and recent entries from `Updates/`.
 
-There is no hosted task database and no generated schedule. The same progress remains readable in Obsidian or any Markdown editor.
+There is no hosted task database. A schedule exists only where you created one with an explicit review action — Dusori never generates one on its own. The same progress remains readable in Obsidian or any Markdown editor.
 
 ## Complete an objective
 
@@ -22,9 +22,11 @@ Choose **Active**, **Paused**, or **Complete** from the roadmap header. Status i
 
 ## Review Today
 
-Today shows every topic’s status, completed-task count, next unchecked objective, and recent local activity. **Review next** excludes complete topics, puts active topics before paused topics, and orders each group by the oldest `state.json.updatedAt` value before using title and slug as stable tie-breakers.
+Today shows every topic’s status, completed-task count, next unchecked objective, and recent local activity. **Review next** excludes complete topics, puts due spaced reviews first, then orders remaining active topics before paused topics by the oldest `state.json.updatedAt` value, using title and slug as stable tie-breakers.
 
-The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first. It writes no summary file. Dusori does not generate deadlines, due dates, spaced-repetition intervals, calendars, or closed-app work.
+Marking a review with **Got it** or **Needs work** stores the topic's next due date in its `review.json`, using a fixed interval ladder (1, 3, 7, 14, 30, then 60 days). `Got it` advances one rung; `Needs work` resets to the first rung.
+
+The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first, including review actions. It writes no summary file. Dusori never generates a calendar entry, notification, or closed-app work.
 
 ## External edits
 

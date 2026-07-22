@@ -8,6 +8,7 @@ import {
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, type TopicState, type Workspace } from '../schemas/workspace.js';
 import { topicRoot } from '../workspace/paths.js';
+import { localDateOf, readReviewSchedule, type ReviewSchedule } from './review.js';
 
 const taskLine = /^(\s*)[-*+]\s+\[([ xX])\]\s+(.+?)\s*$/u;
 const sectionLine = /^(#{2,6})\s+(.+?)\s*#*\s*$/u;
@@ -40,6 +41,7 @@ export interface RecentTopicActivity {
 export interface TodayTopicSummary {
   progress: TopicProgress;
   recentActivity: RecentTopicActivity[];
+  review: ReviewSchedule | null;
   slug: string;
   status: TopicState['status'];
   title: string;
@@ -47,6 +49,7 @@ export interface TodayTopicSummary {
 }
 
 export interface ReviewQueueItem {
+  dueOn: string | null;
   objective: string;
   progressPercent: number;
   reason: string;
@@ -72,6 +75,12 @@ export interface WorkspaceRecapOptions {
   days?: number;
   limit?: number;
   now?: Date;
+}
+
+export interface NextScheduledReview {
+  dueOn: string;
+  slug: string;
+  title: string;
 }
 
 export type RoadmapUpdateResult =
@@ -263,14 +272,21 @@ export async function buildTodaySummary(
   return Promise.all(
     workspace.topics.map(async (topic) => {
       const root = topicRoot(topic.slug);
-      const [state, progress, recentActivity] = await Promise.all([
+      const [state, progress, recentActivity, review] = await Promise.all([
         readMachineFile(storage, `${root}/state.json`, TopicStateSchema),
         readTopicProgress(storage, topic.slug),
         readRecentTopicActivity(storage, topic.slug),
+        // A corrupt review.json for one topic must not blank the whole Today
+        // view: readMachineFile already quarantines the bad file, so treat
+        // the read failure here as "no schedule" rather than propagating it
+        // through this Promise.all. readReviewSchedule's own contract for
+        // other callers is untouched.
+        readReviewSchedule(storage, topic.slug).catch(() => null),
       ]);
       return {
         progress,
         recentActivity,
+        review,
         slug: topic.slug,
         status: state.status,
         title: topic.title,
@@ -280,24 +296,44 @@ export async function buildTodaySummary(
   );
 }
 
-/** Orders unfinished topics from explicit local state; it creates no deadlines or schedule. */
-export function buildReviewQueue(summaries: TodayTopicSummary[], limit = 5): ReviewQueueItem[] {
+/** Orders unfinished topics from explicit local state; deadlines exist only where the learner recorded a review. */
+export function buildReviewQueue(
+  summaries: TodayTopicSummary[],
+  limit = 5,
+  now = new Date(),
+): ReviewQueueItem[] {
+  const today = localDateOf(now);
   const statusPriority: Record<TopicState['status'], number> = {
     active: 0,
     paused: 1,
     complete: 2,
   };
+  const dueGroup = (summary: TodayTopicSummary): number => {
+    if (summary.status !== 'active' || summary.review === null) return 1;
+    return summary.review.dueOn <= today ? 0 : 2;
+  };
   return summaries
-    .filter((summary) => summary.status !== 'complete')
+    .filter((summary) => summary.status !== 'complete' && dueGroup(summary) !== 2)
     .sort(
       (left, right) =>
         statusPriority[left.status] - statusPriority[right.status] ||
+        dueGroup(left) - dueGroup(right) ||
+        // Compare dueOn only when both sides are genuinely due: a paused or
+        // unscheduled topic that happens to hold a schedule must stay
+        // schedule-inert, so ties outside the due group fall through.
+        (left.review !== null &&
+        right.review !== null &&
+        dueGroup(left) === 0 &&
+        dueGroup(right) === 0
+          ? left.review.dueOn.localeCompare(right.review.dueOn)
+          : 0) ||
         left.updatedAt.localeCompare(right.updatedAt) ||
         left.title.localeCompare(right.title) ||
         left.slug.localeCompare(right.slug),
     )
     .slice(0, Math.max(0, limit))
     .map((summary) => ({
+      dueOn: summary.review?.dueOn ?? null,
       objective:
         summary.progress.nextObjective?.title ??
         (summary.progress.total
@@ -305,14 +341,39 @@ export function buildReviewQueue(summaries: TodayTopicSummary[], limit = 5): Rev
           : 'Add the first reviewable objective to this roadmap.'),
       progressPercent: summary.progress.percent,
       reason:
-        summary.status === 'active'
-          ? 'Active · least recently updated first'
-          : 'Paused · resume when ready',
+        summary.status === 'paused'
+          ? 'Paused · resume when ready'
+          : summary.review !== null && summary.review.dueOn <= today
+            ? summary.review.dueOn === today
+              ? 'Due today · spaced review'
+              : `Overdue since ${summary.review.dueOn} · spaced review`
+            : 'Active · least recently updated first',
       slug: summary.slug,
       status: summary.status,
       title: summary.title,
       updatedAt: summary.updatedAt,
     }));
+}
+
+/** The earliest not-yet-due active topic, so an empty queue can say what returns when. */
+export function nextScheduledReview(
+  summaries: TodayTopicSummary[],
+  now = new Date(),
+): NextScheduledReview | null {
+  const today = localDateOf(now);
+  const upcoming = summaries
+    .filter(
+      (summary): summary is TodayTopicSummary & { review: ReviewSchedule } =>
+        summary.status === 'active' && summary.review !== null && summary.review.dueOn > today,
+    )
+    .sort(
+      (left, right) =>
+        left.review.dueOn.localeCompare(right.review.dueOn) ||
+        left.title.localeCompare(right.title) ||
+        left.slug.localeCompare(right.slug),
+    );
+  const first = upcoming[0];
+  return first ? { dueOn: first.review.dueOn, slug: first.slug, title: first.title } : null;
 }
 
 /** Reads a bounded, recent-first recap from dated update files without writing summary state. */

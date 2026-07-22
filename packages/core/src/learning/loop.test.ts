@@ -9,12 +9,14 @@ import {
   buildTodaySummary,
   buildReviewQueue,
   buildWorkspaceRecap,
+  nextScheduledReview,
   parseRoadmapObjectives,
   progressFromRoadmap,
   setRoadmapObjectiveCompleted,
   setTopicStatus,
   updateRoadmapObjective,
 } from './loop.js';
+import { markTopicReviewed } from './review.js';
 
 const now = new Date('2026-07-20T12:00:00.000Z');
 
@@ -133,6 +135,31 @@ describe('today summary', () => {
     expect(summary?.recentActivity[1]?.text).toContain('Completed “Establish the terms');
   });
 
+  it('keeps the rest of Today rendering when one topic has a corrupt review.json', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const healthy = await createTopic(storage, 'Healthy topic', now);
+    const corrupt = await createTopic(
+      storage,
+      'Corrupt topic',
+      new Date('2026-07-19T12:00:00.000Z'),
+    );
+    await storage.externalWrite(`Topics/${corrupt.topicSlug}/review.json`, 'not json');
+
+    const currentWorkspace = { ...corrupt.workspace, topics: corrupt.workspace.topics };
+    const summaries = await buildTodaySummary(storage, currentWorkspace);
+
+    expect(summaries).toHaveLength(2);
+    expect(summaries.find((summary) => summary.slug === healthy.topicSlug)).toMatchObject({
+      title: 'Healthy topic',
+      review: null,
+    });
+    expect(summaries.find((summary) => summary.slug === corrupt.topicSlug)).toMatchObject({
+      title: 'Corrupt topic',
+      review: null,
+    });
+  });
+
   it('orders active topics by oldest local update, then paused topics, and excludes complete work', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);
@@ -192,5 +219,82 @@ describe('today summary', () => {
       'Paused this topic.',
       'Completed “Establish the terms and boundaries.” in roadmap.',
     ]);
+  });
+});
+
+describe('spaced review queue', () => {
+  it('promotes due reviews, keeps unscheduled order, and hides future-due topics', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const overdue = await createTopic(
+      storage,
+      'Overdue topic',
+      new Date('2026-07-10T12:00:00.000Z'),
+    );
+    const dueToday = await createTopic(
+      storage,
+      'Due today topic',
+      new Date('2026-07-11T12:00:00.000Z'),
+    );
+    await createTopic(storage, 'Never reviewed', new Date('2026-07-12T12:00:00.000Z'));
+    const scheduled = await createTopic(
+      storage,
+      'Scheduled out',
+      new Date('2026-07-13T12:00:00.000Z'),
+    );
+    const workspace = scheduled.workspace;
+    // Local-component construction (not `Z`-suffixed) so `buildReviewQueue`'s
+    // local-day "today" comparison is unambiguous regardless of the test
+    // runner's timezone.
+    await markTopicReviewed(storage, overdue.topicSlug, 'good', new Date(2026, 6, 15, 12, 0, 0));
+    await markTopicReviewed(storage, dueToday.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
+    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date(2026, 6, 18, 12, 0, 0));
+    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
+
+    const summaries = await buildTodaySummary(storage, workspace);
+    const asOf = new Date(2026, 6, 20, 12, 0, 0);
+    const queue = buildReviewQueue(summaries, 5, asOf);
+
+    expect(queue.map((item) => item.title)).toEqual([
+      'Overdue topic',
+      'Due today topic',
+      'Never reviewed',
+    ]);
+    expect(queue[0]).toMatchObject({
+      dueOn: '2026-07-16',
+      reason: 'Overdue since 2026-07-16 · spaced review',
+    });
+    expect(queue[1]).toMatchObject({ dueOn: '2026-07-20', reason: 'Due today · spaced review' });
+    expect(queue[2]).toMatchObject({
+      dueOn: null,
+      reason: 'Active · least recently updated first',
+    });
+    expect(nextScheduledReview(summaries, asOf)).toEqual({
+      dueOn: '2026-07-22',
+      slug: scheduled.topicSlug,
+      title: 'Scheduled out',
+    });
+  });
+
+  it('keeps paused topics in their place regardless of schedule', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'Active fresh', new Date('2026-07-18T12:00:00.000Z'));
+    const paused = await createTopic(
+      storage,
+      'Paused scheduled',
+      new Date('2026-07-17T12:00:00.000Z'),
+    );
+    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date(2026, 6, 18, 12, 0, 0));
+    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
+    await setTopicStatus(storage, paused.topicSlug, 'paused', new Date('2026-07-19T13:00:00.000Z'));
+
+    const summaries = await buildTodaySummary(storage, paused.workspace);
+    const asOf = new Date(2026, 6, 20, 12, 0, 0);
+    const queue = buildReviewQueue(summaries, 5, asOf);
+
+    expect(queue.map((item) => item.title)).toEqual(['Active fresh', 'Paused scheduled']);
+    expect(queue[1]).toMatchObject({ dueOn: '2026-07-22', reason: 'Paused · resume when ready' });
+    expect(nextScheduledReview(summaries, asOf)).toBeNull();
   });
 });

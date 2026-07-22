@@ -118,6 +118,7 @@ Dusori turns ordinary files into a private learning loop. Start in browser stora
 |     | You do this                       | Dusori gives you                                                                                   |
 | --- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
 | 🗺️  | Check roadmap objectives          | A deterministic next-review order, progress, topic state, and seven-day recap                      |
+| 🔁  | Mark a topic reviewed             | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due |
 | ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first             |
 | 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                  |
 | 🔗  | Add `[[wikilinks]]`               | Backlinks, unresolved-link checks, and a deterministic knowledge constellation                     |
@@ -126,7 +127,7 @@ Dusori turns ordinary files into a private learning loop. Start in browser stora
 | 🧪  | Open the optional companion       | Confirmed readable-page capture and bounded Microsoft Learn search through a loopback-only service |
 | 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                          |
 
-Key-based or general web search, Ollama transforms, generated schedules, and unattended work are roadmap items—not current features.
+Key-based or general web search, Ollama transforms, and unattended work are roadmap items—not current features. Review scheduling exists only for topics you explicitly mark reviewed; Dusori generates no calendar, notification, or background work.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori workspace showing the local learning loop" width="820">
@@ -182,6 +183,7 @@ Firefox and Safari use the private browser workspace plus ZIP import/export. Fol
     ├── TUTOR.md
     ├── state.json
     ├── research.json
+    ├── review.json
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/
