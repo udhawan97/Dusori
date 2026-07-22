@@ -140,3 +140,28 @@ workspaces it reads as cluttered and hard to parse:
   the index list; new tests interact with static controls only.
 - Label halo (`paint-order: stroke`) already guards label-over-edge
   readability at any zoom.
+
+## Addendum (same day): dragging, filters, color groups
+
+User asked for an original take on the two features round one skipped.
+
+- **Sticky-pin dragging.** Dragging a node pins it where dropped (Obsidian lets
+  it drift back). Neighbors follow live via a gentle sim stir. Focused nodes
+  move with Arrow keys (8 px, Shift = 32 px) — the keyboard alternative WCAG
+  2.5.7 demands and Obsidian lacks. A "Release pins" button (disabled when no
+  pins) returns the layout to physics. Pins are session-only view state.
+- **Schema-native filters.** Kind chips (Notes, Sources, Updates, Documents,
+  Meta = roadmap+preferences) plus "Hide orphans" (zero wikilinks). Home and
+  overviews always stay visible. Filtering is visual-only (the sim keeps the
+  full set; ponytail: relayout-on-filter can come later), hides both edge
+  endpoints' edges, filters the artifact index, and shows "x of y" in the
+  panel.
+- **Color by Kind | Topic.** Topic mode assigns each topic a deterministic
+  OKLCH hue rotated from the marigold anchor (`oklch(67% 0.14 H)`), legend in
+  the panel. Extends the token grammar instead of inventing a palette.
+- **Persistence.** All of it joins the validated `dusori-graph-view` settings:
+  `hiddenKinds` (allowlist-filtered), `hideOrphans` (boolean), `colorMode`
+  (allowlist). Hostile localStorage still degrades to defaults.
+- **New module** `graph-filters.ts` owns visibility + topic hues; the sim gains
+  `moveNode`, `releasePins`, `hasUserPins`, `stir`. The controls panel becomes
+  scrollable (focusable region per repo a11y rule).
