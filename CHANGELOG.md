@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Changed
+
+- The knowledge graph is now explorable and adjustable, Obsidian-style: zoom toward the cursor (wheel or pinch, plus keyboard-operable buttons and a slider), drag to pan, and tune **Link length** and **Spacing** with sliders that persist per browser. The constellation seed is relaxed by a deterministic force pass, so linked notes pull together while everything keeps a readable distance; labels fade in as you zoom, hovering highlights a node's neighborhood, artifact dots grow with their wikilink degree, and reduced-motion users get an instant settled layout.
+
 ### Added
 
 - Curriculum import now recognizes AWS Certification exam guides: paste the content outline copied from an official AWS exam guide PDF and Dusori extracts the weighted `Domain N:` sections and `Task Statement N.N:` items, merging the duplicated summary table and rejoining lines the PDF wraps mid-sentence. When no format matches, the error now names every supported outline instead of a generic hint.

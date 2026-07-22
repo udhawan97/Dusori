@@ -33,8 +33,8 @@ interface TopicGroup {
 
 const CHILDREN_PER_RING = 10;
 const FAN_SPAN = Math.PI * 1.36;
-const LABEL_HALF_WIDTH = 60;
-const LABEL_HEIGHT = 56;
+export const LABEL_HALF_WIDTH = 60;
+export const LABEL_HEIGHT = 56;
 const BOUNDS_PADDING = 40;
 
 /**

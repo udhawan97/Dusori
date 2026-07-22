@@ -1,6 +1,14 @@
 <script lang="ts">
-  import { AlertCircle, FileText, LoaderCircle, Orbit } from '@lucide/svelte';
-  import { onMount } from 'svelte';
+  import {
+    AlertCircle,
+    FileText,
+    LoaderCircle,
+    Orbit,
+    SlidersHorizontal,
+    ZoomIn,
+    ZoomOut,
+  } from '@lucide/svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   import {
     buildWorkspaceGraph,
@@ -11,13 +19,32 @@
 
   import {
     LABEL_MAX_CHARS,
-    NODE_RADIUS,
     fitGraphLabel,
     layoutWorkspaceGraph,
     neighborIds,
     wikilinkDegrees,
     type PositionedWorkspaceGraphNode,
   } from '$lib/graph-layout';
+  import {
+    GRAPH_VIEW_LIMITS,
+    cameraLimits,
+    cameraViewBox,
+    clampCamera,
+    createGraphRelaxation,
+    fitCamera,
+    graphBounds,
+    nodeVisualRadius,
+    panCamera,
+    readGraphViewSettings,
+    screenToWorld,
+    sliderToZoom,
+    writeGraphViewSettings,
+    zoomCameraAt,
+    zoomToSlider,
+    type GraphCamera,
+    type GraphRelaxation,
+    type GraphViewSettings,
+  } from '$lib/graph-sim';
 
   export let storage: StorageAdapter;
   export let onOpen: (path: string) => void;
@@ -26,12 +53,33 @@
   let loading = true;
   let error = '';
   let selectedId: string | null = null;
+  let hoveredId: string | null = null;
   let stageWidth = 0;
+  let stageHeight = 0;
+  let controlsOpen = false;
+  let settings: GraphViewSettings = {
+    linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
+    repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
+  };
+  let simulation: GraphRelaxation | null = null;
+  let positioned: PositionedWorkspaceGraphNode[] = [];
+  let camera: GraphCamera | null = null;
+  let settleFrame = 0;
+  let pan: {
+    lastX: number;
+    lastY: number;
+    moved: boolean;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null = null;
+  let suppressBackgroundClick = false;
+
+  const reducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function nodeRadius(node: WorkspaceGraphNode): number {
-    if (node.kind === 'home') return NODE_RADIUS.home;
-    if (node.kind === 'overview') return NODE_RADIUS.overview;
-    return NODE_RADIUS.artifact;
+    return nodeVisualRadius(node, degrees.get(node.id) ?? 0);
   }
 
   function nodeRingRadius(node: WorkspaceGraphNode): number {
@@ -72,9 +120,9 @@
   }
 
   /**
-   * Ring members sit ~30px apart, far closer than any label is wide, so labelling every dot
-   * tangles the constellation. The structural nodes stay labelled; the rest reveal their label
-   * on hover, focus, or selection, and every node is listed in full in the artifact index.
+   * Labelling every dot tangles the constellation at fit zoom. Structural nodes stay
+   * labelled; the rest reveal on hover, focus, selection, or once the camera crosses the
+   * reveal zoom, and every node is listed in full in the artifact index.
    */
   function alwaysLabelled(node: WorkspaceGraphNode): boolean {
     return node.kind === 'home' || node.kind === 'overview' || isHub(node);
@@ -116,9 +164,115 @@
     }
   }
 
+  function ensureSettling(): void {
+    if (!simulation) return;
+    if (reducedMotion) {
+      simulation.settle();
+      positioned = [...simulation.nodes];
+      return;
+    }
+    if (settleFrame) return;
+    const frame = (): void => {
+      if (!simulation) {
+        settleFrame = 0;
+        return;
+      }
+      const done = simulation.tick(3);
+      positioned = [...simulation.nodes];
+      settleFrame = done ? 0 : requestAnimationFrame(frame);
+    };
+    settleFrame = requestAnimationFrame(frame);
+  }
+
+  function startSimulation(built: WorkspaceGraph): void {
+    const seed = layoutWorkspaceGraph(built);
+    simulation = createGraphRelaxation(seed.nodes, built.edges, settings, wikilinkDegrees(built));
+    positioned = [...simulation.nodes];
+    ensureSettling();
+  }
+
+  function updateSettings(patch: Partial<GraphViewSettings>): void {
+    settings = { ...settings, ...patch };
+    writeGraphViewSettings(localStorage, settings);
+    simulation?.reheat(settings);
+    ensureSettling();
+  }
+
+  function fitView(): void {
+    if (positioned.length === 0 || stageWidth === 0 || stageHeight === 0) return;
+    camera = fitCamera(graphBounds(positioned, degrees), {
+      height: stageHeight,
+      width: stageWidth,
+    });
+  }
+
+  function applyZoom(factor: number): void {
+    if (!camera) return;
+    camera = zoomCameraAt(camera, { x: camera.x, y: camera.y }, factor, limits);
+  }
+
+  function handleZoomSlider(value: number): void {
+    if (!camera) return;
+    camera = clampCamera({ ...camera, zoom: sliderToZoom(value, limits) }, limits);
+  }
+
+  function handleWheel(event: WheelEvent): void {
+    if (!camera) return;
+    event.preventDefault();
+    // A trackpad pinch reaches the page as ctrl+wheel with small deltas.
+    const factor = Math.exp(-event.deltaY * (event.ctrlKey ? 0.01 : 0.0022));
+    const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
+    const focus = screenToWorld(
+      camera,
+      { height: stageHeight, width: stageWidth },
+      { x: event.clientX - rect.left, y: event.clientY - rect.top },
+    );
+    camera = zoomCameraAt(camera, focus, factor, limits);
+  }
+
+  function handlePointerDown(event: PointerEvent): void {
+    if (!camera || event.button !== 0) return;
+    pan = {
+      lastX: event.clientX,
+      lastY: event.clientY,
+      moved: false,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerMove(event: PointerEvent): void {
+    if (!camera || !pan || event.pointerId !== pan.pointerId) return;
+    if (!pan.moved && Math.hypot(event.clientX - pan.startX, event.clientY - pan.startY) > 4) {
+      pan.moved = true;
+    }
+    if (!pan.moved) return;
+    camera = panCamera(camera, event.clientX - pan.lastX, event.clientY - pan.lastY, limits);
+    pan.lastX = event.clientX;
+    pan.lastY = event.clientY;
+  }
+
+  function handlePointerEnd(event: PointerEvent): void {
+    if (!pan || event.pointerId !== pan.pointerId) return;
+    suppressBackgroundClick = pan.moved;
+    pan = null;
+  }
+
+  function handleBackgroundClick(): void {
+    if (suppressBackgroundClick) {
+      suppressBackgroundClick = false;
+      return;
+    }
+    selectedId = null;
+  }
+
   onMount(async () => {
+    settings = readGraphViewSettings(localStorage);
     try {
       graph = await buildWorkspaceGraph(storage);
+      startSimulation(graph);
     } catch (cause) {
       error = cause instanceof Error ? cause.message : 'The graph could not be built.';
     } finally {
@@ -126,19 +280,30 @@
     }
   });
 
-  $: layout = layoutWorkspaceGraph(graph ?? { edges: [], nodes: [], unresolvedLinks: [] });
-  // A viewBox sized to the node bounds alone gets stretched to fill the stage, magnifying every
-  // label with it. Widening the box to the measured stage keeps one user unit at one CSS pixel,
-  // so labels stay at their token size and the layout is centred in the leftover space.
-  $: viewBoxWidth = Math.max(layout.width, stageWidth);
-  $: viewBoxX = -(viewBoxWidth - layout.width) / 2;
-  $: positioned = layout.nodes;
+  onDestroy(() => {
+    if (settleFrame) cancelAnimationFrame(settleFrame);
+  });
+
+  $: degrees = graph ? wikilinkDegrees(graph) : new Map<string, number>();
   $: nodesById = new Map(positioned.map((node) => [node.id, node]));
   $: homeNode = positioned.find((node) => node.kind === 'home');
-  $: degrees = graph ? wikilinkDegrees(graph) : new Map<string, number>();
+  $: stage = { height: stageHeight, width: stageWidth };
+  $: bounds = graphBounds(positioned, degrees);
+  $: fitZoom = stageWidth > 0 && stageHeight > 0 ? fitCamera(bounds, stage).zoom : 1;
+  $: limits = cameraLimits(fitZoom, bounds);
+  $: if (!camera && stageWidth > 0 && stageHeight > 0 && positioned.length > 0) fitView();
+  $: viewBox = camera
+    ? cameraViewBox(camera, stage)
+    : `${bounds.minX} ${bounds.minY} ${bounds.maxX - bounds.minX} ${bounds.maxY - bounds.minY}`;
+  // Obsidian-style text fade: past 1.4x of fit zoom every label is worth its pixels.
+  $: showAllLabels = camera !== null && camera.zoom >= fitZoom * 1.4;
+  // Labels hold near token size while zoomed out instead of shrinking with the world.
+  $: labelScale = camera ? Math.min(1.8, Math.max(1, 1 / camera.zoom)) : 1;
+  $: zoomSliderValue = camera ? zoomToSlider(camera.zoom, limits) : 0;
   // Select-to-focus fading after chanhx/crabviz (AGPL-3.0): idea only,
   // implemented from scratch; no code copied or derived.
   $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
+  $: hoverNeighbors = graph && hoveredId && !selectedId ? neighborIds(graph, hoveredId) : null;
   $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
 </script>
 
@@ -183,68 +348,144 @@
       </div>
     {/if}
     <div class="graph-stage">
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <svg
-        class="constellation"
+      <div
+        class="constellation-stage"
+        class:panning={pan?.moved}
         bind:clientWidth={stageWidth}
-        role="group"
-        aria-label="Workspace knowledge graph"
-        viewBox={`${viewBoxX} 0 ${viewBoxWidth} ${layout.height}`}
-        preserveAspectRatio="xMidYMid meet"
-        onclick={() => (selectedId = null)}
-        onkeydown={(event) => {
-          if (event.key === 'Escape') selectedId = null;
-        }}
+        bind:clientHeight={stageHeight}
       >
-        <defs>
-          <radialGradient id="dusori-glow">
-            <stop offset="0" stop-color="var(--graph-glow)" stop-opacity="0.22" />
-            <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
-          </radialGradient>
-        </defs>
-        {#if homeNode}
-          <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
-        {/if}
-        {#each graph.edges as edge (edge.id)}
-          {@const source = nodesById.get(edge.source)}
-          {@const target = nodesById.get(edge.target)}
-          {#if source && target}
-            <path
-              class:link={edge.kind === 'links'}
-              class:faded={selectedId !== null &&
-                edge.source !== selectedId &&
-                edge.target !== selectedId}
-              d={edgePath(source, target)}
-            />
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <svg
+          class="constellation"
+          class:labels-revealed={showAllLabels}
+          style={`--graph-label-scale: ${labelScale}`}
+          role="group"
+          aria-label="Workspace knowledge graph"
+          {viewBox}
+          preserveAspectRatio="xMidYMid meet"
+          onclick={handleBackgroundClick}
+          onkeydown={(event) => {
+            if (event.key === 'Escape') selectedId = null;
+          }}
+          onwheel={handleWheel}
+          onpointerdown={handlePointerDown}
+          onpointermove={handlePointerMove}
+          onpointerup={handlePointerEnd}
+          onpointercancel={handlePointerEnd}
+        >
+          <defs>
+            <radialGradient id="dusori-glow">
+              <stop offset="0" stop-color="var(--graph-glow)" stop-opacity="0.22" />
+              <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          {#if homeNode}
+            <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
           {/if}
-        {/each}
-        {#each positioned as node (node.id)}
-          <g
-            class:home={node.kind === 'home'}
-            class:overview={node.kind === 'overview'}
-            class:hub={isHub(node)}
-            class:labelled={alwaysLabelled(node)}
-            class:selected={selectedId === node.id}
-            class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
-            class="node"
-            role="button"
-            tabindex="0"
-            aria-label={nodeAriaLabel(node)}
-            aria-pressed={selectedId === node.id}
-            onclick={(event) => handleNodeClick(event, node.id)}
-            onkeydown={(event) => handleNodeKeydown(event, node.id)}
-          >
-            <title>{nodeTitle(node)}</title>
-            <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
-            <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
-            <text x={node.x} y={node.y + (node.kind === 'home' ? 56 : 39)}
-              >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
-                  · hub</tspan
-                >{/if}</text
+          {#each graph.edges as edge (edge.id)}
+            {@const source = nodesById.get(edge.source)}
+            {@const target = nodesById.get(edge.target)}
+            {#if source && target}
+              <path
+                class:link={edge.kind === 'links'}
+                class:faded={selectedId !== null &&
+                  edge.source !== selectedId &&
+                  edge.target !== selectedId}
+                class:dimmed={hoverNeighbors !== null &&
+                  !(hoverNeighbors.has(edge.source) && hoverNeighbors.has(edge.target))}
+                d={edgePath(source, target)}
+              />
+            {/if}
+          {/each}
+          {#each positioned as node (node.id)}
+            <g
+              class:home={node.kind === 'home'}
+              class:overview={node.kind === 'overview'}
+              class:hub={isHub(node)}
+              class:labelled={alwaysLabelled(node)}
+              class:selected={selectedId === node.id}
+              class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
+              class:dimmed={hoverNeighbors !== null && !hoverNeighbors.has(node.id)}
+              class="node"
+              role="button"
+              tabindex="0"
+              aria-label={nodeAriaLabel(node)}
+              aria-pressed={selectedId === node.id}
+              onclick={(event) => handleNodeClick(event, node.id)}
+              onkeydown={(event) => handleNodeKeydown(event, node.id)}
+              onpointerenter={() => (hoveredId = node.id)}
+              onpointerleave={() => (hoveredId = null)}
             >
-          </g>
-        {/each}
-      </svg>
+              <title>{nodeTitle(node)}</title>
+              <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
+              <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
+              <text x={node.x} y={node.y + nodeRingRadius(node) + 16}
+                >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
+                    · hub</tspan
+                  >{/if}</text
+              >
+            </g>
+          {/each}
+        </svg>
+
+        <div class="graph-controls">
+          <button
+            type="button"
+            class="controls-toggle"
+            aria-label="View controls"
+            aria-expanded={controlsOpen}
+            onclick={() => (controlsOpen = !controlsOpen)}
+          >
+            <SlidersHorizontal aria-hidden="true" size={18} />
+          </button>
+          {#if controlsOpen}
+            <div class="controls-panel" role="group" aria-label="Graph view controls">
+              <div class="zoom-row">
+                <button type="button" aria-label="Zoom out" onclick={() => applyZoom(1 / 1.3)}>
+                  <ZoomOut aria-hidden="true" size={16} />
+                </button>
+                <input
+                  type="range"
+                  aria-label="Zoom level"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={zoomSliderValue}
+                  oninput={(event) => handleZoomSlider(Number(event.currentTarget.value))}
+                />
+                <button type="button" aria-label="Zoom in" onclick={() => applyZoom(1.3)}>
+                  <ZoomIn aria-hidden="true" size={16} />
+                </button>
+              </div>
+              <label class="control-slider">
+                <span>Link length</span>
+                <input
+                  type="range"
+                  min={GRAPH_VIEW_LIMITS.linkDistance.min}
+                  max={GRAPH_VIEW_LIMITS.linkDistance.max}
+                  step={GRAPH_VIEW_LIMITS.linkDistance.step}
+                  value={settings.linkDistance}
+                  oninput={(event) =>
+                    updateSettings({ linkDistance: Number(event.currentTarget.value) })}
+                />
+              </label>
+              <label class="control-slider">
+                <span>Spacing</span>
+                <input
+                  type="range"
+                  min={GRAPH_VIEW_LIMITS.repelStrength.min}
+                  max={GRAPH_VIEW_LIMITS.repelStrength.max}
+                  step={GRAPH_VIEW_LIMITS.repelStrength.step}
+                  value={settings.repelStrength}
+                  oninput={(event) =>
+                    updateSettings({ repelStrength: Number(event.currentTarget.value) })}
+                />
+              </label>
+              <button type="button" class="fit-view" onclick={fitView}>Fit view</button>
+            </div>
+          {/if}
+        </div>
+      </div>
 
       <aside class="artifact-index" aria-label="Graph artifact index">
         <p class="kicker">Open an artifact</p>
@@ -274,6 +515,7 @@
 <style>
   /* Hallmark · component: knowledge graph · genre: atmospheric editorial · theme: design.md
    * states: default · hover · focus · active · disabled · loading · error · success/settled
+   *         · controls open/closed · panning · zoomed label reveal · reduced-motion instant settle
    * contrast: pass · pre-emit critique: P5 H5 E5 S5 R5 V5
    */
   .knowledge-graph {
@@ -343,10 +585,116 @@
     outline-offset: 2px;
   }
 
+  .constellation-stage {
+    position: relative;
+    height: clamp(24rem, 62dvh, 36rem);
+    overflow: hidden;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+  }
+
   .constellation {
+    display: block;
     width: 100%;
-    min-height: 25rem;
-    overflow: visible;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .constellation-stage.panning .constellation {
+    cursor: grabbing;
+  }
+
+  .graph-controls {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2xs);
+  }
+
+  .controls-toggle {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-marigold);
+    cursor: pointer;
+    place-items: center;
+  }
+
+  .controls-toggle[aria-expanded='true'] {
+    border-color: var(--color-marigold);
+  }
+
+  .controls-panel {
+    display: grid;
+    width: 15rem;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    gap: var(--space-xs);
+  }
+
+  .zoom-row {
+    display: grid;
+    align-items: center;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--space-2xs);
+  }
+
+  .zoom-row button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    place-items: center;
+  }
+
+  .control-slider {
+    display: grid;
+    min-height: 2.75rem;
+    align-content: center;
+    gap: var(--space-3xs);
+  }
+
+  .control-slider span {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .controls-panel input[type='range'] {
+    width: 100%;
+    min-height: 1.25rem;
+    accent-color: var(--color-marigold);
+  }
+
+  .fit-view {
+    min-height: 2.75rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: 400 var(--text-sm) / 1 var(--font-body);
+  }
+
+  .controls-toggle:focus-visible,
+  .zoom-row button:focus-visible,
+  .fit-view:focus-visible,
+  .controls-panel input[type='range']:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   .halo {
@@ -431,7 +779,8 @@
   text {
     fill: var(--color-muted);
     font-family: var(--font-mono);
-    font-size: 14px;
+    /* Held near token size while zoomed out; grows with the world past 1x. */
+    font-size: calc(14px * var(--graph-label-scale, 1));
     /* A label may still pass an artifact dot; the paper halo keeps both readable. */
     paint-order: stroke;
     stroke: var(--color-paper);
@@ -449,6 +798,20 @@
   .node:not(.labelled):focus-visible text,
   .node:not(.labelled).selected text {
     opacity: 1;
+  }
+
+  .constellation.labels-revealed .node:not(.labelled) text {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .node.dimmed {
+      opacity: 0.35;
+    }
+
+    path.dimmed {
+      opacity: 0.2;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
