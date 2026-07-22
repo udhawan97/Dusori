@@ -482,6 +482,36 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
 
+test('graph view zooms, adjusts forces, and remembers the sliders', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Graph' }).click();
+  const svg = page.locator('svg.constellation');
+  await expect(svg).toBeVisible();
+  await expect(svg).toHaveAttribute('viewBox', /.+/u);
+  const fitted = await svg.getAttribute('viewBox');
+
+  await page.getByRole('button', { name: 'View controls' }).click();
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  const zoomed = await svg.getAttribute('viewBox');
+  expect(zoomed).not.toBe(fitted);
+
+  await page.getByLabel('Link length').fill('220');
+  await page.getByLabel('Spacing').fill('0.9');
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  await page.getByRole('button', { name: 'View controls' }).click();
+  await expect(page.getByLabel('Link length')).toHaveValue('220');
+  await expect(page.getByLabel('Spacing')).toHaveValue('0.9');
+
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await page.getByRole('button', { name: 'Fit view' }).click();
+  await expect(svg).toHaveAttribute('viewBox', /.+/u);
+});
+
 test('a workspace can grow past its first topic', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
