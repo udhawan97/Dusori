@@ -29,6 +29,17 @@ export interface WorkspaceGraph {
   unresolvedLinks: UnresolvedWorkspaceLink[];
 }
 
+export function backlinksFor(graph: WorkspaceGraph, targetPath: string): WorkspaceGraphNode[] {
+  const linkedSourceIds = new Set(
+    graph.edges
+      .filter((edge) => edge.kind === 'links' && edge.target === targetPath)
+      .map((edge) => edge.source),
+  );
+  return graph.nodes
+    .filter((node) => linkedSourceIds.has(node.id))
+    .sort((left, right) => left.path.localeCompare(right.path));
+}
+
 function topicSlug(path: string): string | undefined {
   const match = /^Topics\/([^/]+)\//u.exec(path);
   return match?.[1];

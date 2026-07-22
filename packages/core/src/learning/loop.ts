@@ -175,7 +175,7 @@ export async function updateRoadmapObjective(
     content,
     proposed.currentHash,
     now,
-    `- ${completed ? 'Completed' : 'Reopened'} “${objective.title}” in [[../../roadmap]].`,
+    `- ${completed ? 'Completed' : 'Reopened'} “${objective.title}” in [[../../../roadmap]].`,
   );
   return { content, progress: progressFromRoadmap(content), state, status: 'updated' };
 }
