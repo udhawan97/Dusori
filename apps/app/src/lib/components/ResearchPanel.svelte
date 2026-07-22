@@ -4,7 +4,9 @@
 
   import {
     addSource,
+    applyAiRerank,
     briefNoteTitle,
+    buildAiBrief,
     buildDeterministicBrief,
     buildResearchQuery,
     buildUpgradedContent,
@@ -13,7 +15,9 @@
     dismissSuggestion,
     readTopicProgress,
     runResearchAgent,
+    type AiCapability,
     type BriefSource,
+    type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
     type ResearchCapture,
@@ -31,10 +35,33 @@
   export let topicTitle: string;
   export let onSourceSaved: () => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
+  export let ai: CompanionAiClient | null = null;
 
   // A companion upgrades Microsoft Learn to ranked search and unlocks the two providers the
   // browser cannot reach itself, so the list is built rather than declared.
   $: providers = createResearchProviders({ companion });
+
+  // The AI chip appears only when the companion reports a configured provider; keys stay in
+  // the companion's environment and the app only ever learns an id and a model name.
+  let aiCapability: AiCapability | null = null;
+  $: void readAiCapability(ai);
+
+  async function readAiCapability(client: CompanionAiClient | null): Promise<void> {
+    aiCapability = client ? ((await client.capabilities())[0] ?? null) : null;
+  }
+
+  // Reuses the provider consent machinery: same storage key shape, same dialog, its own scope.
+  const aiConsent: ResearchProvider = {
+    capture: () => Promise.reject(new Error('not a search provider')),
+    capturedVia: () => 'ai',
+    consentScope: 'companion-ai',
+    describeMeta: () => '',
+    disclosure:
+      "Ranking sends each found candidate's title, summary, and address, plus this topic's name and the objective's text, to the AI provider configured in your local companion. Nothing else from your workspace is sent. Allow on this device?",
+    id: 'companion-ai',
+    label: 'AI ranking',
+    search: () => Promise.resolve([]),
+  };
 
   const networkAlternative =
     'Search needs a network connection. Paste text or add a URL reference from the source library instead.';
@@ -71,6 +98,7 @@
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
   $: consented = readConsented(providers, consentTick);
   $: enabledProviders = providers.filter((provider) => consented.has(provider.id));
+  $: aiAllowed = readConsented([aiConsent], consentTick).has(aiConsent.id);
   $: shortlist = runResult?.shortlist ?? [];
   $: overflow = runResult?.overflow ?? [];
 
@@ -152,18 +180,43 @@
     showOverflow = false;
     actionError = null;
     try {
-      runResult = await runResearchAgent({
+      const query = buildResearchQuery(topicTitle, selectedObjective);
+      const result = await runResearchAgent({
         fetchImpl: fetch,
         providers: enabledProviders,
-        query: buildResearchQuery(topicTitle, selectedObjective),
+        query,
         storage,
         topicSlug,
       });
+      runResult = await withAiRanking(query, result);
     } catch {
       runError = networkAlternative;
       runResult = null;
     } finally {
       running = false;
+    }
+  }
+
+  // Advisory only: the AI reorders and annotates what the deterministic ranker found; a
+  // failure keeps the deterministic order and says so, and never fails the run.
+  async function withAiRanking(
+    query: ReturnType<typeof buildResearchQuery>,
+    result: ResearchRunResult,
+  ): Promise<ResearchRunResult> {
+    if (!ai || !aiCapability || !hasConsent(aiConsent)) return result;
+    const candidates = [...result.shortlist, ...result.overflow];
+    if (candidates.length === 0) return result;
+    try {
+      const reranked = applyAiRerank(candidates, await ai.rerank(query, candidates));
+      const limit = result.shortlist.length;
+      return {
+        ...result,
+        overflow: reranked.slice(limit),
+        shortlist: reranked.slice(0, limit),
+      };
+    } catch {
+      notices = [...notices, 'AI ranking was unavailable; showing the deterministic order.'];
+      return result;
     }
   }
 
@@ -320,9 +373,23 @@
     try {
       const now = new Date();
       const query = buildResearchQuery(topicTitle, selectedObjective);
-      const title = briefNoteTitle(query, now);
-      const note = await createNote(storage, topicSlug, title, now, {
-        content: buildDeterministicBrief(query, approved, now),
+      let content: string;
+      if (ai && aiCapability && hasConsent(aiConsent)) {
+        try {
+          content = buildAiBrief(
+            query,
+            await ai.writeBrief(query, approved),
+            aiCapability.model,
+            now,
+          );
+        } catch {
+          content = buildDeterministicBrief(query, approved, now, { aiUnavailable: true });
+        }
+      } else {
+        content = buildDeterministicBrief(query, approved, now);
+      }
+      const note = await createNote(storage, topicSlug, briefNoteTitle(query, now), now, {
+        content,
       });
       briefPath = note.path;
       onSourceSaved();
@@ -394,6 +461,24 @@
             {/if}
           </li>
         {/each}
+        {#if aiCapability}
+          <li>
+            {#if aiAllowed}
+              <span class="provider-chip allowed">
+                <Check aria-hidden="true" size={14} />
+                AI ranking · {aiCapability.model}
+              </span>
+            {:else}
+              <button
+                class="provider-chip"
+                disabled={running}
+                onclick={(event) => void requestConsent(aiConsent, event.currentTarget)}
+              >
+                Allow AI ranking · {aiCapability.model}
+              </button>
+            {/if}
+          </li>
+        {/if}
       </ul>
     </div>
 
@@ -448,6 +533,9 @@
             {/if}
             {#if candidate.reasons.length > 0}
               <p class="result-signals">{candidate.reasons.join(' · ')}</p>
+            {/if}
+            {#if candidate.aiNote}
+              <p class="ai-note">AI: {candidate.aiNote}</p>
             {/if}
             {#if providerFor(candidate).describeMeta(candidate)}
               <p class="result-meta">{providerFor(candidate).describeMeta(candidate)}</p>
@@ -852,6 +940,13 @@
   .result-signals {
     color: var(--color-accent-text);
     font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .ai-note {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-style: italic;
     line-height: 1.45;
   }
 

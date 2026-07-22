@@ -1,4 +1,5 @@
 export * from './agent.js';
+export * from './ai.js';
 export * from './brief.js';
 export * from './companion.js';
 export * from './plan.js';

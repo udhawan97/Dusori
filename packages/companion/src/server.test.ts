@@ -404,3 +404,129 @@ describe('companion boundary', () => {
     expect(response.json().reason).toBe('fetch-failed');
   });
 });
+
+describe('ai routes', () => {
+  it('gates every AI route behind the token', async () => {
+    const { server } = await fixture();
+    for (const [method, url] of [
+      ['GET', '/api/ai/capabilities'],
+      ['POST', '/api/ai/rerank'],
+      ['POST', '/api/ai/brief'],
+    ] as const) {
+      expect((await server.inject({ method, url })).statusCode).toBe(401);
+    }
+  });
+
+  it('reports no providers when nothing is configured', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      ai: { env: {} },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+    const response = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/ai/capabilities',
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ providers: [] });
+
+    const rerank = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: {
+        candidates: [{ key: 'a', snippet: 's', title: 't', url: 'https://a' }],
+        query: 'q',
+      },
+      url: '/api/ai/rerank',
+    });
+    expect(rerank.statusCode).toBe(503);
+    expect(rerank.json().reason).toBe('not-configured');
+  });
+
+  it('reranks through the configured provider and never leaks the key', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const fetchImpl = (async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: '[{"key":"a","score":0.8,"note":"Solid"}]' } }],
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 },
+      )) as unknown as typeof fetch;
+    const server = await createServer({
+      ai: { env: { OPENAI_API_KEY: 'sk-secret-key' }, fetchImpl },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const capabilities = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/ai/capabilities',
+    });
+    expect(capabilities.json()).toEqual({ providers: [{ id: 'openai', model: 'gpt-4o-mini' }] });
+    expect(capabilities.body).not.toContain('sk-secret-key');
+
+    const rerank = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: {
+        candidates: [{ key: 'a', snippet: 's', title: 't', url: 'https://a' }],
+        query: 'q',
+      },
+      url: '/api/ai/rerank',
+    });
+    expect(rerank.statusCode).toBe(200);
+    expect(rerank.json()).toEqual({ results: [{ aiScore: 0.8, key: 'a', note: 'Solid' }] });
+    expect(rerank.body).not.toContain('sk-secret-key');
+  });
+
+  it('writes a brief and surfaces AI failure as a 502 with a friendly message', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    let call = 0;
+    const fetchImpl = (async () => {
+      call += 1;
+      if (call === 1) {
+        return new Response(JSON.stringify({ response: '## Reading order\n\nStart here.' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      return new Response('upstream broke', { status: 500 });
+    }) as unknown as typeof fetch;
+    const server = await createServer({
+      ai: { env: { OLLAMA_MODEL: 'gemma3:4b' }, fetchImpl },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const payload = {
+      query: 'q',
+      sources: [{ reasons: ['312 points'], title: 'T', url: 'https://a' }],
+    };
+    const brief = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload,
+      url: '/api/ai/brief',
+    });
+    expect(brief.statusCode).toBe(200);
+    expect(brief.json().brief).toContain('Reading order');
+
+    const failed = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload,
+      url: '/api/ai/brief',
+    });
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json().reason).toBe('ai-failed');
+  });
+});

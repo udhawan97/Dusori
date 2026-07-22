@@ -14,6 +14,18 @@ Options:
   -h, --help     Show this help
   -v, --version  Print the installed version
 
+Optional environment variables:
+  RESEARCH_WEB_SEARCH  Web search upstream: brave | tavily | searxng
+  BRAVE_API_KEY        Brave Search key (free tier works)
+  TAVILY_API_KEY       Tavily key (free tier works)
+  SEARXNG_URL          A SearXNG instance for keyless, open-source web search
+  OLLAMA_MODEL         Enable local AI ranking with this Ollama model (e.g. gemma3:4b)
+  OLLAMA_URL           Ollama address, default http://127.0.0.1:11434
+  ANTHROPIC_API_KEY    Enable cloud AI ranking via Anthropic (ANTHROPIC_MODEL overrides)
+  OPENAI_API_KEY       Enable cloud AI ranking via OpenAI (OPENAI_MODEL overrides)
+  AI_PROVIDER          Force one of ollama | anthropic | openai when several are set
+
+Keys never leave this process; the browser app only learns which provider is active.
 The companion binds only to loopback, opens a session-scoped browser app, and stops with its terminal process.
 `;
 

@@ -6,6 +6,9 @@ export interface RankedCandidate extends ResearchCandidate {
   rankScore: number;
   reasons: string[];
   isNew: boolean;
+  /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
+  aiScore?: number;
+  aiNote?: string;
 }
 
 export interface RankOptions {

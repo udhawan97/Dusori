@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { briefNoteTitle, buildDeterministicBrief, type BriefSource } from './brief.js';
+import {
+  briefNoteTitle,
+  buildAiBrief,
+  buildDeterministicBrief,
+  type BriefSource,
+} from './brief.js';
 import { buildResearchQuery } from './plan.js';
 
 const query = buildResearchQuery('TypeScript', { title: 'Understand generics' });
@@ -86,5 +91,15 @@ describe('buildDeterministicBrief', () => {
 
   it('refuses to build a brief with no approved sources', () => {
     expect(() => buildDeterministicBrief(query, [], now)).toThrow(/approve/iu);
+  });
+});
+
+describe('buildAiBrief', () => {
+  it('marks the note generated and names the model that wrote it', () => {
+    const brief = buildAiBrief(query, '## Reading order\n\nStart here.', 'gemma3:4b', now);
+    expect(brief).toContain('generated: research-brief');
+    expect(brief).toContain('using gemma3:4b');
+    expect(brief).toContain('## Reading order');
+    expect(brief).toContain('not a verdict');
   });
 });

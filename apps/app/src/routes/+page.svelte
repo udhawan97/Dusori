@@ -24,6 +24,7 @@
   import {
     WorkspaceSchema,
     acceptMarkdownUpdate,
+    createCompanionAiClient,
     createCompanionResearchClient,
     createNote,
     createTopic,
@@ -34,6 +35,7 @@
     proposeMarkdownUpdate,
     readMachineFile,
     replaceWorkspace,
+    type CompanionAiClient,
     type CompanionResearchClient,
     type MarkdownConflict,
     type StorageAdapter,
@@ -78,6 +80,7 @@
   let mobileNavOpen = false;
   let companionStatus = 'Not connected';
   let companionClient: CompanionResearchClient | null = null;
+  let companionAiClient: CompanionAiClient | null = null;
   let sourceRevision = 0;
   let learningRevision = 0;
   let obsidianGuideOpen = false;
@@ -174,6 +177,7 @@
     const companion = resolveCompanionOrigin(requested, location.origin);
     if (!companion) {
       companionClient = null;
+      companionAiClient = null;
       companionStatus =
         'Connection was denied. Allow local-network access, or open the URL printed by npx @udhawan97/dusori.';
       return;
@@ -186,9 +190,11 @@
       const health: unknown = await response.json().catch(() => null);
       if (!isCompanionHealth(health)) throw new Error('Unrecognized companion health response.');
       companionClient = createCompanionResearchClient({ baseUrl: companion, token });
+      companionAiClient = createCompanionAiClient({ baseUrl: companion, token });
       companionStatus = 'Connected for this session';
     } catch {
       companionClient = null;
+      companionAiClient = null;
       companionStatus =
         'Connection was denied. Allow local-network access, or open the URL printed by npx @udhawan97/dusori.';
     }
@@ -1052,6 +1058,7 @@
                 selectedSlug}
               onSourceSaved={refreshSources}
               companion={companionClient}
+              ai={companionAiClient}
             />
           {/key}
         </div>

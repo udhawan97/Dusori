@@ -8,6 +8,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { appBasePath } from '../../../config/site.mjs';
 
 import { canonicalRoot } from './filesystem.js';
+import { aiRoutes, type AiRoutesOptions } from './routes/ai.js';
 import { researchRoutes, type ResearchRoutesOptions } from './routes/research.js';
 import { workspaceRoutes } from './routes/workspace.js';
 import { companionVersion } from './version.js';
@@ -18,6 +19,7 @@ export interface ServerOptions {
   token: string;
   hostedOrigin?: string;
   research?: ResearchRoutesOptions;
+  ai?: AiRoutesOptions;
 }
 
 function bearerToken(header: string | undefined): string | null {
@@ -77,6 +79,7 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
 
   await server.register(workspaceRoutes, { root });
   await server.register(researchRoutes, options.research ?? {});
+  await server.register(aiRoutes, options.ai ?? {});
 
   const staticDirectory =
     options.staticDirectory ?? resolve(import.meta.dirname, `../public${appBasePath}`);
