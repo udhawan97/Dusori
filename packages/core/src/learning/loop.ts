@@ -8,7 +8,7 @@ import {
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, type TopicState, type Workspace } from '../schemas/workspace.js';
 import { topicRoot } from '../workspace/paths.js';
-import { readReviewSchedule, utcDateOf, type ReviewSchedule } from './review.js';
+import { localDateOf, readReviewSchedule, type ReviewSchedule } from './review.js';
 
 const taskLine = /^(\s*)[-*+]\s+\[([ xX])\]\s+(.+?)\s*$/u;
 const sectionLine = /^(#{2,6})\s+(.+?)\s*#*\s*$/u;
@@ -297,7 +297,7 @@ export function buildReviewQueue(
   limit = 5,
   now = new Date(),
 ): ReviewQueueItem[] {
-  const today = utcDateOf(now);
+  const today = localDateOf(now);
   const statusPriority: Record<TopicState['status'], number> = {
     active: 0,
     paused: 1,
@@ -355,7 +355,7 @@ export function nextScheduledReview(
   summaries: TodayTopicSummary[],
   now = new Date(),
 ): NextScheduledReview | null {
-  const today = utcDateOf(now);
+  const today = localDateOf(now);
   const upcoming = summaries
     .filter(
       (summary): summary is TodayTopicSummary & { review: ReviewSchedule } =>

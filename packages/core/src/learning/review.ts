@@ -33,8 +33,12 @@ export function reviewFilePath(topicSlug: string): string {
   return `${topicRoot(topicSlug)}/review.json`;
 }
 
-export function utcDateOf(now: Date): string {
-  return now.toISOString().slice(0, 10);
+/** The device's local calendar day (not UTC) as YYYY-MM-DD — "what day is it for the learner". */
+export function localDateOf(now: Date): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function addDaysUtc(date: string, days: number): string {
@@ -53,7 +57,7 @@ export function nextReviewSchedule(
     outcome === 'again' || current === null
       ? 0
       : Math.min(current.repetition + 1, REVIEW_INTERVALS_DAYS.length - 1);
-  const lastReviewedOn = utcDateOf(now);
+  const lastReviewedOn = localDateOf(now);
   return ReviewScheduleSchema.parse({
     schemaVersion,
     topicSlug,

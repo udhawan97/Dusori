@@ -218,33 +218,16 @@ describe('spaced review queue', () => {
       new Date('2026-07-13T12:00:00.000Z'),
     );
     const workspace = scheduled.workspace;
-    await markTopicReviewed(
-      storage,
-      overdue.topicSlug,
-      'good',
-      new Date('2026-07-15T12:00:00.000Z'),
-    );
-    await markTopicReviewed(
-      storage,
-      dueToday.topicSlug,
-      'good',
-      new Date('2026-07-19T12:00:00.000Z'),
-    );
-    await markTopicReviewed(
-      storage,
-      scheduled.topicSlug,
-      'good',
-      new Date('2026-07-18T12:00:00.000Z'),
-    );
-    await markTopicReviewed(
-      storage,
-      scheduled.topicSlug,
-      'good',
-      new Date('2026-07-19T12:00:00.000Z'),
-    );
+    // Local-component construction (not `Z`-suffixed) so `buildReviewQueue`'s
+    // local-day "today" comparison is unambiguous regardless of the test
+    // runner's timezone.
+    await markTopicReviewed(storage, overdue.topicSlug, 'good', new Date(2026, 6, 15, 12, 0, 0));
+    await markTopicReviewed(storage, dueToday.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
+    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date(2026, 6, 18, 12, 0, 0));
+    await markTopicReviewed(storage, scheduled.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
 
     const summaries = await buildTodaySummary(storage, workspace);
-    const asOf = new Date('2026-07-20T12:00:00.000Z');
+    const asOf = new Date(2026, 6, 20, 12, 0, 0);
     const queue = buildReviewQueue(summaries, 5, asOf);
 
     expect(queue.map((item) => item.title)).toEqual([
@@ -277,22 +260,12 @@ describe('spaced review queue', () => {
       'Paused scheduled',
       new Date('2026-07-17T12:00:00.000Z'),
     );
-    await markTopicReviewed(
-      storage,
-      paused.topicSlug,
-      'good',
-      new Date('2026-07-18T12:00:00.000Z'),
-    );
-    await markTopicReviewed(
-      storage,
-      paused.topicSlug,
-      'good',
-      new Date('2026-07-19T12:00:00.000Z'),
-    );
+    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date(2026, 6, 18, 12, 0, 0));
+    await markTopicReviewed(storage, paused.topicSlug, 'good', new Date(2026, 6, 19, 12, 0, 0));
     await setTopicStatus(storage, paused.topicSlug, 'paused', new Date('2026-07-19T13:00:00.000Z'));
 
     const summaries = await buildTodaySummary(storage, paused.workspace);
-    const asOf = new Date('2026-07-20T12:00:00.000Z');
+    const asOf = new Date(2026, 6, 20, 12, 0, 0);
     const queue = buildReviewQueue(summaries, 5, asOf);
 
     expect(queue.map((item) => item.title)).toEqual(['Active fresh', 'Paused scheduled']);

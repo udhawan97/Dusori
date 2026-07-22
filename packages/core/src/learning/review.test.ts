@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addDaysUtc,
+  localDateOf,
   markTopicReviewed,
   nextReviewSchedule,
   readReviewSchedule,
   reviewFilePath,
-  utcDateOf,
   type ReviewSchedule,
 } from './review.js';
 
@@ -120,7 +120,10 @@ class ConflictNTimesThenCount implements StorageAdapter {
   }
 }
 
-const on = new Date('2026-07-21T12:00:00.000Z');
+// Built from local-time components (not a `Z`-suffixed ISO string) so the
+// intended calendar day is unambiguous no matter what timezone the test
+// runner is in: nextReviewSchedule now derives the day from local getters.
+const on = new Date(2026, 6, 21, 12, 0, 0);
 
 describe('spaced review schedule math', () => {
   it('starts every first review one day out, for both outcomes', () => {
@@ -168,15 +171,42 @@ describe('spaced review schedule math', () => {
   });
 
   it('crosses month and year boundaries in UTC', () => {
+    // addDaysUtc is pure YYYY-MM-DD string arithmetic, not timezone-sensitive.
     expect(addDaysUtc('2026-12-31', 1)).toBe('2027-01-01');
     expect(addDaysUtc('2026-01-30', 3)).toBe('2026-02-02');
     expect(addDaysUtc('2028-02-28', 1)).toBe('2028-02-29');
-    expect(utcDateOf(new Date('2026-07-21T23:59:59.000Z'))).toBe('2026-07-21');
+  });
+});
+
+describe('local calendar day', () => {
+  it('derives the day from local time components, not UTC', () => {
+    expect(localDateOf(new Date(2026, 6, 21, 0, 30))).toBe('2026-07-21');
+    expect(localDateOf(new Date(2026, 6, 21, 23, 59))).toBe('2026-07-21');
+    expect(localDateOf(new Date(2026, 0, 5, 12, 0))).toBe('2026-01-05');
+    expect(localDateOf(new Date(2026, 11, 31, 9, 0))).toBe('2026-12-31');
+  });
+
+  // Regression test for the UTC-vs-local bug: a review pressed early in the
+  // local morning (e.g. Tokyo, UTC+9) lands on the PREVIOUS calendar day in
+  // UTC. The old code stamped lastReviewedOn from `now.toISOString()`, so on
+  // any machine east of UTC this moment would have been recorded as July 20,
+  // not July 21. Building `now` from local components (not a `Z` string)
+  // keeps the expectation honest regardless of the runner's own timezone —
+  // localDateOf must read the same local calendar day the learner saw.
+  it('stamps lastReviewedOn/dueOn from the local day, matching the local-morning scenario', () => {
+    const localMorning = new Date(2026, 6, 21, 0, 1, 0); // 00:01 local time, July 21
+    const schedule = nextReviewSchedule(null, 'good', 'ai-fundamentals', localMorning);
+    expect(schedule.lastReviewedOn).toBe('2026-07-21');
+    expect(schedule.dueOn).toBe('2026-07-22');
   });
 });
 
 describe('spaced review persistence', () => {
-  const created = new Date('2026-07-20T12:00:00.000Z');
+  // Local-component construction, kept close in time to `created` so the two
+  // stay on the same UTC calendar day on any machine (the dated update log
+  // path is still UTC-based and unaffected by this fix) while each is
+  // unambiguous about its own intended local day.
+  const created = new Date(2026, 6, 20, 12, 0, 0);
 
   it('creates review.json on the first review and logs the outcome', async () => {
     const storage = new MemoryStorageAdapter();
@@ -187,7 +217,7 @@ describe('spaced review persistence', () => {
       storage,
       topic.topicSlug,
       'good',
-      new Date('2026-07-20T13:00:00.000Z'),
+      new Date(2026, 6, 20, 13, 0, 0),
     );
 
     expect(schedule).toEqual({
@@ -209,17 +239,16 @@ describe('spaced review persistence', () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', created);
     const topic = await createTopic(storage, 'AI Fundamentals', created);
-    await markTopicReviewed(storage, topic.topicSlug, 'good', new Date('2026-07-20T13:00:00.000Z'));
+    await markTopicReviewed(storage, topic.topicSlug, 'good', new Date(2026, 6, 20, 13, 0, 0));
 
-    const schedule = await markTopicReviewed(
-      storage,
-      topic.topicSlug,
-      'again',
-      new Date('2026-07-21T09:00:00.000Z'),
-    );
+    const secondReview = new Date(2026, 6, 21, 9, 0, 0);
+    const schedule = await markTopicReviewed(storage, topic.topicSlug, 'again', secondReview);
 
     expect(schedule).toMatchObject({ repetition: 0, dueOn: '2026-07-22' });
-    const log = await storage.read(`Topics/${topic.topicSlug}/Updates/2026/07/2026-07-21.md`);
+    // updateLogPath is still UTC-based (dated update logs are unchanged by
+    // this fix), so derive the expected path from the same Date instant
+    // rather than hardcoding a UTC-day string.
+    const log = await storage.read(updateLogPath(topic.topicSlug, secondReview));
     expect(log?.content).toContain('- Reviewed this topic for another pass on 2026-07-22.');
   });
 
@@ -244,7 +273,7 @@ describe('spaced review persistence', () => {
       storage,
       topic.topicSlug,
       'good',
-      new Date('2026-07-22T09:00:00.000Z'),
+      new Date(2026, 6, 22, 9, 0, 0),
     );
 
     expect(schedule).toMatchObject({ repetition: 4, dueOn: '2026-08-21' });
@@ -273,18 +302,14 @@ describe('spaced review persistence', () => {
       `${JSON.stringify(external, null, 2)}\n`,
     );
 
-    const schedule = await markTopicReviewed(
-      conflicting,
-      topic.topicSlug,
-      'good',
-      new Date('2026-07-21T09:00:00.000Z'),
-    );
+    const reviewedAt = new Date(2026, 6, 21, 9, 0, 0);
+    const schedule = await markTopicReviewed(conflicting, topic.topicSlug, 'good', reviewedAt);
 
     expect(schedule).toMatchObject({ repetition: 4, dueOn: '2026-08-20' });
     const file = await storage.read(path);
     expect(JSON.parse(file?.content ?? '{}')).toEqual(schedule);
 
-    const logPath = updateLogPath(topic.topicSlug, new Date('2026-07-21T09:00:00.000Z'));
+    const logPath = updateLogPath(topic.topicSlug, reviewedAt);
     const log = await storage.read(logPath);
     const occurrences = (log?.content.match(/- Reviewed this topic; the next review is/gu) ?? [])
       .length;

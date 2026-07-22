@@ -28,8 +28,10 @@ tomorrow. The Today view now answers "what should I review right now" instead of
   deadlines or schedule" — this design changes that promise to "no deadlines you did
   not create", and both strings change with it.
 - Every learning-loop function takes an injected `now` (`buildWorkspaceRecap`
-  options, `updateRoadmapObjective` parameter), and dates are UTC calendar dates via
-  `toISOString().slice(0, 10)`. Spaced review follows the same convention.
+  options, `updateRoadmapObjective` parameter). Dated update files and the recap
+  window use UTC calendar dates via `toISOString().slice(0, 10)`. Spaced review
+  instead derives "what day is it" from the device's local time — the boundary
+  that decides an interval is the learner's midnight, not UTC midnight.
 - `packages/core/src/research/research-file.ts` is the proven template for per-topic
   machine state: file created on first use, absent file = feature inactive,
   `readMachineFile` quarantine on invalid content, three-attempt expected-hash retry
@@ -100,7 +102,7 @@ export const ReviewScheduleSchema = z.object({
 export type ReviewSchedule = z.infer<typeof ReviewScheduleSchema>;
 
 export function reviewFilePath(topicSlug: string): string; // Topics/<slug>/review.json
-export function utcDateOf(now: Date): string; // toISOString().slice(0, 10)
+export function localDateOf(now: Date): string; // local getFullYear/Month/Date, not UTC
 export function addDaysUtc(date: string, days: number): string; // pure Date.UTC math
 
 /** Pure: next schedule from the current one (or none) and one outcome. */
@@ -207,7 +209,8 @@ comes back when, without changing `buildReviewQueue`'s return type.
   stays.
 - A due item carries its date in the reason line it already renders (`Due today` or
   `Overdue since <date>`); a paused topic that holds a schedule appends
-  `· returns <date>` there instead, so no new date element is introduced.
+  `· scheduled for <date>` there instead (a paused topic never leaves the queue, so
+  nothing is "returning"), so no new date element is introduced.
 - No other surface changes: topic ledger, roadmap view, recap layout, and graph are
   untouched (review actions appear in the recap through normal update entries).
 
@@ -271,11 +274,11 @@ E2E (Playwright, built app, no network):
 
 ## Risks
 
-| Risk                                                       | Mitigation                                                                                                                                          |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Old builds encountering `review.json`                      | They never read unknown files; import validation ignores it (verified `research.json` precedent). No schema widening of existing files is involved. |
-| UTC dates vs the learner's local day                       | Same convention as update logs and recap; worst case a review near local midnight lands on the adjacent calendar date. Documented, cosmetic.        |
-| Fixed ladder fits some topics poorly                       | Stored `dueOn` keeps every existing promise if the ladder changes; per-topic ease factor is the named upgrade path.                                 |
-| Future-due topics vanishing from the queue surprises users | New explainer sentence, empty-state naming the next return date, and the topic ledger still lists every topic.                                      |
-| Concurrent review writes (second tab, external sync)       | Same three-attempt expected-hash retry as `research.json`, recomputing from the fresh schedule so the outcome is never silently dropped.            |
-| Copy drift ("no deadlines" promise appears in docs and UI) | The implementing PR updates the doc comment, UI explainer, product spec, roadmap page, and README in one change; e2e asserts the new explainer.     |
+| Risk                                                       | Mitigation                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Old builds encountering `review.json`                      | They never read unknown files; import validation ignores it (verified `research.json` precedent). No schema widening of existing files is involved.                                                                                                                                                                                                                  |
+| UTC dates vs the learner's local day                       | The calendar day (`lastReviewedOn`, `dueOn`, and the queue's due comparison) comes from the device's local time, not UTC — a review at any local hour lands on the local day the learner saw. The residual is the ordinary ±1-day granularity of any date-only scheduler (a review right at local midnight can round to either neighboring day), not a timezone bug. |
+| Fixed ladder fits some topics poorly                       | Stored `dueOn` keeps every existing promise if the ladder changes; per-topic ease factor is the named upgrade path.                                                                                                                                                                                                                                                  |
+| Future-due topics vanishing from the queue surprises users | New explainer sentence, empty-state naming the next return date, and the topic ledger still lists every topic.                                                                                                                                                                                                                                                       |
+| Concurrent review writes (second tab, external sync)       | Same three-attempt expected-hash retry as `research.json`, recomputing from the fresh schedule so the outcome is never silently dropped.                                                                                                                                                                                                                             |
+| Copy drift ("no deadlines" promise appears in docs and UI) | The implementing PR updates the doc comment, UI explainer, product spec, roadmap page, and README in one change; e2e asserts the new explainer.                                                                                                                                                                                                                      |
