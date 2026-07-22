@@ -886,15 +886,25 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect(
     page
-      .getByLabel('Today')
+      .getByRole('article')
       .getByText('Explain the central mechanism in your own words.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('Paused this topic.')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
+    'Paused this topic.',
+  );
+  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText(
+    'Explain the central mechanism in your own words.',
+  );
+  await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
+    'Completed “Establish the terms and boundaries.”',
+  );
   await expectNoSeriousA11yViolations(page);
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-  await expect(page.getByText('Paused this topic.')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
+    'Paused this topic.',
+  );
   await page.getByRole('button', { name: 'Roadmap', exact: true }).click();
   await expect(page.getByLabel('Establish the terms and boundaries.')).toBeChecked();
   await expect(page.getByRole('button', { name: 'Paused' })).toHaveAttribute(

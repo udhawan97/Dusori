@@ -7,6 +7,8 @@ import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import {
   buildTodaySummary,
+  buildReviewQueue,
+  buildWorkspaceRecap,
   parseRoadmapObjectives,
   progressFromRoadmap,
   setRoadmapObjectiveCompleted,
@@ -129,5 +131,66 @@ describe('today summary', () => {
     });
     expect(summary?.recentActivity[0]?.text).toBe('Paused this topic.');
     expect(summary?.recentActivity[1]?.text).toContain('Completed “Establish the terms');
+  });
+
+  it('orders active topics by oldest local update, then paused topics, and excludes complete work', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'Older active', new Date('2026-07-17T12:00:00.000Z'));
+    await createTopic(storage, 'Newer active', new Date('2026-07-19T12:00:00.000Z'));
+    const paused = await createTopic(storage, 'Paused topic', new Date('2026-07-16T12:00:00.000Z'));
+    const complete = await createTopic(
+      storage,
+      'Complete topic',
+      new Date('2026-07-15T12:00:00.000Z'),
+    );
+    const workspace = complete.workspace;
+    await setTopicStatus(storage, paused.topicSlug, 'paused', new Date('2026-07-20T12:00:00.000Z'));
+    await setTopicStatus(
+      storage,
+      complete.topicSlug,
+      'complete',
+      new Date('2026-07-20T12:01:00.000Z'),
+    );
+
+    const summaries = await buildTodaySummary(storage, workspace);
+    const queue = buildReviewQueue(summaries);
+
+    expect(queue.map((item) => item.title)).toEqual([
+      'Older active',
+      'Newer active',
+      'Paused topic',
+    ]);
+    expect(queue[0]).toMatchObject({
+      objective: 'Establish the terms and boundaries.',
+      reason: 'Active · least recently updated first',
+    });
+    expect(queue[2]?.reason).toBe('Paused · resume when ready');
+  });
+
+  it('builds a bounded recent-first recap from dated local update entries', async () => {
+    const storage = new MemoryStorageAdapter();
+    const workspace = await createWorkspace(storage, 'Dusori', now);
+    const topic = await createTopic(storage, 'AI Fundamentals', now);
+    const currentWorkspace = { ...workspace, topics: topic.workspace.topics };
+    await updateRoadmapObjective(
+      storage,
+      topic.topicSlug,
+      0,
+      true,
+      new Date('2026-07-21T09:00:00.000Z'),
+    );
+    await setTopicStatus(storage, topic.topicSlug, 'paused', new Date('2026-07-21T10:00:00.000Z'));
+
+    const recap = await buildWorkspaceRecap(storage, currentWorkspace, {
+      days: 1,
+      now: new Date('2026-07-21T18:00:00.000Z'),
+    });
+
+    expect(recap).toMatchObject({ from: '2026-07-21', to: '2026-07-21', topicsTouched: 1 });
+    expect(recap.entries.map((entry) => entry.text)).toEqual([
+      'Paused this topic.',
+      'Completed “Establish the terms and boundaries.” in roadmap.',
+    ]);
   });
 });
