@@ -9,9 +9,11 @@ const repositoryRoot = resolve(import.meta.dirname, '..');
 const temporaryDirectory = await mkdtemp(join(tmpdir(), 'dusori-package-'));
 
 try {
-  await execute('pnpm', ['--filter', 'dusori', 'pack', '--pack-destination', temporaryDirectory], {
-    cwd: repositoryRoot,
-  });
+  await execute(
+    'pnpm',
+    ['--filter', '@udhawan97/dusori', 'pack', '--pack-destination', temporaryDirectory],
+    { cwd: repositoryRoot },
+  );
   const tarballName = (await readdir(temporaryDirectory)).find((name) => name.endsWith('.tgz'));
   if (!tarballName) throw new Error('pnpm pack did not produce a companion tarball.');
   const tarball = join(temporaryDirectory, tarballName);
@@ -20,7 +22,7 @@ try {
     ['exec', '--yes', '--package', tarball, '--', 'dusori', '--help'],
     { cwd: temporaryDirectory },
   );
-  if (!help.stdout.includes('npx dusori --root /path/to/Dusori')) {
+  if (!help.stdout.includes('npx @udhawan97/dusori --root /path/to/Dusori')) {
     throw new Error('The packed companion did not expose the expected help command.');
   }
   const version = await execute(
@@ -28,7 +30,7 @@ try {
     ['exec', '--yes', '--package', tarball, '--', 'dusori', '--version'],
     { cwd: temporaryDirectory },
   );
-  process.stdout.write(`Packed CLI smoke passed for dusori ${version.stdout.trim()}.\n`);
+  process.stdout.write(`Packed CLI smoke passed for @udhawan97/dusori ${version.stdout.trim()}.\n`);
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });
 }

@@ -2,6 +2,8 @@
 
 **Status:** approved · **Date:** 2026-07-21
 
+> **Distribution outcome (v0.4.0):** npm rejected the unscoped `dusori` name as too similar to an existing package. The shipped package is `@udhawan97/dusori`; unscoped commands below preserve the original design record.
+
 ## Program context
 
 Agreed feature sequence, each with its own spec → plan → implementation cycle:

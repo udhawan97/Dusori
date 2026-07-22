@@ -59,7 +59,7 @@ The optional companion holds the loopback security boundary and adds the two thi
 Run the published companion with Node.js 24:
 
 ```sh
-npx dusori@0.4.0 --root /path/to/Dusori
+npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori
 ```
 
 Or build and run it from a clone:
@@ -68,7 +68,7 @@ Or build and run it from a clone:
 corepack enable
 pnpm install
 pnpm build
-pnpm --filter dusori dev -- --root /path/to/Dusori
+pnpm --filter @udhawan97/dusori dev -- --root /path/to/Dusori
 ```
 
 The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.

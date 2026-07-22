@@ -9,7 +9,7 @@
     "pnpm": "11.x"
   },
   "scripts": {
-    "build": "pnpm --filter @dusori/app build && pnpm --filter @dusori/site build && pnpm --filter dusori build && node scripts/compose-pages.mjs",
+    "build": "pnpm --filter @dusori/app build && pnpm --filter @dusori/site build && pnpm --filter @udhawan97/dusori build && node scripts/compose-pages.mjs",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build",
     "dev:app": "pnpm --filter @dusori/app dev",
     "dev:site": "pnpm --filter @dusori/site dev",

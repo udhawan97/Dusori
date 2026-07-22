@@ -1153,7 +1153,7 @@ async function routeCompanionFetch(page: Page): Promise<void> {
 }
 
 // Adds a URL source, then reloads with a companion token the way a browser
-// pointed at `npx dusori`'s printed URL would. The reload relies on the same
+// pointed at `npx @udhawan97/dusori`'s printed URL would. The reload relies on the same
 // OPFS-survives-reload behavior as "dismissed research suggestions stay gone
 // after reload" below (onMount re-reads dusori.json and reopens the first
 // topic on every load, so a plain page.goto with a token is enough -- no
@@ -1207,7 +1207,7 @@ test.describe('companion flows', () => {
     // Without a companion token the upgrade action is absent and the hint shows.
     await expect(page.getByRole('button', { name: 'Fetch full content' })).toHaveCount(0);
     await expect(
-      page.getByText('Run the companion (npx dusori) to fetch full page content.'),
+      page.getByText('Run the companion (npx @udhawan97/dusori) to fetch full page content.'),
     ).toBeVisible();
 
     // Reload as if served by the companion.

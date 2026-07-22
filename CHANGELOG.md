@@ -24,7 +24,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 - Search, backlinks, health, review ordering, and recap remain read-only local projections; none creates a database, index, schedule, or hidden summary file.
 - Workspace health never quarantines or repairs an invalid manifest implicitly. It reports the exact file and leaves recovery to the user.
-- The public companion command is `npx dusori@0.4.0 --root /path/to/Dusori`; the loopback, per-run token, root confinement, and terminal-lifetime boundaries are unchanged.
+- The public companion command is `npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori`; the loopback, per-run token, root confinement, and terminal-lifetime boundaries are unchanged.
 
 ## [0.3.0] - 2026-07-21
 

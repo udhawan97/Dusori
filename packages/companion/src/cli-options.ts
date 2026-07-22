@@ -4,10 +4,10 @@ export type CompanionCliOptions =
 export const companionHelp = `Dusori companion
 
 Usage:
-  npx dusori [--root /path/to/Dusori]
+  npx @udhawan97/dusori [--root /path/to/Dusori]
 
 Example:
-  npx dusori --root /path/to/Dusori
+  npx @udhawan97/dusori --root /path/to/Dusori
 
 Options:
   --root <path>  Enable root-confined access to one Dusori workspace
