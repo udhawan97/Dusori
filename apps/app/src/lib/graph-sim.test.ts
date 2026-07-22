@@ -6,10 +6,20 @@ import { NODE_RADIUS, layoutWorkspaceGraph } from './graph-layout.js';
 import {
   GRAPH_VIEW_LIMITS,
   GRAPH_VIEW_STORAGE_KEY,
+  cameraLimits,
+  cameraViewBox,
+  clampCamera,
+  fitCamera,
   graphBounds,
   nodeVisualRadius,
+  panCamera,
   readGraphViewSettings,
+  screenToWorld,
+  sliderToZoom,
   writeGraphViewSettings,
+  zoomCameraAt,
+  zoomToSlider,
+  type GraphBounds,
 } from './graph-sim.js';
 
 function node(id: string, kind: WorkspaceGraphNodeKind, topicSlug?: string): WorkspaceGraphNode {
@@ -94,5 +104,70 @@ describe('graphBounds', () => {
 
   it('returns a small default box for an empty graph', () => {
     expect(graphBounds([], new Map())).toEqual({ maxX: 80, maxY: 80, minX: 0, minY: 0 });
+  });
+});
+
+describe('graph camera', () => {
+  const stage = { height: 600, width: 800 };
+  const bounds: GraphBounds = { maxX: 1600, maxY: 1200, minX: 0, minY: 0 };
+
+  it('fits large graphs below 1x and never magnifies small graphs past 1x', () => {
+    const large = fitCamera(bounds, stage);
+    expect(large.zoom).toBeCloseTo(0.5, 5);
+    expect(large.x).toBeCloseTo(800, 5);
+    expect(large.y).toBeCloseTo(600, 5);
+    const small = fitCamera({ maxX: 200, maxY: 100, minX: 0, minY: 0 }, stage);
+    expect(small.zoom).toBe(1);
+  });
+
+  it('keeps the focused point stationary on screen while zooming', () => {
+    const limits = cameraLimits(1, bounds);
+    const camera = { x: 100, y: 50, zoom: 1 };
+    const focus = { x: 130, y: 80 };
+    const before = {
+      x: (focus.x - camera.x) * camera.zoom + stage.width / 2,
+      y: (focus.y - camera.y) * camera.zoom + stage.height / 2,
+    };
+    const zoomed = zoomCameraAt(camera, focus, 2, limits);
+    const after = {
+      x: (focus.x - zoomed.x) * zoomed.zoom + stage.width / 2,
+      y: (focus.y - zoomed.y) * zoomed.zoom + stage.height / 2,
+    };
+    expect(zoomed.zoom).toBeCloseTo(2, 5);
+    expect(after.x).toBeCloseTo(before.x, 5);
+    expect(after.y).toBeCloseTo(before.y, 5);
+  });
+
+  it('clamps zoom to 0.5x-6x of fit and the center inside the bounds', () => {
+    const limits = cameraLimits(0.8, bounds);
+    expect(clampCamera({ x: -500, y: 9000, zoom: 99 }, limits)).toEqual({
+      x: 0,
+      y: 1200,
+      zoom: 0.8 * 6,
+    });
+    expect(clampCamera({ x: 10, y: 10, zoom: 0.01 }, limits).zoom).toBeCloseTo(0.4, 5);
+  });
+
+  it('pans in screen pixels scaled by zoom', () => {
+    const limits = cameraLimits(1, bounds);
+    const panned = panCamera({ x: 400, y: 300, zoom: 2 }, 100, -50, limits);
+    expect(panned.x).toBeCloseTo(350, 5);
+    expect(panned.y).toBeCloseTo(325, 5);
+  });
+
+  it('derives the viewBox from camera and stage, and inverts screen points', () => {
+    const camera = { x: 400, y: 300, zoom: 2 };
+    expect(cameraViewBox(camera, stage)).toBe('200 150 400 300');
+    expect(screenToWorld(camera, stage, { x: 400, y: 300 })).toEqual({ x: 400, y: 300 });
+    expect(screenToWorld(camera, stage, { x: 500, y: 200 })).toEqual({ x: 450, y: 250 });
+  });
+
+  it('maps the zoom slider through log space and back', () => {
+    const limits = cameraLimits(1, bounds);
+    expect(sliderToZoom(0, limits)).toBeCloseTo(limits.minZoom, 5);
+    expect(sliderToZoom(1, limits)).toBeCloseTo(limits.maxZoom, 5);
+    for (const value of [0, 0.25, 0.5, 1]) {
+      expect(zoomToSlider(sliderToZoom(value, limits), limits)).toBeCloseTo(value, 5);
+    }
   });
 });

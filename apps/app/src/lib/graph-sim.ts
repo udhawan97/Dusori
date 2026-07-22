@@ -79,6 +79,104 @@ export interface GraphBounds {
   minY: number;
 }
 
+export interface GraphCamera {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+export interface StageSize {
+  height: number;
+  width: number;
+}
+
+export interface CameraLimits {
+  bounds: GraphBounds;
+  maxZoom: number;
+  minZoom: number;
+}
+
+const ZOOM_OUT_FACTOR = 0.5;
+const ZOOM_IN_FACTOR = 6;
+
+/** Fit keeps one user unit at one CSS pixel for small graphs (zoom caps at 1). */
+export function fitCamera(bounds: GraphBounds, stage: StageSize): GraphCamera {
+  const width = Math.max(1, bounds.maxX - bounds.minX);
+  const height = Math.max(1, bounds.maxY - bounds.minY);
+  const zoom = Math.max(0.05, Math.min(1, stage.width / width, stage.height / height));
+  return { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2, zoom };
+}
+
+export function cameraLimits(fitZoom: number, bounds: GraphBounds): CameraLimits {
+  return { bounds, maxZoom: fitZoom * ZOOM_IN_FACTOR, minZoom: fitZoom * ZOOM_OUT_FACTOR };
+}
+
+export function clampCamera(camera: GraphCamera, limits: CameraLimits): GraphCamera {
+  return {
+    x: Math.min(limits.bounds.maxX, Math.max(limits.bounds.minX, camera.x)),
+    y: Math.min(limits.bounds.maxY, Math.max(limits.bounds.minY, camera.y)),
+    zoom: Math.min(limits.maxZoom, Math.max(limits.minZoom, camera.zoom)),
+  };
+}
+
+export function zoomCameraAt(
+  camera: GraphCamera,
+  focus: { x: number; y: number },
+  factor: number,
+  limits: CameraLimits,
+): GraphCamera {
+  const zoom = Math.min(limits.maxZoom, Math.max(limits.minZoom, camera.zoom * factor));
+  const scale = camera.zoom / zoom;
+  return clampCamera(
+    {
+      x: focus.x - (focus.x - camera.x) * scale,
+      y: focus.y - (focus.y - camera.y) * scale,
+      zoom,
+    },
+    limits,
+  );
+}
+
+export function panCamera(
+  camera: GraphCamera,
+  dxPx: number,
+  dyPx: number,
+  limits: CameraLimits,
+): GraphCamera {
+  return clampCamera(
+    { x: camera.x - dxPx / camera.zoom, y: camera.y - dyPx / camera.zoom, zoom: camera.zoom },
+    limits,
+  );
+}
+
+export function cameraViewBox(camera: GraphCamera, stage: StageSize): string {
+  const width = stage.width / camera.zoom;
+  const height = stage.height / camera.zoom;
+  return `${camera.x - width / 2} ${camera.y - height / 2} ${width} ${height}`;
+}
+
+export function screenToWorld(
+  camera: GraphCamera,
+  stage: StageSize,
+  point: { x: number; y: number },
+): { x: number; y: number } {
+  return {
+    x: camera.x + (point.x - stage.width / 2) / camera.zoom,
+    y: camera.y + (point.y - stage.height / 2) / camera.zoom,
+  };
+}
+
+/** The slider walks zoom in log space so both halves of the range feel even. */
+export function sliderToZoom(value: number, limits: CameraLimits): number {
+  const ratio = limits.maxZoom / limits.minZoom;
+  return limits.minZoom * Math.pow(ratio, Math.min(1, Math.max(0, value)));
+}
+
+export function zoomToSlider(zoom: number, limits: CameraLimits): number {
+  const ratio = limits.maxZoom / limits.minZoom;
+  return Math.log(zoom / limits.minZoom) / Math.log(ratio);
+}
+
 export function graphBounds(
   nodes: PositionedWorkspaceGraphNode[],
   degrees: Map<string, number>,
