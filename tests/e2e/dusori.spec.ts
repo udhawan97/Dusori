@@ -552,6 +552,33 @@ test('searches local workspace prose and opens the matching document', async ({ 
   await expectNoSeriousA11yViolations(page);
 });
 
+test('shows unresolved links and backlinks from the same local graph', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByLabel('New note title').fill('Link map');
+  await page.getByRole('button', { name: 'Create note' }).click();
+  await page
+    .getByLabel('Markdown note')
+    .fill('# Link map\n\nSee [[001-first-look]] and [[Missing reference]].\n');
+  await page.getByRole('button', { name: 'Save note' }).click();
+
+  const refresh = page.getByRole('button', { name: 'Refresh workspace health' });
+  await expect(refresh).toBeEnabled();
+  await refresh.click();
+  await expect(page.getByRole('list', { name: 'Workspace health issues' })).toContainText(
+    'Missing reference',
+  );
+  await expect(page.getByText('1 issue', { exact: false })).toBeVisible();
+
+  await page.getByRole('button', { name: 'AI Fundamentals' }).click();
+  const backlinks = page.getByRole('list', { name: 'Backlinks to current document' });
+  await expect(backlinks).toContainText('Link map');
+  await backlinks.getByRole('button', { name: /Link map/u }).click();
+  await expect(page.getByRole('heading', { name: 'Link map' })).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('source library stores pasted text and URL references without remote fetching', async ({
   page,
 }) => {

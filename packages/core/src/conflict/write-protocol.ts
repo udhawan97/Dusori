@@ -70,7 +70,7 @@ export async function proposeMarkdownUpdate(
   const updatePath = await appendTopicUpdate(
     storage,
     topicSlug,
-    `- Conflict detected in [[../../${relativePath.replace(/\.md$/u, '')}]]. External content stayed in place; Dusori wrote [[../../${proposalPath.slice(root.length + 1).replace(/\.md$/u, '')}|a proposed version]].`,
+    `- Conflict detected in [[../../../${relativePath.replace(/\.md$/u, '')}]]. External content stayed in place; Dusori wrote [[../../../${proposalPath.slice(root.length + 1).replace(/\.md$/u, '')}|a proposed version]].`,
     now,
   );
   return {
@@ -114,7 +114,7 @@ export async function acceptMarkdownUpdate(
     storage,
     topicSlug,
     updateLine ??
-      `- Accepted an explicit update to [[../../${relativePath.replace(/\.md$/u, '')}]].`,
+      `- Accepted an explicit update to [[../../../${relativePath.replace(/\.md$/u, '')}]].`,
     now,
   );
   return nextState;

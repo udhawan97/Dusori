@@ -56,6 +56,7 @@
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
+  import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -1008,6 +1009,11 @@
 
       {#if storage}
         <WorkspaceSearch {storage} onOpen={(path) => void openSearchDocument(path)} />
+        <WorkspaceHealth
+          {storage}
+          currentPath={notePath}
+          onOpen={(path) => void openSearchDocument(path)}
+        />
       {/if}
 
       {#if selectedSlug && storage}

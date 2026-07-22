@@ -2,6 +2,7 @@ export * from './adapters.js';
 export * from './conflict/write-protocol.js';
 export * from './curriculum/import.js';
 export * from './graph/workspace-graph.js';
+export * from './graph/workspace-health.js';
 export * from './hash.js';
 export * from './learning/loop.js';
 export * from './notes/edit.js';
