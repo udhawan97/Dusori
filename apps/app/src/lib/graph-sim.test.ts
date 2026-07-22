@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkspaceGraph, WorkspaceGraphNode, WorkspaceGraphNodeKind } from '@dusori/core';
 
-import { NODE_RADIUS, layoutWorkspaceGraph } from './graph-layout.js';
+import { NODE_RADIUS, layoutWorkspaceGraph, wikilinkDegrees } from './graph-layout.js';
 import {
   GRAPH_VIEW_LIMITS,
   GRAPH_VIEW_STORAGE_KEY,
   cameraLimits,
+  createGraphRelaxation,
+  relaxGraphLayout,
   cameraViewBox,
   clampCamera,
   fitCamera,
@@ -169,5 +171,147 @@ describe('graph camera', () => {
     for (const value of [0, 0.25, 0.5, 1]) {
       expect(zoomToSlider(sliderToZoom(value, limits), limits)).toBeCloseTo(value, 5);
     }
+  });
+});
+
+function linkedFixture(): WorkspaceGraph {
+  const nodes = [node('Home.md', 'home')];
+  const edges: WorkspaceGraph['edges'] = [];
+  for (const slug of ['alpha', 'beta']) {
+    const overview = `Topics/${slug}/Overview.md`;
+    nodes.push(node(overview, 'overview', slug));
+    edges.push({ id: `c:${overview}`, kind: 'contains', source: 'Home.md', target: overview });
+    for (let index = 0; index < 6; index += 1) {
+      const child = `Topics/${slug}/Notes/${index}.md`;
+      nodes.push(node(child, 'note', slug));
+      edges.push({ id: `c:${child}`, kind: 'contains', source: overview, target: child });
+    }
+  }
+  edges.push(
+    {
+      id: 'l:1',
+      kind: 'links',
+      source: 'Topics/alpha/Notes/0.md',
+      target: 'Topics/beta/Notes/0.md',
+    },
+    {
+      id: 'l:2',
+      kind: 'links',
+      source: 'Topics/alpha/Notes/1.md',
+      target: 'Topics/alpha/Notes/2.md',
+    },
+    {
+      id: 'l:3',
+      kind: 'links',
+      source: 'Topics/beta/Notes/3.md',
+      target: 'Topics/alpha/Notes/0.md',
+    },
+  );
+  return { edges, nodes, unresolvedLinks: [] };
+}
+
+function settle(
+  graph: WorkspaceGraph,
+  params: { linkDistance: number; repelStrength: number },
+): ReturnType<typeof relaxGraphLayout> {
+  const seed = layoutWorkspaceGraph(graph);
+  return relaxGraphLayout(seed.nodes, graph.edges, params, wikilinkDegrees(graph));
+}
+
+function meanLinkedDistance(
+  graph: WorkspaceGraph,
+  settled: { nodes: { id: string; x: number; y: number }[] },
+): number {
+  const byId = new Map(settled.nodes.map((entry) => [entry.id, entry]));
+  const links = graph.edges.filter((edge) => edge.kind === 'links');
+  const total = links.reduce((sum, edge) => {
+    const source = byId.get(edge.source)!;
+    const target = byId.get(edge.target)!;
+    return sum + Math.hypot(source.x - target.x, source.y - target.y);
+  }, 0);
+  return total / links.length;
+}
+
+describe('graph relaxation', () => {
+  const params = { linkDistance: 110, repelStrength: 0.5 };
+
+  it('is deterministic', () => {
+    expect(settle(linkedFixture(), params)).toEqual(settle(linkedFixture(), params));
+  });
+
+  it('settles before the tick ceiling and keeps every coordinate finite', () => {
+    const result = settle(linkedFixture(), params);
+    expect(result.ticks).toBeLessThan(300);
+    for (const positioned of result.nodes) {
+      expect(Number.isFinite(positioned.x)).toBe(true);
+      expect(Number.isFinite(positioned.y)).toBe(true);
+    }
+  });
+
+  it('keeps home pinned at its seat', () => {
+    const graph = linkedFixture();
+    const seed = layoutWorkspaceGraph(graph);
+    const home = seed.nodes.find((entry) => entry.kind === 'home')!;
+    const settledHome = settle(graph, params).nodes.find((entry) => entry.kind === 'home')!;
+    expect(settledHome.x).toBeCloseTo(home.x, 5);
+    expect(settledHome.y).toBeCloseTo(home.y, 5);
+  });
+
+  it('stretches wikilinks when the link length knob grows', () => {
+    const graph = linkedFixture();
+    const short = meanLinkedDistance(
+      graph,
+      settle(graph, { linkDistance: 60, repelStrength: 0.5 }),
+    );
+    const long = meanLinkedDistance(
+      graph,
+      settle(graph, { linkDistance: 240, repelStrength: 0.5 }),
+    );
+    expect(long).toBeGreaterThan(short * 1.15);
+  });
+
+  it('never leaves two nodes overlapping', () => {
+    const graph = linkedFixture();
+    const degrees = wikilinkDegrees(graph);
+    const settled = settle(graph, { linkDistance: 60, repelStrength: 0 });
+    const byId = new Map(graph.nodes.map((entry) => [entry.id, entry]));
+    for (let a = 0; a < settled.nodes.length; a += 1) {
+      for (let b = a + 1; b < settled.nodes.length; b += 1) {
+        const left = settled.nodes[a]!;
+        const right = settled.nodes[b]!;
+        const floor =
+          nodeVisualRadius(byId.get(left.id)!, degrees.get(left.id) ?? 0) +
+          nodeVisualRadius(byId.get(right.id)!, degrees.get(right.id) ?? 0);
+        expect(Math.hypot(left.x - right.x, left.y - right.y)).toBeGreaterThanOrEqual(floor - 0.5);
+      }
+    }
+  });
+
+  it('reheats and keeps ticking after a parameter change', () => {
+    const graph = linkedFixture();
+    const seed = layoutWorkspaceGraph(graph);
+    const sim = createGraphRelaxation(seed.nodes, graph.edges, params, wikilinkDegrees(graph));
+    while (!sim.tick(16)) {
+      // settle fully
+    }
+    expect(sim.tick()).toBe(true);
+    sim.reheat({ linkDistance: 240, repelStrength: 0.5 });
+    expect(sim.tick()).toBe(false);
+    while (!sim.tick(16)) {
+      // settle again
+    }
+    expect(sim.tick()).toBe(true);
+  });
+
+  it('separates exactly coincident nodes deterministically', () => {
+    const overlapping = [
+      { ...node('a.md', 'note'), x: 100, y: 100 },
+      { ...node('b.md', 'note'), x: 100, y: 100 },
+    ];
+    const first = relaxGraphLayout(overlapping, [], params, new Map());
+    const second = relaxGraphLayout(overlapping, [], params, new Map());
+    expect(first).toEqual(second);
+    const [left, right] = first.nodes;
+    expect(Math.hypot(left!.x - right!.x, left!.y - right!.y)).toBeGreaterThan(15);
   });
 });

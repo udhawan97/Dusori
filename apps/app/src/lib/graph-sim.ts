@@ -1,4 +1,4 @@
-import type { WorkspaceGraphNode } from '@dusori/core';
+import type { WorkspaceGraphEdge, WorkspaceGraphNode } from '@dusori/core';
 
 import {
   LABEL_HALF_WIDTH,
@@ -194,4 +194,208 @@ export function graphBounds(
     maxY = Math.max(maxY, node.y + Math.max(radius, LABEL_HEIGHT));
   }
   return { maxX, maxY, minX, minY };
+}
+
+export interface GraphRelaxation {
+  readonly nodes: PositionedWorkspaceGraphNode[];
+  reheat(params: GraphViewSettings): void;
+  settle(): number;
+  tick(count?: number): boolean;
+}
+
+const MAX_TICKS = 300;
+const SETTLE_EPSILON = 0.3;
+const STEP_DECAY = 0.96;
+const REHEAT_STEP = 0.65;
+const CONTAINS_REST_SCALE = 0.7;
+const CONTAINS_STIFFNESS = 0.4;
+const LINK_STIFFNESS = 0.22;
+const OVERVIEW_ANCHOR = 0.12;
+const SEPARATION_GAP = 4;
+const MAX_TICK_TRAVEL = 24;
+const GOLDEN_ANGLE = 2.399963229728653;
+
+interface SimBody {
+  anchorStrength: number;
+  anchorX: number;
+  anchorY: number;
+  node: PositionedWorkspaceGraphNode;
+  pinned: boolean;
+  radius: number;
+}
+
+function unitBetween(
+  source: SimBody,
+  target: SimBody,
+  fallbackIndex: number,
+): { distance: number; ux: number; uy: number } {
+  const dx = target.node.x - source.node.x;
+  const dy = target.node.y - source.node.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 1e-6) {
+    const angle = fallbackIndex * GOLDEN_ANGLE;
+    return { distance: 0, ux: Math.cos(angle), uy: Math.sin(angle) };
+  }
+  return { distance, ux: dx / distance, uy: dy / distance };
+}
+
+/**
+ * ponytail: O(n^2) pairwise repulsion per tick; a quadtree pays off only past
+ * a few thousand nodes, far beyond a personal workspace.
+ */
+export function createGraphRelaxation(
+  seed: PositionedWorkspaceGraphNode[],
+  edges: WorkspaceGraphEdge[],
+  params: GraphViewSettings,
+  degrees: Map<string, number>,
+): GraphRelaxation {
+  const nodes = seed.map((entry) => ({ ...entry }));
+  const bodies: SimBody[] = nodes.map((entry) => ({
+    anchorStrength: entry.kind === 'overview' ? OVERVIEW_ANCHOR : 0,
+    anchorX: entry.x,
+    anchorY: entry.y,
+    node: entry,
+    pinned: entry.kind === 'home',
+    radius: nodeVisualRadius(entry, degrees.get(entry.id) ?? 0),
+  }));
+  const indexById = new Map(bodies.map((body, index) => [body.node.id, index]));
+  const springs = edges.flatMap((edge) => {
+    const sourceIndex = indexById.get(edge.source);
+    const targetIndex = indexById.get(edge.target);
+    if (sourceIndex === undefined || targetIndex === undefined || sourceIndex === targetIndex) {
+      return [];
+    }
+    return [{ kind: edge.kind, sourceIndex, targetIndex }];
+  });
+
+  let current: GraphViewSettings = { ...params };
+  let step = 1;
+  let ticksRun = 0;
+  let settled = false;
+
+  function projectSeparation(): void {
+    for (let round = 0; round < 12; round += 1) {
+      let corrected = false;
+      for (let a = 0; a < bodies.length; a += 1) {
+        for (let b = a + 1; b < bodies.length; b += 1) {
+          const left = bodies[a]!;
+          const right = bodies[b]!;
+          const floor = left.radius + right.radius;
+          const { distance, ux, uy } = unitBetween(left, right, a * bodies.length + b);
+          if (distance >= floor) continue;
+          corrected = true;
+          const push = (floor - distance) / (left.pinned || right.pinned ? 1 : 2);
+          if (!left.pinned) {
+            left.node.x -= ux * push;
+            left.node.y -= uy * push;
+          }
+          if (!right.pinned) {
+            right.node.x += ux * push;
+            right.node.y += uy * push;
+          }
+        }
+      }
+      if (!corrected) return;
+    }
+  }
+
+  function tickOnce(): number {
+    const repelRange = 40 + 160 * current.repelStrength;
+    const moves = bodies.map(() => ({ x: 0, y: 0 }));
+
+    for (let index = 0; index < springs.length; index += 1) {
+      const spring = springs[index]!;
+      const source = bodies[spring.sourceIndex]!;
+      const target = bodies[spring.targetIndex]!;
+      const rest =
+        spring.kind === 'links'
+          ? current.linkDistance
+          : current.linkDistance * CONTAINS_REST_SCALE;
+      const stiffness = spring.kind === 'links' ? LINK_STIFFNESS : CONTAINS_STIFFNESS;
+      const { distance, ux, uy } = unitBetween(source, target, index);
+      const move = (distance - rest) * stiffness * step * 0.5;
+      moves[spring.sourceIndex]!.x += ux * move;
+      moves[spring.sourceIndex]!.y += uy * move;
+      moves[spring.targetIndex]!.x -= ux * move;
+      moves[spring.targetIndex]!.y -= uy * move;
+    }
+
+    for (let a = 0; a < bodies.length; a += 1) {
+      for (let b = a + 1; b < bodies.length; b += 1) {
+        const left = bodies[a]!;
+        const right = bodies[b]!;
+        const contact = left.radius + right.radius + SEPARATION_GAP;
+        const range = contact + repelRange;
+        const { distance, ux, uy } = unitBetween(left, right, a * bodies.length + b);
+        if (distance >= range) continue;
+        const overlap = (range - distance) / range;
+        const push = overlap * overlap * range * 0.12 * step;
+        moves[a]!.x -= ux * push;
+        moves[a]!.y -= uy * push;
+        moves[b]!.x += ux * push;
+        moves[b]!.y += uy * push;
+      }
+    }
+
+    let maxShift = 0;
+    for (let index = 0; index < bodies.length; index += 1) {
+      const body = bodies[index]!;
+      if (body.pinned) continue;
+      let dx = moves[index]!.x + (body.anchorX - body.node.x) * body.anchorStrength * step;
+      let dy = moves[index]!.y + (body.anchorY - body.node.y) * body.anchorStrength * step;
+      const travel = Math.hypot(dx, dy);
+      const cap = MAX_TICK_TRAVEL * step;
+      if (travel > cap) {
+        dx = (dx / travel) * cap;
+        dy = (dy / travel) * cap;
+      }
+      body.node.x += dx;
+      body.node.y += dy;
+      maxShift = Math.max(maxShift, Math.hypot(dx, dy));
+    }
+    return maxShift;
+  }
+
+  function tick(count = 1): boolean {
+    if (settled) return true;
+    for (let iteration = 0; iteration < count; iteration += 1) {
+      const shift = tickOnce();
+      ticksRun += 1;
+      step *= STEP_DECAY;
+      if (shift < SETTLE_EPSILON || ticksRun >= MAX_TICKS) {
+        projectSeparation();
+        settled = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  return {
+    nodes,
+    reheat(next: GraphViewSettings): void {
+      current = { ...next };
+      step = Math.max(step, REHEAT_STEP);
+      ticksRun = 0;
+      settled = false;
+    },
+    settle(): number {
+      while (!tick(16)) {
+        // run to completion
+      }
+      return ticksRun;
+    },
+    tick,
+  };
+}
+
+export function relaxGraphLayout(
+  seed: PositionedWorkspaceGraphNode[],
+  edges: WorkspaceGraphEdge[],
+  params: GraphViewSettings,
+  degrees: Map<string, number>,
+): { nodes: PositionedWorkspaceGraphNode[]; ticks: number } {
+  const simulation = createGraphRelaxation(seed, edges, params, degrees);
+  const ticks = simulation.settle();
+  return { nodes: simulation.nodes, ticks };
 }
