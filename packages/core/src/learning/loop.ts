@@ -313,6 +313,9 @@ export function buildReviewQueue(
       (left, right) =>
         statusPriority[left.status] - statusPriority[right.status] ||
         dueGroup(left) - dueGroup(right) ||
+        // Compare dueOn only when both sides are genuinely due: a paused or
+        // unscheduled topic that happens to hold a schedule must stay
+        // schedule-inert, so ties outside the due group fall through.
         (left.review !== null &&
         right.review !== null &&
         dueGroup(left) === 0 &&
