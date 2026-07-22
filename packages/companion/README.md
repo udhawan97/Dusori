@@ -5,7 +5,7 @@ The optional Dusori companion serves the built web app from a loopback origin an
 Run the published package with Node.js 24:
 
 ```sh
-npx dusori@0.4.0 --root /path/to/Dusori
+npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori
 ```
 
 Folder access is off when `--root` is omitted. To build from the repository root instead:
@@ -13,9 +13,9 @@ Folder access is off when `--root` is omitted. To build from the repository root
 ```sh
 pnpm install
 pnpm build
-pnpm --filter dusori dev -- --root /path/to/Dusori
+pnpm --filter @udhawan97/dusori dev -- --root /path/to/Dusori
 ```
 
-`npx dusori@0.4.0 --help` and `--version` exit without starting a server. Each normal run creates a new bearer token. The app accepts a connection only after validating the companion health contract, then consumes the token into memory and removes it from the browser address and current history entry.
+`npx @udhawan97/dusori@0.4.0 --help` and `--version` exit without starting a server. Each normal run creates a new bearer token. The app accepts a connection only after validating the companion health contract, then consumes the token into memory and removes it from the browser address and current history entry.
 
 Page fetching rejects non-public destinations and revalidates every redirect, follows at most three redirects, accepts only HTML or plain text, stops at 4 MiB, and times out after 15 seconds. No Ollama, scheduling, telemetry, or background daemon is included in this release.

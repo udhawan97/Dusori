@@ -390,7 +390,9 @@
       {/each}
     </ul>
     {#if !companion && sources.some((source) => source.method === 'url')}
-      <p class="field-help">Run the companion (npx dusori) to fetch full page content.</p>
+      <p class="field-help">
+        Run the companion (npx @udhawan97/dusori) to fetch full page content.
+      </p>
     {/if}
   {/if}
 </section>

@@ -160,17 +160,17 @@ pnpm preview       # serve dist/pages locally
 Run the optional companion from its published npm package:
 
 ```sh
-npx dusori@0.4.0 --root /path/to/Dusori
+npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori
 ```
 
 Or build it from this repository:
 
 ```sh
 pnpm build
-pnpm --filter dusori dev -- --root /path/to/Dusori
+pnpm --filter @udhawan97/dusori dev -- --root /path/to/Dusori
 ```
 
-The companion binds only to `127.0.0.1`, issues a new token for each run, removes that token from the browser address after connection, and stops with its terminal process. Folder access remains off unless `--root` names one explicit Dusori directory. `npx dusori@0.4.0 --help` and `--version` exit without starting the service.
+The companion binds only to `127.0.0.1`, issues a new token for each run, removes that token from the browser address after connection, and stops with its terminal process. Folder access remains off unless `--root` names one explicit Dusori directory. `npx @udhawan97/dusori@0.4.0 --help` and `--version` exit without starting the service.
 
 **Compatibility note:** do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older reader can rename `Sources/manifest.json` to an `.invalid-<timestamp>` file after seeing the newer provenance value. Source content remains untouched; update to v0.3.0 or later and rename the manifest back if this has already happened.
 

@@ -15,7 +15,7 @@ describe('companion command line', () => {
     expect(parseCompanionArguments(['--help'])).toEqual({ kind: 'help' });
     expect(parseCompanionArguments(['-h'])).toEqual({ kind: 'help' });
     expect(parseCompanionArguments(['--version'])).toEqual({ kind: 'version' });
-    expect(companionHelp).toContain('npx dusori --root /path/to/Dusori');
+    expect(companionHelp).toContain('npx @udhawan97/dusori --root /path/to/Dusori');
     expect(companionHelp).toContain('loopback');
   });
 

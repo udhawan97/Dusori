@@ -175,7 +175,7 @@
     if (!companion) {
       companionClient = null;
       companionStatus =
-        'Connection was denied. Allow local-network access, or open the URL printed by npx dusori.';
+        'Connection was denied. Allow local-network access, or open the URL printed by npx @udhawan97/dusori.';
       return;
     }
     try {
@@ -190,7 +190,7 @@
     } catch {
       companionClient = null;
       companionStatus =
-        'Connection was denied. Allow local-network access, or open the URL printed by npx dusori.';
+        'Connection was denied. Allow local-network access, or open the URL printed by npx @udhawan97/dusori.';
     }
   }
 

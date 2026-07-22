@@ -1,5 +1,5 @@
 {
-  "name": "dusori",
+  "name": "@udhawan97/dusori",
   "version": "0.4.0",
   "description": "Optional loopback-only companion for the Dusori local-first learning app.",
   "license": "Apache-2.0",
