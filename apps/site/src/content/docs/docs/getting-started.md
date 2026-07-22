@@ -56,21 +56,26 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 The optional companion holds the loopback security boundary and adds the two things the browser cannot do on its own: fetching a page you explicitly confirm and turning it into readable text, and reaching Microsoft Learn's ranked search. Both appear only when the app is opened through the companion. See [Sources](../sources/) for the fetch flow. Ollama and model transformations are still not provided.
 
-Run the published companion with Node.js 24:
+Run the published companion with Node.js 24. This downloads and starts the current release without a global install:
 
 ```sh
-npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori
+npx @udhawan97/dusori@latest
 ```
 
-Or build and run it from a clone:
+To approve one existing workspace folder for the session:
 
 ```sh
-corepack enable
-pnpm install
-pnpm build
-pnpm --filter @udhawan97/dusori dev -- --root /path/to/Dusori
+npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 ```
 
-The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.
+Or clone the repository and use the same cross-platform local path on macOS, Windows, or Linux:
+
+```sh
+git clone https://github.com/udhawan97/Dusori.git
+cd Dusori
+npm start
+```
+
+The first source run downloads the repository-pinned pnpm version, installs dependencies, builds the app and companion, and then opens Dusori. The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.
 
 Do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older build can rename `Sources/manifest.json` after seeing the new provenance value. Update to v0.3.0 or later first; source content remains untouched, and a renamed manifest can be restored by renaming the `.invalid-<timestamp>` file back after updating.

@@ -1,93 +1,176 @@
 <p align="center">
-  <img src="docs/assets/dusori-readme-logo-inverted.svg" width="720" alt="Dusori — animated inverted ensō, rangoli, and katana mark" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/site/public/brand/dusori-mark-animated-reversed.svg">
+    <source media="(prefers-color-scheme: light)" srcset="apps/site/public/brand/dusori-mark-animated.svg">
+    <img src="apps/site/public/brand/dusori-mark-animated.svg" alt="Dusori" width="240">
+  </picture>
 </p>
 
-<p align="center">
-  <em>“A second brain should remember who owns the first.”</em>
-</p>
+<h1 align="center">Dusori</h1>
+
+<p align="center"><em>A second brain should remember who owns the first.</em></p>
 
 <p align="center">
-  Free, local-first learning from Markdown and JSON.<br />
+  A private learning workbench built from your Markdown and JSON.<br>
   No account · no telemetry · no hosted database · useful without AI
 </p>
 
 <p align="center">
-  <a href="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml"><img alt="Verify and deploy" src="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.4.0"><img alt="Release v0.4.0" src="https://img.shields.io/badge/release-v0.4.0-cb4832" /></a>
-  <a href="LICENSE"><img alt="Apache License 2.0" src="https://img.shields.io/badge/license-Apache--2.0-cb4832" /></a>
-  <img alt="Local first" src="https://img.shields.io/badge/data-local--first-c9862e" />
-  <img alt="Progressive Web App" src="https://img.shields.io/badge/app-PWA-1a1511" />
+  <a href="https://udhawan97.github.io/Dusori/app/"><strong>Open Dusori</strong></a>
+  ·
+  <a href="https://udhawan97.github.io/Dusori/">Website</a>
+  ·
+  <a href="https://udhawan97.github.io/Dusori/docs/">Documentation</a>
 </p>
 
 <p align="center">
-  <a href="https://udhawan97.github.io/Dusori/app/"><strong>Open the app</strong></a>
-  ·
-  <a href="https://udhawan97.github.io/Dusori/docs/">Documentation</a>
-  ·
-  <a href="https://udhawan97.github.io/Dusori/">Product page</a>
-  ·
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.4.0">v0.4.0 release</a>
+  <a href="https://github.com/udhawan97/Dusori/releases/latest"><img src="https://img.shields.io/github/v/release/udhawan97/Dusori?style=flat-square&color=cb4832" alt="Latest release"></a>
+  <a href="https://github.com/udhawan97/Dusori/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/udhawan97/Dusori/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Node.js-24_LTS-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 24 LTS">
+  <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=flat-square&logo=svelte&logoColor=white" alt="Svelte 5">
+  <img src="https://img.shields.io/badge/app-PWA-5A0FC8?style=flat-square&logo=pwa&logoColor=white" alt="Progressive Web App">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-2f6f62?style=flat-square" alt="Apache 2.0 License"></a>
+</p>
+
+<p align="center">
+  <a href="#install-it-your-way">🚀 Install</a> ·
+  <a href="#what-dusori-does">🧠 Features</a> ·
+  <a href="#obsidian-without-surrendering-the-vault">💎 Obsidian</a> ·
+  <a href="#for-developers">🛠️ Developers</a>
 </p>
 
 ---
 
-Dusori turns plain Markdown and JSON into a private learning workbench: notes, a checkable roadmap, local sources, dated updates, and a knowledge graph that understands Obsidian-style `[[wikilinks]]`. Start in browser storage or connect one folder. Export a ZIP at any time. The app works offline after its first load and does not need an account, plugin, remote backend, or AI model.
+## Install It Your Way
 
-The identity combines Japanese restraint—an open ensō and blade—with rangoli-like Indian geometry at the center. Vermilion marks action; marigold marks connected knowledge. The app starts in black mode and keeps an explicit light/dark choice locally.
+Pick the amount of local control you want. The browser app and local companion open the same Dusori workspace experience.
 
-## v0.4.0 — the local workbench
+|                        | 🌐 Install the PWA                                     | 🧠 Run the local companion                        | 🛠️ Run from source              |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------------- | ------------------------------- |
+| **Best for**           | Learning immediately                                   | Local page capture and one-folder access          | Contributing or inspecting it   |
+| **You need**           | A modern browser                                       | Node.js 24 LTS                                    | Git and Node.js 24 LTS          |
+| **Data location**      | Browser storage or approved folder                     | Browser storage or one explicitly approved folder | Same local storage choices      |
+| **Background service** | None                                                   | Only while its terminal is open                   | Only while its terminal is open |
+| **Start here**         | [Open Dusori](https://udhawan97.github.io/Dusori/app/) | `npx @udhawan97/dusori@latest`                    | `npm start` after cloning       |
 
-Dusori v0.4.0 adds conflict-safe Markdown note authoring, local full-text search, backlinks, explicit workspace health, a deterministic review queue, and a seven-day recap. ZIP replacement now validates the complete archive before confirmation and restores the previous snapshot if a write fails. The optional companion is packaged for `npx` with version alignment and packed-tarball smoke checks.
+<details open>
+<summary><strong>🌐 Install the PWA — no terminal, account, or download</strong></summary>
 
-[Read the release notes](https://github.com/udhawan97/Dusori/releases/tag/v0.4.0) · [Review the changelog](CHANGELOG.md)
+<br>
 
-## The product today
+1. [Open Dusori](https://udhawan97.github.io/Dusori/app/).
+2. Use your browser’s **Install**, **Add to Dock**, or **Add to Home Screen** action.
+3. Create a private browser workspace and export a ZIP after meaningful work.
 
-![Dusori workspace showing the local learning loop](apps/site/public/app-workspace.png)
+Dusori works offline after its first successful load. Chrome and Edge on desktop can also connect one user-approved folder; Firefox and Safari use browser storage plus ZIP import/export.
 
-| Surface            | What ships                                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| **Today**          | Deterministic review order, seven-day recap, progress, topic state, and next objectives                                  |
-| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states                                              |
-| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks                                      |
-| **Notes**          | Create, edit, and render portable Markdown with explicit proposals when another editor wrote first                       |
-| **Search**         | Case- and accent-insensitive local search over Markdown/text with no persisted index or network request                  |
-| **Link health**    | Backlinks plus non-mutating checks for unresolved links and source-manifest/file drift                                   |
-| **Sources**        | Paste, local file, URL reference, accepted research capture with provenance, and companion-powered full-content upgrades |
-| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective                                         |
-| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides                                    |
-| **Portability**    | Browser storage, direct folder access, ZIP export, and validated rollback-safe replacement import                        |
-| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons                                              |
+</details>
 
-Key-based or general web search, Ollama transforms, generated schedules, and unattended work remain roadmap items. Workspace search is strictly local: it scans readable Markdown and text in the current session and creates no hidden index. With the optional local companion running, Dusori also fetches the readable text of a URL source you explicitly confirm and proxies Microsoft Learn's ranked search; the hosted app alone stays keyless and limited to the Microsoft Learn catalog and English Wikipedia APIs.
+<details>
+<summary><strong>🧠 Run locally — one command (macOS · Windows · Linux)</strong></summary>
 
-## Obsidian, without surrendering the vault
+<br>
 
-Dusori uses Obsidian’s most durable interface: folders, Markdown, frontmatter, and wikilinks. No plugin is required.
+Install [Node.js 24 LTS](https://nodejs.org/en/download), then run:
+
+```bash
+npx @udhawan97/dusori@latest
+```
+
+Dusori opens automatically on a random `127.0.0.1` port. Nothing is installed as a background daemon, and closing the terminal stops the companion.
+
+To approve one existing workspace folder for that session:
+
+```bash
+npx @udhawan97/dusori@latest --root "/path/to/Dusori"
+```
+
+Want a permanent `dusori` command instead of `npx`?
+
+```bash
+npm install --global @udhawan97/dusori@latest
+dusori
+```
+
+</details>
+
+<details>
+<summary><strong>🛠️ Run from source — one cross-platform setup path</strong></summary>
+
+<br>
+
+```bash
+git clone https://github.com/udhawan97/Dusori.git
+cd Dusori
+npm start
+```
+
+On the first run, `npm start` downloads the repository-pinned pnpm version, installs dependencies, builds the browser app and companion, then opens Dusori. Later starts reuse that local build.
+
+Use `npm run setup` to install and build without launching. After pulling new source, run it once to refresh the local build.
+
+</details>
+
+## What Dusori Does
+
+Dusori turns ordinary files into a private learning loop. Start in browser storage or connect one folder, then take the whole workspace elsewhere as a ZIP whenever you want.
+
+|     | You do this                       | Dusori gives you                                                                                   |
+| --- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 🗺️  | Check roadmap objectives          | A deterministic next-review order, progress, topic state, and seven-day recap                      |
+| ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first             |
+| 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                  |
+| 🔗  | Add `[[wikilinks]]`               | Backlinks, unresolved-link checks, and a deterministic knowledge constellation                     |
+| 📚  | Save sources                      | Paste, local file, URL reference, provenance, and preview-first acceptance                         |
+| 🧭  | Import a study guide              | A reviewable roadmap that preserves the original outline in `Sources/`                             |
+| 🧪  | Open the optional companion       | Confirmed readable-page capture and bounded Microsoft Learn search through a loopback-only service |
+| 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                          |
+
+Key-based or general web search, Ollama transforms, generated schedules, and unattended work are roadmap items—not current features.
+
+<p align="center">
+  <img src="apps/site/public/app-workspace.png" alt="Dusori workspace showing the local learning loop" width="820">
+  <br>
+  <sub><em>Today, Roadmap, local notes, source provenance, and review state stay together without becoming a hosted account.</em></sub>
+</p>
+
+## Obsidian, Without Surrendering the Vault
+
+Dusori uses Obsidian’s durable interface: folders, Markdown, frontmatter, and wikilinks. No plugin is required.
+
+<details open>
+<summary><strong>💎 Connect a dedicated Dusori folder</strong></summary>
+
+<br>
 
 1. Open or create an Obsidian vault.
 2. Create `<Vault>/Dusori/`.
 3. In Chrome or Edge on desktop, choose **Use Dusori with Obsidian**.
 4. Select only the `Dusori` subfolder—never the whole vault.
 
-Firefox and Safari use the private browser workspace plus ZIP import/export. Folder access is an enhancement, not a portability requirement.
+Firefox and Safari use the private browser workspace plus ZIP import/export. Folder access is an enhancement; portable files remain the baseline.
 
-## A graph that remains files
+</details>
 
-The graph does not introduce a graph database. `@dusori/core` scans readable workspace files, gives every node its normalized relative path, derives containment from topic folders, and resolves `[[wikilinks]]`. Backlinks reverse those resolved edges. Workspace health reports unresolved links and source-manifest/file drift without repairing or quarantining files implicitly. Coordinates and health state are never written into the workspace.
+## Local-First by Construction
 
-![Dusori dark knowledge graph showing portable learning artifacts](apps/site/public/app-graph.png)
+<details open>
+<summary><strong>🔐 What stays local—and what can use the network</strong></summary>
 
-```mermaid
-flowchart LR
-  F["Markdown + text files"] --> C["@dusori/core graph builder"]
-  C --> G["Local SVG constellation"]
-  C --> A["Accessible artifact index"]
-  O["Obsidian"] <--> F
-  Z["ZIP export"] <--> F
-```
+<br>
 
-## Portable file contract
+- Notes, roadmaps, state, search, graph layout, backlinks, and health checks stay in the current local workspace.
+- The hosted app has no account system, telemetry, hosted application backend, or database.
+- Microsoft Learn and English Wikipedia suggestions call their public APIs only when you use research.
+- The optional companion fetches a URL only after you confirm its exact host. It rejects non-public destinations, rechecks redirects, and stops with the terminal process.
+- The companion binds only to `127.0.0.1`, creates a fresh session token, and removes that token from the browser address after connection.
+
+</details>
+
+<details>
+<summary><strong>📁 Portable file contract</strong></summary>
+
+<br>
 
 ```text
 <Dusori Root>/
@@ -98,7 +181,7 @@ flowchart LR
     ├── roadmap.md
     ├── TUTOR.md
     ├── state.json
-    ├── research.json               # created after the first dismissal
+    ├── research.json
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/
@@ -107,23 +190,33 @@ flowchart LR
     └── Backups/
 ```
 
-Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If a Markdown file changed outside Dusori, that file stays active and Dusori writes a dated `.proposed-…` version beside it. Acceptance is always explicit and recorded in `Updates/`.
+Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If a Markdown file changed outside Dusori, that file stays active and Dusori writes a dated `.proposed-…` version beside it for explicit review.
 
-## Architecture
+</details>
 
-```text
-apps/app                  SvelteKit browser/PWA workbench
-apps/site                 Astro + Starlight product and documentation site
-packages/core             Storage-neutral domain, learning loop, research, graph, conflicts
-packages/storage-opfs     Private browser workspace adapter
-packages/storage-fsa      User-approved folder adapter
-packages/companion        Optional token-protected loopback research service
-tests/e2e                 Built Pages artifact and user-flow verification
+<details>
+<summary><strong>🌌 The graph remains files</strong></summary>
+
+<br>
+
+`@dusori/core` scans readable workspace files, derives topic containment, and resolves `[[wikilinks]]`. Backlinks reverse those resolved edges. Coordinates and health state are never written into the workspace, and there is no graph database.
+
+```mermaid
+flowchart LR
+  files["Markdown + text files"] --> core["@dusori/core graph builder"]
+  core --> graph["Local SVG constellation"]
+  core --> index["Accessible artifact index"]
+  obsidian["Obsidian"] <--> files
+  zip["ZIP export"] <--> files
 ```
 
-The browser app calls storage-neutral core modules. OPFS, the File System Access API, and memory tests implement the same storage interface; the optional companion is a separate, token-protected loopback transport for bounded research operations. There is no hosted application backend.
+<p align="center">
+  <img src="apps/site/public/app-graph.png" alt="Dusori dark knowledge graph showing portable learning artifacts" width="820">
+</p>
 
-## Browser support
+</details>
+
+## Browser Support
 
 | Capability                | Chrome / Edge desktop | Firefox / Safari  | Mobile                      |
 | ------------------------- | --------------------- | ----------------- | --------------------------- |
@@ -133,57 +226,110 @@ The browser app calls storage-neutral core modules. OPFS, the File System Access
 | Offline after first load  | Yes                   | Yes¹              | Yes¹                        |
 | Install                   | PWA                   | Add to Dock / tab | PWA / Home Screen           |
 
-¹ Browser storage retention varies. Install where supported and keep exported backups.<br />
+¹ Browser storage retention varies. Install where supported and keep exported backups.<br>
 ² Mobile folder writes are not atomic; ZIP remains the portability baseline.
 
-## Develop and verify
+## For Developers
 
-Prerequisites: Node.js 24 LTS and pnpm 11.
+Dusori is a TypeScript monorepo with a storage-neutral core and separate browser, site, storage, and loopback boundaries.
 
-```sh
-corepack enable
+<details open>
+<summary><strong>🛠️ Setup, run, and quality checks</strong></summary>
+
+<br>
+
+```bash
+# Easiest cross-platform local build (Node.js 24 LTS only)
+npm run setup
+npm start
+
+# Contributor workflow (Node.js 24 LTS + pnpm 11)
 pnpm install
+pnpm dev:app
 pnpm check
 pnpm test:e2e
 ```
 
-Useful commands:
+`npm run setup` uses the exact pnpm version pinned in `package.json`; it does not require Corepack or a global pnpm install.
 
-```sh
-pnpm dev:app       # SvelteKit app
-pnpm dev:site      # Astro/Starlight site
-pnpm test:unit     # core, storage, and companion tests
-pnpm build         # compose the exact GitHub Pages artifact
-pnpm preview       # serve dist/pages locally
+</details>
+
+<details>
+<summary><strong>🏗️ Architecture and project layout</strong></summary>
+
+<br>
+
+```text
+apps/app                  SvelteKit browser/PWA workbench
+apps/site                 Astro + Starlight product and documentation site
+packages/core             Storage-neutral learning, research, graph, and conflict domain
+packages/storage-opfs     Private browser workspace adapter
+packages/storage-fsa      User-approved folder adapter
+packages/companion        Optional token-protected loopback app and research service
+scripts/local.mjs         Cross-platform source setup and local launcher
+tests/e2e                 Built Pages artifact and user-flow verification
 ```
 
-Run the optional companion from its published npm package:
+The browser app calls storage-neutral core modules. OPFS, the File System Access API, and memory tests implement the same storage interface. The optional companion is a separate transport for root-confined files and bounded research operations; there is no hosted application backend.
 
-```sh
-npx @udhawan97/dusori@0.4.0 --root /path/to/Dusori
-```
+</details>
 
-Or build it from this repository:
+<details>
+<summary><strong>📦 Build and inspect the published companion</strong></summary>
 
-```sh
+<br>
+
+```bash
 pnpm build
-pnpm --filter @udhawan97/dusori dev -- --root /path/to/Dusori
+pnpm smoke:companion
+npx @udhawan97/dusori@latest --help
+npx @udhawan97/dusori@latest --version
 ```
 
-The companion binds only to `127.0.0.1`, issues a new token for each run, removes that token from the browser address after connection, and stops with its terminal process. Folder access remains off unless `--root` names one explicit Dusori directory. `npx @udhawan97/dusori@0.4.0 --help` and `--version` exit without starting the service.
+The package smoke check packs a real tarball, runs its CLI through npm, and verifies that the app shell and service worker are included.
 
-**Compatibility note:** do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older reader can rename `Sources/manifest.json` to an `.invalid-<timestamp>` file after seeing the newer provenance value. Source content remains untouched; update to v0.3.0 or later and rename the manifest back if this has already happened.
+</details>
 
-See [CHANGELOG.md](CHANGELOG.md), [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), the [architecture decisions](docs/adr/), and the [product specification](docs/product/spec.md).
+## Troubleshooting
+
+<details>
+<summary><strong>Common install and first-run issues</strong></summary>
+
+<br>
+
+| Symptom                                                 | Fix                                                                                                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `Dusori requires Node.js 24 LTS`                        | Install [Node.js 24 LTS](https://nodejs.org/en/download), open a new terminal, and retry.                           |
+| `npx` asks to install the package                       | Confirm once; npm is downloading the published Dusori companion.                                                    |
+| Browser did not open                                    | Open the `http://127.0.0.1:…` URL printed in the terminal.                                                          |
+| Folder access is off                                    | Restart with `--root "/path/to/Dusori"`; only that folder is approved.                                              |
+| Direct folder button is unavailable                     | Use desktop Chrome or Edge, or use browser storage with ZIP import/export.                                          |
+| Workspace was created with v0.3.0+ but opened in v0.2.0 | Update first. The older reader can rename a newer `Sources/manifest.json`; source content itself remains untouched. |
+
+More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-started/) · [Browser support](https://udhawan97.github.io/Dusori/docs/browser-support/) · [Security policy](SECURITY.md)
+
+</details>
+
+## Release Notes
+
+The current `v0.4.0` release adds conflict-safe Markdown note authoring, local full-text search, backlinks, explicit workspace health, a deterministic review queue, and a seven-day recap. ZIP replacement validates the complete archive before confirmation and rolls back if a write fails.
+
+[Read the v0.4.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.4.0) · [Review the changelog](CHANGELOG.md)
+
+## Contributing
+
+Issues and pull requests are welcome. Preserve the portable file contract, offline baseline, conflict safety, explicit network consent, and honest capability reporting. See [CONTRIBUTING.md](CONTRIBUTING.md) before changing a storage or network boundary.
 
 ## License
 
-Dusori is released under the [Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.
+Released under the [Apache License 2.0](LICENSE). Bundled fonts retain their SIL Open Font License files under `apps/app/static/fonts/licenses/`.
 
 ## Acknowledgements
 
-- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) for the constellation, link-affinity, and “god node” hub ideas.
+- [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) (MIT) for constellation, link-affinity, and “god node” ideas.
 - [tt-a1i/archify](https://github.com/tt-a1i/archify) (MIT) for the geometry self-audit idea.
 - [chanhx/crabviz](https://github.com/chanhx/crabviz) (AGPL-3.0) for the focus-fade idea only; no code was copied or derived.
 
-These ideas were reimplemented independently; no code was copied.
+<p align="center">
+  <sub>Your files stay useful with or without Dusori. That is the point.</sub>
+</p>

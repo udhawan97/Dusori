@@ -4,12 +4,18 @@ Dusori is maintained as a small, local-first project. A useful contribution shou
 
 ## Setup
 
-Use Node.js 24 LTS and pnpm 11:
+Use Node.js 24 LTS. The cross-platform helper downloads the repository-pinned pnpm version, installs dependencies, and builds the local app:
 
 ```sh
-corepack enable
-pnpm install
+npm run setup
+```
+
+For day-to-day development, use pnpm 11:
+
+```sh
+pnpm dev:app
 pnpm check
+pnpm test:e2e
 ```
 
 ## Change discipline
