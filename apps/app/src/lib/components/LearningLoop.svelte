@@ -16,9 +16,13 @@
     buildTodaySummary,
     buildWorkspaceRecap,
     lineDiff,
+    markTopicReviewed,
+    nextScheduledReview,
     setTopicStatus,
     updateRoadmapObjective,
     type MarkdownConflict,
+    type NextScheduledReview,
+    type ReviewOutcome,
     type ReviewQueueItem,
     type StorageAdapter,
     type TodayTopicSummary,
@@ -38,9 +42,11 @@
 
   let summaries: TodayTopicSummary[] = [];
   let reviewQueue: ReviewQueueItem[] = [];
+  let nextReview: NextScheduledReview | null = null;
   let recap: WorkspaceRecap | null = null;
   let loading = true;
   let workingIndex: number | null = null;
+  let reviewWorkingSlug: string | null = null;
   let statusWorking = false;
   let error = '';
   let success = '';
@@ -75,6 +81,7 @@
       ]);
       summaries = nextSummaries;
       reviewQueue = buildReviewQueue(nextSummaries);
+      nextReview = nextScheduledReview(nextSummaries);
       recap = nextRecap;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not read learning progress.';
@@ -164,6 +171,24 @@
     await refresh();
   }
 
+  async function markReviewed(item: ReviewQueueItem, outcome: ReviewOutcome): Promise<void> {
+    reviewWorkingSlug = item.slug;
+    error = '';
+    success = '';
+    try {
+      const schedule = await markTopicReviewed(storage, item.slug, outcome);
+      success =
+        outcome === 'good'
+          ? `Reviewed “${item.title}”. The next review is ${activityDate(schedule.dueOn)}.`
+          : `Reviewed “${item.title}”. It returns tomorrow.`;
+      await refresh();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Dusori could not record this review.';
+    } finally {
+      reviewWorkingSlug = null;
+    }
+  }
+
   function activityDate(value: string): string {
     return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
       new Date(`${value}T12:00:00`),
@@ -218,10 +243,17 @@
             </div>
           </div>
           <p class="focus-explainer">
-            Active topics come first, least recently updated first. Dusori creates no deadlines.
+            Due reviews come first, then active topics least recently updated first. Deadlines exist
+            only for topics you mark reviewed.
           </p>
           {#if reviewQueue.length === 0}
-            <p class="focus-empty">No unfinished active or paused topics.</p>
+            {#if nextReview}
+              <p class="focus-empty">
+                No reviews due. “{nextReview.title}” returns on {activityDate(nextReview.dueOn)}.
+              </p>
+            {:else}
+              <p class="focus-empty">No unfinished active or paused topics.</p>
+            {/if}
           {:else}
             <ol aria-label="Review queue">
               {#each reviewQueue as item, index (item.slug)}
@@ -230,14 +262,37 @@
                   <div>
                     <strong>{item.title}</strong>
                     <p>{item.objective}</p>
-                    <small>{item.reason} · {item.progressPercent}% complete</small>
+                    <small
+                      >{item.reason} · {item.progressPercent}% complete{item.status === 'paused' &&
+                      item.dueOn
+                        ? ` · returns ${activityDate(item.dueOn)}`
+                        : ''}</small
+                    >
                   </div>
-                  <button
-                    aria-label={`Open ${item.title} roadmap`}
-                    onclick={() => onOpenRoadmap(item.slug)}
-                  >
-                    <ArrowRight aria-hidden="true" size={16} />
-                  </button>
+                  <div class="queue-actions">
+                    <button
+                      class="queue-review"
+                      aria-label={`Got it — mark ${item.title} reviewed`}
+                      disabled={reviewWorkingSlug !== null}
+                      onclick={() => markReviewed(item, 'good')}
+                    >
+                      Got it
+                    </button>
+                    <button
+                      class="queue-review"
+                      aria-label={`Needs work — review ${item.title} again tomorrow`}
+                      disabled={reviewWorkingSlug !== null}
+                      onclick={() => markReviewed(item, 'again')}
+                    >
+                      Needs work
+                    </button>
+                    <button
+                      aria-label={`Open ${item.title} roadmap`}
+                      onclick={() => onOpenRoadmap(item.slug)}
+                    >
+                      <ArrowRight aria-hidden="true" size={16} />
+                    </button>
+                  </div>
                 </li>
               {/each}
             </ol>
@@ -618,11 +673,25 @@
 
   .review-queue li button {
     display: grid;
+    min-height: 2.75rem;
     width: 2.75rem;
     padding: 0;
     background: var(--color-paper);
     color: var(--color-accent-text);
     place-items: center;
+  }
+
+  .queue-actions {
+    display: grid;
+    gap: var(--space-2xs);
+    justify-items: stretch;
+  }
+
+  .queue-actions .queue-review {
+    width: auto;
+    padding-inline: var(--space-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   .workspace-recap li {
