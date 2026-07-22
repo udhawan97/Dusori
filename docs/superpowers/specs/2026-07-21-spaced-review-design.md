@@ -201,7 +201,9 @@ comes back when, without changing `buildReviewQueue`'s return type.
 - Empty queue with scheduled topics: `No reviews due. “<title>” returns on <date>.`
   (from `nextScheduledReview`). With nothing scheduled, the current empty copy
   stays.
-- Due items show their date through the existing `<time>`/date-formatting pattern.
+- A due item carries its date in the reason line it already renders (`Due today` or
+  `Overdue since <date>`); a paused topic that holds a schedule appends
+  `· returns <date>` there instead, so no new date element is introduced.
 - No other surface changes: topic ledger, roadmap view, recap layout, and graph are
   untouched (review actions appear in the recap through normal update entries).
 
@@ -246,9 +248,12 @@ Unit (vitest, `MemoryStorageAdapter`, injected dates, no network):
 E2E (Playwright, built app, no network):
 
 - Mark a queue topic **Got it** → success line, topic leaves the queue, recap shows
-  the review entry, and reload keeps it gone (persistence).
-- Mark **Needs work** → reason shows the one-day return.
+  the review entry, reload keeps it gone, and `review.json` holds the expected
+  schedule (persistence).
 - Empty-queue message names the next due topic and date.
+- The **Needs work** outcome is covered at the unit level (schedule reset plus its
+  own update-log line): a one-day interval also removes the topic from the queue, so
+  an e2e pass over it would assert the same emptied-queue state as **Got it**.
 - Existing axe checks stay green with the new buttons in the accessibility tree.
 
 ## Out of scope
