@@ -17,6 +17,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Local full-text workspace search with no stored index or remote query
 - Backlinks and non-mutating workspace health for wikilinks and source manifests/files
 - Interactive Markdown roadmap progress, explicit topic status, deterministic review order, and a seven-day recap
+- Optional spaced review: an explicit "Got it" / "Needs work" action schedules a topic's next due date on the review queue from a fixed interval ladder
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
@@ -30,7 +31,6 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Ollama discovery and source-bounded transformations
 - Model capability probes
 - Chat-to-`TUTOR.md` diff editing
-- Optional generated review schedules, due dates, or spaced-repetition intervals
 - Key-based or general-purpose search adapters
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

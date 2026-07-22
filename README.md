@@ -45,21 +45,21 @@ Dusori v0.4.0 adds conflict-safe Markdown note authoring, local full-text search
 
 ![Dusori workspace showing the local learning loop](apps/site/public/app-workspace.png)
 
-| Surface            | What ships                                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| **Today**          | Deterministic review order, seven-day recap, progress, topic state, and next objectives                                  |
-| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states                                              |
-| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks                                      |
-| **Notes**          | Create, edit, and render portable Markdown with explicit proposals when another editor wrote first                       |
-| **Search**         | Case- and accent-insensitive local search over Markdown/text with no persisted index or network request                  |
-| **Link health**    | Backlinks plus non-mutating checks for unresolved links and source-manifest/file drift                                   |
-| **Sources**        | Paste, local file, URL reference, accepted research capture with provenance, and companion-powered full-content upgrades |
-| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective                                         |
-| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides                                    |
-| **Portability**    | Browser storage, direct folder access, ZIP export, and validated rollback-safe replacement import                        |
-| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons                                              |
+| Surface            | What ships                                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Today**          | Deterministic review order with optional spaced-review due dates, seven-day recap, progress, topic state, and next objectives |
+| **Roadmap**        | Ordinary Markdown checkboxes with active, paused, and complete topic states                                                   |
+| **Graph**          | Deterministic constellation of portable artifacts, topic containment, and wikilinks                                           |
+| **Notes**          | Create, edit, and render portable Markdown with explicit proposals when another editor wrote first                            |
+| **Search**         | Case- and accent-insensitive local search over Markdown/text with no persisted index or network request                       |
+| **Link health**    | Backlinks plus non-mutating checks for unresolved links and source-manifest/file drift                                        |
+| **Sources**        | Paste, local file, URL reference, accepted research capture with provenance, and companion-powered full-content upgrades      |
+| **Research**       | Consent-gated Microsoft Learn and Wikipedia suggestions from a roadmap objective                                              |
+| **Curricula**      | Preview-first import for structured Markdown and English Microsoft Learn study guides                                         |
+| **Portability**    | Browser storage, direct folder access, ZIP export, and validated rollback-safe replacement import                             |
+| **Installability** | PWA manifest, service worker, offline reload, and supplied Dusori app icons                                                   |
 
-Key-based or general web search, Ollama transforms, generated schedules, and unattended work remain roadmap items. Workspace search is strictly local: it scans readable Markdown and text in the current session and creates no hidden index. With the optional local companion running, Dusori also fetches the readable text of a URL source you explicitly confirm and proxies Microsoft Learn's ranked search; the hosted app alone stays keyless and limited to the Microsoft Learn catalog and English Wikipedia APIs.
+Key-based or general web search, Ollama transforms, and unattended work remain roadmap items. Workspace search is strictly local: it scans readable Markdown and text in the current session and creates no hidden index. With the optional local companion running, Dusori also fetches the readable text of a URL source you explicitly confirm and proxies Microsoft Learn's ranked search; the hosted app alone stays keyless and limited to the Microsoft Learn catalog and English Wikipedia APIs.
 
 ## Obsidian, without surrendering the vault
 
@@ -99,6 +99,7 @@ flowchart LR
     ├── TUTOR.md
     ├── state.json
     ├── research.json               # created after the first dismissal
+    ├── review.json                 # created after the first review action
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/

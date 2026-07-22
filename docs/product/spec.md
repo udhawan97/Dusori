@@ -30,12 +30,13 @@ The first milestone must prove:
 16. Deterministic review ordering and a bounded recap derived from dated local updates.
 17. Whole-archive import validation with rollback if replacement storage fails.
 18. A version-aligned, packed-tarball-tested npm companion command.
+19. Optional, explicit spaced-review scheduling stored in portable topic files.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
 The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markdown with the English `Skills measured` hierarchy and general structured Markdown syllabi. It extracts at most 200 objectives locally, previews them before writing, preserves the original outline as a topic source, and updates `roadmap.md` through the same conflict-safe acceptance protocol. The optional official URL is provenance metadata only and is never fetched.
 
-The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress and next steps. **Review next** orders active topics before paused topics and then uses oldest `state.json.updatedAt` first. The seven-day recap reads bounded recent entries from dated update files. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. No deadline, calendar, spaced-repetition interval, or background schedule is generated.
+The shipped learning loop parses ordinary Markdown task syntax from `roadmap.md`. Users can complete or reopen an objective, set a topic to active, paused, or complete, and review a deterministic **Today** summary of progress and next steps. **Review next** orders due spaced reviews first, then unscheduled active topics before paused topics using oldest `state.json.updatedAt` first. The seven-day recap reads bounded recent entries from dated update files. Roadmap writes use the existing hash guard; an external edit produces a sibling proposal and requires explicit review. An explicit review action ("Got it" or "Needs work") stores a fixed-ladder interval (1, 3, 7, 14, 30, then 60 days) in the topic's machine-owned `review.json` and sets the next due date; a scheduled topic rests out of the queue until due, a topic never marked reviewed keeps the deterministic order, and no calendar, notification, or closed-app schedule is ever generated.
 
 The shipped note editor creates Markdown under `Topics/<slug>/Notes/`, records it in `state.json`, and opens it directly for editing. Existing note saves use the same tracked-hash protocol as roadmap writes. An external edit remains active; Dusori stores the user's draft as a sibling proposal and requires an explicit acceptance step.
 
@@ -56,7 +57,7 @@ With the local companion running, Microsoft Learn search instead proxies Microso
 - Ollama or other model operations
 - AI-generated notes or diagrams
 - Chat-to-`TUTOR.md` editing
-- Generated schedules, due dates, spaced-repetition intervals, or closed-app work
+- Closed-app or unattended background work
 - Accounts, sync, telemetry, or hosted storage
 
 ## Trust model
