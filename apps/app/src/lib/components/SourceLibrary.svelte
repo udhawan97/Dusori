@@ -440,8 +440,12 @@
     {#if upgradePreview.page.truncated}
       <p>This page was longer than the 2 MiB source limit and was truncated.</p>
     {/if}
-    <p>Source markdown</p>
-    <pre>{upgradePreview.content}</pre>
+    <p id="upgrade-preview-markdown">Source markdown</p>
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+    <pre
+      role="region"
+      aria-labelledby="upgrade-preview-markdown"
+      tabindex="0">{upgradePreview.content}</pre>
     {#if upgradeError}
       <p class="source-message error" role="alert">
         <AlertTriangle aria-hidden="true" size={17} />
@@ -741,6 +745,11 @@
     font-size: var(--text-xs);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  .upgrade-dialog pre:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
   }
 
   .upgrade-url code {

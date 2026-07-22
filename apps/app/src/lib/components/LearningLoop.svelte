@@ -455,7 +455,13 @@
             Your external file is still active. Dusori wrote this progress choice beside it for
             review.
           </p>
-          <div class="roadmap-diff" aria-label="Progress proposal changes">
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+          <div
+            class="roadmap-diff"
+            role="region"
+            aria-label="Progress proposal changes"
+            tabindex="0"
+          >
             {#each changedRows as row, index (`${index}-${row.kind}`)}
               <div class:added={row.kind === 'add'} class:removed={row.kind === 'remove'}>
                 <span aria-hidden="true">{row.kind === 'add' ? '+' : '−'}</span>
@@ -968,6 +974,11 @@
     overflow: auto;
     border: var(--rule-hair) solid var(--color-border);
     background: var(--color-paper);
+  }
+
+  .roadmap-diff:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
   }
 
   .roadmap-diff div {

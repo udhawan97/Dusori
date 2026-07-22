@@ -962,7 +962,8 @@
             Dusori wrote <code>{conflict.proposalPath}</code> beside the note and recorded the event in
             the dated update log.
           </p>
-          <div class="diff" aria-label="Proposed change diff">
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+          <div class="diff" role="region" aria-label="Proposed change diff" tabindex="0">
             {#each diff as row, index (`${index}-${row.kind}`)}
               <div class:added={row.kind === 'add'} class:removed={row.kind === 'remove'}>
                 <span aria-hidden="true"
@@ -1733,6 +1734,11 @@
     border: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper);
     font-size: var(--text-sm);
+  }
+
+  .diff:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
   }
 
   .diff > div {

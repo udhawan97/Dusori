@@ -55,4 +55,9 @@
     border: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper-2);
   }
+
+  .markdown :global(pre:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+  }
 </style>

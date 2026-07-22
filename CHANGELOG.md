@@ -8,6 +8,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 - Curriculum import now recognizes AWS Certification exam guides: paste the content outline copied from an official AWS exam guide PDF and Dusori extracts the weighted `Domain N:` sections and `Task Statement N.N:` items, merging the duplicated summary table and rejoining lines the PDF wraps mid-sentence. When no format matches, the error now names every supported outline instead of a generic hint.
 
+### Accessibility
+
+- Every scrollable panel is now reachable by keyboard (WCAG 2.1.1): the note and roadmap proposal diffs, the fetched-source and research capture previews, and rendered Markdown code blocks each take focus, carry a name, and show a focus ring. Previously a keyboard or screen-reader user could not scroll them at all. Because rendered code blocks arrive as sanitized HTML, they are annotated in the Markdown pipeline after sanitizing, so a note cannot supply those attributes itself. The accessibility end-to-end checks now feed each of these panels content longer than its own height, since the underlying rule only reports a region once it truly overflows.
+
 ## [0.5.0] - 2026-07-22
 
 ### Added
