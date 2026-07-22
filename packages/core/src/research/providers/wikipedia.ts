@@ -75,6 +75,16 @@ export const wikipediaProvider: ResearchProvider = {
   label: 'Wikipedia',
   disclosure: WIKIPEDIA_DISCLOSURE,
 
+  capturedVia: () => 'api-extract',
+
+  describeMeta: (candidate: ResearchCandidate): string =>
+    [
+      candidate.meta.wordcount ? `${candidate.meta.wordcount} words` : '',
+      candidate.meta.size ? `${candidate.meta.size} bytes` : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+
   async search(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]> {
     const url = new URL('https://en.wikipedia.org/w/api.php');
     url.search = new URLSearchParams({
@@ -92,6 +102,7 @@ export const wikipediaProvider: ResearchProvider = {
     const results = parsed.data.query.search.slice(0, 8);
     return results.map((result, index) => ({
       key: `wikipedia:${result.pageid}`,
+      kind: 'docs' as const,
       meta: {
         ...(result.size === undefined ? {} : { size: String(result.size) }),
         ...(result.wordcount === undefined ? {} : { wordcount: String(result.wordcount) }),

@@ -158,21 +158,7 @@
   }
 
   function metadata(candidate: ResearchCandidate): string {
-    if (candidate.provider === 'mslearn') {
-      return [
-        candidate.meta.duration_in_minutes ? `${candidate.meta.duration_in_minutes} min` : '',
-        candidate.meta.levels ?? '',
-        candidate.meta.products ?? '',
-      ]
-        .filter(Boolean)
-        .join(' · ');
-    }
-    return [
-      candidate.meta.wordcount ? `${candidate.meta.wordcount} words` : '',
-      candidate.meta.size ? `${candidate.meta.size} bytes` : '',
-    ]
-      .filter(Boolean)
-      .join(' · ');
+    return providerFor(candidate).describeMeta(candidate);
   }
 
   async function openPreview(
@@ -214,7 +200,7 @@
         method: 'url',
         origin: {
           capturedAt: new Date().toISOString(),
-          capturedVia: preview.provider.id === 'mslearn' ? 'catalog-reference' : 'api-extract',
+          capturedVia: preview.provider.capturedVia(preview.candidate),
           provider: preview.provider.id,
         },
         title: preview.capture.title,

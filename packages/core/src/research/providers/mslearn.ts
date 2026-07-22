@@ -81,7 +81,9 @@ async function catalogSearch(
     .sort(compareCandidateScores)
     .slice(0, 8)
     .map((candidate) => ({
+      communityScore: candidate.popularity,
       key: candidate.key,
+      kind: 'course' as const,
       meta: candidate.meta,
       provider: candidate.provider,
       score: candidate.score,
@@ -110,6 +112,22 @@ export function createMsLearnProvider(
     disclosure: options.ranked ? MS_LEARN_RANKED_DISCLOSURE : MS_LEARN_DISCLOSURE,
     id: 'mslearn',
     label: 'Microsoft Learn',
+
+    // A ranked result is keyed by URL because the search API returns no module uid, so the
+    // key is also the only thing that says which path produced this candidate.
+    capturedVia: (candidate: ResearchCandidate): string =>
+      candidate.key.slice('mslearn:'.length).startsWith('http')
+        ? 'search-reference'
+        : 'catalog-reference',
+
+    describeMeta: (candidate: ResearchCandidate): string =>
+      [
+        candidate.meta.duration_in_minutes ? `${candidate.meta.duration_in_minutes} min` : '',
+        candidate.meta.levels ?? '',
+        candidate.meta.products ?? '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
 
     async search(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]> {
       if (options.ranked) {

@@ -4,37 +4,14 @@ import { resolve } from 'node:path';
 import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { z } from 'zod';
-
-import { StorageConflictError } from '@dusori/core';
 
 import { appBasePath } from '../../../config/site.mjs';
 
-import {
-  canonicalRoot,
-  listWorkspace,
-  readWorkspaceFile,
-  writeWorkspaceFile,
-} from './filesystem.js';
-import { FetchPageError, fetchReadablePage, type LookupImpl } from './research-fetch.js';
-import { MsLearnProxyError, searchMsLearnRanked } from './research-mslearn.js';
+import { canonicalRoot } from './filesystem.js';
+import type { LookupImpl } from './research-fetch.js';
+import { researchRoutes } from './routes/research.js';
+import { workspaceRoutes } from './routes/workspace.js';
 import { companionVersion } from './version.js';
-
-const WriteBody = z.object({
-  path: z.string().min(1),
-  content: z.string(),
-  expectedHash: z.string().length(64).nullable().optional(),
-});
-
-const FetchBody = z.object({ url: z.string().min(1) });
-const SearchQuery = z.object({ q: z.string().min(1) });
-const badRequestReasons = new Set([
-  'blocked-host',
-  'invalid-url',
-  'too-large',
-  'too-many-redirects',
-  'unsupported-type',
-]);
 
 export interface ServerOptions {
   root?: string;
@@ -71,6 +48,8 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
     },
   });
 
+  // Registered on the root instance before the route plugins, so it is inherited
+  // by every encapsulated child context registered below.
   server.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/api/')) return;
     const origin = request.headers.origin;
@@ -97,82 +76,8 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
     rootSelected: Boolean(root),
   }));
 
-  server.get('/api/workspace/list', async (request, reply) => {
-    if (!root) return reply.code(400).send({ error: 'Start Dusori with --root <path>.' });
-    const query = z.object({ path: z.string().optional() }).parse(request.query);
-    try {
-      return { entries: await listWorkspace(root, query.path ?? '') };
-    } catch (error) {
-      return reply
-        .code(400)
-        .send({ error: error instanceof Error ? error.message : 'Invalid path.' });
-    }
-  });
-
-  server.get('/api/workspace/file', async (request, reply) => {
-    if (!root) return reply.code(400).send({ error: 'Start Dusori with --root <path>.' });
-    const query = z.object({ path: z.string().min(1) }).parse(request.query);
-    try {
-      return await readWorkspaceFile(root, query.path);
-    } catch (error) {
-      return reply
-        .code(400)
-        .send({ error: error instanceof Error ? error.message : 'Invalid path.' });
-    }
-  });
-
-  server.post('/api/workspace/file', async (request, reply) => {
-    if (!root) return reply.code(400).send({ error: 'Start Dusori with --root <path>.' });
-    const body = WriteBody.parse(request.body);
-    try {
-      return await writeWorkspaceFile(root, body.path, body.content, body.expectedHash);
-    } catch (error) {
-      if (error instanceof StorageConflictError) {
-        return reply.code(409).send({ error: error.message, actualHash: error.actualHash });
-      }
-      return reply
-        .code(400)
-        .send({ error: error instanceof Error ? error.message : 'Invalid path.' });
-    }
-  });
-
-  server.post('/api/research/fetch', async (request, reply) => {
-    const body = FetchBody.safeParse(request.body);
-    if (!body.success) {
-      return reply.code(400).send({ error: 'A url is required.', reason: 'invalid-url' });
-    }
-    try {
-      return await fetchReadablePage(body.data.url, options.research ?? {});
-    } catch (error) {
-      if (error instanceof FetchPageError) {
-        return reply
-          .code(badRequestReasons.has(error.reason) ? 400 : 502)
-          .send({ error: error.message, reason: error.reason });
-      }
-      return reply.code(500).send({
-        error: 'The research service failed unexpectedly. Paste the text instead.',
-        reason: 'fetch-failed',
-      });
-    }
-  });
-
-  server.get('/api/research/mslearn-search', async (request, reply) => {
-    const query = SearchQuery.safeParse(request.query);
-    if (!query.success) {
-      return reply.code(400).send({ error: 'A search query is required.' });
-    }
-    try {
-      return { results: await searchMsLearnRanked(query.data.q, options.research?.fetchImpl) };
-    } catch (error) {
-      if (error instanceof MsLearnProxyError) {
-        return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
-      }
-      return reply.code(500).send({
-        error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',
-        reason: 'fetch-failed',
-      });
-    }
-  });
+  await server.register(workspaceRoutes, { root });
+  await server.register(researchRoutes, options.research ?? {});
 
   const staticDirectory =
     options.staticDirectory ?? resolve(import.meta.dirname, `../public${appBasePath}`);

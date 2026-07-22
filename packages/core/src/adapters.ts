@@ -33,12 +33,6 @@ export interface SourceAdapter {
   import(input: unknown): Promise<SourceRecord>;
 }
 
-export interface AIProvider {
-  readonly id: string;
-  readonly isLocal: boolean;
-  transform(sourceText: string, instructions: string): Promise<string>;
-}
-
 export class StorageConflictError extends Error {
   constructor(
     readonly path: string,

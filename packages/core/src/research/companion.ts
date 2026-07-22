@@ -98,6 +98,7 @@ export function createCompanionResearchClient(
 
       return parsed.data.results.map((result, index, all) => ({
         key: `mslearn:${result.url}`,
+        kind: 'course' as const,
         meta: {},
         provider: 'mslearn' as const,
         score: all.length - index,
