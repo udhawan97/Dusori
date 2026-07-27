@@ -1,5 +1,5 @@
 
-## 11:03 | friendly-wizard-claude/source-grounded-review-sessions-0db881
-Initiated planning Dusori source-grounded review sessions (research→review→scheduling flow); read product spec, design docs, core review/research/learning modules; discovery phase incomplete.
-## 12:35 | friendly-wizard-claude/aws-certification-recognition-c2e3ad
-Implemented full research agent (Phases A–C: companion refactor, 5 new providers, optional AI layer), shipped v0.5.0 w/ synced docs, all tests passing; pending: merge to main, GitHub release/tag, npm publish, graphify --update.
+## 12:43 | main
+Fixed 10 Dusori UX gaps (topics, research, graph legibility, drafts) in improve-userflow-design audit; commit 73ae97f on main—CI blocked by pre-existing `.remember/*` lint.
+## 12:57 | friendly-wizard-claude/high-confidence-features-7b6ad3
+Planned 10 slices for v0.6.0: tags, OpenAlex/npm/Open Library providers (CORS-verified), export, insights, health, recall, PDF, TUTOR; ADR-007 design approved, impl starts.
