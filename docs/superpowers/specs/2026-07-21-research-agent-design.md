@@ -12,6 +12,9 @@ next program item: the **research agent** — the expanded successor to the
 Later program items, in order: review-queue question generation from approved
 sources, an additional curriculum importer, Reddit/YouTube providers.
 
+Review-queue question generation shipped on 2026-07-27 as source-grounded
+review sessions ([2026-07-27-source-grounded-review-design.md](2026-07-27-source-grounded-review-design.md)).
+
 ## Goal
 
 From a roadmap objective, one user-triggered run queries every consented

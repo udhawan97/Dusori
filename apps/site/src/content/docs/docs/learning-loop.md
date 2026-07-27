@@ -26,6 +26,16 @@ Today shows every topic’s status, completed-task count, next unchecked objecti
 
 Marking a review with **Got it** or **Needs work** stores the topic's next due date in its `review.json`, using a fixed interval ladder (1, 3, 7, 14, 30, then 60 days). `Got it` advances one rung; `Needs work` resets to the first rung.
 
+## Start a source-grounded review
+
+**Start review** on a queue item opens a session built from the topic's current objective and its own approved sources. Dusori composes three to five active-recall prompts from transparent templates over the objective, the source headings, and short excerpts — no model is required.
+
+Each prompt names the source it came from and keeps its excerpt hidden until you choose **Reveal the source**, which then shows the source title, its section, and its path inside your workspace. Only sources with readable text on this device are used: a URL kept as a reference is named and left alone, because Dusori never fetches a page on its own.
+
+A session is not stored. Opening it, moving between prompts, revealing evidence, and closing all write nothing; only the final **Got it** or **Needs work** changes the schedule. Nothing in a session is a score, a streak, or evidence that you understand the topic.
+
+With the local companion running and an AI provider configured, **Allow sharper prompts** may reword the questions. It is a separate consent from AI ranking, because it sends the objective and up to four short source excerpts — your notes, roadmap, and review history are never sent. The model can only change wording: the prompt count, their order, the evidence, and the rating actions are fixed, generated prompts are labelled with the model that wrote them, and any failure falls back to the deterministic templates.
+
 The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first, including review actions. It writes no summary file. Dusori never generates a calendar entry, notification, or closed-app work.
 
 ## External edits

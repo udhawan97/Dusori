@@ -18,6 +18,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Backlinks and non-mutating workspace health for wikilinks and source manifests/files
 - Interactive Markdown roadmap progress, explicit topic status, deterministic review order, and a seven-day recap
 - Optional spaced review: an explicit "Got it" / "Needs work" action schedules a topic's next due date on the review queue from a fixed interval ladder
+- Source-grounded review sessions: three to five deterministic active-recall prompts built from a topic's objective and its own readable approved sources, each showing its source path and excerpt on demand, with optional consent-gated AI rewording
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path
 - Offline application shell
 - Loopback-only local companion security foundation
