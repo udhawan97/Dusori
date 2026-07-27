@@ -1124,6 +1124,7 @@
           {storage}
           currentPath={notePath}
           onOpen={(path) => void openSearchDocument(path)}
+          onArtifactsChanged={() => (artifactRevision += 1)}
         />
       {/if}
 
