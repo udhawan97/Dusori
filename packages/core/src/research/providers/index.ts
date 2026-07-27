@@ -4,6 +4,8 @@ import { createArxivProvider } from './arxiv.js';
 import { githubProvider } from './github.js';
 import { hackerNewsProvider } from './hackernews.js';
 import { createMsLearnProvider, msLearnProvider } from './mslearn.js';
+import { npmProvider } from './npm.js';
+import { openAlexProvider } from './openalex.js';
 import { stackExchangeProvider } from './stackexchange.js';
 import { createWebSearchProvider } from './websearch.js';
 import { wikipediaProvider } from './wikipedia.js';
@@ -13,6 +15,8 @@ export * from './arxiv.js';
 export * from './github.js';
 export * from './hackernews.js';
 export * from './mslearn.js';
+export * from './npm.js';
+export * from './openalex.js';
 export * from './stackexchange.js';
 export * from './websearch.js';
 export * from './wikipedia.js';
@@ -25,6 +29,8 @@ export const researchProviders = [
   hackerNewsProvider,
   githubProvider,
   stackExchangeProvider,
+  openAlexProvider,
+  npmProvider,
 ] as const;
 
 export interface ResearchProviderOptions {
@@ -45,6 +51,8 @@ export function createResearchProviders(options: ResearchProviderOptions = {}): 
     hackerNewsProvider,
     githubProvider,
     stackExchangeProvider,
+    openAlexProvider,
+    npmProvider,
     createArxivProvider({ search: (query) => companion.searchArxiv(query) }),
     createWebSearchProvider({ search: (query) => companion.searchWeb(query) }),
     createYouTubeProvider({

@@ -86,6 +86,8 @@ const providerLabels: Record<string, string> = {
   hackernews: 'Hacker News',
   manual: 'Added manually',
   mslearn: 'Microsoft Learn',
+  npm: 'npm',
+  openalex: 'OpenAlex',
   stackexchange: 'Stack Exchange',
   websearch: 'Web search',
   wikipedia: 'Wikipedia',
