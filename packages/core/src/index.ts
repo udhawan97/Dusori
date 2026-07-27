@@ -17,5 +17,6 @@ export * from './search/workspace-search.js';
 export * from './sources/import.js';
 export * from './sources/capped.js';
 export * from './sources/upgrade.js';
+export * from './tags/tags.js';
 export * from './workspace/create.js';
 export * from './workspace/paths.js';

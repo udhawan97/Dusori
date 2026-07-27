@@ -22,6 +22,7 @@
 
   $: activityPeak = Math.max(1, ...(insights?.activity.map((point) => point.count) ?? [1]));
   $: providerPeak = Math.max(1, ...(insights?.providers.map((provider) => provider.count) ?? [1]));
+  $: tagPeak = Math.max(1, ...(insights?.tags.map((tag) => tag.count) ?? [1]));
   $: orbitStyle = evidenceOrbit(insights);
 
   async function load(
@@ -261,6 +262,32 @@
           </ul>
         {:else}
           <p class="empty-copy">Approved research sources will appear here by provider.</p>
+        {/if}
+      </section>
+
+      <section class="provenance-panel" aria-labelledby="tags-title">
+        <div class="panel-heading">
+          <div>
+            <p class="kicker">Vocabulary</p>
+            <h2 id="tags-title">Tags</h2>
+          </div>
+        </div>
+        {#if insights.tags.length}
+          <ul class="provider-list">
+            {#each insights.tags.slice(0, 12) as tag (tag.tag)}
+              <li>
+                <div>
+                  <strong>#{tag.tag}</strong>
+                  <small>{tag.count}</small>
+                </div>
+                <span><i style={`width: ${relativeWidth(tag.count, tagPeak)}`}></i></span>
+              </li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="empty-copy">
+            Tags written as <code>#name</code> or in frontmatter will be counted here.
+          </p>
         {/if}
       </section>
     </div>

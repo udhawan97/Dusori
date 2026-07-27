@@ -32,6 +32,11 @@ export interface ProviderMixItem {
   label: string;
 }
 
+export interface TagCount {
+  count: number;
+  tag: string;
+}
+
 export interface TopicInsight {
   activityCount: number;
   noteCount: number;
@@ -64,6 +69,7 @@ export interface WorkspaceInsights {
   artifactMix: ArtifactMixItem[];
   hubs: ConnectedArtifact[];
   providers: ProviderMixItem[];
+  tags: TagCount[];
   topics: TopicInsight[];
   totals: WorkspaceInsightTotals;
 }
@@ -105,6 +111,22 @@ function dateSeries(days: number, now: Date): ActivityPoint[] {
 
 function percentage(part: number, whole: number): number {
   return whole === 0 ? 0 : Math.round((part / whole) * 100);
+}
+
+/** Counts tags across the graph, grouping spellings that differ only by case under the first seen. */
+function tagCounts(nodes: Array<{ tags?: string[] }>): TagCount[] {
+  const counts = new Map<string, TagCount>();
+  for (const node of nodes) {
+    for (const tag of node.tags ?? []) {
+      const key = tag.toLocaleLowerCase();
+      const existing = counts.get(key);
+      if (existing) existing.count += 1;
+      else counts.set(key, { count: 1, tag });
+    }
+  }
+  return [...counts.values()].sort(
+    (left, right) => right.count - left.count || left.tag.localeCompare(right.tag),
+  );
 }
 
 function artifactMix(nodes: Array<{ kind: WorkspaceGraphNodeKind }>): ArtifactMixItem[] {
@@ -239,6 +261,7 @@ export async function buildWorkspaceInsights(
     providers: [...providers]
       .map(([id, count]) => ({ count, id, label: labelProvider(id) }))
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label)),
+    tags: tagCounts(graph.nodes),
     topics,
     totals: {
       activeDays: activity.filter((point) => point.count > 0).length,

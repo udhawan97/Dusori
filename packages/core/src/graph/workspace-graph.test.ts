@@ -68,4 +68,20 @@ describe('portable workspace graph', () => {
       },
     ]);
   });
+
+  it('carries the tags of each document onto its node', async () => {
+    const storage = new MemoryStorageAdapter();
+    await storage.write(
+      'Topics/cloud/Notes/vnet.md',
+      `---\ntitle: Virtual networks\ntags: [azure, networking]\n---\n\nAlso filed under #cloud/design.`,
+    );
+    await storage.write('Topics/cloud/Notes/plain.md', `---\ntitle: Plain\n---\n\nNo tags here.`);
+
+    const graph = await buildWorkspaceGraph(storage);
+    const tagged = graph.nodes.find((node) => node.path === 'Topics/cloud/Notes/vnet.md');
+    const plain = graph.nodes.find((node) => node.path === 'Topics/cloud/Notes/plain.md');
+
+    expect(tagged?.tags).toEqual(['azure', 'networking', 'cloud/design']);
+    expect(plain?.tags).toBeUndefined();
+  });
 });

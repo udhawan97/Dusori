@@ -78,4 +78,25 @@ describe('workspace insights', () => {
     expect(insights.providers).toEqual([]);
     expect(insights.topics).toEqual([]);
   });
+
+  it('derives a tag distribution ordered by count then name', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const created = await createTopic(storage, 'Cloud', now);
+    await storage.write(
+      `Topics/${created.topicSlug}/Notes/vnet.md`,
+      `---\ntitle: Virtual networks\ntags: [azure, networking]\n---\n\nBody.`,
+    );
+    await storage.write(
+      `Topics/${created.topicSlug}/Notes/identity.md`,
+      `---\ntitle: Identity\n---\n\nManaged identity. #azure`,
+    );
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
+
+    expect(insights.tags).toEqual([
+      { count: 2, tag: 'azure' },
+      { count: 1, tag: 'networking' },
+    ]);
+  });
 });
