@@ -104,6 +104,19 @@ const wikipediaSearch = {
   },
 };
 
+const reviewSourceText = `# Attention notes
+
+## Attention weights
+
+Attention lets each token weigh every other token in its context window and keep that weighted
+sum as its next representation.
+
+## Positional encoding
+
+Attention alone is order-free, so positional encodings put sequence position back into every
+representation before the first attention block runs.
+`;
+
 const companionHealth = {
   apiVersion: 1,
   service: 'dusori-companion',
@@ -193,6 +206,25 @@ async function addPastedSource(page: Page): Promise<void> {
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
+}
+
+/** Reaches Today from any width: the workspace navigation collapses on narrow viewports. */
+async function openTodayView(page: Page): Promise<void> {
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Workspace' });
+  if (!(await workspaceNavigation.isVisible())) {
+    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+  }
+  await workspaceNavigation.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+}
+
+/** Two headed sections, so a review session has more than one place to draw a prompt from. */
+async function addReviewSource(page: Page): Promise<void> {
+  await openResearch(page);
+  await page.getByLabel('Source title').fill('Attention notes');
+  await page.getByLabel('Source text').fill(reviewSourceText);
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Attention notes');
 }
 
 async function previewCurriculum(page: Page): Promise<void> {
@@ -1193,6 +1225,162 @@ test('an overflowing roadmap proposal diff stays reachable by keyboard', async (
   await expectNoSeriousA11yViolations(page);
 });
 
+test('a source-grounded review walks local evidence before the schedule moves', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addReviewSource(page);
+
+  await openTodayView(page);
+  const start = page.getByRole('button', {
+    name: 'Start review — recall AI Fundamentals from its sources',
+  });
+  await start.click();
+
+  // One source with two headed sections: explain, one prompt per section, then compare.
+  const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+  await expect(session).toContainText('Prompt 1 of 4');
+  await expect(session).toContainText('in your own words before revealing the source');
+  await expect(session).toContainText('Deterministic prompt');
+  // The excerpt stays hidden until the learner has tried to answer.
+  await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeHidden();
+  await expect(session).toContainText('Nothing here is saved to your workspace.');
+
+  await session.getByRole('button', { name: 'Reveal the source' }).click();
+  const excerpt = session.getByRole('region', { name: 'Source excerpt' });
+  await expect(excerpt).toContainText('Attention lets each token weigh');
+  await expect(session).toContainText('Attention notes');
+  await expect(session).toContainText('Topics/ai-fundamentals/Sources/items/');
+  await expectNoSeriousA11yViolations(page);
+
+  await session.getByRole('button', { name: 'Next' }).click();
+  await expect(session).toContainText('Prompt 2 of 4');
+  await expect(session).toContainText('contribute to');
+  for (let step = 0; step < 2; step += 1) {
+    await session.getByRole('button', { name: 'Next' }).click();
+  }
+  await expect(session).toContainText('Prompt 4 of 4');
+  await expect(session.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await expect(session).toContainText('Only this choice changes your review schedule.');
+
+  await session.getByRole('button', { name: 'Got it' }).click();
+  await expect(session).toBeHidden();
+  await expect(page.getByText('Reviewed “AI Fundamentals”. The next review is')).toBeVisible();
+  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+
+  const persisted = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const review = await (await topic.getFileHandle('review.json')).getFile();
+    return JSON.parse(await review.text()) as { dueOn: string; repetition: number };
+  });
+  expect(persisted.repetition).toBe(0);
+});
+
+test('starting and abandoning a review session changes nothing', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addReviewSource(page);
+
+  await openTodayView(page);
+  const start = page.getByRole('button', {
+    name: 'Start review — recall AI Fundamentals from its sources',
+  });
+
+  // Keyboard only: reach the session, reveal evidence, leave, and land back on the invoker.
+  await start.focus();
+  await page.keyboard.press('Enter');
+  const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+  await expect(session).toBeVisible();
+  await expect(session.getByRole('button', { name: 'Close review session' })).toBeFocused();
+  await session.getByRole('button', { name: 'Reveal the source' }).click();
+  await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(session).toBeHidden();
+  await expect(start).toBeFocused();
+
+  await start.click();
+  await page.getByRole('button', { name: 'Close without rating' }).click();
+  await expect(page.getByRole('dialog', { name: 'AI Fundamentals' })).toBeHidden();
+
+  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText('AI Fundamentals');
+  const reviewFileExists = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    return topic
+      .getFileHandle('review.json')
+      .then(() => true)
+      .catch(() => false);
+  });
+  expect(reviewFileExists).toBe(false);
+});
+
+test('a review session says when sources hold no readable text and never fetches', async ({
+  page,
+}) => {
+  const remoteRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().startsWith('https://arxiv.org/')) remoteRequests.push(request.url());
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await openResearch(page);
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill('Transformers paper');
+  await page.getByLabel('Web address').fill('https://arxiv.org/abs/1706.03762');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('link', { name: 'Transformers paper' })).toBeVisible();
+
+  await openTodayView(page);
+  await page
+    .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
+    .click();
+
+  const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+  await expect(session).toContainText('URL reference');
+  await expect(session).toContainText('Dusori never fetches a page on its own.');
+  await expect(session.getByRole('button', { name: 'Got it' })).toBeHidden();
+  expect(remoteRequests).toEqual([]);
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('a review session stays usable at supported narrow widths', async ({ browser }) => {
+  for (const width of [320, 414]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const page = await context.newPage();
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await addReviewSource(page);
+
+    await openTodayView(page);
+    await page
+      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
+      .click();
+    const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+    await session.getByRole('button', { name: 'Reveal the source' }).click();
+    await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
+
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth, `horizontal overflow at ${width}px`).toBe(
+      dimensions.clientWidth,
+    );
+    const gotIt = session.getByRole('button', { name: 'Got it' });
+    expect(await gotIt.evaluate((button) => button.getClientRects().length)).toBe(1);
+    await context.close();
+  }
+});
+
 test('spaced review schedules a topic and explains the resting queue', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -1630,6 +1818,73 @@ test.describe('companion flows', () => {
     await page.keyboard.press('Escape');
     await expect(preview).toBeHidden();
     await expect(fetchButton).toBeFocused();
+  });
+
+  test('sharper review prompts need their own consent and fall back to the templates', async ({
+    page,
+  }) => {
+    const promptRequests: string[] = [];
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.route('**/api/ai/capabilities', async (route) => {
+      await route.fulfill({ json: { providers: [{ id: 'ollama', model: 'gemma3:4b' }] } });
+    });
+    await page.route('**/api/ai/recall-prompts', async (route) => {
+      promptRequests.push(route.request().postData() ?? '');
+      await route.fulfill({
+        json: {
+          prompts: [
+            'Say what attention does before you look.',
+            'Why do weights matter here?',
+            'What breaks without positional encoding?',
+            'What did your answer leave out?',
+          ],
+        },
+      });
+    });
+
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await addReviewSource(page);
+    await page.goto('/Dusori/app/?token=e2e-companion-token');
+    await expect(page.getByText('Connected for this session')).toBeVisible();
+
+    await openTodayView(page);
+    await page
+      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
+      .click();
+    const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+
+    // Consent for AI ranking does not carry over: this scope asks for itself.
+    await expect(session).toContainText('Deterministic prompt');
+    expect(promptRequests).toEqual([]);
+    await session.getByRole('button', { name: 'Allow sharper prompts · gemma3:4b' }).click();
+    await expect(session).toContainText('up to four short excerpts');
+    await session.getByRole('button', { name: 'Allow sharper prompts', exact: true }).click();
+
+    await expect(session).toContainText('Say what attention does before you look.');
+    await expect(session).toContainText('Written by gemma3:4b · unverified');
+    expect(promptRequests).toHaveLength(1);
+    const sent = JSON.parse(promptRequests[0] ?? '{}') as Record<string, unknown>;
+    expect(Object.keys(sent).sort()).toEqual(['excerpts', 'objective']);
+    expect(promptRequests[0]).not.toContain('Topics/');
+    // Evidence still comes from the local file, not from the model.
+    await session.getByRole('button', { name: 'Reveal the source' }).click();
+    await expect(session).toContainText('Topics/ai-fundamentals/Sources/items/');
+    await session.getByRole('button', { name: 'Close without rating' }).click();
+
+    await page.unroute('**/api/ai/recall-prompts');
+    await page.route('**/api/ai/recall-prompts', async (route) => {
+      await route.fulfill({ json: { error: 'no', reason: 'ai-failed' }, status: 502 });
+    });
+    await page
+      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
+      .click();
+    await expect(session).toContainText('Sharper prompts were unavailable');
+    await expect(session).toContainText('in your own words before revealing the source');
+    await expect(session).toContainText('Deterministic prompt');
+    await expectNoSeriousA11yViolations(page);
   });
 });
 
