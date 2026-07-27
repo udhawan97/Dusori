@@ -1,3 +1,3 @@
 
-## 03:14 | friendly-wizard-claude/graph-view-design-usability-e79a03
-Graph view: Obsidian zoom/pan, force sim, sticky pins, kbd nav, kind/topic filters, color mode; graph-sim.ts + graph-filters.ts, 23 tests, e2e pass, merged.
+## 11:03 | friendly-wizard-claude/source-grounded-review-sessions-0db881
+Initiated planning Dusori source-grounded review sessions (research→review→scheduling flow); read product spec, design docs, core review/research/learning modules; discovery phase incomplete.
