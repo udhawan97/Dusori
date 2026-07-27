@@ -58,7 +58,7 @@ describe('OpenAlex research provider', () => {
   });
 
   it('parses works into ranked candidates carrying citations and publication date', async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request) =>
+    const fetchMock = vi.fn<(input: string | URL | Request) => Promise<Response>>(async () =>
       Promise.resolve(response(searchFixture)),
     );
 

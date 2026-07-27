@@ -302,7 +302,7 @@
     <label for="source-method">Source type</label>
     <select id="source-method" bind:value={method} disabled={saving} onchange={changeMethod}>
       <option value="paste">Pasted text</option>
-      <option value="file">Local text file</option>
+      <option value="file">Local file</option>
       <option value="url">URL reference</option>
     </select>
 
@@ -342,7 +342,7 @@
       />
       <p class="field-help" id="url-help">Saved as a reference; opened only when you choose.</p>
     {:else}
-      <span class="field-label">Markdown or text file</span>
+      <span class="field-label">Markdown, text, or PDF file</span>
       <label class="file-picker" class:has-file={selectedFile}>
         <FilePlus2 aria-hidden="true" size={18} />
         <span>{selectedFile?.name ?? 'Choose a local file'}</span>

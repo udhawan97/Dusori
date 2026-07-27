@@ -34,10 +34,11 @@ function post(overrides: Record<string, unknown> = {}): { data: Record<string, u
 
 /** Answers the token request first, then the search, the way Reddit's app-only flow runs. */
 function stub(searchResponse: Response) {
-  return vi.fn(async (input: string | URL | Request, _init?: RequestInit) =>
-    String(input).includes('access_token')
-      ? json({ access_token: 'token-value', expires_in: 86_400 })
-      : searchResponse,
+  return vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
+    async (input) =>
+      String(input).includes('access_token')
+        ? json({ access_token: 'token-value', expires_in: 86_400 })
+        : searchResponse,
   );
 }
 

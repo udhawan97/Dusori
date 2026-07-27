@@ -1192,7 +1192,9 @@
 
       {#if selectedSlug && storage}
         <section>
-          {#key `${selectedSlug}:${artifactRevision}`}
+          <!-- Keyed on the topic only: the panel reloads itself after saving, and rekeying on
+               artifactRevision would discard the confirmation it just showed. -->
+          {#key selectedSlug}
             <TutorPreferences
               {storage}
               topicSlug={selectedSlug}

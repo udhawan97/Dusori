@@ -28,14 +28,14 @@ Both stay on the roadmap's "planned — not built" list, unchanged.
 Candidate keyless providers were tested for CORS rather than assumed. Only
 these three send `access-control-allow-origin: *` and answer without a key:
 
-| Candidate         | Result                              | Decision            |
-| ----------------- | ----------------------------------- | ------------------- |
-| OpenAlex          | 200, `access-control-allow-origin: *` | ship                |
-| npm registry      | 200, `access-control-allow-origin: *` | ship                |
-| Open Library      | 200, `access-control-allow-origin: *` | defer — catalog only, no readable text |
-| Semantic Scholar  | 429, no CORS header                 | reject              |
-| PyPI              | no JSON search API with CORS        | reject              |
-| MDN               | no CORS                             | reject              |
+| Candidate        | Result                                | Decision                               |
+| ---------------- | ------------------------------------- | -------------------------------------- |
+| OpenAlex         | 200, `access-control-allow-origin: *` | ship                                   |
+| npm registry     | 200, `access-control-allow-origin: *` | ship                                   |
+| Open Library     | 200, `access-control-allow-origin: *` | defer — catalog only, no readable text |
+| Semantic Scholar | 429, no CORS header                   | reject                                 |
+| PyPI             | no JSON search API with CORS          | reject                                 |
+| MDN              | no CORS                               | reject                                 |
 
 Reddit is CORS-blocked in the browser, so it ships companion-backed.
 

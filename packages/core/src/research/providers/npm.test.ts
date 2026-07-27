@@ -48,7 +48,7 @@ describe('npm research provider', () => {
   });
 
   it('parses packages into candidates carrying popularity and release date', async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request) =>
+    const fetchMock = vi.fn<(input: string | URL | Request) => Promise<Response>>(async () =>
       Promise.resolve(response(searchFixture)),
     );
 
@@ -92,7 +92,7 @@ describe('npm research provider', () => {
   });
 
   it('captures the published readme as the source text', async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request) =>
+    const fetchMock = vi.fn<(input: string | URL | Request) => Promise<Response>>(async () =>
       Promise.resolve(
         response({ name: 'kubernetes-client', readme: '# kubernetes-client\n\nUsage notes.' }),
       ),
@@ -116,7 +116,7 @@ describe('npm research provider', () => {
   });
 
   it('escapes the slash in a scoped package name rather than nesting a registry path', async () => {
-    const fetchMock = vi.fn(async (_input: string | URL | Request) =>
+    const fetchMock = vi.fn<(input: string | URL | Request) => Promise<Response>>(async () =>
       Promise.resolve(response({ name: '@scope/kubernetes', readme: '# scoped' })),
     );
 
