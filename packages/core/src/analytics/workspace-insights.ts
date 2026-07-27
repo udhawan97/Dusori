@@ -88,6 +88,7 @@ const providerLabels: Record<string, string> = {
   mslearn: 'Microsoft Learn',
   npm: 'npm',
   openalex: 'OpenAlex',
+  reddit: 'Reddit',
   stackexchange: 'Stack Exchange',
   websearch: 'Web search',
   wikipedia: 'Wikipedia',

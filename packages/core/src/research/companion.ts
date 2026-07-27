@@ -45,6 +45,21 @@ const YouTubeResponseSchema = z.object({
   ),
 });
 
+const RedditResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      comments: z.number(),
+      id: z.string(),
+      publishedAt: z.string().optional(),
+      score: z.number(),
+      subreddit: z.string(),
+      summary: z.string(),
+      title: z.string(),
+      url: z.url(),
+    }),
+  ),
+});
+
 const TranscriptResponseSchema = z.object({ label: z.string(), text: z.string().min(1) });
 
 const WebSearchResponseSchema = z.object({
@@ -74,6 +89,7 @@ export interface CompanionResearchClient {
   fetchPage(url: string): Promise<FetchedPage>;
   searchMsLearnRanked(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchArxiv(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  searchReddit(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchWeb(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchYouTube(query: ResearchQuery): Promise<ResearchCandidate[]>;
   /** Captions for one video, when the instance has them. Rejects with `no-captions` otherwise. */
@@ -188,6 +204,38 @@ export function createCompanionResearchClient(
           url: result.url,
         };
       });
+    },
+
+    async searchReddit(query) {
+      const parsed = RedditResponseSchema.safeParse(
+        await readJson(
+          `${base}/api/research/reddit?q=${encodeURIComponent(query.searchText)}`,
+          'Reddit search could not be reached through the companion.',
+        ),
+      );
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar Reddit format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data.results.map((result, index, all) => ({
+        communityScore: result.score,
+        key: `reddit:${result.id}`,
+        kind: 'qa' as const,
+        meta: {
+          comments: String(result.comments),
+          community: `${formatCount(result.score)} points`,
+          subreddit: `r/${result.subreddit}`,
+          ...(result.publishedAt ? { published: result.publishedAt } : {}),
+        },
+        provider: 'reddit',
+        ...(result.publishedAt === undefined ? {} : { publishedAt: result.publishedAt }),
+        score: all.length - index,
+        snippet: result.summary,
+        title: result.title,
+        url: result.url,
+      }));
     },
 
     async searchYouTube(query) {

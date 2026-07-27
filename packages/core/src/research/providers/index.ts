@@ -6,6 +6,7 @@ import { hackerNewsProvider } from './hackernews.js';
 import { createMsLearnProvider, msLearnProvider } from './mslearn.js';
 import { npmProvider } from './npm.js';
 import { openAlexProvider } from './openalex.js';
+import { createRedditProvider } from './reddit.js';
 import { stackExchangeProvider } from './stackexchange.js';
 import { createWebSearchProvider } from './websearch.js';
 import { wikipediaProvider } from './wikipedia.js';
@@ -17,6 +18,7 @@ export * from './hackernews.js';
 export * from './mslearn.js';
 export * from './npm.js';
 export * from './openalex.js';
+export * from './reddit.js';
 export * from './stackexchange.js';
 export * from './websearch.js';
 export * from './wikipedia.js';
@@ -54,6 +56,7 @@ export function createResearchProviders(options: ResearchProviderOptions = {}): 
     openAlexProvider,
     npmProvider,
     createArxivProvider({ search: (query) => companion.searchArxiv(query) }),
+    createRedditProvider({ search: (query) => companion.searchReddit(query) }),
     createWebSearchProvider({ search: (query) => companion.searchWeb(query) }),
     createYouTubeProvider({
       search: (query) => companion.searchYouTube(query),
