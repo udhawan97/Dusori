@@ -41,6 +41,14 @@ about the session changes the schedule except that final, explicit rating.
   path, and a way for an abandoned session to look like progress. Re-opening
   rebuilds the same prompts from the same inputs, which is what determinism
   is for.
+- **Answers are typed in the session and saved only on request** (added
+  2026-07-27 after first use). Each prompt has an answer box; the text lives
+  in component state. **Save answers as a note** writes one ordinary
+  Markdown note through the existing `createNote`, with the answers verbatim
+  and each prompt quoted and labelled as generated. No session state file
+  exists — the note is a normal learner artifact, not a resumable session.
+  Leaving with unsaved text (close, Escape, or a rating) asks once rather
+  than dropping it.
 - **Sources are the gate, not the model.** Only sources with readable local
   text are eligible. A URL reference that was stored without its page is
   named and explained — never fetched automatically, in or out of a session.
@@ -127,6 +135,8 @@ buildRecallSession(storage, { objective, topicSlug, topicTitle }, now?)
 
 recallAiRequest(session)   → RecallAiRequest        // pure: the exact egress payload
 applyAiRecallPrompts(session, texts, model) → RecallSession  // pure: validate or keep deterministic
+recallAnswerNoteTitle(session, now) → string
+buildRecallAnswerNote(session, answers, now) → string  // pure: the note body, answers verbatim
 ```
 
 `RecallSessionResult` is a discriminated union on `status`, matching
@@ -178,8 +188,11 @@ untrusted: rendered as plain text and labelled with the model that wrote it.
 `modal` action (top-layer, inert background, contained Tab, restored
 invoker).
 
-- One prompt at a time: position (`Prompt 2 of 4`), the question, a
-  **Reveal source** button, then Back / Next.
+- One prompt at a time: position (`Prompt 2 of 4`), the question, an answer
+  box, a **Reveal source** button, then Back / Next.
+- **Save answers as a note** appears once anything is typed, and the pinned
+  foot reports the saved path. Closing or rating with unsaved text asks
+  first: **Save as a note** or **Continue without saving**.
 - Revealed evidence shows the source title, the workspace path in monospace,
   the heading, and the excerpt as plain text in a blockquote.
 - Every prompt card is labelled — `Deterministic prompt` or

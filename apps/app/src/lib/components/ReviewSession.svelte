@@ -4,10 +4,14 @@
 
   import {
     applyAiRecallPrompts,
+    buildRecallAnswerNote,
     buildRecallSession,
+    createNote,
     recallAiRequest,
+    recallAnswerNoteTitle,
     type AiCapability,
     type CompanionAiClient,
+    type RecallAnswers,
     type RecallSession,
     type ReviewOutcome,
     type StorageAdapter,
@@ -25,6 +29,7 @@
   export let rating = false;
   export let onRate: (outcome: ReviewOutcome) => void = () => undefined;
   export let onClose: () => void = () => undefined;
+  export let onNoteSaved: () => void = () => undefined;
 
   // Its own scope: ranking sends public candidate metadata, this sends text out of the
   // learner's own workspace. Consent to the narrower disclosure must not be reused here.
@@ -48,12 +53,21 @@
   let closeButton: HTMLButtonElement;
   let consentAllowButton: HTMLButtonElement;
   let consentInvoker: HTMLButtonElement | null = null;
+  let answers: RecallAnswers = {};
+  let savedAnswers = '{}';
+  let savedPath = '';
+  let saving = false;
+  let saveError = '';
+  // What to do once the learner has answered the unsaved-answers question.
+  let pending: 'close' | ReviewOutcome | null = null;
 
   $: prompts = session?.prompts ?? [];
   $: current = prompts[index] ?? null;
   $: onLastPrompt = prompts.length > 0 && index === prompts.length - 1;
   $: isRevealed = current ? revealed.includes(current.id) : false;
   $: aiAllowed = Boolean(aiCapability) && (void consentTick, hasConsent(consentScope));
+  $: written = Object.values(answers).some((answer) => answer.trim());
+  $: unsaved = written && JSON.stringify(answers) !== savedAnswers;
 
   onMount(() => {
     void load();
@@ -144,9 +158,63 @@
     index = Math.min(Math.max(index + delta, 0), Math.max(prompts.length - 1, 0));
   }
 
+  function setAnswer(id: string, value: string): void {
+    answers = { ...answers, [id]: value };
+    saveError = '';
+  }
+
+  /**
+   * The only write a session can make, and only on request: the learner's own answers as an
+   * ordinary note. Prompts are quoted and labelled inside it, so nothing generated can later
+   * read as their writing.
+   */
+  async function saveAnswers(): Promise<void> {
+    if (!session || saving) return;
+    saving = true;
+    saveError = '';
+    try {
+      const now = new Date();
+      const note = await createNote(storage, topicSlug, recallAnswerNoteTitle(session, now), now, {
+        content: buildRecallAnswerNote(session, answers, now),
+      });
+      savedPath = note.path;
+      savedAnswers = JSON.stringify(answers);
+      onNoteSaved();
+      runPending();
+    } catch (caught) {
+      saveError =
+        caught instanceof Error ? caught.message : 'Dusori could not save these answers as a note.';
+      pending = null;
+    } finally {
+      saving = false;
+    }
+  }
+
+  /** Close and rate both go through here, so typed answers are never dropped silently. */
+  function guard(action: 'close' | ReviewOutcome): void {
+    if (rating) return;
+    if (unsaved) {
+      pending = action;
+      return;
+    }
+    run(action);
+  }
+
+  function run(action: 'close' | ReviewOutcome): void {
+    if (action === 'close') onClose();
+    else onRate(action);
+  }
+
+  function runPending(): void {
+    const action = pending;
+    pending = null;
+    if (action) run(action);
+  }
+
   function handleCancel(): void {
-    if (askingConsent) void declineAi();
-    else if (!rating) onClose();
+    if (pending) pending = null;
+    else if (askingConsent) void declineAi();
+    else guard('close');
   }
 </script>
 
@@ -170,7 +238,7 @@
       bind:this={closeButton}
       aria-label="Close review session"
       disabled={rating}
-      onclick={onClose}
+      onclick={() => guard('close')}
     >
       <X aria-hidden="true" size={19} />
     </button>
@@ -222,6 +290,16 @@
         </div>
 
         <p class="prompt-text" aria-live="polite">{current.prompt}</p>
+
+        <div class="answer-field">
+          <label for={`recall-answer-${current.id}`}>Your answer</label>
+          <textarea
+            id={`recall-answer-${current.id}`}
+            rows="4"
+            placeholder="Answer from memory first."
+            value={answers[current.id] ?? ''}
+            oninput={(event) => setAnswer(current.id, event.currentTarget.value)}></textarea>
+        </div>
 
         {#if isRevealed}
           <figure class="evidence">
@@ -294,7 +372,30 @@
 
   <!-- Pinned: the decision and the way out stay on screen however long a prompt runs. -->
   <div class="session-foot">
-    {#if current}
+    {#if pending}
+      <div class="unsaved-guard" role="alert">
+        <p>Your answers are only in this session. Save them as a note first?</p>
+        <div class="dialog-actions">
+          <button class="quiet" disabled={saving} onclick={runPending}>
+            Continue without saving
+          </button>
+          <button class="primary" disabled={saving} onclick={saveAnswers}>
+            {saving ? 'Saving…' : 'Save as a note'}
+          </button>
+        </div>
+      </div>
+    {:else if current}
+      {#if written}
+        <div class="save-row">
+          {#if savedPath}
+            <p class="saved-path">Saved to <code>{savedPath}</code></p>
+          {/if}
+          <button class="quiet" disabled={saving || !unsaved} onclick={saveAnswers}>
+            {saving ? 'Saving…' : unsaved ? 'Save answers as a note' : 'Answers saved'}
+          </button>
+          {#if saveError}<p class="dialog-error" role="alert">{saveError}</p>{/if}
+        </div>
+      {/if}
       <div class="rating">
         <p class="rating-label">
           {onLastPrompt
@@ -303,10 +404,10 @@
         </p>
         {#if onLastPrompt}
           <div class="dialog-actions">
-            <button class="quiet" disabled={rating} onclick={() => onRate('again')}>
+            <button class="quiet" disabled={rating} onclick={() => guard('again')}>
               Needs work
             </button>
-            <button class="primary" disabled={rating} onclick={() => onRate('good')}>
+            <button class="primary" disabled={rating} onclick={() => guard('good')}>
               {rating ? 'Recording…' : 'Got it'}
             </button>
           </div>
@@ -314,12 +415,14 @@
       </div>
     {/if}
     <p class="session-footer">
-      Answer in your head or in your own note. This session stores nothing and scores nothing: the
+      Your answers stay in this session unless you save them as a note. Dusori scores nothing: the
       prompts are generated from your sources to make you recall, and only your rating changes the
       review schedule.
     </p>
-    {#if !loading}
-      <button class="quiet" disabled={rating} onclick={onClose}>Close without rating</button>
+    {#if !loading && !pending}
+      <button class="quiet" disabled={rating} onclick={() => guard('close')}>
+        Close without rating
+      </button>
     {/if}
   </div>
 </dialog>
@@ -428,6 +531,65 @@
     font-family: var(--font-display);
     font-size: var(--text-md);
     line-height: 1.4;
+  }
+
+  .answer-field {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .answer-field label {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  textarea {
+    min-height: 6rem;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: inherit;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  textarea:focus-visible {
+    outline-color: var(--color-focus);
+  }
+
+  .save-row,
+  .unsaved-guard {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .unsaved-guard {
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-accent-text);
+    background: var(--color-paper-2);
+  }
+
+  .unsaved-guard p {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .saved-path {
+    color: var(--color-success);
+    font-size: var(--text-xs);
+  }
+
+  .saved-path code {
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
   }
 
   .evidence {

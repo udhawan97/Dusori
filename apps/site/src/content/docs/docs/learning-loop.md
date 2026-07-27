@@ -32,7 +32,9 @@ Marking a review with **Got it** or **Needs work** stores the topic's next due d
 
 Each prompt names the source it came from and keeps its excerpt hidden until you choose **Reveal the source**, which then shows the source title, its section, and its path inside your workspace. Only sources with readable text on this device are used: a URL kept as a reference is named and left alone, because Dusori never fetches a page on its own.
 
-A session is not stored. Opening it, moving between prompts, revealing evidence, and closing all write nothing; only the final **Got it** or **Needs work** changes the schedule. Nothing in a session is a score, a streak, or evidence that you understand the topic.
+Every prompt has an answer box. What you type stays in the session until you choose **Save answers as a note**, which writes one ordinary Markdown note under `Topics/<slug>/Notes/`: your answers verbatim, each prompt quoted and labelled with its generator, and the source path behind it. Closing or rating with unsaved answers asks once instead of dropping them.
+
+Nothing else in a session is stored. Opening it, moving between prompts, and revealing evidence write nothing; only the final **Got it** or **Needs work** changes the schedule. Nothing in a session is a score, a streak, or evidence that you understand the topic.
 
 With the local companion running and an AI provider configured, **Allow sharper prompts** may reword the questions. It is a separate consent from AI ranking, because it sends the objective and up to four short source excerpts — your notes, roadmap, and review history are never sent. The model can only change wording: the prompt count, their order, the evidence, and the rating actions are fixed, generated prompts are labelled with the model that wrote them, and any failure falls back to the deterministic templates.
 

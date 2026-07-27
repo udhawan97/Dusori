@@ -115,20 +115,20 @@ Use `npm run setup` to install and build without launching. After pulling new so
 
 Dusori turns ordinary files into a private learning loop. Start in browser storage or connect one folder, then take the whole workspace elsewhere as a ZIP whenever you want.
 
-|     | You do this                       | Dusori gives you                                                                                   |
-| --- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
-| 🗺️  | Check roadmap objectives          | A deterministic next-review order, progress, topic state, and seven-day recap                      |
-| 🔁  | Mark a topic reviewed             | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due |
-| 🧠  | Start a review                    | Active-recall prompts built from that topic's own sources, each showing its local path and excerpt |
-| ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first             |
-| 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                  |
-| 🔗  | Explore the knowledge graph       | Adjustable constellation, artifact finder, link ledger, backlinks, and unresolved-link checks      |
-| 📚  | Save sources                      | Paste, local file, URL reference, provenance, and preview-first acceptance                         |
-| 🛰️  | Create a topic                    | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist |
-| 📈  | Open Insights                     | Local activity, artifact mix, link health, topic depth, hubs, and source provenance                |
-| 🧭  | Import a study guide              | A reviewable roadmap that preserves the original outline in `Sources/`                             |
-| 🧪  | Open the optional companion       | arXiv, configured web search, readable-page capture, and optional AI assistance on loopback only   |
-| 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                          |
+|     | You do this                       | Dusori gives you                                                                                     |
+| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 🗺️  | Check roadmap objectives          | A deterministic next-review order, progress, topic state, and seven-day recap                        |
+| 🔁  | Mark a topic reviewed             | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due   |
+| 🧠  | Start a review                    | Active-recall prompts from that topic's own sources, an answer box, and your answers saved as a note |
+| ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first               |
+| 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                    |
+| 🔗  | Explore the knowledge graph       | Adjustable constellation, artifact finder, link ledger, backlinks, and unresolved-link checks        |
+| 📚  | Save sources                      | Paste, local file, URL reference, provenance, and preview-first acceptance                           |
+| 🛰️  | Create a topic                    | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist   |
+| 📈  | Open Insights                     | Local activity, artifact mix, link health, topic depth, hubs, and source provenance                  |
+| 🧭  | Import a study guide              | A reviewable roadmap that preserves the original outline in `Sources/`                               |
+| 🧪  | Open the optional companion       | arXiv, configured web search, readable-page capture, and optional AI assistance on loopback only     |
+| 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                            |
 
 General web search is optional companion configuration: Brave and Tavily accept user-supplied keys, while SearXNG provides a keyless open-source path. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly marked research brief from sources you approved, and reword review prompts under a separate consent; deterministic ranking, briefs, and prompts remain the baseline. Unattended research is not implemented. Review scheduling exists only for topics you explicitly mark reviewed; Dusori generates no calendar, notification, or background work. A review session stores nothing and never claims mastery — only your explicit "Got it" or "Needs work" moves a schedule.
 

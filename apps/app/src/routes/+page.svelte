@@ -988,6 +988,7 @@
             topicSlug={selectedSlug}
             view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
             revision={learningRevision}
+            onArtifactSaved={refreshArtifacts}
             onOpenRoadmap={(slug) => void openRoadmap(slug)}
             onRoadmapChanged={handleRoadmapChanged}
             onStatus={announceStatus}

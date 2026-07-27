@@ -40,6 +40,7 @@
   export let view: 'roadmap' | 'today';
   export let revision = 0;
   export let ai: CompanionAiClient | null = null;
+  export let onArtifactSaved: () => void = () => undefined;
   export let onOpenRoadmap: (slug: string) => void = () => undefined;
   export let onRoadmapChanged: (slug: string, content: string) => void = () => undefined;
   export let onStatus: (message: string) => void = () => undefined;
@@ -565,6 +566,7 @@
     topicSlug={sessionItem.slug}
     topicTitle={sessionItem.title}
     onClose={() => (sessionItem = null)}
+    onNoteSaved={onArtifactSaved}
     onRate={(outcome) => {
       if (sessionItem) void markReviewed(sessionItem, outcome);
     }}
