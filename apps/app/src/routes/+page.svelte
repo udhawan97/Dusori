@@ -60,6 +60,7 @@
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
   import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import TutorPreferences from '$lib/components/TutorPreferences.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
 
@@ -1188,6 +1189,21 @@
           Dusori can import.
         </p>
       </section>
+
+      {#if selectedSlug && storage}
+        <section>
+          {#key `${selectedSlug}:${artifactRevision}`}
+            <TutorPreferences
+              {storage}
+              topicSlug={selectedSlug}
+              topicTitle={workspace?.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                selectedSlug}
+              aiClient={companionAiClient}
+              onSaved={() => (artifactRevision += 1)}
+            />
+          {/key}
+        </section>
+      {/if}
 
       {#if selectedSlug}
         <section>

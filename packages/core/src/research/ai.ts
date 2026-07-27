@@ -20,6 +20,11 @@ const BriefResponseSchema = z.object({ brief: z.string().min(1) });
 
 const RecallPromptsResponseSchema = z.object({ prompts: z.array(z.string().min(1)).min(1).max(8) });
 
+const TutorResponseSchema = z.object({
+  depth: z.string().min(1),
+  preferences: z.array(z.string().min(1)).min(1).max(12),
+});
+
 /** A review session must stay usable, so a silent companion is given a bounded wait. */
 export const recallPromptTimeoutMs = 20_000;
 
@@ -36,8 +41,19 @@ export interface CompanionAiClient {
   rerank(query: ResearchQuery, candidates: RankedCandidate[]): Promise<AiRerankEntry[]>;
   /** Rewritten review prompts, one per prompt sent, in the same order. */
   recallPrompts(request: RecallAiRequest, timeoutMs?: number): Promise<string[]>;
+  /** A proposed depth and preference list for one topic's TUTOR.md. Never applied on its own. */
+  tutorPreferences(request: TutorAiRequest): Promise<TutorAiProposal>;
   writeBrief(query: ResearchQuery, sources: BriefSource[]): Promise<string>;
 }
+
+export interface TutorAiRequest {
+  depth: string;
+  preferences: string[];
+  request: string;
+  topicTitle: string;
+}
+
+export type TutorAiProposal = z.infer<typeof TutorResponseSchema>;
 
 const unavailable = 'AI ranking could not be reached through the companion.';
 
@@ -94,6 +110,22 @@ export function createCompanionAiClient(options: CompanionClientOptions): Compan
       );
       if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
       return parsed.data.prompts;
+    },
+
+    async tutorPreferences(request) {
+      const parsed = TutorResponseSchema.safeParse(
+        await readJson('/api/ai/tutor', {
+          body: JSON.stringify({
+            depth: request.depth,
+            preferences: request.preferences,
+            request: request.request,
+            topicTitle: request.topicTitle,
+          }),
+          method: 'POST',
+        }),
+      );
+      if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
+      return parsed.data;
     },
 
     async writeBrief(query, sources) {
