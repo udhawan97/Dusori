@@ -8,10 +8,11 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Browser workspace in origin-private storage
 - Direct folder connection on supported Chromium desktop browsers
 - Canonical Markdown/JSON topic structure
-- Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export
+- Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export of the whole workspace or one topic
 - Conflict-safe proposals and dated update logs
-- Local source library for pasted text, Markdown/text files, and unfetched URL references
-- Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange, with explainable deterministic ranking and preview-first source capture
+- Local source library for pasted text, Markdown/text files, PDFs read on your device, and unfetched URL references
+- Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry, with explainable deterministic ranking and preview-first source capture
+- Tags read from your own Markdown — `tags:` frontmatter or an inline `#tag` — with a `tag:` search filter, a graph filter, and a tag count in Insights
 - Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
 - In-app creation and conflict-safe editing of portable Markdown notes
 - Local full-text workspace search with no stored index or remote query
@@ -23,19 +24,24 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Offline application shell
 - Loopback-only local companion security foundation
 - Companion-only page fetching with readability extraction, confirmed per fetch, and ranked Microsoft Learn search
-- Companion-backed arXiv and configured Brave, Tavily, or SearXNG web search
+- Companion-backed arXiv, configured Brave, Tavily, or SearXNG web search, and Reddit through a Reddit app credential you supply
+- Learning preferences for each topic, edited with the same diff-and-accept protocol as your notes, with optional AI proposals
+- Creating the page an unresolved wikilink already names, from workspace health
 - Companion-backed YouTube search through a configured Invidious instance, ordered by view count, with caption capture that turns a video into readable text and a thumbnail proxied so the browser never contacts Google
 - Optional consent-gated Ollama, Anthropic, or OpenAI ranking and model-named research briefs, with deterministic fallback
-- Local Insights for activity, objective progress, artifact mix, link health, topic depth, hubs, and provenance
+- Local Insights for activity, objective progress, artifact mix, link health, topic depth, hubs, provenance, tags, and what the review queue is holding
 - Version-aligned, packed-tarball-tested `dusori` companion package and provenance-ready publish workflow
 
 ## Planned—not built
 
-- Remote-page fetching from the hosted app alone, without the local companion
-- PDF and other non-text document import
-- Chat-to-`TUTOR.md` diff editing
+- OCR for scanned PDFs and other image-only documents
+- Importing a curriculum from a PDF, rather than only reading one as a source
+- Importing a single-topic bundle back into an existing workspace
 - Scheduled or unattended research and source acceptance
-- Reddit research provider
 - Inline video playback inside Dusori
+
+## Not planned
+
+- **Remote-page fetching from the hosted app alone.** A browser cannot fetch arbitrary third-party pages, and the only workaround is a proxy — which would be the hosted backend Dusori does not have. The local companion covers this instead.
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

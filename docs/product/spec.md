@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.5.0 release plus current main · **Date:** 2026-07-27
+**Status:** v0.6.0 release · **Date:** 2026-07-27
 
 ## Product contract
 
@@ -36,8 +36,20 @@ The first milestone must prove:
 22. Local learning insights derived from roadmap, graph, source, and dated-update files without telemetry or inferred study time.
 23. Deterministic, source-grounded active-recall sessions started from the review queue, ending in the existing explicit review action.
 24. Companion-backed YouTube discovery through an operator-configured Invidious instance, with caption capture and a proxied thumbnail.
+25. Tags derived from ordinary Markdown, surfaced in search, the graph, and insights without an index.
+26. Two further keyless browser providers, OpenAlex and the npm registry, each reaching readable text.
+27. A companion-backed Reddit provider gated on an operator-supplied Reddit application credential.
+28. Single-topic export as a portable bundle that is explicitly not a re-importable workspace.
+29. Derived review-queue pressure and a bounded due histogram in insights.
+30. One health repair that only creates a file an existing wikilink already names.
+31. Local PDF text extraction into the existing source path, with no OCR and no upload.
+32. Structured, conflict-safe editing of a topic's learning preferences, with optional AI proposals.
 
-The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
+The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt`/`.pdf` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. A PDF is read on the device with a lazily loaded browser library, never uploaded; a PDF with no text layer reports that cause rather than storing an empty source, because Dusori ships no OCR. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
+
+Tags are derived from ordinary Markdown on read: a `tags:` frontmatter list or an inline `#tag`, matching what Obsidian already understands. No tag index is stored. Workspace search accepts a `tag:` filter, the graph carries tags onto each node, and insights count the tag vocabulary. A Markdown heading, a bare number, a URL fragment, and any `#` inside code are never read as tags.
+
+Learning preferences in a topic's `TUTOR.md` are edited structurally: a depth and a list of one-line preferences. Writes use the same tracked-hash protocol as `roadmap.md`, so a change is shown as a diff and applied only on explicit acceptance, and an external edit produces a sibling proposal. Only the depth line and the preference bullets are rewritten. With the companion, a configured provider, and a consent separate from research AI, a model may propose a depth and preference list from the topic title, the current preferences, and the learner's typed request; the reply is re-rendered onto the existing file, so it can change nothing else, and an unusable reply changes nothing at all.
 
 The shipped curriculum importer accepts pasted Microsoft Learn study-guide Markdown with the English `Skills measured` hierarchy and general structured Markdown syllabi. It extracts at most 200 objectives locally, previews them before writing, preserves the original outline as a topic source, and updates `roadmap.md` through the same conflict-safe acceptance protocol. The optional official URL is provenance metadata only and is never fetched.
 
@@ -47,31 +59,40 @@ A queue item can also start a source-grounded review session. Dusori builds thre
 
 The shipped note editor creates Markdown under `Topics/<slug>/Notes/`, records it in `state.json`, and opens it directly for editing. Existing note saves use the same tracked-hash protocol as roadmap writes. An external edit remains active; Dusori stores the user's draft as a sibling proposal and requires an explicit acceptance step.
 
+The shipped ZIP export can also write a single topic as a portable bundle. That bundle is a copy to read or keep elsewhere, not a workspace archive: importing a topic into an existing workspace would need merge rules that do not exist, so both the action and a note inside the archive say so.
+
+Workspace health may create one kind of file: the document an unresolved wikilink already names, at the exact name the link uses. This stays inside the storage rules because new files may be created automatically, while existing Markdown may not be changed without explicit acceptance. Every such creation is recorded in `state.json` and appended to the dated update log.
+
 The shipped workspace search scans `.md` and `.txt` files in the current session. Matching is case- and accent-insensitive and requires every query term. Results are bounded, source titles are read from valid manifests when available, and no index, query log, database, or network request is created. Backlinks reverse resolved wikilink edges. Workspace health combines unresolved wikilinks with source-manifest/file consistency checks and never repairs or quarantines an invalid manifest implicitly.
 
 The shipped ZIP import path normalizes and validates the entire archive before replacement confirmation, including required workspace/topic schemas, file count, and compressed/expanded size limits. The destination is untouched when preflight fails. If a storage write fails during replacement, Dusori restores the previous snapshot before surfacing the error.
 
-The shipped Research workspace starts from a selected roadmap objective and defaults to the next unchecked item. Creating a topic arms one automatic discovery run; granting the first provider consent starts it. Later runs are explicit. Five keyless browser providers ship: Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange.
+The shipped Research workspace starts from a selected roadmap objective and defaults to the next unchecked item. Creating a topic arms one automatic discovery run; granting the first provider consent starts it. Later runs are explicit. Seven keyless browser providers ship: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry. OpenAlex rebuilds a work's abstract locally from the inverted index it publishes; an npm capture stores the package's published readme.
 
 Each provider is blocked behind an exact egress disclosure naming its host and what leaves the device. Consent is stored per provider on the device. Every allowed provider is queried in parallel; one timeout or failure yields a visible skip notice without failing the run. Deterministic ranking combines objective relevance, provider-relative community signals, recency, and a bounded host-reputation nudge, then selects a diverse top-five shortlist. Ranking reasons remain visible. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed and previously seen suggestions are kept in the topic's machine-owned `research.json` file.
 
-With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. The companion also unlocks arXiv and one configured general web-search provider: Brave, Tavily, or a keyless open-source SearXNG instance. Search credentials stay in the companion process. A URL source can be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
+With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. The companion also unlocks arXiv and one configured general web-search provider: Brave, Tavily, or a keyless open-source SearXNG instance. A Reddit provider appears when `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` name an application the operator registered, because Reddit no longer answers anonymous clients; without them the provider reports that it is not configured and the run skips it. Posts marked over 18 are excluded, a self post is captured as its own text, and a link post is captured as a reference that says so. Search credentials stay in the companion process. A URL source can be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
 
 A YouTube provider appears when `INVIDIOUS_URL` names an Invidious instance. Dusori ships no default instance. The companion performs every request: search ordered by view count, the thumbnail (returned as image bytes and rendered by the app from an object URL, so no remote image origin is added to the content-security policy), and, on approval, the video's captions. The browser never contacts YouTube, Google, or their image hosts. A captioned video is captured as ordinary readable Markdown that states captions are frequently machine-generated; a video without captions is captured as a reference that says so. Video sources are never played inside Dusori.
 
 Ollama, Anthropic, or OpenAI may be configured in the companion. AI egress has a separate consent disclosure. AI ranking is advisory: it reorders and annotates the deterministic candidate set but cannot remove candidates, and any failure keeps deterministic order. A research brief is created only after source approval. Deterministic briefs group links and state that pages were not read; AI-written briefs name their model and the approved-source boundary.
 
-The shipped Insights view derives a bounded fourteen-day activity pulse, objective completion, artifact mix, connected-artifact percentage, link health, topic depth, graph hubs, and provider provenance from current local files. It does not persist an analytics index, estimate study time, infer mastery, or invent a score.
+The shipped Insights view derives a bounded fourteen-day activity pulse, objective completion, artifact mix, connected-artifact percentage, link health, topic depth, graph hubs, provider provenance, tag distribution, and review-queue pressure from current local files. Review pressure counts overdue, due-today, scheduled, and unscheduled topics and shows a bounded due histogram; a topic never marked reviewed is reported as unscheduled rather than overdue. It does not persist an analytics index, estimate study time, infer mastery, or invent a score.
 
 ## Explicitly not built yet
 
-- PDF or non-text curriculum extraction
+- OCR for scanned PDFs or other image-only documents
+- PDF curriculum extraction (a PDF can be a source, not yet a roadmap)
 - AI-generated diagrams
-- Chat-to-`TUTOR.md` editing
-- Reddit research provider
+- Free-form chat that edits arbitrary workspace files
+- Scoped import of a single-topic bundle into an existing workspace
 - Inline video playback, watch history, playlists, or channels
 - Closed-app or unattended background work
 - Accounts, sync, telemetry, or hosted storage
+
+Remote-page fetching from the hosted app alone is not planned. A browser cannot fetch
+arbitrary third-party pages, and the only workaround is a proxy, which would be the hosted
+backend this product does not have. The local companion covers that need instead.
 
 ## Trust model
 

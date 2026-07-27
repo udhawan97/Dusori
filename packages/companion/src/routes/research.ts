@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ArxivProxyError, searchArxiv } from '../research-arxiv.js';
 import { FetchPageError, fetchReadablePage, type LookupImpl } from '../research-fetch.js';
 import { MsLearnProxyError, searchMsLearnRanked } from '../research-mslearn.js';
+import { RedditProxyError, searchReddit } from '../research-reddit.js';
 import { WebSearchError, searchWeb, type WebSearchEnv } from '../research-websearch.js';
 import {
   YouTubeError,
@@ -81,6 +82,31 @@ export async function researchRoutes(
     } catch (error) {
       if (error instanceof ArxivProxyError) {
         return reply.code(502).send({ error: error.message, reason: 'fetch-failed' });
+      }
+      return reply.code(500).send({
+        error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',
+        reason: 'fetch-failed',
+      });
+    }
+  });
+
+  server.get('/api/research/reddit', async (request, reply) => {
+    const query = SearchQuery.safeParse(request.query);
+    if (!query.success) {
+      return reply.code(400).send({ error: 'A search query is required.' });
+    }
+    try {
+      return {
+        results: await searchReddit(query.data.q, {
+          ...(options.env ? { env: options.env } : {}),
+          ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+        }),
+      };
+    } catch (error) {
+      if (error instanceof RedditProxyError) {
+        return reply
+          .code(error.reason === 'not-configured' ? 503 : 502)
+          .send({ error: error.message, reason: error.reason });
       }
       return reply.code(500).send({
         error: 'The research service failed unexpectedly. Try again, or paste the summary instead.',

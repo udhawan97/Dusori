@@ -21,6 +21,8 @@ Optional environment variables:
   SEARXNG_URL          A SearXNG instance for keyless, open-source web search
   INVIDIOUS_URL        An Invidious instance for keyless YouTube search, captions,
                        and thumbnails (self-host it for a fully private path)
+  REDDIT_CLIENT_ID     Reddit "script" app id from reddit.com/prefs/apps; Reddit no
+  REDDIT_CLIENT_SECRET longer answers anonymous clients, so both are required
   OLLAMA_MODEL         Enable local AI ranking with this Ollama model (e.g. gemma3:4b)
   OLLAMA_URL           Ollama address, default http://127.0.0.1:11434
   ANTHROPIC_API_KEY    Enable cloud AI ranking via Anthropic (ANTHROPIC_MODEL overrides)

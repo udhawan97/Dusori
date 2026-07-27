@@ -9,6 +9,8 @@ description: Honest learning analytics derived from your portable workspace file
 
 - Objective completion across topic roadmaps
 - Approved source count and provenance by provider
+- Your tag vocabulary, counted across every document that carries one
+- What the review queue is holding: overdue, due today, how many topics carry a schedule at all, and a bounded histogram of what falls due next. A topic you never marked reviewed is counted as unscheduled, not overdue.
 - The percentage of graph artifacts connected by resolved wikilinks
 - Active days and recorded changes over the latest fourteen days
 - Artifact mix across foundations, notes, sources, and dated updates

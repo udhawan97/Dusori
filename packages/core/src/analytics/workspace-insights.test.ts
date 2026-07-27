@@ -1,12 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
+import { addDaysUtc, localDateOf } from '../learning/review.js';
 import { createNote } from '../notes/edit.js';
+import { schemaVersion } from '../schemas/workspace.js';
+import type { StorageAdapter } from '../adapters.js';
 import { addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { buildWorkspaceInsights } from './workspace-insights.js';
 
 const now = new Date('2026-07-27T12:00:00.000Z');
+
+async function writeSchedule(
+  storage: StorageAdapter,
+  topicSlug: string,
+  dueOn: string,
+): Promise<void> {
+  await storage.write(
+    `Topics/${topicSlug}/review.json`,
+    `${JSON.stringify(
+      { schemaVersion, topicSlug, repetition: 0, lastReviewedOn: dueOn, dueOn },
+      null,
+      2,
+    )}\n`,
+  );
+}
 
 describe('workspace insights', () => {
   it('derives activity, evidence, provenance, and graph signals from local files', async () => {
@@ -77,5 +95,96 @@ describe('workspace insights', () => {
     });
     expect(insights.providers).toEqual([]);
     expect(insights.topics).toEqual([]);
+  });
+
+  it('derives a tag distribution ordered by count then name', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const created = await createTopic(storage, 'Cloud', now);
+    await storage.write(
+      `Topics/${created.topicSlug}/Notes/vnet.md`,
+      `---\ntitle: Virtual networks\ntags: [azure, networking]\n---\n\nBody.`,
+    );
+    await storage.write(
+      `Topics/${created.topicSlug}/Notes/identity.md`,
+      `---\ntitle: Identity\n---\n\nManaged identity. #azure`,
+    );
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
+
+    expect(insights.tags).toEqual([
+      { count: 2, tag: 'azure' },
+      { count: 1, tag: 'networking' },
+    ]);
+  });
+
+  it('derives review pressure from each topic review file', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const overdue = await createTopic(storage, 'Overdue topic', now);
+    const dueToday = await createTopic(storage, 'Due today', now);
+    const later = await createTopic(storage, 'Later topic', now);
+    const created = await createTopic(storage, 'Never reviewed', now);
+    const today = localDateOf(now);
+
+    await writeSchedule(storage, overdue.topicSlug, addDaysUtc(today, -3));
+    await writeSchedule(storage, dueToday.topicSlug, today);
+    await writeSchedule(storage, later.topicSlug, addDaysUtc(today, 5));
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
+
+    expect(insights.reviewPressure).toMatchObject({
+      dueToday: 1,
+      overdue: 1,
+      scheduled: 3,
+      unscheduled: 1,
+    });
+  });
+
+  it('bounds the upcoming review histogram to the insight window starting today', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const soon = await createTopic(storage, 'Soon', now);
+    const created = await createTopic(storage, 'Far beyond the window', now);
+    const today = localDateOf(now);
+
+    await writeSchedule(storage, soon.topicSlug, addDaysUtc(today, 5));
+    await writeSchedule(storage, created.topicSlug, addDaysUtc(today, 90));
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { days: 14, now });
+
+    expect(insights.reviewPressure.upcoming).toHaveLength(14);
+    expect(insights.reviewPressure.upcoming[0]?.date).toBe(today);
+    expect(insights.reviewPressure.upcoming[5]).toEqual({ count: 1, date: addDaysUtc(today, 5) });
+    expect(insights.reviewPressure.upcoming.reduce((total, point) => total + point.count, 0)).toBe(
+      1,
+    );
+  });
+
+  it('reports no pressure when nothing has ever been reviewed', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const created = await createTopic(storage, 'Fresh', now);
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
+
+    expect(insights.reviewPressure).toMatchObject({
+      dueToday: 0,
+      overdue: 0,
+      scheduled: 0,
+      unscheduled: 1,
+    });
+  });
+
+  it('ignores an unreadable review file instead of failing the whole report', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const created = await createTopic(storage, 'Broken', now);
+    await storage.write(`Topics/${created.topicSlug}/review.json`, '{ not json');
+
+    const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
+
+    expect(insights.reviewPressure.scheduled).toBe(0);
+    expect(insights.reviewPressure.unscheduled).toBe(1);
   });
 });

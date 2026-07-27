@@ -127,6 +127,17 @@ function extractJsonArray(text: string): unknown {
   }
 }
 
+function extractJsonObject(text: string): unknown {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 const RerankEntrySchema = z.object({
   key: z.string(),
   note: z.string().max(300).optional(),
@@ -226,6 +237,59 @@ export async function writeRecallPromptsWithAi(
     throw new AiError(failedMessage, 'ai-failed');
   }
   return parsed.data.map((text) => text.trim());
+}
+
+export interface TutorPreferencesInput {
+  depth: string;
+  preferences: string[];
+  request: string;
+  topicTitle: string;
+}
+
+const maxTutorPreferences = 12;
+const maxTutorPreferenceCharacters = 200;
+
+/**
+ * Rewrites a topic's learning preferences from the learner's own request. The reply is only ever a
+ * depth and a list of one-line preferences: the caller re-renders those onto the existing file and
+ * still shows a diff, so a model cannot rewrite the page into something else.
+ */
+export async function writeTutorPreferencesWithAi(
+  input: TutorPreferencesInput,
+  options: AiOptions = {},
+): Promise<{ depth: string; preferences: string[] }> {
+  const prompt = [
+    'A learner keeps a short page of learning preferences for how they want a topic taught.',
+    `Topic: ${input.topicTitle}`,
+    `Current depth: ${input.depth}`,
+    'Current preferences:',
+    ...input.preferences.map((preference) => `- ${preference}`),
+    '',
+    'They asked for this change:',
+    input.request,
+    '',
+    'Respond with ONLY a JSON object of the form',
+    '{"depth": "brief" | "layered" | "deep", "preferences": ["...", "..."]}.',
+    `Keep between 1 and ${maxTutorPreferences} preferences. Each must be one imperative line under`,
+    `${maxTutorPreferenceCharacters} characters describing how to teach, not what to learn. Keep`,
+    'any existing preference the request does not ask to change.',
+  ].join('\n');
+
+  const raw = extractJsonObject(await complete(prompt, options));
+  const parsed = z
+    .object({
+      depth: z.enum(['brief', 'layered', 'deep']),
+      preferences: z
+        .array(z.string().min(1).max(maxTutorPreferenceCharacters))
+        .min(1)
+        .max(maxTutorPreferences),
+    })
+    .safeParse(raw);
+  if (!parsed.success) throw new AiError(failedMessage, 'ai-failed');
+  return {
+    depth: parsed.data.depth,
+    preferences: parsed.data.preferences.map((preference) => preference.trim()),
+  };
 }
 
 export interface BriefSourceInput {

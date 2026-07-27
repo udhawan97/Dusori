@@ -5,6 +5,12 @@ import {
   buildWorkspaceRecap,
   type TodayTopicSummary,
 } from '../learning/loop.js';
+import {
+  addDaysUtc,
+  localDateOf,
+  readReviewSchedule,
+  type ReviewSchedule,
+} from '../learning/review.js';
 import type { Workspace } from '../schemas/workspace.js';
 import { readSourceManifest } from '../sources/import.js';
 
@@ -30,6 +36,26 @@ export interface ProviderMixItem {
   count: number;
   id: string;
   label: string;
+}
+
+export interface TagCount {
+  count: number;
+  tag: string;
+}
+
+export interface ReviewDuePoint {
+  count: number;
+  date: string;
+}
+
+export interface ReviewPressure {
+  dueToday: number;
+  overdue: number;
+  /** Topics carrying a review schedule. */
+  scheduled: number;
+  /** Topics never marked reviewed, which keep the deterministic queue order. */
+  unscheduled: number;
+  upcoming: ReviewDuePoint[];
 }
 
 export interface TopicInsight {
@@ -64,6 +90,8 @@ export interface WorkspaceInsights {
   artifactMix: ArtifactMixItem[];
   hubs: ConnectedArtifact[];
   providers: ProviderMixItem[];
+  reviewPressure: ReviewPressure;
+  tags: TagCount[];
   topics: TopicInsight[];
   totals: WorkspaceInsightTotals;
 }
@@ -80,6 +108,9 @@ const providerLabels: Record<string, string> = {
   hackernews: 'Hacker News',
   manual: 'Added manually',
   mslearn: 'Microsoft Learn',
+  npm: 'npm',
+  openalex: 'OpenAlex',
+  reddit: 'Reddit',
   stackexchange: 'Stack Exchange',
   websearch: 'Web search',
   wikipedia: 'Wikipedia',
@@ -105,6 +136,60 @@ function dateSeries(days: number, now: Date): ActivityPoint[] {
 
 function percentage(part: number, whole: number): number {
   return whole === 0 ? 0 : Math.round((part / whole) * 100);
+}
+
+/**
+ * Counts what the review queue is actually holding. Derived from each topic's `review.json` on
+ * read: no schedule is created here, no study time is estimated, and a topic that has never been
+ * reviewed is reported as unscheduled rather than as overdue.
+ */
+function reviewPressureFrom(
+  schedules: Array<ReviewSchedule | null>,
+  days: number,
+  now: Date,
+): ReviewPressure {
+  const today = localDateOf(now);
+  const upcoming: ReviewDuePoint[] = [];
+  for (let offset = 0; offset < days; offset += 1) {
+    upcoming.push({ count: 0, date: addDaysUtc(today, offset) });
+  }
+  const upcomingByDate = new Map(upcoming.map((point) => [point.date, point]));
+
+  let dueToday = 0;
+  let overdue = 0;
+  let scheduled = 0;
+  for (const schedule of schedules) {
+    if (!schedule) continue;
+    scheduled += 1;
+    if (schedule.dueOn < today) overdue += 1;
+    else if (schedule.dueOn === today) dueToday += 1;
+    const point = upcomingByDate.get(schedule.dueOn);
+    if (point) point.count += 1;
+  }
+
+  return {
+    dueToday,
+    overdue,
+    scheduled,
+    unscheduled: schedules.length - scheduled,
+    upcoming,
+  };
+}
+
+/** Counts tags across the graph, grouping spellings that differ only by case under the first seen. */
+function tagCounts(nodes: Array<{ tags?: string[] }>): TagCount[] {
+  const counts = new Map<string, TagCount>();
+  for (const node of nodes) {
+    for (const tag of node.tags ?? []) {
+      const key = tag.toLocaleLowerCase();
+      const existing = counts.get(key);
+      if (existing) existing.count += 1;
+      else counts.set(key, { count: 1, tag });
+    }
+  }
+  return [...counts.values()].sort(
+    (left, right) => right.count - left.count || left.tag.localeCompare(right.tag),
+  );
 }
 
 function artifactMix(nodes: Array<{ kind: WorkspaceGraphNodeKind }>): ArtifactMixItem[] {
@@ -140,7 +225,7 @@ export async function buildWorkspaceInsights(
 ): Promise<WorkspaceInsights> {
   const days = Math.min(30, Math.max(7, Math.trunc(options.days ?? 14)));
   const now = options.now ?? new Date();
-  const [graph, summaries, recap, manifests] = await Promise.all([
+  const [graph, summaries, recap, manifests, schedules] = await Promise.all([
     buildWorkspaceGraph(storage),
     buildTodaySummary(storage, workspace),
     buildWorkspaceRecap(storage, workspace, { days, limit: 100, now }),
@@ -150,6 +235,13 @@ export async function buildWorkspaceInsights(
           schemaVersion: 1 as const,
           sources: [],
         })),
+      ),
+    ),
+    // An unreadable schedule is left for the explicit repair path, exactly as an invalid
+    // source manifest is: this report never fixes a machine file it happens to read.
+    Promise.all(
+      workspace.topics.map((topic) =>
+        readReviewSchedule(storage, topic.slug, now).catch(() => null),
       ),
     ),
   ]);
@@ -239,6 +331,8 @@ export async function buildWorkspaceInsights(
     providers: [...providers]
       .map(([id, count]) => ({ count, id, label: labelProvider(id) }))
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label)),
+    reviewPressure: reviewPressureFrom(schedules, days, now),
+    tags: tagCounts(graph.nodes),
     topics,
     totals: {
       activeDays: activity.filter((point) => point.count > 0).length,

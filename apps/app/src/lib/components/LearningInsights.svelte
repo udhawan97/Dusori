@@ -22,6 +22,7 @@
 
   $: activityPeak = Math.max(1, ...(insights?.activity.map((point) => point.count) ?? [1]));
   $: providerPeak = Math.max(1, ...(insights?.providers.map((provider) => provider.count) ?? [1]));
+  $: tagPeak = Math.max(1, ...(insights?.tags.map((tag) => tag.count) ?? [1]));
   $: orbitStyle = evidenceOrbit(insights);
 
   async function load(
@@ -240,6 +241,39 @@
         {/if}
       </section>
 
+      <section class="provenance-panel" aria-labelledby="review-pressure-title">
+        <div class="panel-heading">
+          <div>
+            <p class="kicker">Review queue</p>
+            <h2 id="review-pressure-title">What is due</h2>
+          </div>
+        </div>
+        <ul class="pressure-figures">
+          <li><strong>{insights.reviewPressure.overdue}</strong><small>overdue</small></li>
+          <li><strong>{insights.reviewPressure.dueToday}</strong><small>due today</small></li>
+          <li><strong>{insights.reviewPressure.scheduled}</strong><small>scheduled</small></li>
+          <li><strong>{insights.reviewPressure.unscheduled}</strong><small>unscheduled</small></li>
+        </ul>
+        {#if insights.reviewPressure.upcoming.some((point) => point.count > 0)}
+          <ol class="pressure-bars" aria-label="Reviews due over the coming days">
+            {#each insights.reviewPressure.upcoming as point (point.date)}
+              <li>
+                <span
+                  class:has-due={point.count > 0}
+                  style={`height: ${Math.min(100, point.count * 34 + (point.count ? 16 : 4))}%`}
+                  title={`${point.count} due on ${point.date}`}
+                ></span>
+                <small>{point.date.slice(8)}</small>
+              </li>
+            {/each}
+          </ol>
+        {:else}
+          <p class="empty-copy">
+            Nothing is scheduled in this window. Marking a topic reviewed sets its next date.
+          </p>
+        {/if}
+      </section>
+
       <section class="provenance-panel" aria-labelledby="provenance-title">
         <div class="panel-heading">
           <div>
@@ -263,11 +297,94 @@
           <p class="empty-copy">Approved research sources will appear here by provider.</p>
         {/if}
       </section>
+
+      <section class="provenance-panel" aria-labelledby="tags-title">
+        <div class="panel-heading">
+          <div>
+            <p class="kicker">Vocabulary</p>
+            <h2 id="tags-title">Tags</h2>
+          </div>
+        </div>
+        {#if insights.tags.length}
+          <ul class="provider-list">
+            {#each insights.tags.slice(0, 12) as tag (tag.tag)}
+              <li>
+                <div>
+                  <strong>#{tag.tag}</strong>
+                  <small>{tag.count}</small>
+                </div>
+                <span><i style={`width: ${relativeWidth(tag.count, tagPeak)}`}></i></span>
+              </li>
+            {/each}
+          </ul>
+        {:else}
+          <p class="empty-copy">
+            Tags written as <code>#name</code> or in frontmatter will be counted here.
+          </p>
+        {/if}
+      </section>
     </div>
   {/if}
 </section>
 
 <style>
+  .pressure-figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+    gap: var(--space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pressure-figures li {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .pressure-figures strong {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    line-height: 1.1;
+  }
+
+  .pressure-figures small,
+  .pressure-bars small {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .pressure-bars {
+    display: grid;
+    height: 5rem;
+    align-items: end;
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    gap: 2px;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    list-style: none;
+  }
+
+  .pressure-bars li {
+    display: grid;
+    height: 100%;
+    align-content: end;
+    gap: 0.15rem;
+    justify-items: center;
+  }
+
+  .pressure-bars span {
+    width: 100%;
+    border-radius: 2px;
+    background: var(--color-rule);
+  }
+
+  .pressure-bars span.has-due {
+    background: var(--insight-blue);
+  }
+
   .insights {
     --insight-blue: light-dark(oklch(51% 0.14 250), oklch(72% 0.11 245));
     --insight-mint: light-dark(oklch(53% 0.11 166), oklch(75% 0.1 166));

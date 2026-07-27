@@ -31,6 +31,7 @@
     createNote,
     createTopic,
     createWorkspace,
+    exportTopic,
     exportWorkspace,
     lineDiff,
     prepareWorkspaceImport,
@@ -59,6 +60,7 @@
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
   import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import TutorPreferences from '$lib/components/TutorPreferences.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
 
@@ -545,20 +547,37 @@
     });
   }
 
+  function downloadArchive(archive: Uint8Array, filename: string): void {
+    const bytes = new Uint8Array(archive.byteLength);
+    bytes.set(archive);
+    const blob = new Blob([bytes.buffer], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function downloadWorkspace(): Promise<void> {
     if (!storage) return;
     await perform(async () => {
       const archive = await exportWorkspace(storage!);
-      const bytes = new Uint8Array(archive.byteLength);
-      bytes.set(archive);
-      const blob = new Blob([bytes.buffer], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `dusori-workspace-${new Date().toISOString().slice(0, 10)}.zip`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      downloadArchive(archive, `dusori-workspace-${new Date().toISOString().slice(0, 10)}.zip`);
       status = 'Workspace exported as a portable ZIP.';
+    });
+  }
+
+  async function downloadTopic(): Promise<void> {
+    if (!storage || !selectedSlug) return;
+    await perform(async () => {
+      const archive = await exportTopic(storage!, selectedSlug);
+      downloadArchive(
+        archive,
+        `dusori-topic-${selectedSlug}-${new Date().toISOString().slice(0, 10)}.zip`,
+      );
+      status =
+        'Topic exported as a portable ZIP. It holds one topic, so it is not a workspace archive Dusori can import.';
     });
   }
 
@@ -1106,6 +1125,7 @@
           {storage}
           currentPath={notePath}
           onOpen={(path) => void openSearchDocument(path)}
+          onArtifactsChanged={() => (artifactRevision += 1)}
         />
       {/if}
 
@@ -1153,12 +1173,39 @@
           <Download aria-hidden="true" size={18} />
           Export workspace
         </button>
+        {#if selectedSlug}
+          <button class="inspector-action" disabled={busy} onclick={downloadTopic}>
+            <Download aria-hidden="true" size={18} />
+            Export this topic
+          </button>
+        {/if}
         <label class="inspector-action file-action">
           <Upload aria-hidden="true" size={18} />
           Import workspace
           <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
         </label>
+        <p class="portability-note">
+          A topic bundle holds one topic's files. It is a portable copy, not a workspace archive
+          Dusori can import.
+        </p>
       </section>
+
+      {#if selectedSlug && storage}
+        <section>
+          <!-- Keyed on the topic only: the panel reloads itself after saving, and rekeying on
+               artifactRevision would discard the confirmation it just showed. -->
+          {#key selectedSlug}
+            <TutorPreferences
+              {storage}
+              topicSlug={selectedSlug}
+              topicTitle={workspace?.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                selectedSlug}
+              aiClient={companionAiClient}
+              onSaved={() => (artifactRevision += 1)}
+            />
+          {/key}
+        </section>
+      {/if}
 
       {#if selectedSlug}
         <section>
@@ -1528,6 +1575,13 @@
 
   .inspector p {
     font-size: var(--text-sm);
+  }
+
+  .portability-note {
+    margin-block-start: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   .inspector-action {

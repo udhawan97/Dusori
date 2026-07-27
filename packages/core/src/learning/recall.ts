@@ -14,7 +14,11 @@ const maxSourceReads = 12;
 const maxSourcesInOneSession = 4;
 const maxSectionsPerSource = 2;
 const maxExcerpts = 4;
-const maxContributionPrompts = 3;
+/** Prompts between the opening explain and the closing compare, keeping every session at 3–5. */
+const maxMiddlePrompts = 3;
+const minClozeSentenceCharacters = 40;
+const maxClozeSentenceCharacters = 240;
+const minClozeWordCharacters = 6;
 
 export interface RecallEvidence {
   /** Bounded, Markdown-flattened quotation from the source file. */
@@ -26,7 +30,7 @@ export interface RecallEvidence {
   truncated: boolean;
 }
 
-export type RecallPromptKind = 'compare' | 'contribution' | 'explain';
+export type RecallPromptKind = 'cloze' | 'compare' | 'contribution' | 'explain' | 'locate';
 
 export interface RecallPrompt {
   evidence: RecallEvidence;
@@ -160,10 +164,91 @@ function interleave(perSource: RecallEvidence[][]): RecallEvidence[] {
   return ordered.slice(0, maxExcerpts);
 }
 
+/** The excerpt's opening sentence, when it is long enough to hide a word inside and still read. */
+function firstSentence(excerpt: string): string | null {
+  const sentence = excerpt.split(/(?<=[.!?])\s+/u)[0]?.trim() ?? '';
+  const usable =
+    sentence.length >= minClozeSentenceCharacters &&
+    sentence.length <= maxClozeSentenceCharacters &&
+    !sentence.endsWith('…');
+  return usable ? sentence : null;
+}
+
+/**
+ * The longest word in the sentence, ties going to the first. Deterministic by construction: the
+ * same excerpt always hides the same word, so a session is reproducible.
+ */
+function longestWord(sentence: string): string | null {
+  let longest = '';
+  for (const [word] of sentence.matchAll(new RegExp(`\\p{L}{${minClozeWordCharacters},}`, 'gu'))) {
+    if (word.length > longest.length) longest = word;
+  }
+  return longest || null;
+}
+
+/** Hides one word of the source's own sentence. Nothing is generated: the excerpt still shows it. */
+function clozePrompt(evidence: RecallEvidence): RecallPrompt | null {
+  const sentence = firstSentence(evidence.excerpt);
+  if (!sentence) return null;
+  const word = longestWord(sentence);
+  if (!word) return null;
+  // The word came from the sentence and is letters only, so it carries no regex meaning.
+  const blanked = sentence.replace(new RegExp(`(?<!\\p{L})${word}(?!\\p{L})`, 'u'), '_____');
+  return {
+    evidence,
+    generatedBy: 'template',
+    id: 'cloze',
+    kind: 'cloze',
+    prompt: `Fill the blank from ${bound(evidence.title, maxHeadingCharacters)} — ${bound(
+      evidence.heading,
+      maxHeadingCharacters,
+    )}: “${blanked}”`,
+  };
+}
+
+/** Only worth asking once the topic has more than one source to tell apart. */
+function locatePrompt(evidence: RecallEvidence[], shortObjective: string): RecallPrompt | null {
+  if (new Set(evidence.map((item) => item.title)).size < 2) return null;
+  const item = evidence[1] ?? evidence[0];
+  if (!item) return null;
+  return {
+    evidence: item,
+    generatedBy: 'template',
+    id: 'locate',
+    kind: 'locate',
+    prompt: `Without looking, which of your sources covers “${bound(
+      item.heading,
+      maxHeadingCharacters,
+    )}”, and what does it add to “${shortObjective}”?`,
+  };
+}
+
 function buildPrompts(objective: string, evidence: RecallEvidence[]): RecallPrompt[] {
   const shortObjective = bound(objective, maxObjectiveCharacters);
   const first = evidence[0];
   if (!first) return [];
+
+  // Fixed order, and the varied kinds claim their slot before contributions fill what is left,
+  // so a session stays between three and five prompts however many sources a topic has.
+  const middle: RecallPrompt[] = [];
+  const cloze = clozePrompt(first);
+  if (cloze) middle.push(cloze);
+  const locate = locatePrompt(evidence, shortObjective);
+  if (locate) middle.push(locate);
+  for (const [index, item] of evidence.entries()) {
+    if (middle.length >= maxMiddlePrompts) break;
+    middle.push({
+      evidence: item,
+      generatedBy: 'template',
+      id: `contribution-${index + 1}`,
+      kind: 'contribution',
+      prompt: `What does “${bound(item.heading, maxHeadingCharacters)}” in ${bound(
+        item.title,
+        maxHeadingCharacters,
+      )} contribute to “${shortObjective}”?`,
+    });
+  }
+
   return [
     {
       evidence: first,
@@ -172,18 +257,9 @@ function buildPrompts(objective: string, evidence: RecallEvidence[]): RecallProm
       kind: 'explain',
       prompt: `Explain “${shortObjective}” in your own words before revealing the source.`,
     },
-    ...evidence.slice(0, maxContributionPrompts).map((item, index) => ({
-      evidence: item,
-      generatedBy: 'template' as const,
-      id: `contribution-${index + 1}`,
-      kind: 'contribution' as const,
-      prompt: `What does “${bound(item.heading, maxHeadingCharacters)}” in ${bound(
-        item.title,
-        maxHeadingCharacters,
-      )} contribute to “${shortObjective}”?`,
-    })),
+    ...middle.slice(0, maxMiddlePrompts),
     {
-      evidence: evidence[maxContributionPrompts] ?? first,
+      evidence: evidence.at(-1) ?? first,
       generatedBy: 'template',
       id: 'compare',
       kind: 'compare',

@@ -742,6 +742,151 @@ test('searches local workspace prose and opens the matching document', async ({ 
   await expectNoSeriousA11yViolations(page);
 });
 
+test('filters workspace search by a tag written in the source itself', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+  await page.getByLabel('Source title').fill('Tagged attention notes');
+  await page
+    .getByLabel('Source text')
+    .fill('Attention weighs tokens against each other. Filed under #attention today.');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Tagged attention notes',
+  );
+  await openInspector(page);
+
+  await page.getByLabel('Words to find').fill('tag:attention');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+
+  const results = page.getByRole('list', { name: 'Workspace search results' });
+  await expect(results).toContainText('Tagged attention notes');
+  await expect(results).toContainText('#attention');
+
+  // A tag nothing carries returns nothing rather than falling back to a text match.
+  await page.getByLabel('Words to find').fill('tag:absent');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+  await expect(page.getByText('No local documents contain every search word.')).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
+/** Reads one workspace file straight from OPFS, to prove what was and was not written. */
+async function readWorkspaceFile(page: Page, path: string): Promise<string> {
+  return page.evaluate(async (target) => {
+    const origin = await navigator.storage.getDirectory();
+    let directory = await origin.getDirectoryHandle('Dusori');
+    const segments = target.split('/');
+    const name = segments.pop() as string;
+    for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
+    return (await (await directory.getFileHandle(name)).getFile()).text();
+  }, path);
+}
+
+/**
+ * A real, minimal PDF, so the import path is exercised end to end. Passing no text produces a
+ * structurally valid page with an empty content stream — what a scan looks like to a reader.
+ */
+function samplePdf(text: string): Buffer {
+  const stream = text ? `BT /F1 12 Tf 20 120 Td (${text}) Tj ET` : '';
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
+    `<</Length ${stream.length}>>\nstream\n${stream}\nendstream`,
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
+test('imports a PDF by reading its text on this device', async ({ page }) => {
+  const sentence = 'Positional encoding restores order before the first attention block.';
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+
+  await page.getByLabel('Source type').selectOption('file');
+  await page.getByLabel('Source title').fill('Encoding handout');
+  await page.getByRole('button', { name: 'Choose a local file' }).setInputFiles({
+    buffer: samplePdf(sentence),
+    mimeType: 'application/pdf',
+    name: 'encoding-handout.pdf',
+  });
+  await page.getByRole('button', { name: 'Add source' }).click();
+
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Encoding handout');
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Local file');
+
+  // The extracted text is an ordinary local source, searchable like any other.
+  await openInspector(page);
+  await page.getByLabel('Words to find').fill('positional encoding restores');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+  await expect(page.getByRole('list', { name: 'Workspace search results' })).toContainText(
+    'Encoding handout',
+  );
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('a PDF with no text layer says so instead of saving an empty source', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+
+  await page.getByLabel('Source type').selectOption('file');
+  await page.getByLabel('Source title').fill('Scanned pages');
+  await page.getByRole('button', { name: 'Choose a local file' }).setInputFiles({
+    buffer: samplePdf(''),
+    mimeType: 'application/pdf',
+    name: 'scanned-pages.pdf',
+  });
+  await page.getByRole('button', { name: 'Add source' }).click();
+
+  await expect(page.getByRole('alert')).toContainText('no extractable text');
+  await expect(page.getByRole('alert')).toContainText('ships no OCR');
+  // Nothing was written, so the topic still has no source list at all.
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toHaveCount(0);
+});
+
+test('editing learning preferences shows a diff and writes only on acceptance', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openInspector(page);
+
+  const tutor = page.getByRole('region', { name: 'Learning preferences' });
+  await expect(tutor).toContainText('Topics/ai-fundamentals/TUTOR.md');
+  await expect(tutor).toContainText('Prefer concrete examples before abstractions.');
+
+  await tutor
+    .getByLabel('New learning preference')
+    .fill('Always name the source before the claim.');
+  await tutor.getByRole('button', { name: 'Add' }).click();
+
+  // Nothing is written until the diff is accepted.
+  await expect(tutor).toContainText('Proposed change');
+  await expect(tutor).toContainText('+ - Always name the source before the claim.');
+  const beforeAccept = await readWorkspaceFile(page, 'Topics/ai-fundamentals/TUTOR.md');
+  expect(beforeAccept).not.toContain('Always name the source before the claim.');
+
+  await tutor.getByRole('button', { name: 'Accept and save' }).click();
+  await expect(tutor).toContainText('Learning preferences saved');
+
+  const afterAccept = await readWorkspaceFile(page, 'Topics/ai-fundamentals/TUTOR.md');
+  expect(afterAccept).toContain('Always name the source before the claim.');
+  expect(afterAccept).toContain('Prefer concrete examples before abstractions.');
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('shows unresolved links and backlinks from the same local graph', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -1252,9 +1397,10 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   });
   await start.click();
 
-  // One source with two headed sections: explain, one prompt per section, then compare.
+  // One source with two headed sections: explain, a cloze, one prompt per section, then compare.
+  // No locate prompt, because a single source leaves nothing to tell apart.
   const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
-  await expect(session).toContainText('Prompt 1 of 4');
+  await expect(session).toContainText('Prompt 1 of 5');
   await expect(session).toContainText('in your own words before revealing the source');
   await expect(session).toContainText('Deterministic prompt');
   // The excerpt stays hidden until the learner has tried to answer.
@@ -1269,12 +1415,14 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   await expectNoSeriousA11yViolations(page);
 
   await session.getByRole('button', { name: 'Next' }).click();
-  await expect(session).toContainText('Prompt 2 of 4');
+  await expect(session).toContainText('Prompt 2 of 5');
+  await expect(session).toContainText('Fill the blank');
+  await session.getByRole('button', { name: 'Next' }).click();
   await expect(session).toContainText('contribute to');
   for (let step = 0; step < 2; step += 1) {
     await session.getByRole('button', { name: 'Next' }).click();
   }
-  await expect(session).toContainText('Prompt 4 of 4');
+  await expect(session).toContainText('Prompt 5 of 5');
   await expect(session.getByRole('button', { name: 'Next' })).toBeDisabled();
   await expect(session).toContainText('Only this choice changes your review schedule.');
 
@@ -1438,10 +1586,10 @@ test('a review session stays usable at supported narrow widths', async ({ browse
     await session.getByRole('button', { name: 'Reveal the source' }).click();
     await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
     // The last prompt carries the widest footer: rating pair, trust line, and the way out.
-    for (let step = 0; step < 3; step += 1) {
+    for (let step = 0; step < 4; step += 1) {
       await session.getByRole('button', { name: 'Next' }).click();
     }
-    await expect(session).toContainText('Prompt 4 of 4');
+    await expect(session).toContainText('Prompt 5 of 5');
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -2027,8 +2175,10 @@ test.describe('companion flows', () => {
       promptRequests.push(route.request().postData() ?? '');
       await route.fulfill({
         json: {
+          // One per deterministic prompt: a reply with any other count is rejected on purpose.
           prompts: [
             'Say what attention does before you look.',
+            'Which word completes the sentence you were shown?',
             'Why do weights matter here?',
             'What breaks without positional encoding?',
             'What did your answer leave out?',

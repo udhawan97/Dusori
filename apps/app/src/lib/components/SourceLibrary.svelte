@@ -22,6 +22,7 @@
   export let companion: CompanionResearchClient | null = null;
 
   let method: 'paste' | 'file' | 'url' = 'paste';
+  let extracting = false;
   let title = '';
   let pastedText = '';
   let url = '';
@@ -199,15 +200,37 @@
       } else if (method === 'url') {
         result = await addSource(storage, { method, title, topicSlug, url });
       } else {
-        if (!selectedFile) throw new Error('Choose a Markdown or text file to add.');
+        if (!selectedFile) throw new Error('Choose a Markdown, text, or PDF file to add.');
         if (selectedFile.size > maxSourceBytes) {
-          throw new Error('This source is larger than 2 MiB. Split it into smaller text files.');
+          throw new Error('This source is larger than 2 MiB. Split it into smaller files.');
         }
         const markdown = /\.(?:markdown|md)$/iu.test(selectedFile.name);
+        const pdf = /\.pdf$/iu.test(selectedFile.name);
         const text = /\.(?:markdown|md|txt)$/iu.test(selectedFile.name);
-        if (!text) throw new Error('Choose a .md, .markdown, or .txt file.');
+        if (!text && !pdf) throw new Error('Choose a .md, .markdown, .txt, or .pdf file.');
+
+        let content: string;
+        if (pdf) {
+          extracting = true;
+          try {
+            // Local extraction: the file never leaves the device, and a scan without a text
+            // layer reports that cause instead of saving an empty source.
+            const { extractPdfText } = await import('$lib/pdf-text');
+            content = await extractPdfText(selectedFile);
+          } finally {
+            extracting = false;
+          }
+          if (new TextEncoder().encode(content).byteLength > maxSourceBytes) {
+            throw new Error(
+              'The text in this PDF is larger than 2 MiB. Add the chapters you need separately.',
+            );
+          }
+        } else {
+          content = await selectedFile.text();
+        }
+
         result = await addSource(storage, {
-          content: await selectedFile.text(),
+          content,
           mediaType: markdown ? 'text/markdown' : 'text/plain',
           method,
           originalName: selectedFile.name,
@@ -279,7 +302,7 @@
     <label for="source-method">Source type</label>
     <select id="source-method" bind:value={method} disabled={saving} onchange={changeMethod}>
       <option value="paste">Pasted text</option>
-      <option value="file">Local text file</option>
+      <option value="file">Local file</option>
       <option value="url">URL reference</option>
     </select>
 
@@ -319,18 +342,24 @@
       />
       <p class="field-help" id="url-help">Saved as a reference; opened only when you choose.</p>
     {:else}
-      <span class="field-label">Markdown or text file</span>
+      <span class="field-label">Markdown, text, or PDF file</span>
       <label class="file-picker" class:has-file={selectedFile}>
         <FilePlus2 aria-hidden="true" size={18} />
         <span>{selectedFile?.name ?? 'Choose a local file'}</span>
         <input
           type="file"
-          accept=".md,.markdown,.txt,text/markdown,text/plain"
+          accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
           disabled={saving}
           onchange={chooseFile}
         />
       </label>
-      <p class="field-help">.md, .markdown, or .txt · up to 2 MiB</p>
+      <p class="field-help">
+        .md, .markdown, .txt, or .pdf · up to 2 MiB. A PDF is read on this device; a scanned PDF
+        with no text layer cannot be read, as Dusori ships no OCR.
+      </p>
+      {#if extracting}
+        <p class="field-help" aria-live="polite">Reading the PDF on this device…</p>
+      {/if}
     {/if}
 
     <button class="add-source" disabled={saving || loading}>

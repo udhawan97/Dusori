@@ -60,6 +60,8 @@
   let controlsOpen = false;
   let artifactQuery = '';
   let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
+  /** Lower-cased so a chip matches a tag however its author capitalised it. Empty means no filter. */
+  let artifactTag = '';
   let settings: GraphViewSettings = {
     linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
     repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
@@ -308,12 +310,20 @@
   $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
   $: hoverNeighbors = graph && hoveredId && !selectedId ? neighborIds(graph, hoveredId) : null;
   $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
+  $: workspaceTags = [
+    ...new Map(
+      (graph?.nodes ?? [])
+        .flatMap((node) => node.tags ?? [])
+        .map((tag) => [tag.toLocaleLowerCase(), tag] as const),
+    ).values(),
+  ].sort((left, right) => left.localeCompare(right));
   $: artifactNodes = (graph?.nodes ?? []).filter((node) => {
     const matchesKind = artifactKind === 'all' || node.kind === artifactKind;
+    const matchesTag =
+      !artifactTag || (node.tags ?? []).some((tag) => tag.toLocaleLowerCase() === artifactTag);
     const query = artifactQuery.trim().toLocaleLowerCase();
-    return (
-      matchesKind && (!query || `${node.label} ${node.path}`.toLocaleLowerCase().includes(query))
-    );
+    const haystack = `${node.label} ${node.path} ${(node.tags ?? []).join(' ')}`;
+    return matchesKind && matchesTag && (!query || haystack.toLocaleLowerCase().includes(query));
   });
   $: noteCount = graph?.nodes.filter((node) => node.kind === 'note').length ?? 0;
   $: sourceCount = graph?.nodes.filter((node) => node.kind === 'source').length ?? 0;
@@ -539,6 +549,21 @@
             </button>
           {/each}
         </div>
+        {#if workspaceTags.length}
+          <div class="artifact-filters tag-filters" role="group" aria-label="Filter graph by tag">
+            {#each workspaceTags as tag (tag)}
+              <button
+                type="button"
+                aria-pressed={artifactTag === tag.toLocaleLowerCase()}
+                onclick={() =>
+                  (artifactTag =
+                    artifactTag === tag.toLocaleLowerCase() ? '' : tag.toLocaleLowerCase())}
+              >
+                #{tag}
+              </button>
+            {/each}
+          </div>
+        {/if}
         <ul aria-label="Graph documents">
           {#each artifactNodes as node (node.id)}
             <li>
@@ -965,6 +990,16 @@
   .artifact-search:focus-within {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
+  }
+
+  .tag-filters {
+    flex-wrap: wrap;
+    max-height: 6rem;
+    overflow-y: auto;
+  }
+
+  .tag-filters button {
+    font-family: var(--font-mono);
   }
 
   .artifact-filters {

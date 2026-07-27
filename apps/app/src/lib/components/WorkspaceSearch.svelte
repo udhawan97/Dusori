@@ -26,13 +26,19 @@
       searching = false;
     }
   }
+
+  function searchTag(tag: string): void {
+    query = `tag:${tag}`;
+    void submit();
+  }
 </script>
 
 <section class="workspace-search" aria-labelledby="workspace-search-title">
   <p class="kicker">Local discovery</p>
   <h2 id="workspace-search-title">Search workspace</h2>
   <p class="privacy">
-    Markdown and text are read in this session. No index or query leaves Dusori.
+    Markdown and text are read in this session. No index or query leaves Dusori. Use
+    <code>tag:name</code> to filter by a tag written in frontmatter or as <code>#name</code>.
   </p>
 
   <form
@@ -83,6 +89,22 @@
               <span class="snippet">{result.snippet}</span>
             </span>
           </button>
+          {#if result.tags?.length}
+            <ul class="tags" aria-label="Tags on {result.title}">
+              {#each result.tags as tag (tag)}
+                <li>
+                  <button
+                    type="button"
+                    class="tag"
+                    onclick={() => searchTag(tag)}
+                    aria-label="Search for tag {tag}"
+                  >
+                    #{tag}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </li>
       {/each}
     </ol>
@@ -139,7 +161,7 @@
 
   input,
   .search-row button,
-  li button {
+  ol > li > button {
     min-height: 2.75rem;
     border: var(--rule-hair) solid var(--color-border);
     background: var(--color-paper);
@@ -187,7 +209,7 @@
     list-style: none;
   }
 
-  li button {
+  ol > li > button {
     display: grid;
     width: 100%;
     grid-template-columns: auto minmax(0, 1fr);
@@ -198,8 +220,38 @@
     text-align: start;
   }
 
-  li button > span {
+  ol > li > button > span {
     min-width: 0;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs, 0.25rem);
+    margin: var(--space-2xs, 0.25rem) 0 0;
+    padding: 0 0 0 var(--space-sm);
+    list-style: none;
+  }
+
+  .tag {
+    min-height: 1.75rem;
+    padding: 0.15rem var(--space-xs);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .tag:hover {
+    color: var(--color-ink);
+  }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
   }
 
   strong,
