@@ -63,15 +63,15 @@ about the session changes the schedule except that final, explicit rating.
 
 `readSourceManifest` is the input; no second index is built.
 
-1. Records are taken in manifest order (stable, append-only), capped at the
-   first 10 with a `path`.
+1. Records are taken in manifest order (stable, append-only). Reading stops
+   at 4 usable sources or 12 examined records, whichever comes first.
 2. Each file is read through the storage adapter. A file that is missing or
    unreadable is skipped silently — a broken source must not break review.
 3. **Readable** means the body carries real text. The provenance preamble
    that Dusori writes itself (`# Title`, `Original URL: <…>`, `Resolved
-   URL:`, `Byline:`, `Site:`, `Fetched from … via the local companion.`) and
+URL:`, `Byline:`, `Site:`, `Fetched from … via the local companion.`) and
    the URL-reference sentence (`Dusori stored this reference without fetching
-   its contents.`) are stripped before measuring. What remains must be at
+its contents.`) are stripped before measuring. What remains must be at
    least 40 characters — low enough that a short pasted note is still
    reviewable, high enough that a bare reference never is. This is
    content-based, not provenance-based, so a
@@ -93,12 +93,12 @@ untrusted data.
 
 Three templates, always in this order:
 
-1. `explain` — *Explain "&lt;objective&gt;" in your own words before revealing
-   the source.*
-2. `contribution`, one per selected excerpt (1–3 of them) — *What does
-   "&lt;heading&gt;" in &lt;source title&gt; contribute to "&lt;objective&gt;"?*
-3. `compare` — *Compare your explanation with this excerpt. What did you omit
-   or misunderstand?*
+1. `explain` — _Explain "&lt;objective&gt;" in your own words before revealing
+   the source._
+2. `contribution`, one per selected excerpt (1–3 of them) — _What does
+   "&lt;heading&gt;" in &lt;source title&gt; contribute to "&lt;objective&gt;"?_
+3. `compare` — _Compare your explanation with this excerpt. What did you omit
+   or misunderstand?_
 
 That is 3 prompts with one excerpt available and 5 with four, which is the
 required 3–5 band without any tuning knob. Prompt ids are stable
@@ -107,14 +107,14 @@ be matched positionally without depending on wording.
 
 ### Session states
 
-| State | What the learner sees |
-| --- | --- |
-| Ready | 3–5 prompts, one at a time, with reveal-on-demand evidence |
-| No sources | "This topic has no sources yet." with the route to Research |
-| Only URL references | Names the count, explains that readable text must be fetched with the companion or pasted in, and states plainly that Dusori will not fetch it for them |
-| Unreadable / unavailable storage | The read error, with the queue untouched |
-| Stale | The session is a snapshot; the excerpt panel states the local path and that the source may have changed since the session opened. Re-opening rebuilds it. |
-| Conflict | Only reachable on the final rating, where `markTopicReviewed`'s existing retry-then-report protocol already applies; the queue refreshes to what was actually persisted |
+| State                            | What the learner sees                                                                                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ready                            | 3–5 prompts, one at a time, with reveal-on-demand evidence                                                                                                              |
+| No sources                       | "This topic has no sources yet." with the route to Research                                                                                                             |
+| Only URL references              | Names the count, explains that readable text must be fetched with the companion or pasted in, and states plainly that Dusori will not fetch it for them                 |
+| Unreadable / unavailable storage | The read error, with the queue untouched                                                                                                                                |
+| Stale                            | The session is a snapshot; the excerpt panel states the local path and that the source may have changed since the session opened. Re-opening rebuilds it.               |
+| Conflict                         | Only reachable on the final rating, where `markTopicReviewed`'s existing retry-then-report protocol already applies; the queue refreshes to what was actually persisted |
 
 ## Module design
 
@@ -236,11 +236,11 @@ providers, new curriculum adapters, release or deployment.
 
 ## Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| A generated question is mistaken for the learner's own writing | Nothing is written to the workspace; every prompt is labelled in place, AI prompts additionally by model |
-| A prompt reads as an authoritative test of understanding | Copy states the session is prompts and excerpts only; no score, streak, or mastery signal exists to display |
-| AI text smuggles instructions out of a source | Plain-text rendering, bounded length, structural fields never taken from the model |
-| Excerpt egress surprises a learner who allowed AI ranking | A separate consent scope with its own disclosure; ranking consent grants nothing here |
-| Sessions bloat the review schedule | Only the explicit final rating writes; start, navigate, reveal, and abandon write nothing, asserted in tests |
-| A topic's sources are all URL references | Explicit named state with the two manual routes; automatic fetching stays forbidden |
+| Risk                                                           | Mitigation                                                                                                   |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| A generated question is mistaken for the learner's own writing | Nothing is written to the workspace; every prompt is labelled in place, AI prompts additionally by model     |
+| A prompt reads as an authoritative test of understanding       | Copy states the session is prompts and excerpts only; no score, streak, or mastery signal exists to display  |
+| AI text smuggles instructions out of a source                  | Plain-text rendering, bounded length, structural fields never taken from the model                           |
+| Excerpt egress surprises a learner who allowed AI ranking      | A separate consent scope with its own disclosure; ranking consent grants nothing here                        |
+| Sessions bloat the review schedule                             | Only the explicit final rating writes; start, navigate, reveal, and abandon write nothing, asserted in tests |
+| A topic's sources are all URL references                       | Explicit named state with the two manual routes; automatic fetching stays forbidden                          |

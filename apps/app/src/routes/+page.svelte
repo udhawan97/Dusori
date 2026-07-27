@@ -984,6 +984,7 @@
           <LearningLoop
             {storage}
             {workspace}
+            ai={companionAiClient}
             topicSlug={selectedSlug}
             view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
             revision={learningRevision}

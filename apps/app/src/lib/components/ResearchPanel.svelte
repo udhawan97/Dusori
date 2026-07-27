@@ -28,6 +28,7 @@
   } from '@dusori/core';
 
   import { modal } from '$lib/actions/modal';
+  import { grantConsent, hasConsent as deviceHasConsent } from '$lib/consent';
   import MarkdownView from './MarkdownView.svelte';
 
   export let storage: StorageAdapter;
@@ -126,19 +127,14 @@
     await maybeAutoRun(nextObjective);
   }
 
-  function consentKey(provider: ResearchProvider): string {
-    // v2: the disclosures now describe exactly what each provider receives, so consent given
-    // against the earlier wording is asked again rather than assumed. Keyed by consentScope so
-    // a variant that widens egress (companion-ranked search) asks for its own consent.
-    return `dusori-research-consent:v2:${provider.consentScope ?? provider.id}`;
+  // Keyed by consentScope so a variant that widens egress (companion-ranked search, AI) asks
+  // for its own consent rather than inheriting a narrower disclosure's answer.
+  function scopeOf(provider: ResearchProvider): string {
+    return provider.consentScope ?? provider.id;
   }
 
   function hasConsent(provider: ResearchProvider): boolean {
-    try {
-      return localStorage.getItem(consentKey(provider)) === 'allowed';
-    } catch {
-      return false;
-    }
+    return deviceHasConsent(scopeOf(provider));
   }
 
   // The tick argument is what re-runs this after a consent is granted; localStorage itself
@@ -160,12 +156,8 @@
 
   async function allowProvider(): Promise<void> {
     if (!consentProvider) return;
-    try {
-      localStorage.setItem(consentKey(consentProvider), 'allowed');
-      consentTick += 1;
-    } catch {
-      runError = networkAlternative;
-    }
+    if (grantConsent(scopeOf(consentProvider))) consentTick += 1;
+    else runError = networkAlternative;
     consentProvider = null;
     await tick();
     consentInvoker?.focus();

@@ -20,6 +20,7 @@
     nextScheduledReview,
     setTopicStatus,
     updateRoadmapObjective,
+    type CompanionAiClient,
     type MarkdownConflict,
     type NextScheduledReview,
     type ReviewOutcome,
@@ -31,11 +32,14 @@
     type WorkspaceRecap,
   } from '@dusori/core';
 
+  import ReviewSession from './ReviewSession.svelte';
+
   export let storage: StorageAdapter;
   export let workspace: Workspace;
   export let topicSlug: string;
   export let view: 'roadmap' | 'today';
   export let revision = 0;
+  export let ai: CompanionAiClient | null = null;
   export let onOpenRoadmap: (slug: string) => void = () => undefined;
   export let onRoadmapChanged: (slug: string, content: string) => void = () => undefined;
   export let onStatus: (message: string) => void = () => undefined;
@@ -52,6 +56,7 @@
   let success = '';
   let conflict: MarkdownConflict | null = null;
   let pendingObjective: { completed: boolean; index: number; title: string } | null = null;
+  let sessionItem: ReviewQueueItem | null = null;
 
   $: selected = summaries.find((summary) => summary.slug === topicSlug) ?? null;
   $: activeCount = summaries.filter((summary) => summary.status === 'active').length;
@@ -195,7 +200,19 @@
       error = message;
     } finally {
       reviewWorkingSlug = null;
+      // The session exists to prompt one rating. It is over either way, and any failure belongs
+      // in the queue's own feedback line rather than behind a dialog.
+      sessionItem = null;
     }
+  }
+
+  /**
+   * The objective a session should test: the topic's next unfinished one, falling back to the
+   * queue's own wording when a roadmap has no objectives left to work on.
+   */
+  function sessionObjective(item: ReviewQueueItem): string {
+    const summary = summaries.find((entry) => entry.slug === item.slug);
+    return summary?.progress.nextObjective?.title ?? item.objective;
   }
 
   function activityDate(value: string): string {
@@ -279,6 +296,14 @@
                     >
                   </div>
                   <div class="queue-actions">
+                    <button
+                      class="queue-review queue-start"
+                      aria-label={`Start review — recall ${item.title} from its sources`}
+                      disabled={reviewWorkingSlug !== null}
+                      onclick={() => (sessionItem = item)}
+                    >
+                      Start review
+                    </button>
                     <button
                       class="queue-review"
                       aria-label={`Got it — mark ${item.title} reviewed`}
@@ -531,6 +556,21 @@
   </div>
 </section>
 
+{#if sessionItem}
+  <ReviewSession
+    {ai}
+    {storage}
+    objective={sessionObjective(sessionItem)}
+    rating={reviewWorkingSlug === sessionItem.slug}
+    topicSlug={sessionItem.slug}
+    topicTitle={sessionItem.title}
+    onClose={() => (sessionItem = null)}
+    onRate={(outcome) => {
+      if (sessionItem) void markReviewed(sessionItem, outcome);
+    }}
+  />
+{/if}
+
 <style>
   /* Hallmark · component: learning loop · genre: editorial utility · theme: inherited custom
    * states: default · hover · focus · active · disabled · loading · error · success
@@ -707,6 +747,11 @@
     padding-inline: var(--space-sm);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+  }
+
+  .queue-actions .queue-start {
+    border-color: var(--color-accent-text);
+    font-weight: 700;
   }
 
   .workspace-recap li {
