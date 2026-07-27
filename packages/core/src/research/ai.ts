@@ -4,6 +4,9 @@ import type { BriefSource } from './brief.js';
 import { CompanionFetchError, type CompanionClientOptions } from './companion.js';
 import type { RankedCandidate } from './rank.js';
 import type { ResearchQuery } from './types.js';
+// Type-only: the recall session owns the payload shape, and this client is the one transport
+// that can carry it. No runtime dependency crosses between the two modules.
+import type { RecallAiRequest } from '../learning/recall.js';
 
 const CapabilitiesSchema = z.object({
   providers: z.array(z.object({ id: z.string(), model: z.string() })),
@@ -14,6 +17,11 @@ const RerankResponseSchema = z.object({
 });
 
 const BriefResponseSchema = z.object({ brief: z.string().min(1) });
+
+const RecallPromptsResponseSchema = z.object({ prompts: z.array(z.string().min(1)).min(1).max(8) });
+
+/** A review session must stay usable, so a silent companion is given a bounded wait. */
+export const recallPromptTimeoutMs = 20_000;
 
 export type AiCapability = z.infer<typeof CapabilitiesSchema>['providers'][number];
 
@@ -26,6 +34,8 @@ export interface AiRerankEntry {
 export interface CompanionAiClient {
   capabilities(): Promise<AiCapability[]>;
   rerank(query: ResearchQuery, candidates: RankedCandidate[]): Promise<AiRerankEntry[]>;
+  /** Rewritten review prompts, one per prompt sent, in the same order. */
+  recallPrompts(request: RecallAiRequest, timeoutMs?: number): Promise<string[]>;
   writeBrief(query: ResearchQuery, sources: BriefSource[]): Promise<string>;
 }
 
@@ -72,6 +82,18 @@ export function createCompanionAiClient(options: CompanionClientOptions): Compan
       );
       if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
       return parsed.data.results;
+    },
+
+    async recallPrompts(request, timeoutMs = recallPromptTimeoutMs) {
+      const parsed = RecallPromptsResponseSchema.safeParse(
+        await readJson('/api/ai/recall-prompts', {
+          body: JSON.stringify({ excerpts: request.excerpts, objective: request.objective }),
+          method: 'POST',
+          signal: AbortSignal.timeout(timeoutMs),
+        }),
+      );
+      if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
+      return parsed.data.prompts;
     },
 
     async writeBrief(query, sources) {

@@ -66,6 +66,54 @@ describe('CompanionAiClient', () => {
     });
   });
 
+  it('sends only the objective and its excerpts when asking for sharper prompts', async () => {
+    let sent = '';
+    const aiClient = client((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent = String(init?.body);
+      return jsonResponse({ prompts: ['Sharper one', 'Sharper two'] });
+    }) as typeof fetch);
+
+    const prompts = await aiClient.recallPrompts({
+      excerpts: [
+        { excerpt: 'Generics carry a type through a function.', heading: 'Generics', title: 'Docs' },
+        { excerpt: 'Constraints narrow what a parameter accepts.', heading: 'Limits', title: 'Docs' },
+      ],
+      objective: 'Understand generics',
+    });
+
+    expect(prompts).toEqual(['Sharper one', 'Sharper two']);
+    expect(JSON.parse(sent)).toEqual({
+      excerpts: [
+        { excerpt: 'Generics carry a type through a function.', heading: 'Generics', title: 'Docs' },
+        { excerpt: 'Constraints narrow what a parameter accepts.', heading: 'Limits', title: 'Docs' },
+      ],
+      objective: 'Understand generics',
+    });
+  });
+
+  it('raises a typed failure when prompts are unfamiliar, refused, or time out', async () => {
+    const request = {
+      excerpts: [{ excerpt: 'Generics carry a type.', heading: 'Generics', title: 'Docs' }],
+      objective: 'Understand generics',
+    };
+
+    const unfamiliar = client((async () => jsonResponse({ prompts: [] })) as typeof fetch);
+    await expect(unfamiliar.recallPrompts(request)).rejects.toMatchObject({ reason: 'ai-failed' });
+
+    const refused = client((async () => new Response('no', { status: 502 })) as typeof fetch);
+    await expect(refused.recallPrompts(request)).rejects.toMatchObject({ reason: 'ai-failed' });
+
+    // A companion that never answers must not hold the session open.
+    const hanging = client((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+    }) as typeof fetch);
+    await expect(hanging.recallPrompts(request, 10)).rejects.toMatchObject({
+      reason: 'ai-failed',
+    });
+  });
+
   it('returns the brief text the companion produced', async () => {
     const aiClient = client((async () =>
       jsonResponse({ brief: '## Reading order\n\nStart here.' })) as typeof fetch);
