@@ -322,9 +322,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.5.0` release adds optional spaced review to the **Review next** queue — mark a topic "Got it" or "Needs work" and it rests until its next due date, on a fixed 1, 3, 7, 14, 30, 60 day ladder — plus a cross-platform `npm start` path for running Dusori from a clone.
+The current `v0.6.0` release reads tags out of your own Markdown, imports PDFs by extracting their text on your device, and lets you edit each topic's learning preferences behind the same diff-and-accept gate as your notes. It also adds OpenAlex and npm as keyless research providers, Reddit through the companion, single-topic export, and review-queue pressure in Insights.
 
-[Read the v0.5.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.5.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.6.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.6.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 
