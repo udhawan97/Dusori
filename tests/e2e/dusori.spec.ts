@@ -295,8 +295,8 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
   await page.goto('/Dusori/docs/');
   await expect(page.getByRole('heading', { name: 'Dusori documentation' })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: /v0\.5\.0 release notes/iu }).first(),
-  ).toHaveAttribute('href', './releases/v0-5-0/');
+    page.getByRole('link', { name: /v0\.6\.0 release notes/iu }).first(),
+  ).toHaveAttribute('href', './releases/v0-6-0/');
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/app/');
