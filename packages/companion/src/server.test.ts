@@ -412,9 +412,72 @@ describe('ai routes', () => {
       ['GET', '/api/ai/capabilities'],
       ['POST', '/api/ai/rerank'],
       ['POST', '/api/ai/brief'],
+      ['POST', '/api/ai/recall-prompts'],
     ] as const) {
       expect((await server.inject({ method, url })).statusCode).toBe(401);
     }
+  });
+
+  it('rewrites review prompts and rejects a payload beyond the disclosed shape', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ response: '["Recall one","Recall two"]' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      })) as unknown as typeof fetch;
+    const server = await createServer({
+      ai: { env: { OLLAMA_MODEL: 'gemma3:4b' }, fetchImpl },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const rewritten = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: {
+        excerpts: [
+          { excerpt: 'Attention weighs tokens.', heading: 'Attention', title: 'Notes' },
+          { excerpt: 'Positions are added back.', heading: 'Positions', title: 'Notes' },
+        ],
+        objective: 'Describe attention',
+      },
+      url: '/api/ai/recall-prompts',
+    });
+    expect(rewritten.statusCode).toBe(200);
+    expect(rewritten.json()).toEqual({ prompts: ['Recall one', 'Recall two'] });
+
+    const rejected = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: { excerpts: [], notes: 'my private note', objective: 'Describe attention' },
+      url: '/api/ai/recall-prompts',
+    });
+    expect(rejected.statusCode).toBe(400);
+  });
+
+  it('reports an unconfigured provider when asked for review prompts', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      ai: { env: {} },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const response = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: {
+        excerpts: [{ excerpt: 'Attention weighs tokens.', heading: 'Attention', title: 'Notes' }],
+        objective: 'Describe attention',
+      },
+      url: '/api/ai/recall-prompts',
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().reason).toBe('not-configured');
   });
 
   it('reports no providers when nothing is configured', async () => {

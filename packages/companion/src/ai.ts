@@ -183,6 +183,51 @@ export async function rerankWithAi(
   return entries;
 }
 
+export interface RecallExcerptInput {
+  excerpt: string;
+  heading: string;
+  title: string;
+}
+
+const maxRecallPromptCharacters = 400;
+
+/**
+ * Rewrites a review session's prompts, one per excerpt, in the order given. The caller keeps its
+ * deterministic prompts unless exactly that many usable questions come back, so a model that
+ * drifts, refuses, or invents extra prompts changes nothing the learner sees.
+ */
+export async function writeRecallPromptsWithAi(
+  objective: string,
+  excerpts: RecallExcerptInput[],
+  options: AiOptions = {},
+): Promise<string[]> {
+  const listing = excerpts
+    .map(
+      (item, index) =>
+        `${index + 1}. source: ${item.title} — section: ${item.heading}\n   excerpt: ${item.excerpt}`,
+    )
+    .join('\n');
+  const prompt = [
+    'You write active-recall questions for a learner revising this objective:',
+    objective,
+    '',
+    'Each numbered item below is the excerpt the learner will see after answering:',
+    listing,
+    '',
+    `Write exactly ${excerpts.length} questions, one per numbered item, in the same order. Each`,
+    'question must be answerable from the objective and that excerpt, must ask the learner to',
+    'recall or explain rather than to pick an option, and must not contain the answer. Respond',
+    'with ONLY a JSON array of strings, each under 300 characters.',
+  ].join('\n');
+
+  const raw = extractJsonArray(await complete(prompt, options));
+  const parsed = z.array(z.string().min(1).max(maxRecallPromptCharacters)).safeParse(raw);
+  if (!parsed.success || parsed.data.length !== excerpts.length) {
+    throw new AiError(failedMessage, 'ai-failed');
+  }
+  return parsed.data.map((text) => text.trim());
+}
+
 export interface BriefSourceInput {
   title: string;
   url: string;

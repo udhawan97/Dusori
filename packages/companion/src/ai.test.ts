@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { AiError, aiConfig, rerankWithAi, writeBriefWithAi } from './ai.js';
+import {
+  AiError,
+  aiConfig,
+  rerankWithAi,
+  writeBriefWithAi,
+  writeRecallPromptsWithAi,
+} from './ai.js';
 
 const candidates = [
   { key: 'a', kind: 'article', snippet: 'Intro to generics', title: 'Generics', url: 'https://a' },
@@ -178,5 +184,60 @@ describe('writeBriefWithAi', () => {
         fetchImpl: fetchImpl as typeof fetch,
       }),
     ).rejects.toMatchObject({ reason: 'ai-failed' });
+  });
+});
+
+describe('writeRecallPromptsWithAi', () => {
+  const excerpts = [
+    { excerpt: 'Generics carry a type through a function.', heading: 'Generics', title: 'Docs' },
+    { excerpt: 'Constraints narrow what a parameter accepts.', heading: 'Limits', title: 'Docs' },
+  ];
+
+  it('returns one rewritten prompt per excerpt and sends only what it was given', async () => {
+    let sent = '';
+    const fetchImpl = async (
+      _input: Parameters<typeof fetch>[0],
+      init?: RequestInit,
+    ): Promise<Response> => {
+      sent = String(init?.body);
+      return jsonResponse({
+        response: 'Sure:\n["Where does a type parameter travel?", "What does a constraint forbid?"]',
+      });
+    };
+
+    const prompts = await writeRecallPromptsWithAi('Understand generics', excerpts, {
+      env: { OLLAMA_MODEL: 'gemma3:4b' },
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    expect(prompts).toEqual([
+      'Where does a type parameter travel?',
+      'What does a constraint forbid?',
+    ]);
+    expect(sent).toContain('Understand generics');
+    expect(sent).toContain('Generics carry a type through a function.');
+  });
+
+  it('fails when the model returns the wrong number of prompts', async () => {
+    const fetchImpl = async (): Promise<Response> => jsonResponse({ response: '["only one"]' });
+    await expect(
+      writeRecallPromptsWithAi('q', excerpts, {
+        env: { OLLAMA_MODEL: 'gemma3:4b' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ reason: 'ai-failed' });
+  });
+
+  it('fails on prose instead of prompts, without echoing the key', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({ choices: [{ message: { content: 'I would rather not.' } }] });
+
+    const failure = await writeRecallPromptsWithAi('q', excerpts, {
+      env: { OPENAI_API_KEY: 'sk-secret-value' },
+      fetchImpl: fetchImpl as typeof fetch,
+    }).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(AiError);
+    expect((failure as AiError).message).not.toContain('sk-secret-value');
   });
 });
