@@ -1245,7 +1245,7 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   await expect(session).toContainText('Deterministic prompt');
   // The excerpt stays hidden until the learner has tried to answer.
   await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeHidden();
-  await expect(session).toContainText('Nothing here is saved to your workspace.');
+  await expect(session).toContainText('This session stores nothing and scores nothing');
 
   await session.getByRole('button', { name: 'Reveal the source' }).click();
   const excerpt = session.getByRole('region', { name: 'Source excerpt' });

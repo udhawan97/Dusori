@@ -314,8 +314,9 @@
       </div>
     {/if}
     <p class="session-footer">
-      Nothing here is saved to your workspace. These prompts are generated from your own sources to
-      make you recall — they are not a score or proof that you understand the topic.
+      Answer in your head or in your own note. This session stores nothing and scores nothing: the
+      prompts are generated from your sources to make you recall, and only your rating changes the
+      review schedule.
     </p>
     {#if !loading}
       <button class="quiet" disabled={rating} onclick={onClose}>Close without rating</button>
