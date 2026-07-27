@@ -35,6 +35,7 @@ The first milestone must prove:
 21. Companion-backed arXiv and configured Brave, Tavily, or SearXNG web search, plus optional consent-gated AI assistance.
 22. Local learning insights derived from roadmap, graph, source, and dated-update files without telemetry or inferred study time.
 23. Deterministic, source-grounded active-recall sessions started from the review queue, ending in the existing explicit review action.
+24. Companion-backed YouTube discovery through an operator-configured Invidious instance, with caption capture and a proxied thumbnail.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
@@ -56,6 +57,8 @@ Each provider is blocked behind an exact egress disclosure naming its host and w
 
 With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. The companion also unlocks arXiv and one configured general web-search provider: Brave, Tavily, or a keyless open-source SearXNG instance. Search credentials stay in the companion process. A URL source can be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
 
+A YouTube provider appears when `INVIDIOUS_URL` names an Invidious instance. Dusori ships no default instance. The companion performs every request: search ordered by view count, the thumbnail (returned as image bytes and rendered by the app from an object URL, so no remote image origin is added to the content-security policy), and, on approval, the video's captions. The browser never contacts YouTube, Google, or their image hosts. A captioned video is captured as ordinary readable Markdown that states captions are frequently machine-generated; a video without captions is captured as a reference that says so. Video sources are never played inside Dusori.
+
 Ollama, Anthropic, or OpenAI may be configured in the companion. AI egress has a separate consent disclosure. AI ranking is advisory: it reorders and annotates the deterministic candidate set but cannot remove candidates, and any failure keeps deterministic order. A research brief is created only after source approval. Deterministic briefs group links and state that pages were not read; AI-written briefs name their model and the approved-source boundary.
 
 The shipped Insights view derives a bounded fourteen-day activity pulse, objective completion, artifact mix, connected-artifact percentage, link health, topic depth, graph hubs, and provider provenance from current local files. It does not persist an analytics index, estimate study time, infer mastery, or invent a score.
@@ -65,7 +68,8 @@ The shipped Insights view derives a bounded fourteen-day activity pulse, objecti
 - PDF or non-text curriculum extraction
 - AI-generated diagrams
 - Chat-to-`TUTOR.md` editing
-- Reddit or YouTube research providers
+- Reddit research provider
+- Inline video playback, watch history, playlists, or channels
 - Closed-app or unattended background work
 - Accounts, sync, telemetry, or hosted storage
 

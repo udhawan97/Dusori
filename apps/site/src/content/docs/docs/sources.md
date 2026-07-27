@@ -35,6 +35,12 @@ The companion also adds arXiv and can expose one general web-search provider con
 - `TAVILY_API_KEY` for Tavily
 - `RESEARCH_WEB_SEARCH=brave|tavily|searxng` when more than one is configured
 
+## YouTube through an Invidious instance
+
+Set `INVIDIOUS_URL` to an [Invidious](https://invidious.io/) instance — self-hosted for a fully private path, or any instance you trust — and the companion adds a **YouTube** provider that orders results by view count.
+
+Dusori never ships a default instance and your browser never contacts YouTube, Google, or `ytimg.com`. The companion is the only thing that talks to your instance: it runs the search, fetches the thumbnail (which the app renders from local bytes), and, when you approve a video, downloads its captions. A captioned video becomes an ordinary readable source — searchable, graphable, and usable by review prompts — with a note saying captions are often machine-generated. A video without captions is stored as a plain reference, because a video with no text is a dead end for everything else Dusori does.
+
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
 Run the published companion with `npx @udhawan97/dusori@latest`, or approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`. To run from a clone, follow [Getting started](../getting-started/). Omit `--root` to keep folder access off.

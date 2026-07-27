@@ -15,7 +15,8 @@ export interface ResearchQuery {
 export type ResearchProviderId = string;
 
 /** What a candidate is, used to keep a shortlist from filling up with one kind of thing. */
-export type ResearchCandidateKind = 'article' | 'course' | 'docs' | 'paper' | 'qa' | 'repo';
+export type ResearchCandidateKind =
+  'article' | 'course' | 'docs' | 'paper' | 'qa' | 'repo' | 'video';
 
 export interface ResearchCandidate {
   key: string;
@@ -36,6 +37,12 @@ export interface ResearchCapture {
   title: string;
   url: string;
   content: string;
+  /**
+   * What this capture actually obtained, when only the capture can know. A provider that may or
+   * may not reach the real text (a video with or without captions) reports the truth here rather
+   * than letting `capturedVia(candidate)` guess before the attempt.
+   */
+  capturedVia?: string;
 }
 
 export interface ResearchProvider {

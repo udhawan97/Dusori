@@ -110,3 +110,94 @@ describe('createCompanionResearchClient', () => {
     await expect(malformed.searchMsLearnRanked(query)).rejects.toBeInstanceOf(CompanionFetchError);
   });
 });
+
+describe('YouTube through the companion', () => {
+  const results = [
+    {
+      author: 'Computerphile',
+      id: 'dQw4w9WgXcQ',
+      lengthSeconds: 934,
+      publishedAt: '2023-11-14',
+      summary: 'A walk through attention.',
+      title: 'How attention works',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      viewCount: 1_200_000,
+    },
+  ];
+
+  it('maps videos to candidates a viewer can judge', async () => {
+    let asked = '';
+    const candidates = await client((async (input: RequestInfo | URL) => {
+      asked = String(input);
+      return Response.json({ results });
+    }) as unknown as typeof fetch).searchYouTube(query);
+
+    expect(asked).toBe(
+      'http://127.0.0.1:8000/api/research/youtube?q=AZ-104%20Configure%20Entra%20ID',
+    );
+    expect(candidates[0]).toEqual({
+      communityScore: 1_200_000,
+      key: 'youtube:dQw4w9WgXcQ',
+      kind: 'video',
+      meta: {
+        channel: 'Computerphile',
+        community: '1.2M views',
+        duration: '15:34',
+        published: '2023-11-14',
+        thumbnail: 'dQw4w9WgXcQ',
+        views: '1.2M',
+      },
+      provider: 'youtube',
+      publishedAt: '2023-11-14',
+      score: 1,
+      snippet: 'A walk through attention.',
+      title: 'How attention works',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    });
+  });
+
+  it('carries the captions back and reports a captionless video', async () => {
+    const captions = await client((async () =>
+      Response.json({
+        label: 'English',
+        text: 'Attention weighs tokens.',
+      })) as unknown as typeof fetch).fetchYouTubeTranscript('dQw4w9WgXcQ');
+    expect(captions).toEqual({ label: 'English', text: 'Attention weighs tokens.' });
+
+    const missing = client((async () =>
+      Response.json(
+        { error: 'This video has no captions to capture.', reason: 'no-captions' },
+        {
+          status: 404,
+        },
+      )) as unknown as typeof fetch);
+    await expect(missing.fetchYouTubeTranscript('dQw4w9WgXcQ')).rejects.toMatchObject({
+      reason: 'no-captions',
+    });
+  });
+
+  it('accepts image bytes for a thumbnail and refuses anything else', async () => {
+    let asked = '';
+    const blob = await client((async (input: RequestInfo | URL) => {
+      asked = String(input);
+      return new Response(new Uint8Array([1, 2, 3]), {
+        headers: { 'Content-Type': 'image/jpeg' },
+        status: 200,
+      });
+    }) as unknown as typeof fetch).fetchYouTubeThumbnail('dQw4w9WgXcQ');
+
+    expect(asked).toBe('http://127.0.0.1:8000/api/research/youtube-thumbnail?id=dQw4w9WgXcQ');
+    expect(blob.type).toBe('image/jpeg');
+
+    const html = client(
+      (async () =>
+        new Response('<html>', {
+          headers: { 'Content-Type': 'text/html' },
+          status: 200,
+        })) as unknown as typeof fetch,
+    );
+    await expect(html.fetchYouTubeThumbnail('dQw4w9WgXcQ')).rejects.toBeInstanceOf(
+      CompanionFetchError,
+    );
+  });
+});

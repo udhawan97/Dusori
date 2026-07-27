@@ -24,6 +24,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Loopback-only local companion security foundation
 - Companion-only page fetching with readability extraction, confirmed per fetch, and ranked Microsoft Learn search
 - Companion-backed arXiv and configured Brave, Tavily, or SearXNG web search
+- Companion-backed YouTube search through a configured Invidious instance, ordered by view count, with caption capture that turns a video into readable text and a thumbnail proxied so the browser never contacts Google
 - Optional consent-gated Ollama, Anthropic, or OpenAI ranking and model-named research briefs, with deterministic fallback
 - Local Insights for activity, objective progress, artifact mix, link health, topic depth, hubs, and provenance
 - Version-aligned, packed-tarball-tested `dusori` companion package and provenance-ready publish workflow
@@ -34,6 +35,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - PDF and other non-text document import
 - Chat-to-`TUTOR.md` diff editing
 - Scheduled or unattended research and source acceptance
-- Reddit and YouTube research providers
+- Reddit research provider
+- Inline video playback inside Dusori
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

@@ -30,6 +30,7 @@
   import { modal } from '$lib/actions/modal';
   import { grantConsent, hasConsent as deviceHasConsent } from '$lib/consent';
   import MarkdownView from './MarkdownView.svelte';
+  import VideoThumbnail from './VideoThumbnail.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
@@ -248,6 +249,7 @@
       paper: 'Paper',
       qa: 'Q&A',
       repo: 'Repository',
+      video: 'Video',
     };
     return candidate.kind ? (labels[candidate.kind] ?? candidate.kind) : '';
   }
@@ -302,7 +304,9 @@
     previewError = '';
     const { candidate, capture, provider } = preview;
     let content = capture.content;
-    let capturedVia = provider.capturedVia(candidate);
+    // A capture that could only learn what it got by trying (a video's captions) reports it
+    // itself; everything else keeps the provider's up-front answer.
+    let capturedVia = capture.capturedVia ?? provider.capturedVia(candidate);
     let notice = '';
 
     if (companion && fetchFullContent && isReferenceStub(candidate, provider)) {
@@ -548,6 +552,13 @@
                 <h3>{candidate.title}</h3>
               </div>
             </div>
+            {#if companion && candidate.meta.thumbnail}
+              <VideoThumbnail
+                {companion}
+                title={candidate.title}
+                videoId={candidate.meta.thumbnail}
+              />
+            {/if}
             {#if candidate.snippet}
               <div class="result-snippet"><MarkdownView content={candidate.snippet} /></div>
             {/if}

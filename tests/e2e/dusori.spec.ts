@@ -1895,6 +1895,124 @@ test.describe('companion flows', () => {
     await expect(fetchButton).toBeFocused();
   });
 
+  test('a captioned video becomes a readable source without the browser calling Google', async ({
+    page,
+  }) => {
+    const googleRequests: string[] = [];
+    page.on('request', (request) => {
+      const host = new URL(request.url()).host;
+      if (/youtube\.com|ytimg\.com|googlevideo\.com|google\.com/u.test(host)) {
+        googleRequests.push(request.url());
+      }
+    });
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.route('**/api/research/youtube?**', async (route) => {
+      await route.fulfill({
+        json: {
+          results: [
+            {
+              author: 'Computerphile',
+              id: 'dQw4w9WgXcQ',
+              lengthSeconds: 934,
+              publishedAt: '2023-11-14',
+              summary: 'A walk through attention.',
+              title: 'How attention works',
+              url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              viewCount: 1_200_000,
+            },
+          ],
+        },
+      });
+    });
+    await page.route('**/api/research/youtube-transcript**', async (route) => {
+      await route.fulfill({
+        json: {
+          label: 'English (auto-generated)',
+          text: `Attention lets each token weigh every other token in its context window.\n${overflowingLines}`,
+        },
+      });
+    });
+    await page.route('**/api/research/youtube-thumbnail**', async (route) => {
+      await route.fulfill({
+        body: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+        contentType: 'image/png',
+      });
+    });
+
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await page.goto('/Dusori/app/?token=e2e-companion-token');
+    await expect(page.getByText('Connected for this session')).toBeVisible();
+    await openResearch(page);
+
+    await page.getByRole('button', { name: 'Allow YouTube' }).click();
+    const disclosure = page.getByRole('dialog', { name: 'Allow YouTube search?' });
+    await expect(disclosure).toContainText('Invidious instance you configured');
+    await expect(disclosure).toContainText('never contacts YouTube or Google');
+    await disclosure.getByRole('button', { name: 'Allow search' }).click();
+    await page.getByRole('button', { name: 'Scan for strong sources' }).click();
+
+    const result = page
+      .getByRole('list', { name: 'Research shortlist' })
+      .getByRole('listitem')
+      .filter({ hasText: 'How attention works' });
+    await expect(result).toContainText('Video');
+    await expect(result).toContainText('Computerphile · 1.2M views · 15:34');
+    // Visibility alone would also pass on a broken image showing its alt text.
+    const thumbnail = result.getByRole('img', { name: 'Thumbnail for How attention works' });
+    await expect(thumbnail).toBeVisible();
+    expect(
+      await thumbnail.evaluate((image) => ({
+        decoded: (image as HTMLImageElement).naturalWidth > 0,
+        fromBlob: (image as HTMLImageElement).src.startsWith('blob:'),
+      })),
+    ).toEqual({ decoded: true, fromBlob: true });
+
+    await result.getByRole('button', { name: 'Preview' }).click();
+    const preview = page.getByRole('dialog', { name: 'Preview research source' });
+    await expect(preview).toContainText('Attention lets each token weigh every other token');
+    await expect(preview).toContainText('often machine-generated');
+    await preview.getByRole('button', { name: 'Add to sources' }).click();
+    await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+      'How attention works',
+    );
+
+    const captured = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dusori = await root.getDirectoryHandle('Dusori');
+      const sources = await (
+        await (await dusori.getDirectoryHandle('Topics')).getDirectoryHandle('ai-fundamentals')
+      ).getDirectoryHandle('Sources');
+      const manifest = JSON.parse(
+        await (await sources.getFileHandle('manifest.json')).getFile().then((file) => file.text()),
+      ) as { sources: { origin?: { capturedVia: string; provider: string }; path?: string }[] };
+      const record = manifest.sources.at(-1);
+      const items = await sources.getDirectoryHandle('items');
+      let text = '';
+      for await (const [name, handle] of items.entries()) {
+        if (record?.path?.endsWith(name)) {
+          text = await (await (handle as FileSystemFileHandle).getFile()).text();
+        }
+      }
+      return { origin: record?.origin, text };
+    });
+    expect(captured.origin).toMatchObject({
+      capturedVia: 'youtube-transcript',
+      provider: 'youtube',
+    });
+    expect(captured.text).toContain('## Transcript');
+    expect(captured.text).toContain('Attention lets each token weigh every other token');
+    expect(captured.text).toContain('Original URL: <https://www.youtube.com/watch?v=dQw4w9WgXcQ>');
+    // The whole point of proxying: no Google-owned host is ever contacted by the browser.
+    expect(googleRequests).toEqual([]);
+    await expectNoSeriousA11yViolations(page);
+  });
+
   test('sharper review prompts need their own consent and fall back to the templates', async ({
     page,
   }) => {

@@ -405,6 +405,118 @@ describe('companion boundary', () => {
   });
 });
 
+describe('youtube routes', () => {
+  const searchBody = [
+    {
+      author: 'Computerphile',
+      description: 'How attention works.',
+      lengthSeconds: 934,
+      title: 'How attention works',
+      videoId: 'dQw4w9WgXcQ',
+      viewCount: 1_200_000,
+    },
+  ];
+
+  async function youtubeServer(fetchImpl: typeof fetch) {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: { env: { INVIDIOUS_URL: 'https://yewtu.example' }, fetchImpl },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+    return server;
+  }
+
+  it('gates the video routes and rejects an id that is not a video id', async () => {
+    const { server } = await fixture();
+    for (const url of [
+      '/api/research/youtube?q=a',
+      '/api/research/youtube-transcript?id=dQw4w9WgXcQ',
+      '/api/research/youtube-thumbnail?id=dQw4w9WgXcQ',
+    ]) {
+      expect((await server.inject({ method: 'GET', url })).statusCode).toBe(401);
+    }
+
+    const traversal = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/youtube-thumbnail?id=../../etc/passwd',
+    });
+    expect(traversal.statusCode).toBe(400);
+    expect(traversal.json().reason).toBe('invalid-id');
+  });
+
+  it('returns most-viewed videos and proxies the thumbnail as image bytes', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      seen.push(url);
+      if (url.includes('/vi/')) {
+        return new Response(new Uint8Array([137, 80, 78, 71]), {
+          headers: { 'Content-Type': 'image/png' },
+          status: 200,
+        });
+      }
+      return new Response(JSON.stringify(searchBody), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }) as typeof fetch;
+    const server = await youtubeServer(fetchImpl);
+
+    const search = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/youtube?q=attention',
+    });
+    expect(search.statusCode).toBe(200);
+    expect(search.json().results[0]).toMatchObject({
+      id: 'dQw4w9WgXcQ',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      viewCount: 1_200_000,
+    });
+
+    const thumbnail = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/youtube-thumbnail?id=dQw4w9WgXcQ',
+    });
+    expect(thumbnail.statusCode).toBe(200);
+    expect(thumbnail.headers['content-type']).toBe('image/png');
+    expect(thumbnail.rawPayload.length).toBe(4);
+    // Only the configured instance is ever contacted: no youtube.com, no ytimg.com.
+    expect(seen.every((url) => url.startsWith('https://yewtu.example/'))).toBe(true);
+  });
+
+  it('reports a missing instance and a video without captions', async () => {
+    const { server } = await fixture();
+    const unconfigured = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/youtube?q=attention',
+    });
+    expect(unconfigured.statusCode).toBe(503);
+    expect(unconfigured.json().reason).toBe('not-configured');
+
+    const captionless = await youtubeServer(
+      (async () =>
+        new Response(JSON.stringify({ captions: [] }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        })) as typeof fetch,
+    );
+    const response = await captionless.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/youtube-transcript?id=dQw4w9WgXcQ',
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json().reason).toBe('no-captions');
+  });
+});
+
 describe('ai routes', () => {
   it('gates every AI route behind the token', async () => {
     const { server } = await fixture();

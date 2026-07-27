@@ -7,6 +7,7 @@ import { createMsLearnProvider, msLearnProvider } from './mslearn.js';
 import { stackExchangeProvider } from './stackexchange.js';
 import { createWebSearchProvider } from './websearch.js';
 import { wikipediaProvider } from './wikipedia.js';
+import { createYouTubeProvider } from './youtube.js';
 
 export * from './arxiv.js';
 export * from './github.js';
@@ -15,6 +16,7 @@ export * from './mslearn.js';
 export * from './stackexchange.js';
 export * from './websearch.js';
 export * from './wikipedia.js';
+export * from './youtube.js';
 
 /** Every provider the hosted app can reach on its own: no key, no companion, no configuration. */
 export const researchProviders = [
@@ -45,5 +47,9 @@ export function createResearchProviders(options: ResearchProviderOptions = {}): 
     stackExchangeProvider,
     createArxivProvider({ search: (query) => companion.searchArxiv(query) }),
     createWebSearchProvider({ search: (query) => companion.searchWeb(query) }),
+    createYouTubeProvider({
+      search: (query) => companion.searchYouTube(query),
+      transcript: (videoId) => companion.fetchYouTubeTranscript(videoId),
+    }),
   ];
 }
