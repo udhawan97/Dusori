@@ -1367,6 +1367,11 @@ test('a review session stays usable at supported narrow widths', async ({ browse
     const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
     await session.getByRole('button', { name: 'Reveal the source' }).click();
     await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
+    // The last prompt carries the widest footer: rating pair, trust line, and the way out.
+    for (let step = 0; step < 3; step += 1) {
+      await session.getByRole('button', { name: 'Next' }).click();
+    }
+    await expect(session).toContainText('Prompt 4 of 4');
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,

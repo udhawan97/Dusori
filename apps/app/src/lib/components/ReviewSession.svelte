@@ -176,143 +176,151 @@
     </button>
   </div>
 
-  {#if loading}
-    <p class="quiet-note" role="status">Reading this topic’s sources…</p>
-  {:else if error}
-    <p class="dialog-error" role="alert">{error}</p>
-  {:else if emptyState === 'no-sources'}
-    <div class="session-empty">
-      <BookOpen aria-hidden="true" size={20} />
-      <div>
-        <p>This topic has no sources yet.</p>
-        <span
-          >Add one in Research — paste your own text, add a file, or approve a found source — then
-          start the review again.</span
-        >
-      </div>
-    </div>
-  {:else if emptyState === 'no-readable-sources'}
-    <div class="session-empty">
-      <BookOpen aria-hidden="true" size={20} />
-      <div>
-        <p>
-          {referenceCount === 1
-            ? 'This topic’s source is a URL reference'
-            : `All ${referenceCount} of this topic’s sources are URL references`} without captured text.
-        </p>
-        <span>
-          A review needs words on this device. Fetch a page’s readable text with the local
-          companion, or paste the text into the source yourself. Dusori never fetches a page on its
-          own.
-        </span>
-      </div>
-    </div>
-  {:else if current}
-    <div class="session-body">
-      <div class="prompt-meta">
-        <p class="step-count" aria-live="polite">Prompt {index + 1} of {prompts.length}</p>
-        <p class="prompt-origin">
-          {#if current.generatedBy === 'ai' && session?.model}
-            Written by {session.model} · unverified
-          {:else}
-            Deterministic prompt
-          {/if}
-        </p>
-      </div>
-
-      <p class="prompt-text" aria-live="polite">{current.prompt}</p>
-
-      {#if isRevealed}
-        <figure class="evidence">
-          <figcaption>
-            <strong>{current.evidence.title}</strong>
-            <span>Section: {current.evidence.heading}</span>
-            <code>{current.evidence.path}</code>
-          </figcaption>
-          <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
-          <blockquote role="region" aria-label="Source excerpt" tabindex="0">
-            {current.evidence.excerpt}
-          </blockquote>
-          <p class="evidence-note">
-            {current.evidence.truncated ? 'Excerpt shortened. ' : ''}Open the file above to read the
-            rest; it may have changed since this session opened.
-          </p>
-        </figure>
-      {:else}
-        <button class="quiet reveal-action" onclick={reveal}>
-          <Eye aria-hidden="true" size={17} />
-          Reveal the source
-        </button>
-      {/if}
-
-      <div class="session-nav">
-        <button class="quiet" disabled={index === 0} onclick={() => step(-1)}>
-          <ArrowLeft aria-hidden="true" size={16} /> Back
-        </button>
-        <button class="quiet" disabled={onLastPrompt} onclick={() => step(1)}>
-          Next <ArrowRight aria-hidden="true" size={16} />
-        </button>
-      </div>
-
-      {#if aiCapability}
-        <div class="ai-row">
-          {#if askingConsent}
-            <div class="ai-disclosure">
-              <p class="dialog-kicker">Egress disclosure</p>
-              <p>{disclosure}</p>
-              <div class="dialog-actions">
-                <button class="quiet" onclick={declineAi}>Keep prompts deterministic</button>
-                <button class="primary" bind:this={consentAllowButton} onclick={allowAi}>
-                  Allow sharper prompts
-                </button>
-              </div>
-            </div>
-          {:else if aiAllowed}
-            <p class="ai-chip">
-              <Sparkles aria-hidden="true" size={14} />
-              {improving ? 'Asking the companion…' : `Sharper prompts · ${aiCapability.model}`}
-            </p>
-          {:else}
-            <button
-              class="ai-chip ai-chip-action"
-              onclick={(event) => void askConsent(event.currentTarget)}
-            >
-              <Sparkles aria-hidden="true" size={14} />
-              Allow sharper prompts · {aiCapability.model}
-            </button>
-          {/if}
+  <div class="session-scroll">
+    {#if loading}
+      <p class="quiet-note" role="status">Reading this topic’s sources…</p>
+    {:else if error}
+      <p class="dialog-error" role="alert">{error}</p>
+    {:else if emptyState === 'no-sources'}
+      <div class="session-empty">
+        <BookOpen aria-hidden="true" size={20} />
+        <div>
+          <p>This topic has no sources yet.</p>
+          <span
+            >Add one in Research — paste your own text, add a file, or approve a found source — then
+            start the review again.</span
+          >
         </div>
-      {/if}
+      </div>
+    {:else if emptyState === 'no-readable-sources'}
+      <div class="session-empty">
+        <BookOpen aria-hidden="true" size={20} />
+        <div>
+          <p>
+            {referenceCount === 1
+              ? 'This topic’s source is a URL reference'
+              : `All ${referenceCount} of this topic’s sources are URL references`} without captured text.
+          </p>
+          <span>
+            A review needs words on this device. Fetch a page’s readable text with the local
+            companion, or paste the text into the source yourself. Dusori never fetches a page on
+            its own.
+          </span>
+        </div>
+      </div>
+    {:else if current}
+      <div class="session-body">
+        <div class="prompt-meta">
+          <p class="step-count" aria-live="polite">Prompt {index + 1} of {prompts.length}</p>
+          <p class="prompt-origin">
+            {#if current.generatedBy === 'ai' && session?.model}
+              Written by {session.model} · unverified
+            {:else}
+              Deterministic prompt
+            {/if}
+          </p>
+        </div>
 
-      {#if aiNotice}
-        <p class="quiet-note" role="status">{aiNotice}</p>
-      {/if}
+        <p class="prompt-text" aria-live="polite">{current.prompt}</p>
 
+        {#if isRevealed}
+          <figure class="evidence">
+            <figcaption>
+              <strong>{current.evidence.title}</strong>
+              <span>Section: {current.evidence.heading}</span>
+              <code>{current.evidence.path}</code>
+            </figcaption>
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
+            <blockquote role="region" aria-label="Source excerpt" tabindex="0">
+              {current.evidence.excerpt}
+            </blockquote>
+            <p class="evidence-note">
+              {current.evidence.truncated ? 'Excerpt shortened. ' : ''}Open the file above to read
+              the rest; it may have changed since this session opened.
+            </p>
+          </figure>
+        {:else}
+          <button class="quiet reveal-action" onclick={reveal}>
+            <Eye aria-hidden="true" size={17} />
+            Reveal the source
+          </button>
+        {/if}
+
+        <div class="session-nav">
+          <button class="quiet" disabled={index === 0} onclick={() => step(-1)}>
+            <ArrowLeft aria-hidden="true" size={16} /> Back
+          </button>
+          <button class="quiet" disabled={onLastPrompt} onclick={() => step(1)}>
+            Next <ArrowRight aria-hidden="true" size={16} />
+          </button>
+        </div>
+
+        {#if aiCapability}
+          <div class="ai-row">
+            {#if askingConsent}
+              <div class="ai-disclosure">
+                <p class="dialog-kicker">Egress disclosure</p>
+                <p>{disclosure}</p>
+                <div class="dialog-actions">
+                  <button class="quiet" onclick={declineAi}>Keep prompts deterministic</button>
+                  <button class="primary" bind:this={consentAllowButton} onclick={allowAi}>
+                    Allow sharper prompts
+                  </button>
+                </div>
+              </div>
+            {:else if aiAllowed}
+              <p class="ai-chip">
+                <Sparkles aria-hidden="true" size={14} />
+                {improving ? 'Asking the companion…' : `Sharper prompts · ${aiCapability.model}`}
+              </p>
+            {:else}
+              <button
+                class="ai-chip ai-chip-action"
+                onclick={(event) => void askConsent(event.currentTarget)}
+              >
+                <Sparkles aria-hidden="true" size={14} />
+                Allow sharper prompts · {aiCapability.model}
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        {#if aiNotice}
+          <p class="quiet-note" role="status">{aiNotice}</p>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
+  <!-- Pinned: the decision and the way out stay on screen however long a prompt runs. -->
+  <div class="session-foot">
+    {#if current}
       <div class="rating">
         <p class="rating-label">
           {onLastPrompt
             ? 'How did that go? Only this choice changes your review schedule.'
-            : 'Rate the topic when you reach the last prompt. Nothing so far has changed your schedule.'}
+            : 'Rate this topic on the last prompt. Nothing so far has changed your schedule.'}
         </p>
-        <div class="dialog-actions">
-          <button class="quiet" disabled={rating} onclick={() => onRate('again')}>
-            Needs work
-          </button>
-          <button class="primary" disabled={rating} onclick={() => onRate('good')}>
-            {rating ? 'Recording…' : 'Got it'}
-          </button>
-        </div>
+        {#if onLastPrompt}
+          <div class="dialog-actions">
+            <button class="quiet" disabled={rating} onclick={() => onRate('again')}>
+              Needs work
+            </button>
+            <button class="primary" disabled={rating} onclick={() => onRate('good')}>
+              {rating ? 'Recording…' : 'Got it'}
+            </button>
+          </div>
+        {/if}
       </div>
-    </div>
-  {/if}
-
-  <p class="session-footer">
-    Nothing here is saved to your workspace. These prompts are generated from your own sources to
-    make you recall — they are not a score, a streak, or proof that you understand the topic.
-  </p>
-  {#if !loading}
-    <button class="quiet" disabled={rating} onclick={onClose}>Close without rating</button>
-  {/if}
+    {/if}
+    <p class="session-footer">
+      Nothing here is saved to your workspace. These prompts are generated from your own sources to
+      make you recall — they are not a score or proof that you understand the topic.
+    </p>
+    {#if !loading}
+      <button class="quiet" disabled={rating} onclick={onClose}>Close without rating</button>
+    {/if}
+  </div>
 </dialog>
 
 <style>
@@ -320,13 +328,16 @@
    * states: default · hover · focus · disabled · loading · error
    * contrast: pass · pre-emit critique: P5 H5 E5 S5 R5 V4
    */
+  /* Heading and foot are fixed rows; only the prompt itself scrolls, so the rating and the way
+   * out never fall below the fold on a short screen. */
   .review-session {
     display: grid;
     width: min(38rem, calc(100% - 2 * var(--page-gutter)));
     max-height: calc(100dvh - (2 * var(--page-gutter)));
     margin: auto;
     padding: var(--space-lg);
-    overflow: auto;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     gap: var(--space-lg);
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-md);
@@ -358,6 +369,21 @@
     font-family: var(--font-display);
     font-size: var(--text-lg);
     line-height: 1.15;
+    /* Breaks between words first; a single over-long word still breaks rather than overflowing. */
+    overflow-wrap: break-word;
+  }
+
+  .session-scroll {
+    display: grid;
+    align-content: start;
+    gap: var(--space-lg);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .session-foot {
+    display: grid;
+    gap: var(--space-md);
   }
 
   .dialog-kicker,
@@ -582,6 +608,17 @@
     .session-nav,
     .dialog-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 26rem) {
+    .review-session {
+      padding: var(--space-md);
+      gap: var(--space-md);
+    }
+
+    h2 {
+      font-size: var(--text-md);
     }
   }
 </style>
