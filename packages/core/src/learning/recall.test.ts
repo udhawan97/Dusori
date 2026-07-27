@@ -77,7 +77,12 @@ describe('buildRecallSession', () => {
     const storage = await topicStorage();
     await addSource(
       storage,
-      { method: 'url', title: 'Attention is all you need', topicSlug, url: 'https://example.com/a' },
+      {
+        method: 'url',
+        title: 'Attention is all you need',
+        topicSlug,
+        url: 'https://example.com/a',
+      },
       now,
     );
     await addSource(

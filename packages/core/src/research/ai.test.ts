@@ -75,8 +75,16 @@ describe('CompanionAiClient', () => {
 
     const prompts = await aiClient.recallPrompts({
       excerpts: [
-        { excerpt: 'Generics carry a type through a function.', heading: 'Generics', title: 'Docs' },
-        { excerpt: 'Constraints narrow what a parameter accepts.', heading: 'Limits', title: 'Docs' },
+        {
+          excerpt: 'Generics carry a type through a function.',
+          heading: 'Generics',
+          title: 'Docs',
+        },
+        {
+          excerpt: 'Constraints narrow what a parameter accepts.',
+          heading: 'Limits',
+          title: 'Docs',
+        },
       ],
       objective: 'Understand generics',
     });
@@ -84,8 +92,16 @@ describe('CompanionAiClient', () => {
     expect(prompts).toEqual(['Sharper one', 'Sharper two']);
     expect(JSON.parse(sent)).toEqual({
       excerpts: [
-        { excerpt: 'Generics carry a type through a function.', heading: 'Generics', title: 'Docs' },
-        { excerpt: 'Constraints narrow what a parameter accepts.', heading: 'Limits', title: 'Docs' },
+        {
+          excerpt: 'Generics carry a type through a function.',
+          heading: 'Generics',
+          title: 'Docs',
+        },
+        {
+          excerpt: 'Constraints narrow what a parameter accepts.',
+          heading: 'Limits',
+          title: 'Docs',
+        },
       ],
       objective: 'Understand generics',
     });

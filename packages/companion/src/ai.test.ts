@@ -201,7 +201,8 @@ describe('writeRecallPromptsWithAi', () => {
     ): Promise<Response> => {
       sent = String(init?.body);
       return jsonResponse({
-        response: 'Sure:\n["Where does a type parameter travel?", "What does a constraint forbid?"]',
+        response:
+          'Sure:\n["Where does a type parameter travel?", "What does a constraint forbid?"]',
       });
     };
 
