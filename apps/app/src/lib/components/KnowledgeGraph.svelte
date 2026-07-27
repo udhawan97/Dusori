@@ -26,6 +26,7 @@
     wikilinkDegrees,
     type PositionedWorkspaceGraphNode,
   } from '$lib/graph-layout';
+  import { topicColor, topicHues, visibleNodeIds } from '$lib/graph-filters';
   import {
     GRAPH_VIEW_LIMITS,
     cameraLimits,
@@ -42,6 +43,7 @@
     writeGraphViewSettings,
     zoomCameraAt,
     zoomToSlider,
+    type FilterableKind,
     type GraphCamera,
     type GraphRelaxation,
     type GraphViewSettings,
@@ -63,8 +65,26 @@
   /** Lower-cased so a chip matches a tag however its author capitalised it. Empty means no filter. */
   let artifactTag = '';
   let settings: GraphViewSettings = {
+    colorMode: 'kind',
+    hiddenKinds: [],
+    hideOrphans: false,
     linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
     repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
+  };
+
+  const FILTER_CHIPS: { kinds: FilterableKind[]; label: string }[] = [
+    { kinds: ['note'], label: 'Notes' },
+    { kinds: ['source'], label: 'Sources' },
+    { kinds: ['update'], label: 'Updates' },
+    { kinds: ['document'], label: 'Documents' },
+    { kinds: ['roadmap', 'tutor'], label: 'Meta' },
+  ];
+
+  const NUDGE: Record<string, [number, number]> = {
+    ArrowDown: [0, 1],
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
   };
   let simulation: GraphRelaxation | null = null;
   let positioned: PositionedWorkspaceGraphNode[] = [];
@@ -79,6 +99,17 @@
     startY: number;
   } | null = null;
   let suppressBackgroundClick = false;
+  let nodeDrag: {
+    id: string;
+    moved: boolean;
+    originX: number;
+    originY: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null = null;
+  let suppressNodeClick = false;
+  let hasPins = false;
 
   const reducedMotion =
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -156,10 +187,25 @@
 
   function handleNodeClick(event: MouseEvent, id: string): void {
     event.stopPropagation();
+    if (suppressNodeClick) {
+      suppressNodeClick = false;
+      return;
+    }
     toggleSelection(id);
   }
 
   function handleNodeKeydown(event: KeyboardEvent, id: string): void {
+    const nudge = NUDGE[event.key];
+    if (nudge) {
+      // WCAG 2.5.7: dragging must have a keyboard path. Shift takes bigger steps.
+      event.preventDefault();
+      event.stopPropagation();
+      const node = positioned.find((entry) => entry.id === id);
+      if (!node) return;
+      const stepPx = event.shiftKey ? 32 : 8;
+      pinNode(id, node.x + nudge[0] * stepPx, node.y + nudge[1] * stepPx);
+      return;
+    }
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
@@ -167,6 +213,72 @@
     } else if (event.key === 'Escape') {
       selectedId = null;
     }
+  }
+
+  function pinNode(id: string, x: number, y: number): void {
+    if (!simulation) return;
+    simulation.moveNode(id, x, y);
+    hasPins = simulation.hasUserPins();
+    positioned = [...simulation.nodes];
+    ensureSettling();
+  }
+
+  function releasePins(): void {
+    if (!simulation) return;
+    simulation.releasePins();
+    hasPins = false;
+    ensureSettling();
+  }
+
+  function handleNodePointerDown(event: PointerEvent, id: string): void {
+    if (event.button !== 0 || !camera) return;
+    // The node owns this gesture; the stage must not also pan.
+    event.stopPropagation();
+    const node = positioned.find((entry) => entry.id === id);
+    if (!node) return;
+    nodeDrag = {
+      id,
+      moved: false,
+      originX: node.x,
+      originY: node.y,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    (event.currentTarget as SVGGElement).setPointerCapture(event.pointerId);
+  }
+
+  function handleNodePointerMove(event: PointerEvent): void {
+    if (!camera || !nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+    const dx = event.clientX - nodeDrag.startX;
+    const dy = event.clientY - nodeDrag.startY;
+    if (!nodeDrag.moved && Math.hypot(dx, dy) <= 4) return;
+    nodeDrag.moved = true;
+    event.stopPropagation();
+    pinNode(nodeDrag.id, nodeDrag.originX + dx / camera.zoom, nodeDrag.originY + dy / camera.zoom);
+  }
+
+  function handleNodePointerEnd(event: PointerEvent): void {
+    if (!nodeDrag || event.pointerId !== nodeDrag.pointerId) return;
+    // A real drag must not also toggle selection when the click event lands.
+    suppressNodeClick = nodeDrag.moved;
+    nodeDrag = null;
+  }
+
+  function toggleKinds(kinds: FilterableKind[]): void {
+    const hiding = !kinds.every((kind) => settings.hiddenKinds.includes(kind));
+    const next = settings.hiddenKinds.filter((kind) => !kinds.includes(kind));
+    updateSettings({ hiddenKinds: hiding ? [...next, ...kinds] : next });
+  }
+
+  function kindsShown(kinds: FilterableKind[]): boolean {
+    return !kinds.every((kind) => settings.hiddenKinds.includes(kind));
+  }
+
+  function nodeFill(node: WorkspaceGraphNode): string | undefined {
+    if (settings.colorMode !== 'topic' || !node.topicSlug) return undefined;
+    const hue = hues.get(node.topicSlug);
+    return hue === undefined ? undefined : topicColor(hue);
   }
 
   function ensureSettling(): void {
@@ -204,8 +316,8 @@
   }
 
   function fitView(): void {
-    if (positioned.length === 0 || stageWidth === 0 || stageHeight === 0) return;
-    camera = fitCamera(graphBounds(positioned, degrees), {
+    if (shownNodes.length === 0 || stageWidth === 0 || stageHeight === 0) return;
+    camera = fitCamera(graphBounds(shownNodes, degrees), {
       height: stageHeight,
       width: stageWidth,
     });
@@ -290,13 +402,21 @@
   });
 
   $: degrees = graph ? wikilinkDegrees(graph) : new Map<string, number>();
-  $: nodesById = new Map(positioned.map((node) => [node.id, node]));
-  $: homeNode = positioned.find((node) => node.kind === 'home');
+  $: hues = graph ? topicHues(graph) : new Map<string, number>();
+  $: visibleIds = graph
+    ? visibleNodeIds(graph, settings, degrees)
+    : new Set<string>(positioned.map((node) => node.id));
+  // The sim keeps every body so filtering never reshuffles the layout; the view
+  // simply draws the survivors. ponytail: relayout-on-filter if that ever reads wrong.
+  $: shownNodes = positioned.filter((node) => visibleIds.has(node.id));
+  $: indexNodes = graph ? graph.nodes.filter((node) => visibleIds.has(node.id)) : [];
+  $: nodesById = new Map(shownNodes.map((node) => [node.id, node]));
+  $: homeNode = shownNodes.find((node) => node.kind === 'home');
   $: stage = { height: stageHeight, width: stageWidth };
-  $: bounds = graphBounds(positioned, degrees);
+  $: bounds = graphBounds(shownNodes.length > 0 ? shownNodes : positioned, degrees);
   $: fitZoom = stageWidth > 0 && stageHeight > 0 ? fitCamera(bounds, stage).zoom : 1;
   $: limits = cameraLimits(fitZoom, bounds);
-  $: if (!camera && stageWidth > 0 && stageHeight > 0 && positioned.length > 0) fitView();
+  $: if (!camera && stageWidth > 0 && stageHeight > 0 && shownNodes.length > 0) fitView();
   $: viewBox = camera
     ? cameraViewBox(camera, stage)
     : `${bounds.minX} ${bounds.minY} ${bounds.maxX - bounds.minX} ${bounds.maxY - bounds.minY}`;
@@ -317,7 +437,9 @@
         .map((tag) => [tag.toLocaleLowerCase(), tag] as const),
     ).values(),
   ].sort((left, right) => left.localeCompare(right));
-  $: artifactNodes = (graph?.nodes ?? []).filter((node) => {
+  // The finder narrows within what the graph is currently drawing: hiding a kind on the
+  // stage removes it here too, so the index never lists an artifact the sky is not showing.
+  $: artifactNodes = indexNodes.filter((node) => {
     const matchesKind = artifactKind === 'all' || node.kind === artifactKind;
     const matchesTag =
       !artifactTag || (node.tags ?? []).some((tag) => tag.toLocaleLowerCase() === artifactTag);
@@ -438,7 +560,7 @@
               />
             {/if}
           {/each}
-          {#each positioned as node (node.id)}
+          {#each shownNodes as node (node.id)}
             <g
               class:home={node.kind === 'home'}
               class:overview={node.kind === 'overview'}
@@ -447,6 +569,7 @@
               class:selected={selectedId === node.id}
               class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
               class:dimmed={hoverNeighbors !== null && !hoverNeighbors.has(node.id)}
+              class:dragging={nodeDrag?.id === node.id && nodeDrag.moved}
               class="node"
               role="button"
               tabindex="0"
@@ -454,11 +577,15 @@
               aria-pressed={selectedId === node.id}
               onclick={(event) => handleNodeClick(event, node.id)}
               onkeydown={(event) => handleNodeKeydown(event, node.id)}
+              onpointerdown={(event) => handleNodePointerDown(event, node.id)}
+              onpointermove={handleNodePointerMove}
+              onpointerup={handleNodePointerEnd}
+              onpointercancel={handleNodePointerEnd}
               onpointerenter={() => (hoveredId = node.id)}
               onpointerleave={() => (hoveredId = null)}
             >
               <title>{nodeTitle(node)}</title>
-              <circle cx={node.x} cy={node.y} r={nodeRadius(node)} />
+              <circle cx={node.x} cy={node.y} r={nodeRadius(node)} fill={nodeFill(node)} />
               <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
               <text x={node.x} y={node.y + nodeRingRadius(node) + 16}
                 >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
@@ -522,7 +649,62 @@
                     updateSettings({ repelStrength: Number(event.currentTarget.value) })}
                 />
               </label>
-              <button type="button" class="fit-view" onclick={fitView}>Fit view</button>
+              <div class="control-group">
+                <p class="control-heading" id="graph-filter-heading">
+                  Show <span class="count">{indexNodes.length} of {graph.nodes.length}</span>
+                </p>
+                <!-- Named distinctly from the index's "Filter graph artifacts" group: these
+                     chips decide what the stage draws, those narrow the list beside it. -->
+                <div class="chips" role="group" aria-label="Show on the graph">
+                  {#each FILTER_CHIPS as chip (chip.label)}
+                    <button
+                      type="button"
+                      class="chip"
+                      aria-pressed={kindsShown(chip.kinds)}
+                      onclick={() => toggleKinds(chip.kinds)}>{chip.label}</button
+                    >
+                  {/each}
+                  <button
+                    type="button"
+                    class="chip"
+                    aria-pressed={settings.hideOrphans}
+                    onclick={() => updateSettings({ hideOrphans: !settings.hideOrphans })}
+                    >Hide orphans</button
+                  >
+                </div>
+              </div>
+              <label class="control-select">
+                <span>Color by</span>
+                <select
+                  value={settings.colorMode}
+                  onchange={(event) =>
+                    updateSettings({
+                      colorMode: event.currentTarget.value === 'topic' ? 'topic' : 'kind',
+                    })}
+                >
+                  <option value="kind">Kind</option>
+                  <option value="topic">Topic</option>
+                </select>
+              </label>
+              {#if settings.colorMode === 'topic' && hues.size > 0}
+                <ul class="legend" aria-label="Topic colors">
+                  {#each [...hues] as [slug, hue] (slug)}
+                    <li>
+                      <span
+                        class="swatch"
+                        style={`background: ${topicColor(hue)}`}
+                        aria-hidden="true"
+                      ></span>{slug}
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              <div class="panel-actions">
+                <button type="button" class="fit-view" onclick={fitView}>Fit view</button>
+                <button type="button" class="fit-view" disabled={!hasPins} onclick={releasePins}
+                  >Release pins</button
+                >
+              </div>
             </div>
           {/if}
         </div>
@@ -594,6 +776,7 @@
   /* Hallmark · component: knowledge graph · genre: atmospheric editorial · theme: design.md
    * states: default · hover · focus · active · disabled · loading · error · success/settled
    *         · controls open/closed · panning · zoomed label reveal · reduced-motion instant settle
+   *         · node dragging/pinned · chip on/off · release-pins disabled · topic legend
    * contrast: pass · pre-emit critique: P5 H5 E5 S5 R5 V5
    */
   .knowledge-graph {
@@ -745,11 +928,106 @@
   .controls-panel {
     display: grid;
     width: 15rem;
+    max-height: min(26rem, 70dvh);
     padding: var(--space-sm);
     border: var(--rule-hair) solid var(--color-rule);
     border-radius: var(--radius-sm);
     background: var(--color-paper);
     gap: var(--space-xs);
+    overflow-y: auto;
+  }
+
+  .control-heading {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .control-group {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+  }
+
+  .chip {
+    min-height: 1.85rem;
+    padding-inline: var(--space-2xs);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--color-marigold);
+    background: color-mix(in srgb, var(--color-marigold) 14%, transparent);
+    color: var(--color-ink);
+  }
+
+  .control-select {
+    display: grid;
+    min-height: 2.75rem;
+    align-content: center;
+    gap: var(--space-3xs);
+  }
+
+  .control-select span {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .control-select select {
+    min-height: 2.25rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font: 400 var(--text-sm) / 1 var(--font-body);
+  }
+
+  .legend {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    gap: var(--space-3xs);
+    list-style: none;
+  }
+
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    flex: none;
+    border-radius: 50%;
+  }
+
+  .panel-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xs);
   }
 
   .zoom-row {
@@ -800,9 +1078,16 @@
     font: 400 var(--text-sm) / 1 var(--font-body);
   }
 
+  .fit-view:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
   .controls-toggle:focus-visible,
   .zoom-row button:focus-visible,
   .fit-view:focus-visible,
+  .chip:focus-visible,
+  .control-select select:focus-visible,
   .controls-panel input[type='range']:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
@@ -836,9 +1121,13 @@
   }
 
   .node {
-    cursor: pointer;
+    cursor: grab;
     outline: none;
     transition: opacity var(--dur-short) var(--ease-out);
+  }
+
+  .node.dragging {
+    cursor: grabbing;
   }
 
   .node.overview circle:first-child {

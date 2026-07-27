@@ -612,6 +612,58 @@ test('insights derives an honest local analytics snapshot', async ({ page }) => 
   await expectNoSeriousA11yViolations(page);
 });
 
+test('graph nodes pin where dropped, filter by kind, and color by topic', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Graph' }).click();
+  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
+  await expect(graph).toBeVisible();
+  await page.getByRole('button', { name: 'View controls' }).click();
+  // Scoped: the artifact finder beside the stage has its own same-named kind buttons.
+  const showOnGraph = page.getByRole('group', { name: 'Show on the graph' });
+
+  // A keyboard nudge is the accessible equivalent of dragging, and it pins too.
+  const releasePins = page.getByRole('button', { name: 'Release pins' });
+  await expect(releasePins).toBeDisabled();
+  const note = graph.getByRole('button', { name: /First look/u });
+  const noteCircle = note.locator('circle').first();
+  const beforeX = await noteCircle.getAttribute('cx');
+  await note.focus();
+  for (let press = 0; press < 4; press += 1) {
+    await page.keyboard.press('Shift+ArrowRight');
+  }
+  await expect(noteCircle).not.toHaveAttribute('cx', beforeX ?? '');
+  await expect(releasePins).toBeEnabled();
+  // The nudged node keeps its seat instead of drifting back like Obsidian's.
+  const pinnedX = await noteCircle.getAttribute('cx');
+  await page.waitForTimeout(400);
+  await expect(noteCircle).toHaveAttribute('cx', pinnedX ?? '');
+  await releasePins.click();
+  await expect(releasePins).toBeDisabled();
+
+  const documents = page.getByRole('list', { name: 'Graph documents' });
+  const beforeCount = await documents.getByRole('button').count();
+  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
+  expect(await documents.getByRole('button').count()).toBeLessThan(beforeCount);
+  await expect(graph.getByRole('button', { name: /First look/u })).toHaveCount(0);
+  // Structure survives every filter so the constellation never empties out.
+  await expect(graph.getByRole('button', { name: /AI Fundamentals, overview/u })).toBeVisible();
+  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
+  expect(await documents.getByRole('button').count()).toBe(beforeCount);
+
+  await page.getByLabel('Color by').selectOption('topic');
+  await expect(page.getByRole('list', { name: 'Topic colors' })).toContainText('ai-fundamentals');
+  await expect(
+    graph.getByRole('button', { name: /AI Fundamentals, overview/u }).locator('circle').first(),
+  ).toHaveAttribute('fill', /oklch/u);
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'View controls' }).click();
+  await expect(page.getByLabel('Color by')).toHaveValue('topic');
+});
+
 test('a workspace can grow past its first topic', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
