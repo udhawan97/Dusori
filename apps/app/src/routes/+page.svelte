@@ -1,6 +1,7 @@
 <script lang="ts">
   import { base } from '$app/paths';
   import {
+    Activity,
     BookOpen,
     Download,
     FileText,
@@ -13,6 +14,7 @@
     Pencil,
     Plus,
     Save,
+    Search,
     ShieldCheck,
     Share2,
     Upload,
@@ -53,9 +55,9 @@
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
+  import LearningInsights from '$lib/components/LearningInsights.svelte';
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
-  import ResearchPanel from '$lib/components/ResearchPanel.svelte';
-  import SourceLibrary from '$lib/components/SourceLibrary.svelte';
+  import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
@@ -71,7 +73,7 @@
   let editingNote = false;
   let editableNote = false;
   let newNoteTitle = '';
-  let workspaceView: 'graph' | 'note' | 'roadmap' | 'today' = 'note';
+  let workspaceView: 'graph' | 'insights' | 'note' | 'research' | 'roadmap' | 'today' = 'note';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
   let error = '';
@@ -81,8 +83,9 @@
   let companionStatus = 'Not connected';
   let companionClient: CompanionResearchClient | null = null;
   let companionAiClient: CompanionAiClient | null = null;
-  let sourceRevision = 0;
+  let artifactRevision = 0;
   let learningRevision = 0;
+  let researchAutoStartSlug = '';
   let obsidianGuideOpen = false;
   let obsidianDialog: HTMLDialogElement;
   let obsidianCloseButton: HTMLButtonElement;
@@ -148,6 +151,8 @@
     const view = parameters.get('view');
     const path = parameters.get('path');
     if (view === 'graph') openGraph(false);
+    else if (view === 'insights') openInsights(false);
+    else if (view === 'research') openResearch(slug, false);
     else if (view === 'roadmap') await openRoadmap(slug, false);
     else if (view === 'note' && path) await openGraphDocument(path, false);
     else openToday(slug, false);
@@ -274,10 +279,11 @@
       creatingTopic = false;
       previousSlug = '';
       topicTitle = '';
-      await openTopic(created.topicSlug);
+      researchAutoStartSlug = created.topicSlug;
+      openResearch(created.topicSlug);
       status = created.workspaceHomeConflict
         ? 'Topic created. Home.md had external changes, so a proposal was written beside it.'
-        : 'Topic created with its complete portable folder structure.';
+        : 'Topic created. Automatic research is ready for the providers you allow.';
     });
   }
 
@@ -325,13 +331,14 @@
     notePath = `Topics/${selectedSlug}/roadmap.md`;
     noteContent = content;
     learningRevision += 1;
+    artifactRevision += 1;
     conflict = null;
     syncLocation();
     announceStatus('Curriculum applied. The imported roadmap is open.');
   }
 
-  function refreshSources(): void {
-    sourceRevision += 1;
+  function refreshArtifacts(): void {
+    artifactRevision += 1;
   }
 
   function openToday(slug = selectedSlug, record = true): void {
@@ -359,6 +366,19 @@
     if (record) syncLocation();
   }
 
+  function openResearch(slug = selectedSlug, record = true): void {
+    if (!slug) return;
+    stopEditingNote();
+    creatingTopic = false;
+    selectedSlug = slug;
+    workspaceView = 'research';
+    notePath = '';
+    conflict = null;
+    mobileNavOpen = false;
+    if (window.innerWidth >= 960) inspectorOpen = false;
+    if (record) syncLocation();
+  }
+
   function openGraph(record = true): void {
     stopEditingNote();
     creatingTopic = false;
@@ -366,6 +386,18 @@
     notePath = '';
     conflict = null;
     mobileNavOpen = false;
+    if (window.innerWidth >= 960) inspectorOpen = false;
+    if (record) syncLocation();
+  }
+
+  function openInsights(record = true): void {
+    stopEditingNote();
+    creatingTopic = false;
+    workspaceView = 'insights';
+    notePath = '';
+    conflict = null;
+    mobileNavOpen = false;
+    if (window.innerWidth >= 960) inspectorOpen = false;
     if (record) syncLocation();
   }
 
@@ -391,6 +423,7 @@
   function handleRoadmapChanged(slug: string, content: string): void {
     if (slug === selectedSlug) noteContent = content;
     learningRevision += 1;
+    artifactRevision += 1;
   }
 
   function stopEditingNote(): void {
@@ -723,7 +756,8 @@
 
     {#if error}<p class="message error" role="alert">{error}</p>{/if}
     <p class="setup-footnote">
-      No AI, telemetry, or background service runs. Web research starts only after provider consent.
+      No AI is required. No telemetry or background service runs. Web research starts only after
+      provider consent.
     </p>
   </main>
 {:else}
@@ -772,6 +806,16 @@
           Today
         </button>
         <button
+          class:active={workspaceView === 'research'}
+          class="rail-link research-link"
+          disabled={!selectedSlug}
+          title={selectedSlug ? undefined : unlockHint}
+          onclick={() => openResearch()}
+        >
+          <Search aria-hidden="true" size={18} />
+          Research
+        </button>
+        <button
           class:active={workspaceView === 'roadmap'}
           class="rail-link"
           disabled={!selectedSlug}
@@ -790,6 +834,16 @@
         >
           <Share2 aria-hidden="true" size={18} />
           Graph
+        </button>
+        <button
+          class:active={workspaceView === 'insights'}
+          class="rail-link"
+          disabled={!workspace.topics.length}
+          title={workspace.topics.length ? undefined : unlockHint}
+          onclick={() => openInsights()}
+        >
+          <Activity aria-hidden="true" size={18} />
+          Insights
         </button>
         {#if !selectedSlug}
           <p class="rail-hint">{unlockHint}</p>
@@ -842,9 +896,13 @@
           <p class="path-label">
             {workspaceView === 'today'
               ? 'Today · local activity'
-              : workspaceView === 'graph'
-                ? 'Graph · portable relationships'
-                : notePath || 'Workspace ready'}
+              : workspaceView === 'research'
+                ? 'Research · automatic discovery'
+                : workspaceView === 'graph'
+                  ? 'Graph · portable relationships'
+                  : workspaceView === 'insights'
+                    ? 'Insights · local evidence'
+                    : notePath || 'Workspace ready'}
           </p>
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
@@ -900,6 +958,28 @@
           {/if}
         {:else if workspaceView === 'graph' && storage}
           <KnowledgeGraph {storage} onOpen={(path) => void openGraphDocument(path)} />
+        {:else if workspaceView === 'research' && storage && workspace}
+          {#key `${selectedSlug}-${learningRevision}`}
+            <ResearchWorkspace
+              {storage}
+              topicSlug={selectedSlug}
+              topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                selectedSlug}
+              companion={companionClient}
+              ai={companionAiClient}
+              autoStart={researchAutoStartSlug === selectedSlug}
+              onAutoStartHandled={() => (researchAutoStartSlug = '')}
+              onArtifactSaved={refreshArtifacts}
+            />
+          {/key}
+        {:else if workspaceView === 'insights' && storage && workspace}
+          <LearningInsights
+            {storage}
+            {workspace}
+            revision={artifactRevision + learningRevision}
+            onOpen={(path) => void openGraphDocument(path)}
+            onOpenTopic={(slug) => openToday(slug)}
+          />
         {:else if storage && workspace}
           <LearningLoop
             {storage}
@@ -914,12 +994,15 @@
         {/if}
       {:else}
         <section class="empty-topic" aria-labelledby="new-topic-title">
-          <p class="kicker">One useful beginning</p>
+          <p class="kicker">Name it · research follows</p>
           <h1 id="new-topic-title">
-            {workspace.topics.length ? 'Create another topic.' : 'Create your first topic.'}
+            {workspace.topics.length
+              ? 'Open another line of inquiry.'
+              : 'What do you want to understand?'}
           </h1>
           <p>
-            Dusori will create the note, roadmap, preferences, state, sources, and update history.
+            Dusori creates the portable learning structure, then opens automatic research for the
+            providers you approve.
           </p>
           <form
             onsubmit={(event) => {
@@ -940,7 +1023,9 @@
                 {busy ? 'Creating…' : 'Create topic'}
               </button>
             </div>
-            <p id="topic-help">Use a name that will still make sense as a folder.</p>
+            <p id="topic-help">
+              Use a clear topic name. Research starts automatically after one-time provider consent.
+            </p>
             {#if previousSlug}
               <button class="text-button" type="button" disabled={busy} onclick={cancelNewTopic}>
                 Cancel and go back
@@ -993,8 +1078,7 @@
         onclick={() => (inspectorOpen = false)}
       ></button>
     {/if}
-    <!-- Kept mounted while closed: unmounting would discard a pasted curriculum outline,
-         a half-written source, and any research results the user already consented to fetch. -->
+    <!-- Kept mounted while closed so a pasted curriculum outline and local search state survive. -->
     <aside
       class:open={inspectorOpen}
       class="inspector"
@@ -1049,33 +1133,13 @@
           </form>
         </section>
 
-        <div class="research-slot">
-          {#key `${selectedSlug}-${learningRevision}`}
-            <ResearchPanel
-              {storage}
-              topicSlug={selectedSlug}
-              topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
-                selectedSlug}
-              onSourceSaved={refreshSources}
-              companion={companionClient}
-              ai={companionAiClient}
-            />
-          {/key}
-        </div>
-
-        <div class="source-slot">
-          {#key `${selectedSlug}-${sourceRevision}`}
-            <SourceLibrary {storage} topicSlug={selectedSlug} companion={companionClient} />
-          {/key}
-        </div>
-
         <div class="curriculum-slot">
           {#key selectedSlug}
             <CurriculumImporter
               {storage}
               topicSlug={selectedSlug}
               onRoadmapApplied={showImportedRoadmap}
-              onSourceSaved={refreshSources}
+              onSourceSaved={refreshArtifacts}
             />
           {/key}
         </div>
@@ -1449,8 +1513,6 @@
   }
 
   .inspector section + section,
-  .research-slot,
-  .source-slot,
   .curriculum-slot,
   .curriculum-slot + section {
     padding-block-start: var(--space-lg);
@@ -1539,6 +1601,15 @@
   .rail-link.new-topic {
     color: var(--color-accent-text);
     font-weight: 700;
+  }
+
+  .rail-link.research-link {
+    color: light-dark(oklch(45% 0.14 250), oklch(78% 0.1 245));
+  }
+
+  .rail-link.research-link.active {
+    border-color: color-mix(in srgb, currentcolor 40%, var(--color-rule));
+    background: color-mix(in srgb, currentcolor 8%, var(--color-paper));
   }
 
   .rail-hint {

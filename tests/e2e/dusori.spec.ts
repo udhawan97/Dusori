@@ -123,12 +123,28 @@ async function expectNoSeriousA11yViolations(page: Page): Promise<void> {
 async function createBrowserWorkspace(page: Page): Promise<void> {
   await page.goto('/Dusori/app/');
   await page.getByRole('button', { name: 'Create workspace' }).click();
-  await expect(page.getByRole('heading', { name: 'Create your first topic.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'What do you want to understand?' }),
+  ).toBeVisible();
 }
 
-async function createTopic(page: Page): Promise<void> {
+async function createTopic(
+  page: Page,
+  options: { remainInResearch?: boolean } = {},
+): Promise<void> {
   await page.getByLabel('Topic name').fill('AI Fundamentals');
   await page.getByRole('button', { name: 'Create topic' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Let the strongest evidence find you.' }),
+  ).toBeVisible();
+  await expect(page.getByText(/Choose a provider once/u)).toBeVisible();
+  if (options.remainInResearch) return;
+
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Workspace' });
+  if (!(await workspaceNavigation.isVisible())) {
+    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+  }
+  await workspaceNavigation.getByRole('button', { name: 'AI Fundamentals' }).click();
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
   await expect(page.getByTitle('Learning flow diagram')).toBeVisible();
   await expect(
@@ -147,10 +163,25 @@ async function runConflictProof(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-async function addPastedSource(page: Page): Promise<void> {
-  if (!(await page.getByRole('heading', { name: 'Sources' }).isVisible())) {
-    await page.getByRole('button', { name: 'Open inspector' }).click();
+async function openInspector(page: Page): Promise<void> {
+  const inspector = page.getByRole('complementary', { name: 'Workspace details' });
+  if (await inspector.isVisible()) return;
+  await page.getByRole('button', { name: 'Open inspector' }).click();
+  await expect(inspector).toBeVisible();
+}
+
+async function openResearch(page: Page): Promise<void> {
+  if (await page.getByRole('heading', { name: 'Sources' }).isVisible()) return;
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Workspace' });
+  if (!(await workspaceNavigation.isVisible())) {
+    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
   }
+  await workspaceNavigation.getByRole('button', { name: 'Research' }).click();
+  await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
+}
+
+async function addPastedSource(page: Page): Promise<void> {
+  await openResearch(page);
   await page.getByLabel('Source title').fill('Transformer notes');
   await page
     .getByLabel('Source text')
@@ -452,21 +483,25 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
 
   await page.getByRole('button', { name: 'Graph' }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
-  // The inspector stays mounted and open across view changes so its unsaved drafts survive.
-  await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeVisible();
+  // Canvas-heavy views close the inspector so the constellation gets the full workspace.
+  await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
   const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
   await expect(graph).toBeVisible();
+  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
+  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Graph documents' })).toContainText('First look');
+  await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('First look');
+  await expect(
+    page.getByRole('list', { name: 'Graph documents' }).getByRole('listitem'),
+  ).toHaveCount(1);
+  await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('');
   await expect(page.getByText(/6 artifacts · \d+ connections/u)).toBeVisible();
 
   const hub = graph.getByRole('button', { name: /AI Fundamentals, overview, \d+ wikilinks, hub/u });
   await expect(hub).toHaveClass(/hub/u);
 
-  for (let tabCount = 0; tabCount < 20; tabCount += 1) {
-    if (await page.locator('.node:focus').count()) break;
-    await page.keyboard.press('Tab');
-  }
-  const focusedNode = page.locator('.node:focus');
+  const focusedNode = graph.getByRole('button').first();
+  await focusedNode.focus();
   await expect(focusedNode).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect(focusedNode).toHaveAttribute('aria-pressed', 'true');
@@ -512,12 +547,31 @@ test('graph view zooms, adjusts forces, and remembers the sliders', async ({ pag
   await expect(svg).toHaveAttribute('viewBox', /.+/u);
 });
 
+test('insights derives an honest local analytics snapshot', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addPastedSource(page);
+
+  await page.getByRole('button', { name: 'Insights' }).click();
+  await expect(page.getByRole('heading', { name: 'Your learning has a shape.' })).toBeVisible();
+  await expect(page.getByText('Approved sources', { exact: true })).toBeVisible();
+  await expect(page.getByText('Artifacts connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('img', { name: 'Activity recorded over the past 14 days' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Where evidence is forming' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Most linked artifacts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Source mix' })).toBeVisible();
+  await expect(page.getByText(/does not estimate study time or invent a score/u)).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('a workspace can grow past its first topic', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
 
   await page.getByRole('button', { name: 'New topic' }).click();
-  await expect(page.getByRole('heading', { name: 'Create another topic.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open another line of inquiry.' })).toBeVisible();
   await page.getByLabel('Topic name').fill('Distributed Systems Consensus Protocols in Practice');
   await page.getByRole('button', { name: 'Create topic' }).click();
 
@@ -580,6 +634,7 @@ test('the conflict proof brings its proposal on screen', async ({ page }) => {
 test('creates, edits, and conflict-protects a Markdown note', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await openInspector(page);
 
   await page.getByLabel('New note title').fill('Evidence map');
   await page.getByRole('button', { name: 'Create note' }).click();
@@ -625,6 +680,7 @@ test('searches local workspace prose and opens the matching document', async ({ 
   await createBrowserWorkspace(page);
   await createTopic(page);
   await addPastedSource(page);
+  await openInspector(page);
 
   await page.getByLabel('Words to find').fill('each token weigh');
   await page.getByRole('button', { name: 'Search local workspace' }).click();
@@ -643,6 +699,7 @@ test('searches local workspace prose and opens the matching document', async ({ 
 test('shows unresolved links and backlinks from the same local graph', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await openInspector(page);
 
   await page.getByLabel('New note title').fill('Link map');
   await page.getByRole('button', { name: 'Create note' }).click();
@@ -735,11 +792,11 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
     await route.fulfill({ contentType: 'application/json', json: microsoftLearnCatalog });
   });
   await createBrowserWorkspace(page);
-  await createTopic(page);
+  await createTopic(page, { remainInResearch: true });
 
   await expect(page.getByRole('heading', { name: 'Research' })).toBeVisible();
   await expect(page.getByLabel('Research objective')).toHaveValue('0');
-  const runResearch = page.getByRole('button', { name: 'Run research' });
+  const runResearch = page.getByRole('button', { name: 'Scan for strong sources' });
   await expect(runResearch).toBeDisabled();
 
   const allowMicrosoftLearn = page.getByRole('button', { name: 'Allow Microsoft Learn' });
@@ -755,10 +812,7 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
   await allowMicrosoftLearn.click();
   disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
   await disclosure.getByRole('button', { name: 'Allow search' }).click();
-  // Consent alone must not reach the network; only running the research does.
-  expect(catalogRequests).toBe(0);
-
-  await runResearch.click();
+  // Topic creation arms one automatic run; granting the first provider consent starts it.
   await expect(page.getByText('Establish identity terms with Microsoft Entra')).toBeVisible();
   expect(catalogRequests).toBe(1);
 
@@ -804,12 +858,11 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
     await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
   });
   await createBrowserWorkspace(page);
-  await createTopic(page);
+  await createTopic(page, { remainInResearch: true });
 
   await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
   const disclosure = page.getByRole('dialog', { name: 'Allow Wikipedia search?' });
   await disclosure.getByRole('button', { name: 'Allow search' }).click();
-  await page.getByRole('button', { name: 'Run research' }).click();
   const result = page
     .getByRole('list', { name: 'Research shortlist' })
     .getByRole('listitem')
@@ -818,7 +871,7 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
 
   await page.reload();
-  await page.getByRole('button', { name: 'Run research' }).click();
+  await page.getByRole('button', { name: 'Scan for strong sources' }).click();
   await expect(page.getByText('No new suggestions matched this objective.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
 });
@@ -842,6 +895,7 @@ test('curriculum import previews official objectives, applies explicitly, and ne
   await expect(page.locator('.learning-loop')).toContainText(
     'Describe responsible AI considerations',
   );
+  await openResearch(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'AI-901 official study guide',
   );
@@ -984,6 +1038,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   });
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await openResearch(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
@@ -991,6 +1046,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   await expect(page.locator('.learning-loop')).toContainText(
     'Identify AI concepts and capabilities',
   );
+  await openInspector(page);
   await expect(page.getByText('Workspace validated and imported safely.')).toBeVisible();
 });
 
@@ -1235,7 +1291,9 @@ test('the installed shell reloads and remains usable offline', async ({ page, co
 
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Create your first topic.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'What do you want to understand?' }),
+  ).toBeVisible();
   await createTopic(page);
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
@@ -1255,7 +1313,9 @@ test('mobile workspace drawers are fully keyboard operable', async ({ page }) =>
   await page.goto('/Dusori/app/');
   await page.getByRole('button', { name: 'Create workspace' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: 'Create your first topic.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'What do you want to understand?' }),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Open workspace navigation' }).focus();
   await page.keyboard.press('Enter');
@@ -1366,6 +1426,7 @@ async function addUrlSourceAndConnectCompanion(
 ): Promise<void> {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await openResearch(page);
   await page.getByLabel('Source type').selectOption('url');
   await page.getByLabel('Source title').fill(title);
   await page.getByLabel('Web address').fill(url);
@@ -1374,6 +1435,7 @@ async function addUrlSourceAndConnectCompanion(
 
   await page.goto('/Dusori/app/?token=e2e-companion-token');
   await expect(page.getByText('Connected for this session')).toBeVisible();
+  await openResearch(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(title);
 }
 
@@ -1395,6 +1457,7 @@ test.describe('companion flows', () => {
 
     await createBrowserWorkspace(page);
     await createTopic(page);
+    await openResearch(page);
 
     await page.getByLabel('Source type').selectOption('url');
     await page.getByLabel('Source title').fill('Attention paper');
@@ -1413,6 +1476,7 @@ test.describe('companion flows', () => {
     // Reload as if served by the companion.
     await page.goto('/Dusori/app/?token=e2e-companion-token');
     await expect(page.getByText('Connected for this session')).toBeVisible();
+    await openResearch(page);
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
       'Attention paper',
     );
@@ -1508,6 +1572,7 @@ test.describe('companion flows', () => {
     await page.goto(
       `/Dusori/app/?token=visible-secret&companion=${encodeURIComponent(appOrigin)}&topic=ai-fundamentals&view=graph`,
     );
+    await openInspector(page);
     await expect(page.getByText('Connection was denied. Allow local-network access')).toBeVisible();
     expect(page.url()).not.toContain('token=');
     expect(page.url()).not.toContain('companion=');

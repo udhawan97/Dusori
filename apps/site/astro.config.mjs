@@ -40,6 +40,7 @@ export default defineConfig({
             { label: 'Curriculum import', slug: 'docs/curricula' },
             { label: 'Learning loop', slug: 'docs/learning-loop' },
             { label: 'Knowledge graph', slug: 'docs/knowledge-graph' },
+            { label: 'Local insights', slug: 'docs/insights' },
             { label: 'Conflict safety', slug: 'docs/conflict-safety' },
             { label: 'Browser support', slug: 'docs/browser-support' },
           ],

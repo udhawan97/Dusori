@@ -3,26 +3,39 @@ title: Sources
 description: Add local material or accept disclosed research without uploading your workspace.
 ---
 
-Each topic has a local source library. Open the workspace inspector, choose **Source type**, give the item a title, and select **Add source**.
+Each topic has a local source library. Open **Research**, use the **Approved evidence** bay, choose **Source type**, give the item a title, and select **Add source**.
 
 ## Supported source types
 
 - **Pasted text:** stored as a readable `.txt` file.
 - **Local text file:** `.md`, `.markdown`, and `.txt` files up to 2 MiB. Markdown stays Markdown; line endings are normalized for portability.
 - **URL reference:** stores the complete `http://` or `https://` address in a small Markdown reference file. Dusori does not fetch or copy the page.
-- **Accepted research:** stores a Microsoft Learn catalog reference or an English Wikipedia plain-text extract only after preview and explicit acceptance.
+- **Accepted research:** stores a previewed result from an allowed research provider only after explicit acceptance.
 
 URLs containing embedded usernames or passwords are rejected. Opening a saved URL is an explicit browser action and can contact that website.
 
-## Research from a roadmap objective
+## Automatic research from a roadmap objective
 
-The **Research** section defaults to the next unchecked objective. **Search Microsoft Learn** ranks the public module catalog locally. **Search Wikipedia** uses the English search API; previewing a result retrieves that selected page's plain-text extract. Each provider is blocked on first use until you accept its host-specific disclosure. Nothing else from the workspace is sent.
+Creating a topic opens the first-class **Research** workspace and prepares one automatic discovery run for the next unchecked objective. Research begins as soon as at least one provider is allowed. Later runs use **Scan for strong sources**. Each provider is blocked on first use until you accept its host-specific disclosure; consent is stored on this device.
 
-Results remain suggestions until you choose **Add to sources**. Microsoft Learn captures are labeled as catalog references, not page snapshots. Wikipedia extracts stay below the same 2 MiB source cap and end with `[truncated]` when the full extract would exceed it. **Dismiss** records the result key locally so it stays out of later searches.
+Without the companion, Dusori can query five keyless public providers: Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange. Allowed providers are searched together. A failed or slow provider is reported as skipped without discarding useful results from the others. Candidates are deterministically ranked from objective relevance, provider-relative community signals, recency, and a small transparent host-reputation nudge. Dusori selects a diverse top-five shortlist and displays the reasons behind each result.
+
+Results remain suggestions until you choose **Add to sources**. Microsoft Learn captures are labeled as catalog references, not page snapshots. Wikipedia extracts stay below the same 2 MiB source cap and end with `[truncated]` when the full extract would exceed it. Other browser providers preserve the public reference and provider metadata. **Dismiss** records the result key locally so it stays out of later searches.
+
+After approving one or more results, **Write research brief** creates a clearly marked portable note. The deterministic brief groups approved links and explains their ranking signals; it states that Dusori has not read the pages. No discovered item is accepted automatically.
 
 ## Full-content upgrades with the companion
 
 URL references stay unfetched by default. When the app is opened through the local companion, each URL source gains a **Fetch full content** action — including a Microsoft Learn catalog reference accepted from Research. A confirmation names the exact host before anything is sent; every redirect is rechecked against private, reserved, and other non-public address ranges; the fetched page is capped at 4 MiB, reduced to readable text, previewed exactly as it will be written, and only replaces the stub when you choose **Replace content**. The preview ends with `[truncated]` if the extracted text would exceed the 2 MiB source limit. If the source file changed outside Dusori since it was last read, Dusori refuses the replacement as a conflict instead of overwriting it silently. The upgrade is recorded in the topic's update log, and the source keeps its URL, title, and place in the graph.
+
+The companion also adds arXiv and can expose one general web-search provider configured before launch:
+
+- `SEARXNG_URL` for a keyless, open-source SearXNG instance
+- `BRAVE_API_KEY` for Brave Search
+- `TAVILY_API_KEY` for Tavily
+- `RESEARCH_WEB_SEARCH=brave|tavily|searxng` when more than one is configured
+
+Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
 Run the published companion with `npx @udhawan97/dusori@latest`, or approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`. To run from a clone, follow [Getting started](../getting-started/). Omit `--root` to keep folder access off.
 
@@ -34,12 +47,12 @@ Topics/<topic-slug>/
     manifest.json
     items/
       <sha-prefix>-<portable-title>.md|txt
-  research.json  # created after the first dismissal
+  research.json  # run history, seen results, and dismissals
   Updates/YYYY/MM/YYYY-MM-DD.md
 ```
 
-`manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename, URL, or capture origin. Capture origin names the provider (`mslearn`, `wikipedia`, or `companion` after a full-content upgrade), how it was captured, and when. URL sources—including research captures—deduplicate by canonical URL. A successful new capture also appends a line to the topic’s dated update log.
+`manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename, URL, or capture origin. Capture origin names the research or capture provider, how it was captured, and when. URL sources—including research captures—deduplicate by canonical URL. A successful new capture also appends a line to the topic’s dated update log.
 
-Source files and `research.json` are included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. PDF extraction, key-based search, and AI transformation remain [planned work](../roadmap/).
+Source files and `research.json` are included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. PDF extraction, scheduled research, and unattended source acceptance remain [planned work](../roadmap/).
 
 Applying a [curriculum import](../curricula/) also stores the pasted official outline here before updating the topic roadmap. Re-importing identical outline text reuses the existing source record.

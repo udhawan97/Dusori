@@ -23,11 +23,13 @@
 ### Task 1: graph-sim foundation — settings codec, visual radius, bounds
 
 **Files:**
+
 - Create: `apps/app/src/lib/graph-sim.ts`
 - Create: `apps/app/src/lib/graph-sim.test.ts`
 - Modify: `apps/app/src/lib/graph-layout.ts` (export `LABEL_HALF_WIDTH`, `LABEL_HEIGHT`)
 
 **Interfaces:**
+
 - Consumes: `NODE_RADIUS`, `PositionedWorkspaceGraphNode` from `./graph-layout.js`; `WorkspaceGraphNode` from `@dusori/core`.
 - Produces: `GraphViewSettings {linkDistance:number; repelStrength:number}`, `GRAPH_VIEW_LIMITS`, `GRAPH_VIEW_STORAGE_KEY`, `readGraphViewSettings(storage)`, `writeGraphViewSettings(storage, settings)`, `nodeVisualRadius(node, degree): number`, `GraphBounds {minX;minY;maxX;maxY}`, `graphBounds(nodes, degrees): GraphBounds`.
 
@@ -280,10 +282,12 @@ git commit -m "feat(app): graph view settings codec, degree radius, bounds"
 ### Task 2: Camera math
 
 **Files:**
+
 - Modify: `apps/app/src/lib/graph-sim.ts` (append)
 - Modify: `apps/app/src/lib/graph-sim.test.ts` (append)
 
 **Interfaces:**
+
 - Consumes: `GraphBounds` from Task 1.
 - Produces: `GraphCamera {x;y;zoom}`, `StageSize {width;height}`, `CameraLimits {minZoom;maxZoom;bounds}`, `fitCamera(bounds, stage)`, `cameraLimits(fitZoom, bounds)`, `clampCamera(camera, limits)`, `zoomCameraAt(camera, focus, factor, limits)`, `panCamera(camera, dxPx, dyPx, limits)`, `cameraViewBox(camera, stage): string`, `screenToWorld(camera, stage, point)`, `sliderToZoom(value, limits)`, `zoomToSlider(zoom, limits)`.
 
@@ -493,10 +497,12 @@ git commit -m "feat(app): pure camera math for graph zoom and pan"
 ### Task 3: Deterministic relaxation simulation
 
 **Files:**
+
 - Modify: `apps/app/src/lib/graph-sim.ts` (append)
 - Modify: `apps/app/src/lib/graph-sim.test.ts` (append)
 
 **Interfaces:**
+
 - Consumes: `GraphViewSettings`, `nodeVisualRadius` (Task 1); `WorkspaceGraphEdge` from `@dusori/core`; `PositionedWorkspaceGraphNode` from `./graph-layout.js`.
 - Produces: `GraphRelaxation { nodes: PositionedWorkspaceGraphNode[]; tick(count?): boolean; reheat(params): void; settle(): number }`, `createGraphRelaxation(seed, edges, params, degrees)`, `relaxGraphLayout(seed, edges, params, degrees): { nodes; ticks }`.
 
@@ -520,9 +526,24 @@ function linkedFixture(): WorkspaceGraph {
     }
   }
   edges.push(
-    { id: 'l:1', kind: 'links', source: 'Topics/alpha/Notes/0.md', target: 'Topics/beta/Notes/0.md' },
-    { id: 'l:2', kind: 'links', source: 'Topics/alpha/Notes/1.md', target: 'Topics/alpha/Notes/2.md' },
-    { id: 'l:3', kind: 'links', source: 'Topics/beta/Notes/3.md', target: 'Topics/alpha/Notes/0.md' },
+    {
+      id: 'l:1',
+      kind: 'links',
+      source: 'Topics/alpha/Notes/0.md',
+      target: 'Topics/beta/Notes/0.md',
+    },
+    {
+      id: 'l:2',
+      kind: 'links',
+      source: 'Topics/alpha/Notes/1.md',
+      target: 'Topics/alpha/Notes/2.md',
+    },
+    {
+      id: 'l:3',
+      kind: 'links',
+      source: 'Topics/beta/Notes/3.md',
+      target: 'Topics/alpha/Notes/0.md',
+    },
   );
   return { edges, nodes, unresolvedLinks: [] };
 }
@@ -573,8 +594,14 @@ describe('graph relaxation', () => {
 
   it('stretches wikilinks when the link length knob grows', () => {
     const graph = linkedFixture();
-    const short = meanLinkedDistance(graph, settle(graph, { linkDistance: 60, repelStrength: 0.5 }));
-    const long = meanLinkedDistance(graph, settle(graph, { linkDistance: 240, repelStrength: 0.5 }));
+    const short = meanLinkedDistance(
+      graph,
+      settle(graph, { linkDistance: 60, repelStrength: 0.5 }),
+    );
+    const long = meanLinkedDistance(
+      graph,
+      settle(graph, { linkDistance: 240, repelStrength: 0.5 }),
+    );
     expect(long).toBeGreaterThan(short * 1.15);
   });
 
@@ -741,9 +768,7 @@ export function createGraphRelaxation(
     for (let index = 0; index < springs.length; index += 1) {
       const spring = springs[index]!;
       const rest =
-        spring.kind === 'links'
-          ? current.linkDistance
-          : current.linkDistance * CONTAINS_REST_SCALE;
+        spring.kind === 'links' ? current.linkDistance : current.linkDistance * CONTAINS_REST_SCALE;
       const stiffness = spring.kind === 'links' ? LINK_STIFFNESS : CONTAINS_STIFFNESS;
       const { distance, ux, uy } = unitBetween(spring.source, spring.target, index);
       const move = (distance - rest) * stiffness * step * 0.5;
@@ -858,9 +883,11 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
 ### Task 4: KnowledgeGraph.svelte integration
 
 **Files:**
+
 - Modify: `apps/app/src/lib/components/KnowledgeGraph.svelte`
 
 **Interfaces:**
+
 - Consumes: everything Tasks 1–3 produce, plus existing `layoutWorkspaceGraph`, `neighborIds`, `wikilinkDegrees`, `fitGraphLabel`, `LABEL_MAX_CHARS`.
 - Produces: accessible names used by Task 5 e2e: buttons "View controls" (aria-expanded), "Zoom in", "Zoom out", "Fit view"; sliders "Zoom level", "Link length", "Spacing"; svg keeps `aria-label="Workspace knowledge graph"`; panel group `aria-label="Graph view controls"`.
 
@@ -868,7 +895,15 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
 
 ```svelte
 <script lang="ts">
-  import { AlertCircle, FileText, LoaderCircle, Orbit, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/svelte';
+  import {
+    AlertCircle,
+    FileText,
+    LoaderCircle,
+    Orbit,
+    SlidersHorizontal,
+    ZoomIn,
+    ZoomOut,
+  } from '@lucide/svelte';
   import { onDestroy, onMount } from 'svelte';
 
   import {
@@ -926,8 +961,14 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
   let positioned: PositionedWorkspaceGraphNode[] = [];
   let camera: GraphCamera | null = null;
   let settleFrame = 0;
-  let pan: { moved: boolean; pointerId: number; lastX: number; lastY: number; startX: number; startY: number } | null =
-    null;
+  let pan: {
+    moved: boolean;
+    pointerId: number;
+    lastX: number;
+    lastY: number;
+    startX: number;
+    startY: number;
+  } | null = null;
   let suppressBackgroundClick = false;
 
   const reducedMotion =
@@ -1054,7 +1095,10 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
 
   function fitView(): void {
     if (positioned.length === 0 || stageWidth === 0 || stageHeight === 0) return;
-    camera = fitCamera(graphBounds(positioned, degrees), { height: stageHeight, width: stageWidth });
+    camera = fitCamera(graphBounds(positioned, degrees), {
+      height: stageHeight,
+      width: stageWidth,
+    });
   }
 
   function applyZoom(factor: number): void {
@@ -1153,8 +1197,7 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
   // Select-to-focus fading after chanhx/crabviz (AGPL-3.0): idea only,
   // implemented from scratch; no code copied or derived.
   $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
-  $: hoverNeighbors =
-    graph && hoveredId && !selectedId ? neighborIds(graph, hoveredId) : null;
+  $: hoverNeighbors = graph && hoveredId && !selectedId ? neighborIds(graph, hoveredId) : null;
   $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
 </script>
 ```
@@ -1317,151 +1360,151 @@ git commit -m "feat(app): deterministic force relaxation for the knowledge graph
 Replace `.constellation { ... }` with, and add after it:
 
 ```css
-  .constellation-stage {
-    position: relative;
-    height: clamp(24rem, 62dvh, 36rem);
-    overflow: hidden;
-    border: var(--rule-hair) solid var(--color-rule);
-    border-radius: var(--radius-sm);
-  }
+.constellation-stage {
+  position: relative;
+  height: clamp(24rem, 62dvh, 36rem);
+  overflow: hidden;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+}
 
-  .constellation {
-    display: block;
-    width: 100%;
-    height: 100%;
-    cursor: grab;
-    touch-action: none;
-  }
+.constellation {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
 
-  .constellation-stage.panning .constellation {
-    cursor: grabbing;
-  }
+.constellation-stage.panning .constellation {
+  cursor: grabbing;
+}
 
-  .graph-controls {
-    position: absolute;
-    top: var(--space-sm);
-    right: var(--space-sm);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--space-2xs);
-  }
+.graph-controls {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2xs);
+}
 
-  .controls-toggle {
-    display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
-    border: var(--rule-hair) solid var(--color-rule);
-    border-radius: var(--radius-sm);
-    background: var(--color-paper);
-    color: var(--color-marigold);
-    cursor: pointer;
-    place-items: center;
-  }
+.controls-toggle {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-marigold);
+  cursor: pointer;
+  place-items: center;
+}
 
-  .controls-toggle[aria-expanded='true'] {
-    border-color: var(--color-marigold);
-  }
+.controls-toggle[aria-expanded='true'] {
+  border-color: var(--color-marigold);
+}
 
-  .controls-panel {
-    display: grid;
-    width: 15rem;
-    padding: var(--space-sm);
-    border: var(--rule-hair) solid var(--color-rule);
-    border-radius: var(--radius-sm);
-    background: var(--color-paper);
-    gap: var(--space-xs);
-  }
+.controls-panel {
+  display: grid;
+  width: 15rem;
+  padding: var(--space-sm);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  gap: var(--space-xs);
+}
 
-  .zoom-row {
-    display: grid;
-    align-items: center;
-    grid-template-columns: auto 1fr auto;
-    gap: var(--space-2xs);
-  }
+.zoom-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-2xs);
+}
 
-  .zoom-row button {
-    display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
-    border: var(--rule-hair) solid var(--color-rule);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-ink);
-    cursor: pointer;
-    place-items: center;
-  }
+.zoom-row button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  place-items: center;
+}
 
-  .control-slider {
-    display: grid;
-    min-height: 2.75rem;
-    align-content: center;
-    gap: var(--space-3xs, 0.25rem);
-  }
+.control-slider {
+  display: grid;
+  min-height: 2.75rem;
+  align-content: center;
+  gap: var(--space-3xs, 0.25rem);
+}
 
-  .control-slider span {
-    color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
+.control-slider span {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
 
-  .controls-panel input[type='range'] {
-    width: 100%;
-    min-height: 1.25rem;
-    accent-color: var(--color-marigold);
-  }
+.controls-panel input[type='range'] {
+  width: 100%;
+  min-height: 1.25rem;
+  accent-color: var(--color-marigold);
+}
 
-  .fit-view {
-    min-height: 2.75rem;
-    border: var(--rule-hair) solid var(--color-rule);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-ink);
-    cursor: pointer;
-    font: 400 var(--text-sm) / 1 var(--font-body);
-  }
+.fit-view {
+  min-height: 2.75rem;
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font: 400 var(--text-sm) / 1 var(--font-body);
+}
 
-  .controls-toggle:focus-visible,
-  .zoom-row button:focus-visible,
-  .fit-view:focus-visible,
-  .controls-panel input[type='range']:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
-  }
+.controls-toggle:focus-visible,
+.zoom-row button:focus-visible,
+.fit-view:focus-visible,
+.controls-panel input[type='range']:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
 ```
 
 Add label sizing + reveal + hover dimming rules (the `text` rule gains `font-size`; keep the rest of the existing `text` rule):
 
 ```css
-  text {
-    fill: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: calc(14px * var(--graph-label-scale, 1));
-    /* A label may still pass an artifact dot; the paper halo keeps both readable. */
-    paint-order: stroke;
-    stroke: var(--color-paper);
-    stroke-width: 4px;
-    stroke-linejoin: round;
-    text-anchor: middle;
-  }
+text {
+  fill: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: calc(14px * var(--graph-label-scale, 1));
+  /* A label may still pass an artifact dot; the paper halo keeps both readable. */
+  paint-order: stroke;
+  stroke: var(--color-paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  text-anchor: middle;
+}
 ```
 
 After the `.node:not(.labelled):hover text, ...` rule add:
 
 ```css
-  .constellation.labels-revealed .node:not(.labelled) text {
-    opacity: 1;
+.constellation.labels-revealed .node:not(.labelled) text {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .node.dimmed {
+    opacity: 0.35;
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    .node.dimmed {
-      opacity: 0.35;
-    }
-
-    path.dimmed {
-      opacity: 0.2;
-    }
+  path.dimmed {
+    opacity: 0.2;
   }
+}
 ```
 
 If `--space-3xs` is not defined in `apps/app/src/styles/tokens.css`, use `0.25rem` directly.
@@ -1490,10 +1533,12 @@ git commit -m "feat(app): zoomable, adjustable knowledge graph with Obsidian-sty
 ### Task 5: e2e coverage + preview state contract
 
 **Files:**
+
 - Modify: `tests/e2e/dusori.spec.ts` (add one test after `knowledge graph renders portable artifacts and opens a selected note`)
 - Modify: `apps/app/src/lib/components/KnowledgeGraph.preview.html` (state list additions)
 
 **Interfaces:**
+
 - Consumes: accessible names from Task 4.
 - Produces: regression coverage for zoom, sliders, persistence, fit view.
 
@@ -1555,10 +1600,12 @@ git commit -m "test(e2e): graph zoom, force sliders, and persistence coverage"
 ### Task 6: Docs, changelog, full verification
 
 **Files:**
+
 - Modify: `CHANGELOG.md`
 - Modify: the docs page describing the knowledge graph, if it describes interactions (locate with `grep -rn "Portable knowledge graph" apps docs --include='*.astro' --include='*.md' -l`)
 
 **Interfaces:**
+
 - Consumes: shipped behavior from Tasks 1–5.
 - Produces: release-notes entry; user-facing docs sentence.
 

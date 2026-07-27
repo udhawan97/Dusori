@@ -308,9 +308,7 @@ export function createGraphRelaxation(
       const source = bodies[spring.sourceIndex]!;
       const target = bodies[spring.targetIndex]!;
       const rest =
-        spring.kind === 'links'
-          ? current.linkDistance
-          : current.linkDistance * CONTAINS_REST_SCALE;
+        spring.kind === 'links' ? current.linkDistance : current.linkDistance * CONTAINS_REST_SCALE;
       const stiffness = spring.kind === 'links' ? LINK_STIFFNESS : CONTAINS_STIFFNESS;
       const { distance, ux, uy } = unitBetween(source, target, index);
       const move = (distance - rest) * stiffness * step * 0.5;

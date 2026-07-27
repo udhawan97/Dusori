@@ -36,6 +36,8 @@
   export let onSourceSaved: () => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
+  export let autoStart = false;
+  export let onAutoStartHandled: () => void = () => undefined;
 
   // A companion upgrades Microsoft Learn to ranked search and unlocks the two providers the
   // browser cannot reach itself, so the list is built rather than declared.
@@ -94,6 +96,7 @@
   let writingBrief = false;
   let briefPath = '';
   let briefError = '';
+  let autoStarted = false;
 
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
   $: consented = readConsented(providers, consentTick);
@@ -108,15 +111,19 @@
 
   async function loadObjectives(): Promise<void> {
     loadingObjectives = true;
+    let nextObjective: RoadmapObjective | null = null;
     try {
       const progress = await readTopicProgress(storage, topicSlug);
       objectives = progress.objectives;
-      objectiveIndex = progress.nextObjective?.index ?? progress.objectives[0]?.index ?? 0;
+      nextObjective = progress.nextObjective ?? progress.objectives[0] ?? null;
+      objectiveIndex = nextObjective?.index ?? 0;
     } catch {
       objectives = [];
     } finally {
       loadingObjectives = false;
     }
+    await tick();
+    await maybeAutoRun(nextObjective);
   }
 
   function consentKey(provider: ResearchProvider): string {
@@ -163,6 +170,7 @@
     await tick();
     consentInvoker?.focus();
     consentInvoker = null;
+    await maybeAutoRun(selectedObjective);
   }
 
   async function declineProvider(): Promise<void> {
@@ -172,18 +180,21 @@
     consentInvoker = null;
   }
 
-  async function run(): Promise<void> {
-    if (!selectedObjective || enabledProviders.length === 0) return;
+  async function runWith(
+    objective: RoadmapObjective | null,
+    providerList: ResearchProvider[],
+  ): Promise<void> {
+    if (!objective || providerList.length === 0) return;
     running = true;
     runError = '';
     notices = [];
     showOverflow = false;
     actionError = null;
     try {
-      const query = buildResearchQuery(topicTitle, selectedObjective);
+      const query = buildResearchQuery(topicTitle, objective);
       const result = await runResearchAgent({
         fetchImpl: fetch,
-        providers: enabledProviders,
+        providers: providerList,
         query,
         storage,
         topicSlug,
@@ -195,6 +206,19 @@
     } finally {
       running = false;
     }
+  }
+
+  async function run(): Promise<void> {
+    await runWith(selectedObjective, enabledProviders);
+  }
+
+  async function maybeAutoRun(objective: RoadmapObjective | null): Promise<void> {
+    const allowedProviders = providers.filter(hasConsent);
+    if (!autoStart || autoStarted || !objective || allowedProviders.length === 0 || running) return;
+    autoStarted = true;
+    onAutoStartHandled();
+    await tick();
+    await runWith(objective, allowedProviders);
   }
 
   // Advisory only: the AI reorders and annotates what the deterministic ranker found; a
@@ -488,11 +512,15 @@
       onclick={run}
     >
       <Search aria-hidden="true" size={17} />
-      {running ? 'Searching the allowed providers…' : 'Run research'}
+      {running ? 'Scanning the allowed providers…' : 'Scan for strong sources'}
     </button>
 
     {#if enabledProviders.length === 0}
-      <p class="quiet-note">Allow at least one provider above. Each states what it receives.</p>
+      <p class="quiet-note">
+        {autoStart
+          ? 'Choose a provider once. This topic’s research begins as soon as you allow it.'
+          : 'Allow at least one provider above. Each states what it receives.'}
+      </p>
     {/if}
 
     {#if runError}

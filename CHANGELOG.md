@@ -7,10 +7,15 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 ### Changed
 
 - The knowledge graph is now explorable and adjustable, Obsidian-style: zoom toward the cursor (wheel or pinch, plus keyboard-operable buttons and a slider), drag to pan, and tune **Link length** and **Spacing** with sliders that persist per browser. The constellation seed is relaxed by a deterministic force pass, so linked notes pull together while everything keeps a readable distance; labels fade in as you zoom, hovering highlights a node's neighborhood, artifact dots grow with their wikilink degree, and reduced-motion users get an instant settled layout.
+- Research and Insights are first-class workspace views. Creating a topic now opens Research and begins one automatic discovery run as soon as at least one provider is allowed; later scans remain explicit.
+- The graph now opens with a notes/sources/wikilinks health ledger and a searchable, filterable artifact finder beside the constellation.
 
 ### Added
 
 - Curriculum import now recognizes AWS Certification exam guides: paste the content outline copied from an official AWS exam guide PDF and Dusori extracts the weighted `Domain N:` sections and `Task Statement N.N:` items, merging the duplicated summary table and rejoining lines the PDF wraps mid-sentence. When no format matches, the error now names every supported outline instead of a generic hint.
+- A deterministic research agent queries every consented provider concurrently, survives partial failures, ranks candidates from explainable public signals, and preserves a diverse top-five shortlist. Keyless browser providers now include Hacker News, GitHub, and Stack Exchange alongside Microsoft Learn and Wikipedia.
+- The local companion adds arXiv and configurable Brave, Tavily, or SearXNG general web search. Optional Ollama, Anthropic, or OpenAI assistance can advise ranking and write a model-named brief from approved sources; deterministic behavior remains the fallback.
+- Local Insights derives a fourteen-day activity pulse, objective progress, artifact mix, link health, topic depth, connected hubs, and source provenance without telemetry, inferred study time, or a proprietary score.
 
 ### Accessibility
 

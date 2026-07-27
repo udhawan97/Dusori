@@ -10,8 +10,9 @@ sidebar:
 1. Open the Dusori app.
 2. Choose **Create workspace**.
 3. Enter a topic name and choose **Create topic**.
-4. Dusori creates `Home.md`, `dusori.json`, and the topic’s complete folder tree.
-5. Choose **Export workspace** after meaningful work. The ZIP is your portable backup.
+4. Dusori creates `Home.md`, `dusori.json`, and the topic’s complete folder tree, then opens **Research**.
+5. Allow at least one provider. The topic's first discovery scan begins automatically; preview and approve only the results you want to keep.
+6. Choose **Export workspace** after meaningful work. The ZIP is your portable backup.
 
 Browser workspaces use origin-private storage. They are not uploaded, but clearing site data can remove them. Export regularly.
 
@@ -31,7 +32,7 @@ No plugin is required. On browsers without folder access, keep the browser works
 
 The Today view is deterministic: **Review next** orders due spaced reviews first, then active topics before paused topics, showing the least recently updated next. The seven-day recap reads dated update entries. Marking a review (**Got it** or **Needs work**) is the only way a schedule is created — Dusori never invents one on its own. If another editor changes `roadmap.md`, Dusori keeps that version active and asks you to review a separate progress proposal.
 
-Open **Graph** to see the topic’s Markdown artifacts and wikilinks. The visual graph and its keyboard-accessible artifact index are both created locally from the workspace folder.
+Open **Graph** to see the topic’s Markdown artifacts and wikilinks. Its ledger, visual constellation, and searchable keyboard-accessible artifact finder are created locally from the workspace folder. Open **Insights** for file-derived activity, progress, artifact mix, link health, topic depth, hubs, and provenance without telemetry or inferred study time.
 
 ## Write and find notes
 
@@ -54,7 +55,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 ## Local companion
 
-The optional companion holds the loopback security boundary and adds the two things the browser cannot do on its own: fetching a page you explicitly confirm and turning it into readable text, and reaching Microsoft Learn's ranked search. Both appear only when the app is opened through the companion. See [Sources](../sources/) for the fetch flow. Ollama and model transformations are still not provided.
+The optional companion holds the loopback security boundary. It can fetch a page you explicitly confirm, reach Microsoft Learn's ranked search and arXiv, and expose one configured Brave, Tavily, or SearXNG general web-search provider. Optional Ollama, Anthropic, or OpenAI configuration can advise ranking and write a model-named brief from approved sources. These capabilities appear only when the app is opened through the companion; deterministic research remains available without them. See [Sources](../sources/) for configuration and consent boundaries.
 
 Run the published companion with Node.js 24. This downloads and starts the current release without a global install:
 

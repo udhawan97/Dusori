@@ -11,7 +11,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export
 - Conflict-safe proposals and dated update logs
 - Local source library for pasted text, Markdown/text files, and unfetched URL references
-- Consent-gated Microsoft Learn catalog and English Wikipedia research with preview-first source capture
+- Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange, with explainable deterministic ranking and preview-first source capture
 - Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
 - In-app creation and conflict-safe editing of portable Markdown notes
 - Local full-text workspace search with no stored index or remote query
@@ -22,15 +22,17 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Offline application shell
 - Loopback-only local companion security foundation
 - Companion-only page fetching with readability extraction, confirmed per fetch, and ranked Microsoft Learn search
+- Companion-backed arXiv and configured Brave, Tavily, or SearXNG web search
+- Optional consent-gated Ollama, Anthropic, or OpenAI ranking and model-named research briefs, with deterministic fallback
+- Local Insights for activity, objective progress, artifact mix, link health, topic depth, hubs, and provenance
 - Version-aligned, packed-tarball-tested `dusori` companion package and provenance-ready publish workflow
 
 ## Planned—not built
 
 - Remote-page fetching from the hosted app alone, without the local companion
 - PDF and other non-text document import
-- Ollama discovery and source-bounded transformations
-- Model capability probes
 - Chat-to-`TUTOR.md` diff editing
-- Key-based or general-purpose search adapters
+- Scheduled or unattended research and source acceptance
+- Reddit and YouTube research providers
 
 There is no commitment to a hosted backend, accounts, telemetry, paid API, or always-running background process.

@@ -4,6 +4,7 @@
     FileText,
     LoaderCircle,
     Orbit,
+    Search,
     SlidersHorizontal,
     ZoomIn,
     ZoomOut,
@@ -57,6 +58,8 @@
   let stageWidth = 0;
   let stageHeight = 0;
   let controlsOpen = false;
+  let artifactQuery = '';
+  let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
   let settings: GraphViewSettings = {
     linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
     repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
@@ -305,6 +308,16 @@
   $: selectionNeighbors = graph && selectedId ? neighborIds(graph, selectedId) : new Set<string>();
   $: hoverNeighbors = graph && hoveredId && !selectedId ? neighborIds(graph, hoveredId) : null;
   $: selectedNode = graph?.nodes.find((node) => node.id === selectedId);
+  $: artifactNodes = (graph?.nodes ?? []).filter((node) => {
+    const matchesKind = artifactKind === 'all' || node.kind === artifactKind;
+    const query = artifactQuery.trim().toLocaleLowerCase();
+    return (
+      matchesKind && (!query || `${node.label} ${node.path}`.toLocaleLowerCase().includes(query))
+    );
+  });
+  $: noteCount = graph?.nodes.filter((node) => node.kind === 'note').length ?? 0;
+  $: sourceCount = graph?.nodes.filter((node) => node.kind === 'source').length ?? 0;
+  $: wikilinkCount = graph?.edges.filter((edge) => edge.kind === 'links').length ?? 0;
 </script>
 
 <svelte:window
@@ -340,6 +353,24 @@
   {:else if graph && graph.nodes.length === 0}
     <div class="graph-state">Create a topic to place its artifacts on the graph.</div>
   {:else if graph}
+    <dl class="graph-ledger">
+      <div>
+        <dt>Notes</dt>
+        <dd>{noteCount}</dd>
+      </div>
+      <div>
+        <dt>Sources</dt>
+        <dd>{sourceCount}</dd>
+      </div>
+      <div>
+        <dt>Wikilinks</dt>
+        <dd>{wikilinkCount}</dd>
+      </div>
+      <div>
+        <dt>Unresolved</dt>
+        <dd>{graph.unresolvedLinks.length}</dd>
+      </div>
+    </dl>
     {#if selectedNode}
       <div class="selection-action">
         <button type="button" onclick={() => onOpen(selectedNode.path)}>
@@ -488,9 +519,28 @@
       </div>
 
       <aside class="artifact-index" aria-label="Graph artifact index">
-        <p class="kicker">Open an artifact</p>
+        <div class="artifact-heading">
+          <p class="kicker">Artifact finder</p>
+          <span>{artifactNodes.length}</span>
+        </div>
+        <label class="artifact-search">
+          <span class="sr-only">Search graph artifacts</span>
+          <Search aria-hidden="true" size={15} />
+          <input bind:value={artifactQuery} type="search" placeholder="Find an artifact" />
+        </label>
+        <div class="artifact-filters" role="group" aria-label="Filter graph artifacts">
+          {#each ['all', 'note', 'source', 'update'] as kind (kind)}
+            <button
+              type="button"
+              aria-pressed={artifactKind === kind}
+              onclick={() => (artifactKind = kind as 'all' | 'note' | 'source' | 'update')}
+            >
+              {kind === 'all' ? 'All' : `${kind[0]?.toLocaleUpperCase()}${kind.slice(1)}s`}
+            </button>
+          {/each}
+        </div>
         <ul aria-label="Graph documents">
-          {#each graph.nodes as node (node.id)}
+          {#each artifactNodes as node (node.id)}
             <li>
               <button onclick={() => onOpen(node.path)}>
                 <FileText aria-hidden="true" size={16} strokeWidth={1.5} />
@@ -500,6 +550,9 @@
             </li>
           {/each}
         </ul>
+        {#if artifactNodes.length === 0}
+          <p class="unresolved">No artifacts match this filter.</p>
+        {/if}
         {#if graph.unresolvedLinks.length}
           <p class="unresolved">
             {graph.unresolvedLinks.length} unresolved wikilink{graph.unresolvedLinks.length === 1
@@ -554,6 +607,39 @@
   header > :global(svg) {
     flex: none;
     color: var(--color-marigold);
+  }
+
+  .graph-ledger {
+    display: grid;
+    width: min(100%, 76rem);
+    margin: 0 auto var(--space-lg);
+    border-inline: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .graph-ledger div {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .graph-ledger dt {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .graph-ledger dd {
+    margin: 0;
+    color: var(--color-marigold);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    line-height: 1;
   }
 
   .graph-stage {
@@ -831,6 +917,88 @@
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
+  .artifact-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  .artifact-heading > span {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: 50%;
+    color: var(--color-marigold);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    place-items: center;
+  }
+
+  .artifact-search {
+    display: grid;
+    min-height: 2.75rem;
+    align-items: center;
+    margin-block-start: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .artifact-search > :global(svg) {
+    margin-inline-start: var(--space-sm);
+    color: var(--color-muted);
+  }
+
+  .artifact-search input {
+    min-width: 0;
+    min-height: 2.65rem;
+    padding-inline: var(--space-xs);
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+  }
+
+  .artifact-search:focus-within {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .artifact-filters {
+    display: flex;
+    gap: var(--space-2xs);
+    margin-block-start: var(--space-xs);
+    overflow-x: auto;
+  }
+
+  .artifact-filters button {
+    min-height: 2.25rem;
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    font-size: var(--text-xs);
+  }
+
+  .artifact-filters button[aria-pressed='true'] {
+    border-color: var(--color-marigold);
+    color: var(--color-ink);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .artifact-index ul {
     display: grid;
     gap: var(--space-2xs);
@@ -916,6 +1084,14 @@
   }
 
   @media (min-width: 60rem) {
+    .graph-ledger {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .graph-ledger div + div {
+      border-inline-start: var(--rule-hair) solid var(--color-rule);
+    }
+
     .graph-stage {
       grid-template-columns: minmax(0, 1fr) 17rem;
       gap: var(--space-xl);

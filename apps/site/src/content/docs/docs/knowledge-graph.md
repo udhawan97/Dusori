@@ -27,7 +27,7 @@ Backlinks reverse the graph's resolved `links` edges for the current document. *
 
 ## Open a document
 
-Choose **Graph** in the workspace rail. The constellation is paired with an accessible artifact index. Select an artifact there to open the original Markdown or text file in Dusori. Search results, backlinks, and actionable health issues open the same exact file paths.
+Choose **Graph** in the workspace rail. A compact ledger reports notes, sources, resolved wikilinks, and unresolved links before the constellation. The graph is paired with an accessible artifact finder: search by title, filter notes, sources, or updates, then select an artifact to open the original Markdown or text file in Dusori. Search results, backlinks, and actionable health issues open the same exact file paths.
 
 The constellation scales with workspace size and orders topics by their wikilink affinity. The layout remains deterministic and browser-local and writes no coordinates into your workspace, so opening the same folder in Obsidian remains clean.
 
@@ -44,3 +44,7 @@ Zoom, pan, and the sliders are local view settings; they never touch your files.
 ## Portability and privacy
 
 Exporting or connecting the workspace already carries everything needed to rebuild the graph. The graph works offline after the app is loaded and does not require an account, plugin, telemetry endpoint, or AI model.
+
+## Insights from the same files
+
+**Insights** is a separate local projection of the same graph, roadmaps, manifests, and dated updates. It shows a fourteen-day activity pulse, objective completion, artifact mix, link health, topic depth, highly connected artifacts, and source provenance. Dusori does not persist an analytics index, estimate study time, invent a score, or send these signals away.

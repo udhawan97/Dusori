@@ -121,13 +121,15 @@ Dusori turns ordinary files into a private learning loop. Start in browser stora
 | 🔁  | Mark a topic reviewed             | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due |
 | ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first             |
 | 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                  |
-| 🔗  | Add `[[wikilinks]]`               | Backlinks, unresolved-link checks, and a deterministic knowledge constellation                     |
+| 🔗  | Explore the knowledge graph       | Adjustable constellation, artifact finder, link ledger, backlinks, and unresolved-link checks      |
 | 📚  | Save sources                      | Paste, local file, URL reference, provenance, and preview-first acceptance                         |
+| 🛰️  | Create a topic                    | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist |
+| 📈  | Open Insights                     | Local activity, artifact mix, link health, topic depth, hubs, and source provenance                |
 | 🧭  | Import a study guide              | A reviewable roadmap that preserves the original outline in `Sources/`                             |
-| 🧪  | Open the optional companion       | Confirmed readable-page capture and bounded Microsoft Learn search through a loopback-only service |
+| 🧪  | Open the optional companion       | arXiv, configured web search, readable-page capture, and optional AI assistance on loopback only   |
 | 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                          |
 
-Key-based or general web search, Ollama transforms, and unattended work are roadmap items—not current features. Review scheduling exists only for topics you explicitly mark reviewed; Dusori generates no calendar, notification, or background work.
+General web search is optional companion configuration: Brave and Tavily accept user-supplied keys, while SearXNG provides a keyless open-source path. Ollama, Anthropic, or OpenAI can optionally advise ranking and write a clearly marked research brief from sources you approved; deterministic ranking and briefs remain the baseline. Unattended research is not implemented. Review scheduling exists only for topics you explicitly mark reviewed; Dusori generates no calendar, notification, or background work.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori workspace showing the local learning loop" width="820">
@@ -160,10 +162,12 @@ Firefox and Safari use the private browser workspace plus ZIP import/export. Fol
 
 <br>
 
-- Notes, roadmaps, state, search, graph layout, backlinks, and health checks stay in the current local workspace.
+- Notes, roadmaps, state, search, graph layout, backlinks, health checks, and Insights stay in the current local workspace.
 - The hosted app has no account system, telemetry, hosted application backend, or database.
-- Microsoft Learn and English Wikipedia suggestions call their public APIs only when you use research.
+- Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange discovery calls their public APIs only after per-provider consent. A newly created topic begins one research run as soon as at least one provider is allowed.
+- The optional companion can add arXiv and one configured Brave, Tavily, or SearXNG web-search provider. Credentials remain in the companion process.
 - The optional companion fetches a URL only after you confirm its exact host. It rejects non-public destinations, rechecks redirects, and stops with the terminal process.
+- Optional AI receives only the disclosed query and candidate or approved-source metadata. AI ranking is advisory, failures retain deterministic order, and generated briefs name their model.
 - The companion binds only to `127.0.0.1`, creates a fresh session token, and removes that token from the browser address after connection.
 
 </details>

@@ -1,12 +1,12 @@
 # Dusori product specification
 
-**Status:** v0.5.0 local workbench implementation · **Date:** 2026-07-22
+**Status:** v0.5.0 release plus current main · **Date:** 2026-07-27
 
 ## Product contract
 
 Dusori is a free, open-source, local-first learning workspace with a deterministic baseline that works without AI. Users may keep a workspace inside browser-managed storage or, on supported platforms, grant access to one local folder. The same portable Markdown/JSON structure is used in both modes.
 
-The application has no hosted backend, account system, telemetry, analytics, or paid core dependency. Obsidian compatibility means writing ordinary Markdown and wikilinks inside a user-selected `<Vault>/Dusori/` folder; Obsidian itself and plugins are optional.
+The application has no hosted backend, account system, telemetry, hosted analytics, or paid core dependency. Obsidian compatibility means writing ordinary Markdown and wikilinks inside a user-selected `<Vault>/Dusori/` folder; Obsidian itself and plugins are optional.
 
 ## Current milestone
 
@@ -31,6 +31,9 @@ The first milestone must prove:
 17. Whole-archive import validation with rollback if replacement storage fails.
 18. A version-aligned, packed-tarball-tested npm companion command.
 19. Optional, explicit spaced-review scheduling stored in portable topic files.
+20. Automatic, consent-gated research across five keyless browser providers with deterministic multi-provider ranking.
+21. Companion-backed arXiv and configured Brave, Tavily, or SearXNG web search, plus optional consent-gated AI assistance.
+22. Local learning insights derived from roadmap, graph, source, and dated-update files without telemetry or inferred study time.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
@@ -44,19 +47,22 @@ The shipped workspace search scans `.md` and `.txt` files in the current session
 
 The shipped ZIP import path normalizes and validates the entire archive before replacement confirmation, including required workspace/topic schemas, file count, and compressed/expanded size limits. The destination is untouched when preflight fails. If a storage write fails during replacement, Dusori restores the previous snapshot before surfacing the error.
 
-The shipped Research panel starts from a selected roadmap objective and defaults to the next unchecked item. Ranking combines the topic name with the objective text, so the scaffold objectives Dusori writes for a new topic still return on-subject sources. Searching Microsoft Learn downloads its public module catalog and ranks modules locally; an accepted module remains honestly labeled as a catalog reference, not a page snapshot. Wikipedia provides ranked English search plus a plain-text page extract, truncated when necessary to stay inside the 2 MiB source limit. Both providers are keyless and browser-callable.
+The shipped Research workspace starts from a selected roadmap objective and defaults to the next unchecked item. Creating a topic arms one automatic discovery run; granting the first provider consent starts it. Later runs are explicit. Five keyless browser providers ship: Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange.
 
-The first search with each provider is blocked behind an exact egress disclosure naming the provider host and exactly what leaves the device: the topic name and objective text for Wikipedia, and nothing from the workspace for Microsoft Learn, whose public catalog is downloaded and ranked locally. Consent is stored per provider on the device. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed suggestions are kept in the topic's machine-owned `research.json` file.
+Each provider is blocked behind an exact egress disclosure naming its host and what leaves the device. Consent is stored per provider on the device. Every allowed provider is queried in parallel; one timeout or failure yields a visible skip notice without failing the run. Deterministic ranking combines objective relevance, provider-relative community signals, recency, and a bounded host-reputation nudge, then selects a diverse top-five shortlist. Ranking reasons remain visible. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed and previously seen suggestions are kept in the topic's machine-owned `research.json` file.
 
-With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. A URL source can also be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
+With the local companion running, Microsoft Learn search instead proxies Microsoft's own ranked search API, falling back silently to local catalog ranking if that call fails. The companion also unlocks arXiv and one configured general web-search provider: Brave, Tavily, or a keyless open-source SearXNG instance. Search credentials stay in the companion process. A URL source can be upgraded to the page's readable text after a per-fetch confirmation that names the exact host; the companion validates every address—including each redirect hop—against private, reserved, and other non-public ranges, follows at most three re-validated redirects, and caps pages at 4 MiB.
+
+Ollama, Anthropic, or OpenAI may be configured in the companion. AI egress has a separate consent disclosure. AI ranking is advisory: it reorders and annotates the deterministic candidate set but cannot remove candidates, and any failure keeps deterministic order. A research brief is created only after source approval. Deterministic briefs group links and state that pages were not read; AI-written briefs name their model and the approved-source boundary.
+
+The shipped Insights view derives a bounded fourteen-day activity pulse, objective completion, artifact mix, connected-artifact percentage, link health, topic depth, graph hubs, and provider provenance from current local files. It does not persist an analytics index, estimate study time, infer mastery, or invent a score.
 
 ## Explicitly not built yet
 
-- Arbitrary web search providers or API-key integrations
 - PDF or non-text curriculum extraction
-- Ollama or other model operations
-- AI-generated notes or diagrams
+- AI-generated diagrams
 - Chat-to-`TUTOR.md` editing
+- Reddit or YouTube research providers
 - Closed-app or unattended background work
 - Accounts, sync, telemetry, or hosted storage
 

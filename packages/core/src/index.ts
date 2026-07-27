@@ -1,4 +1,5 @@
 export * from './adapters.js';
+export * from './analytics/workspace-insights.js';
 export * from './conflict/write-protocol.js';
 export * from './curriculum/import.js';
 export * from './graph/workspace-graph.js';
