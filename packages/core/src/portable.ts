@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 
 import type { StorageAdapter } from './adapters.js';
 import { SourceManifestSchema, TopicStateSchema, WorkspaceSchema } from './schemas/workspace.js';
-import { normalizeWorkspacePath } from './workspace/paths.js';
+import { normalizeWorkspacePath, topicRoot } from './workspace/paths.js';
 
 const maxWorkspaceFiles = 5_000;
 const maxWorkspaceBytes = 64 * 1024 * 1024;
@@ -115,6 +115,36 @@ export async function exportWorkspace(storage: StorageAdapter): Promise<Uint8Arr
     const snapshot = await storage.read(entry.path);
     if (snapshot) zip.file(entry.path, snapshot.content);
   }
+  return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
+}
+
+/**
+ * One topic as a portable bundle. This is deliberately not a workspace archive: importing a topic
+ * into an existing workspace needs merge rules — what happens to a slug that already exists, how
+ * two `state.json` files reconcile — that do not exist yet. The bundle carries a note saying so,
+ * because a zip full of familiar-looking paths otherwise reads as something Dusori can import.
+ */
+export async function exportTopic(storage: StorageAdapter, slug: string): Promise<Uint8Array> {
+  // topicRoot slugifies, so a traversal attempt resolves to an ordinary topic path or to nothing.
+  const root = topicRoot(slug);
+  const entries = (await storage.list('', true)).filter(
+    (entry) => entry.kind === 'file' && entry.path.startsWith(`${root}/`),
+  );
+  if (entries.length === 0) throw new Error(`That topic has no files to export: ${root}`);
+
+  const zip = new JSZip();
+  for (const entry of entries) {
+    const snapshot = await storage.read(entry.path);
+    if (snapshot) zip.file(entry.path, snapshot.content);
+  }
+  zip.file(
+    'TOPIC-BUNDLE.md',
+    `# Topic bundle: ${root.slice('Topics/'.length)}\n\n` +
+      'This archive holds one Dusori topic. It is **not a complete workspace**, so Dusori cannot ' +
+      'import it the way it imports a workspace archive.\n\n' +
+      'The files are ordinary Markdown and JSON. Copy the `Topics/` folder into another Dusori ' +
+      'workspace, or read them in any editor.\n',
+  );
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 

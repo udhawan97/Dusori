@@ -31,6 +31,7 @@
     createNote,
     createTopic,
     createWorkspace,
+    exportTopic,
     exportWorkspace,
     lineDiff,
     prepareWorkspaceImport,
@@ -545,20 +546,37 @@
     });
   }
 
+  function downloadArchive(archive: Uint8Array, filename: string): void {
+    const bytes = new Uint8Array(archive.byteLength);
+    bytes.set(archive);
+    const blob = new Blob([bytes.buffer], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function downloadWorkspace(): Promise<void> {
     if (!storage) return;
     await perform(async () => {
       const archive = await exportWorkspace(storage!);
-      const bytes = new Uint8Array(archive.byteLength);
-      bytes.set(archive);
-      const blob = new Blob([bytes.buffer], { type: 'application/zip' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `dusori-workspace-${new Date().toISOString().slice(0, 10)}.zip`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      downloadArchive(archive, `dusori-workspace-${new Date().toISOString().slice(0, 10)}.zip`);
       status = 'Workspace exported as a portable ZIP.';
+    });
+  }
+
+  async function downloadTopic(): Promise<void> {
+    if (!storage || !selectedSlug) return;
+    await perform(async () => {
+      const archive = await exportTopic(storage!, selectedSlug);
+      downloadArchive(
+        archive,
+        `dusori-topic-${selectedSlug}-${new Date().toISOString().slice(0, 10)}.zip`,
+      );
+      status =
+        'Topic exported as a portable ZIP. It holds one topic, so it is not a workspace archive Dusori can import.';
     });
   }
 
@@ -1153,11 +1171,21 @@
           <Download aria-hidden="true" size={18} />
           Export workspace
         </button>
+        {#if selectedSlug}
+          <button class="inspector-action" disabled={busy} onclick={downloadTopic}>
+            <Download aria-hidden="true" size={18} />
+            Export this topic
+          </button>
+        {/if}
         <label class="inspector-action file-action">
           <Upload aria-hidden="true" size={18} />
           Import workspace
           <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
         </label>
+        <p class="portability-note">
+          A topic bundle holds one topic's files. It is a portable copy, not a workspace archive
+          Dusori can import.
+        </p>
       </section>
 
       {#if selectedSlug}
@@ -1528,6 +1556,13 @@
 
   .inspector p {
     font-size: var(--text-sm);
+  }
+
+  .portability-note {
+    margin-block-start: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   .inspector-action {
