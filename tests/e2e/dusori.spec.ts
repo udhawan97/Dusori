@@ -655,7 +655,10 @@ test('graph nodes pin where dropped, filter by kind, and color by topic', async 
   await page.getByLabel('Color by').selectOption('topic');
   await expect(page.getByRole('list', { name: 'Topic colors' })).toContainText('ai-fundamentals');
   await expect(
-    graph.getByRole('button', { name: /AI Fundamentals, overview/u }).locator('circle').first(),
+    graph
+      .getByRole('button', { name: /AI Fundamentals, overview/u })
+      .locator('circle')
+      .first(),
   ).toHaveAttribute('fill', /oklch/u);
   await expectNoSeriousA11yViolations(page);
 

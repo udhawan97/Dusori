@@ -310,7 +310,10 @@ export function createGraphRelaxation(
     return [{ kind: edge.kind, sourceIndex, targetIndex }];
   });
 
-  let current: GraphForceParams = { linkDistance: params.linkDistance, repelStrength: params.repelStrength };
+  let current: GraphForceParams = {
+    linkDistance: params.linkDistance,
+    repelStrength: params.repelStrength,
+  };
   let step = 1;
   let ticksRun = 0;
   let settled = false;
