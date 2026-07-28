@@ -9,3 +9,5 @@ Fixed all 10 userflow gaps identified in audit (9 reported + 1 found during impl
 Impl'd 3 of 9 high-confidence features (tags + OpenAlex/npm providers) via test-first v-slices; spec doc committed, 436 tests green.
 ## 11:13 | friendly-wizard-claude/high-confidence-features-7b6ad3
 Completed remaining 7 features (Reddit, export, Insights, health, recalls, PDF, TUTOR) → v0.6.0 shipped (525/49 tests); graphify rebuilt + doc corrections; merged 5 Dependabot PRs.
+## 11:59 | friendly-wizard-claude/graph-view-design-usability-e79a03
+v0.7.0 shipped: graph zoom/pan + sticky-pin drag + kind/topic filters; merged main's complementary artifact-finder, CSS fix, graphify rebuilt, 50e2e/533unit green, pushed.
