@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.6.0 release · **Date:** 2026-07-27
+**Status:** v0.7.0 release · **Date:** 2026-07-28
 
 ## Product contract
 

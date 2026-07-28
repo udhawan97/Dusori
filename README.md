@@ -322,9 +322,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.6.0` release reads tags out of your own Markdown, imports PDFs by extracting their text on your device, and lets you edit each topic's learning preferences behind the same diff-and-accept gate as your notes. It also adds OpenAlex and npm as keyless research providers, Reddit through the companion, single-topic export, and review-queue pressure in Insights.
+The current `v0.7.0` release makes the knowledge graph something you arrange: drag an artifact and it stays where you drop it (arrow keys move a focused one), filter the constellation by artifact kind or hide orphans, and color the dots by kind or by topic. The Artifact finder now searches within what the graph is drawing instead of contradicting it. Every one of those is a browser-local view setting that writes nothing into your workspace.
 
-[Read the v0.6.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.6.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.7.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.7.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

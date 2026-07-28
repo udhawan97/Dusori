@@ -1293,12 +1293,15 @@
 
   .artifact-filters {
     display: flex;
+    /* Wrapping keeps every kind readable in the narrow index column; the previous
+       horizontal scroll clipped the last chip so it read as broken. */
+    flex-wrap: wrap;
     gap: var(--space-2xs);
     margin-block-start: var(--space-xs);
-    overflow-x: auto;
   }
 
   .artifact-filters button {
+    flex: none;
     min-height: 2.25rem;
     padding-inline: var(--space-sm);
     border: var(--rule-hair) solid var(--color-rule);
@@ -1331,7 +1334,9 @@
     list-style: none;
   }
 
-  .artifact-index button {
+  /* Scoped to list rows: this full-width grid is for artifact entries, not for the
+     filter chips that also live inside .artifact-index. */
+  .artifact-index li button {
     display: grid;
     width: 100%;
     min-height: 2.75rem;

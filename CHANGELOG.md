@@ -4,6 +4,18 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-28
+
+### Added
+
+- Nodes can be placed by hand. Dragging a node pins it where it is dropped rather than letting it drift back, and its neighbors resettle around the new position. A focused node moves from the keyboard too — arrow keys nudge it, Shift takes a larger step — so placement never requires a pointer. **Release pins** returns every placed node to the layout.
+- The graph filters on what the workspace already knows instead of a query language: **Show on the graph** chips toggle Notes, Sources, Updates, Documents, and Meta, and **Hide orphans** drops artifacts carrying no wikilinks. The workspace center and topic centers always stay visible, and the panel reports how many artifacts survive the filter.
+- **Color by** switches artifact dots between **Kind** and **Topic**. Topic hues are derived from the topic name and shown in a legend, so the same workspace always draws the same colors. Filters and the color choice persist per browser alongside the force sliders.
+
+### Changed
+
+- The Artifact finder now narrows within what the graph is drawing rather than searching the whole workspace independently, so hiding a kind on the stage also removes it from the list. The graph filter decides what exists on screen; the finder locates something inside it.
+
 ## [0.6.0] - 2026-07-27
 
 ### Changed
@@ -137,7 +149,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/udhawan97/Dusori/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/udhawan97/Dusori/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/udhawan97/Dusori/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/udhawan97/Dusori/compare/v0.3.0...v0.4.0
