@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { StorageConflictError } from '../adapters.js';
 import { addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
@@ -74,6 +75,31 @@ describe('research suggestions', () => {
       { at: '2026-07-20T15:29:00.000Z', key: 'mslearn:concurrent', title: 'Concurrent' },
       { at: now.toISOString(), key: 'wikipedia:42', title: 'Microsoft Entra ID' },
     ]);
+  });
+
+  it('surfaces the retry-exhausted message when the write conflicts on all three attempts', async () => {
+    const storage = await topicStorage();
+    const path = 'Topics/azure-administration/research.json';
+    // Every attempt conflicts, so the loop must exhaust naturally and surface
+    // the user-facing message instead of the raw StorageConflictError.
+    let attempts = 0;
+    vi.spyOn(storage, 'write').mockImplementation(async (writePath, _content, options) => {
+      if (writePath !== path) throw new Error(`unexpected write to ${writePath}`);
+      attempts += 1;
+      throw new StorageConflictError(path, options?.expectedHash ?? null, 'other-hash');
+    });
+
+    await expect(
+      dismissSuggestion(
+        storage,
+        'azure-administration',
+        { key: 'wikipedia:42', title: 'Microsoft Entra ID' },
+        now,
+      ),
+    ).rejects.toThrow(
+      'Research dismissals changed repeatedly. Try dismissing this suggestion again.',
+    );
+    expect(attempts).toBe(3);
   });
 
   it('drops saved URLs and dismissed keys while preserving candidate order', async () => {

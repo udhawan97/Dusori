@@ -108,7 +108,7 @@ export async function writeDismissedResearchSuggestion(
       });
       return next;
     } catch (error) {
-      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+      if (!(error instanceof StorageConflictError)) throw error;
     }
   }
 
