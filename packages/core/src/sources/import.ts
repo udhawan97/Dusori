@@ -184,17 +184,23 @@ export async function addSource(
       await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
         expectedHash: manifestFile.hash,
       });
-      const relativePath = path.slice(`${root}/`.length).replace(/\.md$/u, '');
-      const updatePath = await appendTopicUpdate(
-        storage,
-        input.topicSlug,
-        `- Added ${input.method} source [[../../../${relativePath}|${title}]].`,
-        now,
-      );
-      return { deduplicated: false, path, record, updatePath };
     } catch (error) {
-      if (!(error instanceof StorageConflictError) || attempt === 2) throw error;
+      if (!(error instanceof StorageConflictError)) throw error;
+      continue;
     }
+
+    // The manifest write is definitively committed at this point, so a
+    // log-append conflict below must propagate as its own error rather than
+    // re-entering the loop above (that would re-read the manifest we just
+    // wrote and report the source as deduplicated, hiding the failed append).
+    const relativePath = path.slice(`${root}/`.length).replace(/\.md$/u, '');
+    const updatePath = await appendTopicUpdate(
+      storage,
+      input.topicSlug,
+      `- Added ${input.method} source [[../../../${relativePath}|${title}]].`,
+      now,
+    );
+    return { deduplicated: false, path, record, updatePath };
   }
 
   throw new Error('The source manifest changed repeatedly. Try adding the source again.');

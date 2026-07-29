@@ -1,18 +1,80 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  StorageConflictError,
+  type FileSnapshot,
+  type StorageAdapter,
+  type WriteOptions,
+} from '../adapters.js';
 import { exportWorkspace, importWorkspace } from '../portable.js';
 import { SourceRecordSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
+import { updateLogPath } from '../workspace/paths.js';
 import { addSource, maxSourceBytes, readSourceManifest } from './import.js';
 
 const now = new Date('2026-07-20T15:30:00.000Z');
+const manifestPath = 'Topics/ai-fundamentals/Sources/manifest.json';
 
 async function topicStorage(): Promise<MemoryStorageAdapter> {
   const storage = new MemoryStorageAdapter();
   await createWorkspace(storage, 'Dusori', now);
   await createTopic(storage, 'AI Fundamentals', now);
   return storage;
+}
+
+/**
+ * Wraps a MemoryStorageAdapter so the first `conflictBudget` writes to
+ * `conflictPath` throw StorageConflictError with no other effect, then
+ * delegates normally. appendTopicUpdate retries itself once internally (2
+ * attempts total), so a budget of 2 exhausts ITS retry and makes it throw
+ * out to the caller, same as a persistently contested log file would.
+ * Counts writes to `countedPath` so tests can assert how many times the
+ * manifest was actually written.
+ */
+class ConflictNTimesThenCount implements StorageAdapter {
+  readonly kind = 'memory' as const;
+  private conflictsLeft: number;
+  writeCount = 0;
+
+  constructor(
+    private readonly inner: MemoryStorageAdapter,
+    private readonly conflictPath: string,
+    private readonly countedPath: string,
+    conflictBudget: number,
+  ) {
+    this.conflictsLeft = conflictBudget;
+  }
+
+  ensureDirectory(path: string): Promise<void> {
+    return this.inner.ensureDirectory(path);
+  }
+
+  list(path?: string, recursive?: boolean) {
+    return this.inner.list(path, recursive);
+  }
+
+  move(from: string, to: string): Promise<void> {
+    return this.inner.move(from, to);
+  }
+
+  read(path: string): Promise<FileSnapshot | null> {
+    return this.inner.read(path);
+  }
+
+  remove(path: string, recursive?: boolean): Promise<void> {
+    return this.inner.remove(path, recursive);
+  }
+
+  async write(path: string, content: string, options?: WriteOptions): Promise<FileSnapshot> {
+    if (path === this.countedPath) this.writeCount += 1;
+    if (this.conflictsLeft > 0 && path === this.conflictPath) {
+      this.conflictsLeft -= 1;
+      const current = await this.inner.read(path);
+      throw new StorageConflictError(path, options?.expectedHash ?? null, current?.hash ?? null);
+    }
+    return this.inner.write(path, content, options);
+  }
 }
 
 describe('local source library', () => {
@@ -187,6 +249,56 @@ describe('local source library', () => {
         url: 'https://user:secret@example.com/',
       }),
     ).rejects.toThrow(/username or password/u);
+  });
+
+  it('surfaces the retry-exhausted message when the manifest write conflicts on all three attempts', async () => {
+    const storage = await topicStorage();
+    // Every one of addSource's three attempts conflicts, so the loop must
+    // exhaust naturally and surface the mandated user-facing message instead
+    // of the raw StorageConflictError from the final attempt.
+    const conflicting = new ConflictNTimesThenCount(storage, manifestPath, manifestPath, 3);
+
+    await expect(
+      addSource(
+        conflicting,
+        {
+          content: 'A model maps inputs to outputs.\n',
+          method: 'paste',
+          title: 'Model definition',
+          topicSlug: 'ai-fundamentals',
+        },
+        now,
+      ),
+    ).rejects.toThrow('The source manifest changed repeatedly. Try adding the source again.');
+  });
+
+  it('does not add a second source record when the update-log append exhausts its own retry', async () => {
+    const storage = await topicStorage();
+    const later = new Date('2026-07-21T09:00:00.000Z');
+    const logPath = updateLogPath('ai-fundamentals', later);
+    // appendTopicUpdate has its own 2-attempt retry; conflicting both of its
+    // attempts exhausts that budget so it throws StorageConflictError back out
+    // to addSource. The manifest write, one line above it, already succeeded.
+    const conflicting = new ConflictNTimesThenCount(storage, logPath, manifestPath, 2);
+
+    await expect(
+      addSource(
+        conflicting,
+        {
+          content: 'A model maps inputs to outputs.\n',
+          method: 'paste',
+          title: 'Model definition',
+          topicSlug: 'ai-fundamentals',
+        },
+        later,
+      ),
+    ).rejects.toThrow(StorageConflictError);
+
+    // The manifest must not be rewritten (and the record duplicated) just
+    // because the unrelated log append failed after its own retry.
+    expect(conflicting.writeCount).toBe(1);
+    expect((await readSourceManifest(storage, 'ai-fundamentals', later)).sources).toHaveLength(1);
+    expect(await storage.read(logPath)).toBeNull();
   });
 
   it('keeps source files and metadata through a ZIP round trip', async () => {
