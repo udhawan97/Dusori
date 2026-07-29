@@ -4,6 +4,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-29
+
 ### Fixed
 
 - Reopening Dusori without a network connection works from the view you left. The app writes the open topic and view into its own URL, but the offline lookup ignored the query string and its fallback pointed at a shell that was cached under the server root instead of the app, so any return after real use ended on the browser's error page. The shell is now precached and matched where the app actually lives.
@@ -14,6 +16,9 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - The workspace rail reports connectivity as it changes rather than freezing on whatever was true when the page first painted.
 - A long topic name truncates its own label instead of also crushing its icon to a sliver.
 - The disabled **Scan for strong sources** button now names the permission it is waiting for through an accessible description, and the status toast no longer swallows clicks aimed at the controls beneath it.
+- OpenAlex and npm discovery work from the hosted app. Their providers now declare the remote hosts they use, and the deployed content-security policy allows exactly those hosts.
+- Research run history, result dismissal, and source import now preserve the useful retry-exhausted message when a concurrent workspace edit cannot be reconciled, instead of replacing it with a generic conflict.
+- Publishing a GitHub release now starts the npm companion workflow against that exact tag. The workflow verifies the tag, package, and runtime versions agree, runs the full repository and packed-package gates, and publishes the scoped package with provenance.
 
 ## [0.7.0] - 2026-07-28
 
@@ -160,7 +165,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/udhawan97/Dusori/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/udhawan97/Dusori/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/udhawan97/Dusori/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/udhawan97/Dusori/compare/v0.4.0...v0.5.0

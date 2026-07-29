@@ -322,9 +322,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.7.0` release makes the knowledge graph something you arrange: drag an artifact and it stays where you drop it (arrow keys move a focused one), filter the constellation by artifact kind or hide orphans, and color the dots by kind or by topic. The Artifact finder now searches within what the graph is drawing instead of contradicting it. Every one of those is a browser-local view setting that writes nothing into your workspace.
+The current `v0.7.1` release makes Dusori more dependable on the paths that matter most: reopening the installed app offline, starting a workspace without hunting below the fold, running Research from its first screen, and using the mobile drawer from a keyboard. Hosted OpenAlex and npm discovery now pass the deployed network policy, retry-exhausted workspace conflicts keep their useful explanation, and the version-aligned companion publishes from the verified GitHub release tag.
 
-[Read the v0.7.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.7.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.7.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.7.1) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

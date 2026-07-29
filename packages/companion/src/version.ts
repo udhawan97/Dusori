@@ -1,1 +1,1 @@
-export const companionVersion = '0.6.0';
+export const companionVersion = '0.7.1';
