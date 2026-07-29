@@ -504,9 +504,12 @@
       </ul>
     </div>
 
+    <!-- The note below already said why the button is dead, but nothing tied the two together, so
+       the reason reached neither assistive technology nor anyone who read the button first. -->
     <button
       class="primary run-action"
       disabled={running || enabledProviders.length === 0}
+      aria-describedby={enabledProviders.length === 0 ? 'research-scan-blocked' : undefined}
       onclick={run}
     >
       <Search aria-hidden="true" size={17} />
@@ -514,10 +517,10 @@
     </button>
 
     {#if enabledProviders.length === 0}
-      <p class="quiet-note">
+      <p class="quiet-note" id="research-scan-blocked">
         {autoStart
-          ? 'Choose a provider once. This topic’s research begins as soon as you allow it.'
-          : 'Allow at least one provider above. Each states what it receives.'}
+          ? 'Allow at least one provider to scan. You choose once, and this topic’s research begins.'
+          : 'Allow at least one provider above to scan. Each states what it receives.'}
       </p>
     {/if}
 

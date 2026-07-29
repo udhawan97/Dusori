@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises';
 
 import AxeBuilder from '@axe-core/playwright';
 import { createResearchProviders } from '@dusori/core';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 // The landing page and the docs index both advertise the current release. Pinning the number here
 // made every release edit this file, and it let the two drift apart unnoticed in between. Reading
@@ -167,7 +167,7 @@ async function createTopic(
   await expect(
     page.getByRole('heading', { name: 'Let the strongest evidence find you.' }),
   ).toBeVisible();
-  await expect(page.getByText(/Choose a provider once/u)).toBeVisible();
+  await expect(page.getByText(/Allow at least one provider to scan/u)).toBeVisible();
   if (options.remainInResearch) return;
 
   const workspaceNavigation = page.getByRole('navigation', { name: 'Workspace' });
@@ -1816,6 +1816,27 @@ test('the installed shell reloads and remains usable offline', async ({ page, co
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
 
+// Reloading the bare app URL only ever exercised the one navigation key the shell happens to be
+// cached under. The app writes ?topic= and ?view= itself on every topic and view change, so the
+// URL a returning reader actually reopens carries a query the cache lookup has to tolerate.
+test('the installed shell reopens offline at the view it remembered', async ({ page, context }) => {
+  await createBrowserWorkspace(page);
+  await page.evaluate(async () => navigator.serviceWorker.ready);
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
+    .toBe(true);
+  await createTopic(page, { remainInResearch: true });
+  expect(new URL(page.url()).search).toContain('topic=ai-fundamentals');
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Let the strongest evidence find you.' }),
+  ).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+});
+
 test('manifest and service-worker paths honor the single project base', async ({ request }) => {
   const manifest = await request.get('/Dusori/app/manifest.webmanifest');
   expect(manifest.ok()).toBe(true);
@@ -1838,8 +1859,23 @@ test('mobile workspace drawers are fully keyboard operable', async ({ page }) =>
   await page.getByRole('button', { name: 'Open workspace navigation' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible();
+
+  // Being visible is not the same as being reachable. The drawer covers the canvas, so focus has
+  // to move into it and stay there; otherwise Tab walks through the controls hidden behind it.
+  // Scoped to the drawer: the dismiss backdrop carries the same accessible name.
+  const drawer = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(drawer.getByRole('button', { name: 'Close workspace navigation' })).toBeFocused();
+  for (let press = 0; press < 6; press += 1) {
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(() => Boolean(document.activeElement?.closest('nav.rail'))),
+      'focus left the open drawer',
+    ).toBe(true);
+  }
+
   await page.keyboard.press('Escape');
   await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Open workspace navigation' })).toBeFocused();
 
   await page.getByRole('button', { name: 'Open inspector' }).focus();
   await page.keyboard.press('Enter');
@@ -2355,4 +2391,124 @@ test('the Obsidian guide is modal and restores focus to its opener', async ({ pa
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(opener).toBeFocused();
+});
+
+/**
+ * A control the reader cannot see is a control they do not have. `toBeVisible` passes for anything
+ * rendered below the fold, so these assertions compare the control's own box against the viewport.
+ */
+async function expectWithinFold(page: Page, locator: Locator, what: string): Promise<void> {
+  const box = await locator.boundingBox();
+  const height = page.viewportSize()?.height ?? 0;
+  expect(box, `${what} was not rendered`).not.toBeNull();
+  expect(
+    Math.round(box!.y + box!.height),
+    `${what} ends below the ${height}px fold`,
+  ).toBeLessThanOrEqual(height);
+}
+
+test('the first run offers a workspace without scrolling', async ({ page }) => {
+  for (const [width, height] of [
+    [1440, 900],
+    [1280, 720],
+    [1512, 850],
+    [375, 812],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/Dusori/app/');
+    await expectWithinFold(
+      page,
+      page.getByRole('button', { name: 'Create workspace' }),
+      `Create workspace at ${width}x${height}`,
+    );
+  }
+});
+
+test('the research view the app opens on shows its first control without scrolling', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await expectWithinFold(page, page.getByText('Research objective'), 'the research objective');
+  await expectWithinFold(
+    page,
+    page.getByRole('button', { name: 'Allow Wikipedia' }),
+    'the first provider control',
+  );
+
+  // The creation toast lands over that same region now. It announces; it must not absorb a click.
+  await expect(page.getByText('Topic created.')).toBeVisible();
+  await page.getByRole('button', { name: 'Allow GitHub' }).click();
+  await expect(page.getByRole('dialog', { name: /Allow GitHub/u })).toBeVisible();
+});
+
+test('the topic form starts empty and waits for a name', async ({ page }) => {
+  await createBrowserWorkspace(page);
+
+  const field = page.getByLabel('Topic name');
+  await expect(field).toHaveValue('');
+  await expect(field).toHaveAttribute('placeholder', /\S/u);
+  await expect(page.getByRole('button', { name: 'Create topic' })).toBeDisabled();
+
+  await field.fill('AI Fundamentals');
+  await expect(page.getByRole('button', { name: 'Create topic' })).toBeEnabled();
+});
+
+test('the workspace rail reports connectivity as it changes', async ({ page, context }) => {
+  await createBrowserWorkspace(page);
+  const rail = page.getByRole('navigation', { name: 'Workspace' });
+  await expect(rail).toContainText('Online · local data');
+
+  await context.setOffline(true);
+  await expect(rail).toContainText('Offline · ready');
+
+  await context.setOffline(false);
+  await expect(rail).toContainText('Online · local data');
+});
+
+test('a long topic name truncates its label without crushing its icon', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await page
+    .getByLabel('Topic name')
+    .fill('Byzantine Fault Tolerant Consensus Under Partial Synchrony and Adversarial Scheduling');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Let the strongest evidence find you.' }),
+  ).toBeVisible();
+
+  const icons = await page.evaluate(() =>
+    [...document.querySelectorAll('.rail .topic-list .rail-link')].map((link) => {
+      const label = link.querySelector('.rail-link-label');
+      return {
+        iconWidth: Math.round(link.querySelector('svg')?.getBoundingClientRect().width ?? 0),
+        truncated: label ? label.scrollWidth > label.clientWidth : false,
+      };
+    }),
+  );
+
+  expect(icons.length).toBeGreaterThan(0);
+  expect(icons.some((icon) => icon.truncated)).toBe(true);
+  for (const icon of icons) expect(icon.iconWidth).toBeGreaterThanOrEqual(16);
+});
+
+test('the disabled research scan names the permission it is waiting for', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  const scan = page.getByRole('button', { name: 'Scan for strong sources' });
+  await expect(scan).toBeDisabled();
+  const describedBy = await scan.getAttribute('aria-describedby');
+  expect(describedBy, 'the disabled scan has no accessible description').toBeTruthy();
+  await expect(page.locator(`#${describedBy}`)).toContainText(/allow at least one provider/iu);
+
+  // Allowing a provider goes through its disclosure dialog; the description clears once it lands.
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
+  await page
+    .getByRole('dialog', { name: /Allow Wikipedia/u })
+    .getByRole('button', { name: /^Allow/u })
+    .click();
+  await expect(scan).toBeEnabled();
+  await expect(scan).not.toHaveAttribute('aria-describedby', /./u);
 });

@@ -5,7 +5,21 @@ declare const self: ServiceWorkerGlobalScope & {
 };
 
 const cacheName = 'dusori-shell-v1';
-const precache = self.__WB_MANIFEST.map((entry) => entry.url);
+
+// The app shell, addressed the way this worker will look it up later.
+const shellUrl = new URL('./', self.location.href).href;
+
+// Manifest URLs are relative to the build output, where the shell arrives as "/". Resolved against
+// a worker living at /Dusori/app/ that is the *server* root — on Pages, the marketing site — so the
+// shell was precached under a URL no app navigation ever asks for. Anchor every entry to the scope.
+const precache = [
+  ...new Set([
+    shellUrl,
+    ...self.__WB_MANIFEST.map(
+      (entry) => new URL(entry.url.replace(/^\//u, './'), self.location.href).href,
+    ),
+  ]),
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) => cache.addAll(precache)));
@@ -34,10 +48,17 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          void caches.open(cacheName).then((cache) => cache.put(request, copy));
+          // Every navigation returns the same shell, and the app writes ?topic= and ?view= into the
+          // URL itself. Keying on the request would store one copy per view and leave the reader's
+          // actual URL unmatched, so the shell is stored — and looked up — under one key.
+          void caches.open(cacheName).then((cache) => cache.put(shellUrl, copy));
           return response;
         })
-        .catch(async () => (await caches.match(request)) ?? (await caches.match('./index.html'))!),
+        .catch(
+          async () =>
+            (await caches.match(request, { ignoreSearch: true })) ??
+            (await caches.match(shellUrl))!,
+        ),
     );
     return;
   }

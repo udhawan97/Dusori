@@ -52,7 +52,7 @@
     resolveCompanionOrigin,
     stripCompanionCredentials,
   } from '$lib/companion-origin';
-  import { modal } from '$lib/actions/modal';
+  import { containTab, modal } from '$lib/actions/modal';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -67,7 +67,9 @@
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
   let storageLabel = '';
-  let topicTitle = 'AI Fundamentals';
+  // An example belongs in the placeholder. Seeding the value here meant a first Enter created a
+  // topic — and a folder — named after the example instead of what the reader came to learn.
+  let topicTitle = '';
   let selectedSlug = '';
   let notePath = '';
   let noteContent = '';
@@ -82,6 +84,10 @@
   let status = '';
   let inspectorOpen = false;
   let mobileNavOpen = false;
+  let online = true;
+  let railElement: HTMLElement | null = null;
+  let railCloseButton: HTMLButtonElement | null = null;
+  let mobileMenuButton: HTMLButtonElement | null = null;
   let companionStatus = 'Not connected';
   let companionClient: CompanionResearchClient | null = null;
   let companionAiClient: CompanionAiClient | null = null;
@@ -117,14 +123,38 @@
     desktop.addEventListener('change', syncInspector);
     const restoreView = () => void applyLocationView();
     window.addEventListener('popstate', restoreView);
+    // navigator.onLine read straight from the template is a plain property, so nothing invalidates
+    // it; the rail kept reporting whatever was true at first paint. Mirror it into state instead.
+    const syncOnline = () => (online = navigator.onLine);
+    syncOnline();
+    window.addEventListener('online', syncOnline);
+    window.addEventListener('offline', syncOnline);
     void restoreWorkspace();
     void registerServiceWorker();
     void connectCompanionFromUrl();
     return () => {
       desktop.removeEventListener('change', syncInspector);
       window.removeEventListener('popstate', restoreView);
+      window.removeEventListener('online', syncOnline);
+      window.removeEventListener('offline', syncOnline);
     };
   });
+
+  /**
+   * The drawer covers the canvas but is not a dialog, so the browser gives it none of a modal's
+   * focus behaviour. Opening moves focus into it, dismissing hands focus back to the control that
+   * opened it, and `containTab` keeps Tab from wandering into the canvas underneath.
+   */
+  async function openMobileNav(): Promise<void> {
+    mobileNavOpen = true;
+    await tick();
+    railCloseButton?.focus();
+  }
+
+  function dismissMobileNav(): void {
+    mobileNavOpen = false;
+    mobileMenuButton?.focus();
+  }
 
   /** Reflects the open view in the URL so reload, Back and Forward all land where the user was. */
   function syncLocation(replace = false): void {
@@ -638,9 +668,13 @@
   onkeydown={(event) => {
     if (event.key === 'Escape') {
       obsidianGuideOpen = false;
-      mobileNavOpen = false;
+      if (mobileNavOpen) dismissMobileNav();
       if (window.innerWidth < 960) inspectorOpen = false;
     }
+    // The drawer covers the canvas without being a dialog, so nothing stops Tab reaching what is
+    // behind it. Held at the window: a listener on the <nav> would be an interaction handler on a
+    // non-interactive element.
+    if (mobileNavOpen && railElement) containTab(railElement, event);
   }}
 />
 
@@ -785,7 +819,13 @@
     class:mobile-nav-open={mobileNavOpen}
     class="workbench"
   >
-    <nav class:open={mobileNavOpen} class="rail" id="workspace-navigation" aria-label="Workspace">
+    <nav
+      bind:this={railElement}
+      class:open={mobileNavOpen}
+      class="rail"
+      id="workspace-navigation"
+      aria-label="Workspace"
+    >
       <div class="rail-brand">
         <span class="brand-symbol" aria-hidden="true">
           <img
@@ -805,9 +845,10 @@
         </span>
         <span>Dusori</span>
         <button
+          bind:this={railCloseButton}
           class="rail-close"
           aria-label="Close workspace navigation"
-          onclick={() => (mobileNavOpen = false)}
+          onclick={dismissMobileNav}
         >
           <X aria-hidden="true" size={20} />
         </button>
@@ -888,7 +929,7 @@
       </div>
       <div class="rail-meta">
         <span>{storageLabel}</span>
-        <span>{navigator.onLine ? 'Online · local data' : 'Offline · ready'}</span>
+        <span>{online ? 'Online · local data' : 'Offline · ready'}</span>
       </div>
     </nav>
 
@@ -896,18 +937,19 @@
       <button
         class="rail-backdrop"
         aria-label="Close workspace navigation"
-        onclick={() => (mobileNavOpen = false)}
+        onclick={dismissMobileNav}
       ></button>
     {/if}
 
     <section class="canvas" id="note">
       <header class="canvas-bar">
         <button
+          bind:this={mobileMenuButton}
           class="mobile-menu"
           aria-label="Open workspace navigation"
           aria-controls="workspace-navigation"
           aria-expanded={mobileNavOpen}
-          onclick={() => (mobileNavOpen = true)}
+          onclick={openMobileNav}
         >
           <Menu aria-hidden="true" size={20} />
         </button>
@@ -1038,6 +1080,7 @@
                 bind:value={topicTitle}
                 required
                 maxlength="160"
+                placeholder="AI Fundamentals"
                 aria-describedby="topic-help"
               />
               <button class="primary-button" disabled={busy || !topicTitle.trim()}>
@@ -1322,11 +1365,14 @@
     cursor: pointer;
   }
 
+  /* The hero reserved most of the first screen, which pushed both workspace choices — the only way
+   * to start — below the fold at every size we support. It keeps its display type; it no longer
+   * keeps the whole viewport. */
   .setup-intro {
     display: grid;
     align-content: end;
-    min-height: min(58dvh, 38rem);
-    padding-block: var(--space-3xl) var(--space-xl);
+    min-height: min(38dvh, 22rem);
+    padding-block: var(--space-2xl) var(--space-xl);
   }
 
   .setup-intro h1,
@@ -1645,6 +1691,12 @@
     background: var(--color-paper);
   }
 
+  /* Flex children shrink by default, so a long topic name took its overflow out of the icon as
+   * well as the label and squashed an 18px mark to a sliver. Only the label may give ground. */
+  .rail-link > :global(svg) {
+    flex: none;
+  }
+
   /* A topic name can run to 160 characters; truncate in place instead of spilling over the
    * canvas. The full name stays in the button's title and in the graph artifact index. */
   .rail-link-label {
@@ -1902,6 +1954,9 @@
     border: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper-2);
     font-size: var(--text-sm);
+    /* An announcement with nothing to click. Now that the research controls sit inside the first
+     * screen, an opaque toast over them would swallow a provider consent click for its lifetime. */
+    pointer-events: none;
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -1944,6 +1999,42 @@
   }
 
   @media (min-width: 60rem) {
+    /* Desktop has the width the hero was spending on empty space to its right. Setting the two
+     * workspace choices beside it puts the primary action in the first screen without touching
+     * the type scale. */
+    .setup-shell {
+      display: grid;
+      align-content: start;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      column-gap: var(--space-3xl);
+    }
+
+    .setup-shell > :global(*) {
+      grid-column: 1 / -1;
+    }
+
+    .setup-intro {
+      min-height: 0;
+      grid-column: 1;
+      padding-block-end: var(--space-2xl);
+    }
+
+    .setup-options {
+      grid-row: 2;
+      grid-column: 2;
+      align-self: center;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .setup-options article {
+      padding-inline: 0;
+    }
+
+    .setup-options article + article {
+      border-block-start: var(--rule-hair) solid var(--color-rule);
+      border-inline-start: 0;
+    }
+
     .workbench {
       grid-template-columns: 15rem minmax(0, 1fr) 20rem;
     }

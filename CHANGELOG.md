@@ -4,6 +4,17 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Fixed
+
+- Reopening Dusori without a network connection works from the view you left. The app writes the open topic and view into its own URL, but the offline lookup ignored the query string and its fallback pointed at a shell that was cached under the server root instead of the app, so any return after real use ended on the browser's error page. The shell is now precached and matched where the app actually lives.
+- The first run offers a workspace without scrolling. The setup hero reserved most of the opening screen, which left both workspace choices — the only way to begin — below the fold at every supported size. On desktop the choices now sit beside the hero, which keeps its display type.
+- Research, the view a new topic opens on, shows its objective and provider controls in the first screen instead of a full-height headline followed by a screen of scrolling.
+- Naming a topic starts from an empty field. The form arrived pre-filled with the example "AI Fundamentals" as a real value, so a first Enter created a topic and folder named after the example.
+- The mobile navigation drawer takes keyboard focus when it opens, keeps Tab inside itself while it covers the canvas, and returns focus to the menu button when dismissed.
+- The workspace rail reports connectivity as it changes rather than freezing on whatever was true when the page first painted.
+- A long topic name truncates its own label instead of also crushing its icon to a sliver.
+- The disabled **Scan for strong sources** button now names the permission it is waiting for through an accessible description, and the status toast no longer swallows clicks aimed at the controls beneath it.
+
 ## [0.7.0] - 2026-07-28
 
 ### Added

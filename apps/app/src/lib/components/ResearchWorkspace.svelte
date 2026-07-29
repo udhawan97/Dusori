@@ -106,12 +106,15 @@
     padding: var(--space-xl) var(--page-gutter) var(--space-3xl);
   }
 
+  /* This is the view the app opens on straight after a topic is created. A marquee-scale hero left
+   * the first control a full screen below the fold, so it reads as a workbench header now: same
+   * words, same face, one step down the scale. */
   .research-hero {
     position: relative;
     display: grid;
-    min-height: 19rem;
+    min-height: 10rem;
     align-items: end;
-    padding: clamp(1.5rem, 4vw, 3.5rem);
+    padding: clamp(1.25rem, 2.4vw, 2rem);
     border: var(--rule-hair) solid var(--color-rule);
     overflow: hidden;
     background:
@@ -130,12 +133,12 @@
 
   .research-hero::after {
     position: absolute;
-    width: 34rem;
-    height: 34rem;
+    width: 26rem;
+    height: 26rem;
     border: var(--rule-hair) solid color-mix(in srgb, var(--research-blue) 28%, transparent);
     border-radius: 50%;
     content: '';
-    inset: -19rem -10rem auto auto;
+    inset: -15rem -8rem auto auto;
     box-shadow:
       0 0 0 5rem color-mix(in srgb, var(--research-blue) 4%, transparent),
       0 0 0 10rem color-mix(in srgb, var(--research-blue) 2%, transparent);
@@ -165,16 +168,16 @@
   }
 
   h1 {
-    max-width: 13ch;
-    margin-block-start: var(--space-md);
-    font-size: clamp(2.6rem, 6vw, 5.8rem);
-    letter-spacing: -0.035em;
-    line-height: 0.98;
+    max-width: 24ch;
+    margin-block-start: var(--space-xs);
+    font-size: clamp(1.9rem, 2.6vw, 3rem);
+    letter-spacing: -0.025em;
+    line-height: 1.04;
   }
 
   .hero-copy {
     max-width: 56ch;
-    margin-block-start: var(--space-lg);
+    margin-block-start: var(--space-sm);
     color: var(--color-muted);
     font-size: var(--text-md);
   }
