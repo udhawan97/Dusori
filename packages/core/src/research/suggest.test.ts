@@ -364,4 +364,21 @@ describe('research run memory', () => {
       new Set(['mslearn:concurrent', 'wikipedia:42']),
     );
   });
+
+  it('surfaces the retry-exhausted message when the write conflicts on all three attempts', async () => {
+    const storage = await topicStorage();
+    // Every attempt conflicts, so the loop must exhaust naturally and surface
+    // the user-facing message instead of the raw StorageConflictError.
+    let attempts = 0;
+    vi.spyOn(storage, 'write').mockImplementation(async (writePath, _content, options) => {
+      if (writePath !== path) throw new Error(`unexpected write to ${writePath}`);
+      attempts += 1;
+      throw new StorageConflictError(path, options?.expectedHash ?? null, 'other-hash');
+    });
+
+    await expect(
+      recordResearchRun(storage, 'azure-administration', [{ key: 'wikipedia:42' }], later),
+    ).rejects.toThrow('Research run history changed repeatedly. Try running research again.');
+    expect(attempts).toBe(3);
+  });
 });
