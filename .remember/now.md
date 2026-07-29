@@ -1,15 +1,5 @@
 
-## 12:43 | main
-Fixed 10 Dusori UX gaps (topics, research, graph legibility, drafts) in improve-userflow-design audit; commit 73ae97f on main—CI blocked by pre-existing `.remember/*` lint.
-## 12:57 | friendly-wizard-claude/high-confidence-features-7b6ad3
-Planned 10 slices for v0.6.0: tags, OpenAlex/npm/Open Library providers (CORS-verified), export, insights, health, recall, PDF, TUTOR; ADR-007 design approved, impl starts.
-## 13:11 | main
-Fixed all 10 userflow gaps identified in audit (9 reported + 1 found during implementation), pushed 73ae97f to main; CI blocked by pre-existing .remember format issue.
-## 13:13 | friendly-wizard-claude/high-confidence-features-7b6ad3
-Impl'd 3 of 9 high-confidence features (tags + OpenAlex/npm providers) via test-first v-slices; spec doc committed, 436 tests green.
-## 11:13 | friendly-wizard-claude/high-confidence-features-7b6ad3
-Completed remaining 7 features (Reddit, export, Insights, health, recalls, PDF, TUTOR) → v0.6.0 shipped (525/49 tests); graphify rebuilt + doc corrections; merged 5 Dependabot PRs.
-## 11:59 | friendly-wizard-claude/graph-view-design-usability-e79a03
-v0.7.0 shipped: graph zoom/pan + sticky-pin drag + kind/topic filters; merged main's complementary artifact-finder, CSS fix, graphify rebuilt, 50e2e/533unit green, pushed.
-## 01:15 | fix/version-agnostic-e2e
-v0.6.0 shipped: 10 vertical slices (tags, research providers, export, insights, health, recalls, PDF, TUTOR); 525unit/49e2e; graphify caught 7 doc errors; fixed 5 Dependabot PRs; made landing e2e version-agnostic for future releases.
+## 01:39 | main
+Fixed 10 Dusori flow gaps (73ae97f): topic creation, research relevance, draft preservation, graph legibility, inspector persistence, overflow/truncation, URL state, conflicts, label collisions; 91 tests pass; pushed to main, CI red on pre-existing .remember files.
+## 02:00 | dusori-research-storage-fix
+Fixed StorageConflictError dead-code in research-file.ts:writeDismissedResearchSuggestion (removed attempt===2 from retry catch); added test suggest.test.ts; pushed (73ceb73). Found same bug in recordResearchRun + sources/import.ts; user asked to fix both.
