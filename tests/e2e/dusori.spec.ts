@@ -286,18 +286,18 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     'href',
     '/Dusori/docs/',
   );
-  await expect(page.getByText('v0.5.0 · available now', { exact: true })).toBeVisible();
+  await expect(page.getByText('v0.7.0 · available now', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /release notes/iu })).toHaveAttribute(
     'href',
-    'https://github.com/udhawan97/Dusori/releases/tag/v0.5.0',
+    'https://github.com/udhawan97/Dusori/releases/tag/v0.7.0',
   );
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/docs/');
   await expect(page.getByRole('heading', { name: 'Dusori documentation' })).toBeVisible();
   await expect(
-    page.getByRole('link', { name: /v0\.5\.0 release notes/iu }).first(),
-  ).toHaveAttribute('href', './releases/v0-5-0/');
+    page.getByRole('link', { name: /v0\.7\.0 release notes/iu }).first(),
+  ).toHaveAttribute('href', './releases/v0-7-0/');
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/app/');
@@ -613,6 +613,61 @@ test('insights derives an honest local analytics snapshot', async ({ page }) => 
   await expectNoSeriousA11yViolations(page);
 });
 
+test('graph nodes pin where dropped, filter by kind, and color by topic', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Graph' }).click();
+  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
+  await expect(graph).toBeVisible();
+  await page.getByRole('button', { name: 'View controls' }).click();
+  // Scoped: the artifact finder beside the stage has its own same-named kind buttons.
+  const showOnGraph = page.getByRole('group', { name: 'Show on the graph' });
+
+  // A keyboard nudge is the accessible equivalent of dragging, and it pins too.
+  const releasePins = page.getByRole('button', { name: 'Release pins' });
+  await expect(releasePins).toBeDisabled();
+  const note = graph.getByRole('button', { name: /First look/u });
+  const noteCircle = note.locator('circle').first();
+  const beforeX = await noteCircle.getAttribute('cx');
+  await note.focus();
+  for (let press = 0; press < 4; press += 1) {
+    await page.keyboard.press('Shift+ArrowRight');
+  }
+  await expect(noteCircle).not.toHaveAttribute('cx', beforeX ?? '');
+  await expect(releasePins).toBeEnabled();
+  // The nudged node keeps its seat instead of drifting back like Obsidian's.
+  const pinnedX = await noteCircle.getAttribute('cx');
+  await page.waitForTimeout(400);
+  await expect(noteCircle).toHaveAttribute('cx', pinnedX ?? '');
+  await releasePins.click();
+  await expect(releasePins).toBeDisabled();
+
+  const documents = page.getByRole('list', { name: 'Graph documents' });
+  const beforeCount = await documents.getByRole('button').count();
+  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
+  expect(await documents.getByRole('button').count()).toBeLessThan(beforeCount);
+  await expect(graph.getByRole('button', { name: /First look/u })).toHaveCount(0);
+  // Structure survives every filter so the constellation never empties out.
+  await expect(graph.getByRole('button', { name: /AI Fundamentals, overview/u })).toBeVisible();
+  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
+  expect(await documents.getByRole('button').count()).toBe(beforeCount);
+
+  await page.getByLabel('Color by').selectOption('topic');
+  await expect(page.getByRole('list', { name: 'Topic colors' })).toContainText('ai-fundamentals');
+  await expect(
+    graph
+      .getByRole('button', { name: /AI Fundamentals, overview/u })
+      .locator('circle')
+      .first(),
+  ).toHaveAttribute('fill', /oklch/u);
+  await expectNoSeriousA11yViolations(page);
+
+  await page.reload();
+  await page.getByRole('button', { name: 'View controls' }).click();
+  await expect(page.getByLabel('Color by')).toHaveValue('topic');
+});
+
 test('a workspace can grow past its first topic', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -740,6 +795,151 @@ test('searches local workspace prose and opens the matching document', async ({ 
     'Attention lets each token weigh the other tokens in its context.',
   );
   await expect(page.locator('.path-label')).toContainText('/Sources/items/');
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('filters workspace search by a tag written in the source itself', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+  await page.getByLabel('Source title').fill('Tagged attention notes');
+  await page
+    .getByLabel('Source text')
+    .fill('Attention weighs tokens against each other. Filed under #attention today.');
+  await page.getByRole('button', { name: 'Add source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Tagged attention notes',
+  );
+  await openInspector(page);
+
+  await page.getByLabel('Words to find').fill('tag:attention');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+
+  const results = page.getByRole('list', { name: 'Workspace search results' });
+  await expect(results).toContainText('Tagged attention notes');
+  await expect(results).toContainText('#attention');
+
+  // A tag nothing carries returns nothing rather than falling back to a text match.
+  await page.getByLabel('Words to find').fill('tag:absent');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+  await expect(page.getByText('No local documents contain every search word.')).toBeVisible();
+  await expectNoSeriousA11yViolations(page);
+});
+
+/** Reads one workspace file straight from OPFS, to prove what was and was not written. */
+async function readWorkspaceFile(page: Page, path: string): Promise<string> {
+  return page.evaluate(async (target) => {
+    const origin = await navigator.storage.getDirectory();
+    let directory = await origin.getDirectoryHandle('Dusori');
+    const segments = target.split('/');
+    const name = segments.pop() as string;
+    for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
+    return (await (await directory.getFileHandle(name)).getFile()).text();
+  }, path);
+}
+
+/**
+ * A real, minimal PDF, so the import path is exercised end to end. Passing no text produces a
+ * structurally valid page with an empty content stream — what a scan looks like to a reader.
+ */
+function samplePdf(text: string): Buffer {
+  const stream = text ? `BT /F1 12 Tf 20 120 Td (${text}) Tj ET` : '';
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
+    `<</Length ${stream.length}>>\nstream\n${stream}\nendstream`,
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objects.forEach((body, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
+test('imports a PDF by reading its text on this device', async ({ page }) => {
+  const sentence = 'Positional encoding restores order before the first attention block.';
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+
+  await page.getByLabel('Source type').selectOption('file');
+  await page.getByLabel('Source title').fill('Encoding handout');
+  await page.getByRole('button', { name: 'Choose a local file' }).setInputFiles({
+    buffer: samplePdf(sentence),
+    mimeType: 'application/pdf',
+    name: 'encoding-handout.pdf',
+  });
+  await page.getByRole('button', { name: 'Add source' }).click();
+
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Encoding handout');
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Local file');
+
+  // The extracted text is an ordinary local source, searchable like any other.
+  await openInspector(page);
+  await page.getByLabel('Words to find').fill('positional encoding restores');
+  await page.getByRole('button', { name: 'Search local workspace' }).click();
+  await expect(page.getByRole('list', { name: 'Workspace search results' })).toContainText(
+    'Encoding handout',
+  );
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('a PDF with no text layer says so instead of saving an empty source', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openResearch(page);
+
+  await page.getByLabel('Source type').selectOption('file');
+  await page.getByLabel('Source title').fill('Scanned pages');
+  await page.getByRole('button', { name: 'Choose a local file' }).setInputFiles({
+    buffer: samplePdf(''),
+    mimeType: 'application/pdf',
+    name: 'scanned-pages.pdf',
+  });
+  await page.getByRole('button', { name: 'Add source' }).click();
+
+  await expect(page.getByRole('alert')).toContainText('no extractable text');
+  await expect(page.getByRole('alert')).toContainText('ships no OCR');
+  // Nothing was written, so the topic still has no source list at all.
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toHaveCount(0);
+});
+
+test('editing learning preferences shows a diff and writes only on acceptance', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openInspector(page);
+
+  const tutor = page.getByRole('region', { name: 'Learning preferences' });
+  await expect(tutor).toContainText('Topics/ai-fundamentals/TUTOR.md');
+  await expect(tutor).toContainText('Prefer concrete examples before abstractions.');
+
+  await tutor
+    .getByLabel('New learning preference')
+    .fill('Always name the source before the claim.');
+  await tutor.getByRole('button', { name: 'Add' }).click();
+
+  // Nothing is written until the diff is accepted.
+  await expect(tutor).toContainText('Proposed change');
+  await expect(tutor).toContainText('+ - Always name the source before the claim.');
+  const beforeAccept = await readWorkspaceFile(page, 'Topics/ai-fundamentals/TUTOR.md');
+  expect(beforeAccept).not.toContain('Always name the source before the claim.');
+
+  await tutor.getByRole('button', { name: 'Accept and save' }).click();
+  await expect(tutor).toContainText('Learning preferences saved');
+
+  const afterAccept = await readWorkspaceFile(page, 'Topics/ai-fundamentals/TUTOR.md');
+  expect(afterAccept).toContain('Always name the source before the claim.');
+  expect(afterAccept).toContain('Prefer concrete examples before abstractions.');
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -1287,9 +1487,10 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   });
   await start.click();
 
-  // One source with two headed sections: explain, one prompt per section, then compare.
+  // One source with two headed sections: explain, a cloze, one prompt per section, then compare.
+  // No locate prompt, because a single source leaves nothing to tell apart.
   const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
-  await expect(session).toContainText('Prompt 1 of 4');
+  await expect(session).toContainText('Prompt 1 of 5');
   await expect(session).toContainText('in your own words before revealing the source');
   await expect(session).toContainText('Deterministic prompt');
   // The excerpt stays hidden until the learner has tried to answer.
@@ -1304,12 +1505,14 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   await expectNoSeriousA11yViolations(page);
 
   await session.getByRole('button', { name: 'Next' }).click();
-  await expect(session).toContainText('Prompt 2 of 4');
+  await expect(session).toContainText('Prompt 2 of 5');
+  await expect(session).toContainText('Fill the blank');
+  await session.getByRole('button', { name: 'Next' }).click();
   await expect(session).toContainText('contribute to');
   for (let step = 0; step < 2; step += 1) {
     await session.getByRole('button', { name: 'Next' }).click();
   }
-  await expect(session).toContainText('Prompt 4 of 4');
+  await expect(session).toContainText('Prompt 5 of 5');
   await expect(session.getByRole('button', { name: 'Next' })).toBeDisabled();
   await expect(session).toContainText('Only this choice changes your review schedule.');
 
@@ -1473,10 +1676,10 @@ test('a review session stays usable at supported narrow widths', async ({ browse
     await session.getByRole('button', { name: 'Reveal the source' }).click();
     await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
     // The last prompt carries the widest footer: rating pair, trust line, and the way out.
-    for (let step = 0; step < 3; step += 1) {
+    for (let step = 0; step < 4; step += 1) {
       await session.getByRole('button', { name: 'Next' }).click();
     }
-    await expect(session).toContainText('Prompt 4 of 4');
+    await expect(session).toContainText('Prompt 5 of 5');
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -1930,6 +2133,124 @@ test.describe('companion flows', () => {
     await expect(fetchButton).toBeFocused();
   });
 
+  test('a captioned video becomes a readable source without the browser calling Google', async ({
+    page,
+  }) => {
+    const googleRequests: string[] = [];
+    page.on('request', (request) => {
+      const host = new URL(request.url()).host;
+      if (/youtube\.com|ytimg\.com|googlevideo\.com|google\.com/u.test(host)) {
+        googleRequests.push(request.url());
+      }
+    });
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.route('**/api/research/youtube?**', async (route) => {
+      await route.fulfill({
+        json: {
+          results: [
+            {
+              author: 'Computerphile',
+              id: 'dQw4w9WgXcQ',
+              lengthSeconds: 934,
+              publishedAt: '2023-11-14',
+              summary: 'A walk through attention.',
+              title: 'How attention works',
+              url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              viewCount: 1_200_000,
+            },
+          ],
+        },
+      });
+    });
+    await page.route('**/api/research/youtube-transcript**', async (route) => {
+      await route.fulfill({
+        json: {
+          label: 'English (auto-generated)',
+          text: `Attention lets each token weigh every other token in its context window.\n${overflowingLines}`,
+        },
+      });
+    });
+    await page.route('**/api/research/youtube-thumbnail**', async (route) => {
+      await route.fulfill({
+        body: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+          'base64',
+        ),
+        contentType: 'image/png',
+      });
+    });
+
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await page.goto('/Dusori/app/?token=e2e-companion-token');
+    await expect(page.getByText('Connected for this session')).toBeVisible();
+    await openResearch(page);
+
+    await page.getByRole('button', { name: 'Allow YouTube' }).click();
+    const disclosure = page.getByRole('dialog', { name: 'Allow YouTube search?' });
+    await expect(disclosure).toContainText('Invidious instance you configured');
+    await expect(disclosure).toContainText('never contacts YouTube or Google');
+    await disclosure.getByRole('button', { name: 'Allow search' }).click();
+    await page.getByRole('button', { name: 'Scan for strong sources' }).click();
+
+    const result = page
+      .getByRole('list', { name: 'Research shortlist' })
+      .getByRole('listitem')
+      .filter({ hasText: 'How attention works' });
+    await expect(result).toContainText('Video');
+    await expect(result).toContainText('Computerphile · 1.2M views · 15:34');
+    // Visibility alone would also pass on a broken image showing its alt text.
+    const thumbnail = result.getByRole('img', { name: 'Thumbnail for How attention works' });
+    await expect(thumbnail).toBeVisible();
+    expect(
+      await thumbnail.evaluate((image) => ({
+        decoded: (image as HTMLImageElement).naturalWidth > 0,
+        fromBlob: (image as HTMLImageElement).src.startsWith('blob:'),
+      })),
+    ).toEqual({ decoded: true, fromBlob: true });
+
+    await result.getByRole('button', { name: 'Preview' }).click();
+    const preview = page.getByRole('dialog', { name: 'Preview research source' });
+    await expect(preview).toContainText('Attention lets each token weigh every other token');
+    await expect(preview).toContainText('often machine-generated');
+    await preview.getByRole('button', { name: 'Add to sources' }).click();
+    await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+      'How attention works',
+    );
+
+    const captured = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dusori = await root.getDirectoryHandle('Dusori');
+      const sources = await (
+        await (await dusori.getDirectoryHandle('Topics')).getDirectoryHandle('ai-fundamentals')
+      ).getDirectoryHandle('Sources');
+      const manifest = JSON.parse(
+        await (await sources.getFileHandle('manifest.json')).getFile().then((file) => file.text()),
+      ) as { sources: { origin?: { capturedVia: string; provider: string }; path?: string }[] };
+      const record = manifest.sources.at(-1);
+      const items = await sources.getDirectoryHandle('items');
+      let text = '';
+      for await (const [name, handle] of items.entries()) {
+        if (record?.path?.endsWith(name)) {
+          text = await (await (handle as FileSystemFileHandle).getFile()).text();
+        }
+      }
+      return { origin: record?.origin, text };
+    });
+    expect(captured.origin).toMatchObject({
+      capturedVia: 'youtube-transcript',
+      provider: 'youtube',
+    });
+    expect(captured.text).toContain('## Transcript');
+    expect(captured.text).toContain('Attention lets each token weigh every other token');
+    expect(captured.text).toContain('Original URL: <https://www.youtube.com/watch?v=dQw4w9WgXcQ>');
+    // The whole point of proxying: no Google-owned host is ever contacted by the browser.
+    expect(googleRequests).toEqual([]);
+    await expectNoSeriousA11yViolations(page);
+  });
+
   test('sharper review prompts need their own consent and fall back to the templates', async ({
     page,
   }) => {
@@ -1944,8 +2265,10 @@ test.describe('companion flows', () => {
       promptRequests.push(route.request().postData() ?? '');
       await route.fulfill({
         json: {
+          // One per deterministic prompt: a reply with any other count is rejected on purpose.
           prompts: [
             'Say what attention does before you look.',
+            'Which word completes the sentence you were shown?',
             'Why do weights matter here?',
             'What breaks without positional encoding?',
             'What did your answer leave out?',

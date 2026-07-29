@@ -21,9 +21,18 @@ const kindHeadings: Record<ResearchCandidateKind, string> = {
   paper: 'Papers',
   qa: 'Questions and answers',
   repo: 'Repositories',
+  video: 'Videos',
 };
 
-const kindOrder: ResearchCandidateKind[] = ['docs', 'course', 'paper', 'article', 'repo', 'qa'];
+const kindOrder: ResearchCandidateKind[] = [
+  'docs',
+  'course',
+  'video',
+  'paper',
+  'article',
+  'repo',
+  'qa',
+];
 
 export function briefNoteTitle(query: ResearchQuery, now: Date): string {
   const objective = query.objectiveTitle || query.topicTitle;

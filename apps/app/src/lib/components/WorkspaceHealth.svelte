@@ -11,18 +11,24 @@
 
   import {
     backlinksFor,
+    createMissingLinkTarget,
     inspectWorkspaceHealth,
+    isCreatableLinkTarget,
     type StorageAdapter,
     type WorkspaceHealth,
+    type WorkspaceHealthIssue,
   } from '@dusori/core';
 
   export let storage: StorageAdapter;
   export let currentPath = '';
   export let onOpen: (path: string) => void;
+  export let onArtifactsChanged: (() => void) | undefined = undefined;
 
   let health: WorkspaceHealth | null = null;
   let loading = true;
   let error = '';
+  let creating = '';
+  let created = '';
 
   async function refresh(): Promise<void> {
     loading = true;
@@ -38,6 +44,30 @@
 
   function canOpen(path: string): boolean {
     return health?.graph.nodes.some((node) => node.path === path) ?? false;
+  }
+
+  function issueKey(issue: WorkspaceHealthIssue): string {
+    return `${issue.kind}:${issue.path}:${issue.target ?? ''}`;
+  }
+
+  /**
+   * Creating a page a wikilink already names is the one repair that stays inside the storage
+   * rules, because it only ever adds a file that does not exist yet.
+   */
+  async function createTarget(issue: WorkspaceHealthIssue): Promise<void> {
+    creating = issueKey(issue);
+    error = '';
+    created = '';
+    try {
+      const note = await createMissingLinkTarget(storage, issue);
+      created = `Created ${note.path} and logged it in the topic's update file.`;
+      await refresh();
+      onArtifactsChanged?.();
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'That page could not be created.';
+    } finally {
+      creating = '';
+    }
   }
 
   onMount(() => void refresh());
@@ -81,9 +111,16 @@
       {/if}
     </div>
 
+    {#if created}
+      <p class="state created" aria-live="polite">
+        <CheckCircle2 aria-hidden="true" size={18} />
+        {created}
+      </p>
+    {/if}
+
     {#if health.issues.length > 0}
       <ul class="issue-list" aria-label="Workspace health issues">
-        {#each health.issues as issue (`${issue.kind}:${issue.path}:${issue.target ?? ''}`)}
+        {#each health.issues as issue (issueKey(issue))}
           <li>
             {#if canOpen(issue.path)}
               <button type="button" onclick={() => onOpen(issue.path)}>
@@ -96,9 +133,25 @@
                 <span><strong>{issue.message}</strong><small>{issue.path}</small></span>
               </div>
             {/if}
+            {#if isCreatableLinkTarget(issue)}
+              <button
+                type="button"
+                class="create-target"
+                disabled={creating === issueKey(issue)}
+                onclick={() => createTarget(issue)}
+              >
+                {creating === issueKey(issue)
+                  ? 'Creating…'
+                  : `Create “${issue.target}” in this topic`}
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
+      <p class="repair-note">
+        Creating a missing page only ever adds a new file. Dusori never rewrites Markdown you
+        already wrote.
+      </p>
     {/if}
 
     <div class="backlinks">
@@ -189,6 +242,33 @@
     color: var(--color-success);
     font-size: var(--text-sm);
     line-height: 1.45;
+  }
+
+  .create-target {
+    width: 100%;
+    min-height: 2.25rem;
+    margin-block-start: var(--space-2xs, 0.25rem);
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: start;
+  }
+
+  .create-target:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .repair-note {
+    margin-block-start: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   .summary.attention,

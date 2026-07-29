@@ -1,5 +1,6 @@
 import type { StorageAdapter } from '../adapters.js';
 import { SourceManifestSchema } from '../schemas/workspace.js';
+import { extractTags, matchesTag, parseTagQuery } from '../tags/tags.js';
 
 export type WorkspaceSearchResultKind =
   'note' | 'roadmap' | 'source' | 'update' | 'workspace' | 'document';
@@ -9,6 +10,7 @@ export interface WorkspaceSearchResult {
   matchCount: number;
   path: string;
   snippet: string;
+  tags?: string[];
   title: string;
   topicSlug?: string;
 }
@@ -56,14 +58,15 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
-function snippetFor(content: string, firstTerm: string): string {
+function snippetFor(content: string, firstTerm: string | undefined): string {
   const searchable = content
     .replace(/^---\s*\n[\s\S]*?\n---\s*/u, '')
     .replace(/\s+/gu, ' ')
     .trim();
-  const matchAt = normalized(searchable).indexOf(firstTerm);
+  // A tag-only query has no term to centre on, so the opening prose stands in as the preview.
+  const matchAt = firstTerm ? normalized(searchable).indexOf(firstTerm) : 0;
   const start = Math.max(0, matchAt - 56);
-  const end = Math.min(searchable.length, matchAt + firstTerm.length + 112);
+  const end = Math.min(searchable.length, matchAt + (firstTerm?.length ?? 0) + 112);
   return `${start > 0 ? '…' : ''}${searchable.slice(start, end).trim()}${end < searchable.length ? '…' : ''}`;
 }
 
@@ -79,8 +82,9 @@ export async function searchWorkspace(
   query: string,
   options: WorkspaceSearchOptions = {},
 ): Promise<WorkspaceSearchResult[]> {
-  const terms = [...new Set(normalized(query).split(/\s+/u).filter(Boolean))];
-  if (terms.length === 0) return [];
+  const { tags: wantedTags, text } = parseTagQuery(query);
+  const terms = [...new Set(normalized(text).split(/\s+/u).filter(Boolean))];
+  if (terms.length === 0 && wantedTags.length === 0) return [];
   const limit = Math.max(1, options.limit ?? 20);
   const entries = await storage.list('', true);
   const results: Array<WorkspaceSearchResult & { titleMatches: number }> = [];
@@ -108,12 +112,15 @@ export async function searchWorkspace(
     if (!snapshot) continue;
     const searchable = normalized(snapshot.content);
     if (!terms.every((term) => searchable.includes(term))) continue;
+    const tags = extractTags(snapshot.content);
+    if (!wantedTags.every((wanted) => matchesTag(tags, wanted))) continue;
     const title = sourceTitles.get(entry.path) ?? titleFor(entry.path, snapshot.content);
     results.push({
       kind: kindFor(entry.path),
       matchCount: terms.reduce((sum, term) => sum + countOccurrences(searchable, term), 0),
       path: entry.path,
-      snippet: snippetFor(snapshot.content, terms[0]!),
+      snippet: snippetFor(snapshot.content, terms[0]),
+      ...(tags.length ? { tags } : {}),
       title,
       titleMatches: terms.filter((term) => normalized(title).includes(term)).length,
       ...(topicSlugFor(entry.path) ? { topicSlug: topicSlugFor(entry.path) } : {}),
@@ -128,11 +135,12 @@ export async function searchWorkspace(
         left.path.localeCompare(right.path),
     )
     .slice(0, limit)
-    .map(({ kind, matchCount, path, snippet, title, topicSlug }) => ({
+    .map(({ kind, matchCount, path, snippet, tags, title, topicSlug }) => ({
       kind,
       matchCount,
       path,
       snippet,
+      ...(tags?.length ? { tags } : {}),
       title,
       ...(topicSlug ? { topicSlug } : {}),
     }));

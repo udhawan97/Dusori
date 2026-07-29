@@ -67,3 +67,59 @@ describe('searchWorkspace', () => {
     await expect(searchWorkspace(storage, 'shared', { limit: 1 })).resolves.toHaveLength(1);
   });
 });
+
+describe('searchWorkspace tag filtering', () => {
+  async function taggedWorkspace(): Promise<MemoryStorageAdapter> {
+    const storage = new MemoryStorageAdapter();
+    await storage.write(
+      'Topics/cloud/Notes/vnet.md',
+      `---\ntitle: Virtual networks\ntags: [azure, networking]\n---\n\nSubnets carve an address space.`,
+    );
+    await storage.write(
+      'Topics/cloud/Notes/identity.md',
+      `---\ntitle: Identity\n---\n\nManaged identity removes secrets. #azure`,
+    );
+    await storage.write(
+      'Topics/cloud/Notes/linux.md',
+      `---\ntitle: Linux\n---\n\nSubnets appear here too, untagged.`,
+    );
+    return storage;
+  }
+
+  it('returns only documents carrying the tag when the query is a bare tag operator', async () => {
+    const results = await searchWorkspace(await taggedWorkspace(), 'tag:azure');
+
+    expect(results.map((result) => result.path)).toEqual([
+      'Topics/cloud/Notes/identity.md',
+      'Topics/cloud/Notes/vnet.md',
+    ]);
+  });
+
+  it('matches a tag case insensitively', async () => {
+    const results = await searchWorkspace(await taggedWorkspace(), 'tag:AZURE');
+
+    expect(results).toHaveLength(2);
+  });
+
+  it('requires both the tag and every free text term', async () => {
+    const results = await searchWorkspace(await taggedWorkspace(), 'tag:azure subnets');
+
+    expect(results.map((result) => result.path)).toEqual(['Topics/cloud/Notes/vnet.md']);
+  });
+
+  it('requires every tag when several are given', async () => {
+    const results = await searchWorkspace(await taggedWorkspace(), 'tag:azure tag:networking');
+
+    expect(results.map((result) => result.path)).toEqual(['Topics/cloud/Notes/vnet.md']);
+  });
+
+  it('reports the tags it found on each result', async () => {
+    const [first] = await searchWorkspace(await taggedWorkspace(), 'tag:networking');
+
+    expect(first?.tags).toEqual(['azure', 'networking']);
+  });
+
+  it('returns nothing for a tag no document carries', async () => {
+    await expect(searchWorkspace(await taggedWorkspace(), 'tag:absent')).resolves.toEqual([]);
+  });
+});

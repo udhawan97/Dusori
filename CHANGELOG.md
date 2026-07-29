@@ -4,6 +4,20 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-28
+
+### Added
+
+- Nodes can be placed by hand. Dragging a node pins it where it is dropped rather than letting it drift back, and its neighbors resettle around the new position. A focused node moves from the keyboard too — arrow keys nudge it, Shift takes a larger step — so placement never requires a pointer. **Release pins** returns every placed node to the layout.
+- The graph filters on what the workspace already knows instead of a query language: **Show on the graph** chips toggle Notes, Sources, Updates, Documents, and Meta, and **Hide orphans** drops artifacts carrying no wikilinks. The workspace center and topic centers always stay visible, and the panel reports how many artifacts survive the filter.
+- **Color by** switches artifact dots between **Kind** and **Topic**. Topic hues are derived from the topic name and shown in a legend, so the same workspace always draws the same colors. Filters and the color choice persist per browser alongside the force sliders.
+
+### Changed
+
+- The Artifact finder now narrows within what the graph is drawing rather than searching the whole workspace independently, so hiding a kind on the stage also removes it from the list. The graph filter decides what exists on screen; the finder locates something inside it.
+
+## [0.6.0] - 2026-07-27
+
 ### Changed
 
 - The knowledge graph is now explorable and adjustable, Obsidian-style: zoom toward the cursor (wheel or pinch, plus keyboard-operable buttons and a slider), drag to pan, and tune **Link length** and **Spacing** with sliders that persist per browser. The constellation seed is relaxed by a deterministic force pass, so linked notes pull together while everything keeps a readable distance; labels fade in as you zoom, hovering highlights a node's neighborhood, artifact dots grow with their wikilink degree, and reduced-motion users get an instant settled layout.
@@ -14,10 +28,25 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 - **Start review** on the **Review next** queue opens a source-grounded session: three to five deterministic active-recall prompts built from the topic's current roadmap objective and the sources you already approved for it. Each prompt names its source title, section, and workspace path, and holds a bounded excerpt back until you ask to see it. Only sources whose readable text is on this device are used; a URL stored as a reference is named with the two manual ways to give it text, and Dusori still never fetches a page on its own. Each prompt has an answer box; what you type stays in the session until you choose **Save answers as a note**, which writes one ordinary Markdown note holding your answers verbatim with each prompt quoted, labelled by generator, and pointing at its source file. Leaving with unsaved answers asks once. Sessions are otherwise ephemeral — opening, walking, revealing, and abandoning write nothing — and only the final explicit "Got it" or "Needs work" reaches the existing schedule. No score, streak, or mastery claim is produced.
 - With the companion running and an AI provider configured, **Allow sharper prompts** can reword those questions. It asks for its own consent, separate from AI ranking, because it sends the objective and up to four short source excerpts and nothing else. The model can change wording only: prompt count, order, evidence, and the review actions are fixed, generated wording names the model that wrote it, and a refusal, a malformed answer, or a twenty-second timeout keeps the deterministic prompts with a visible note.
+- A **YouTube** research provider, through an Invidious instance you configure in the companion (`INVIDIOUS_URL`). Results are ordered by view count, and approving a video downloads its captions so it becomes an ordinary readable source that search, the graph, briefs, and review prompts can all use; a video without captions is stored as an honest reference instead. Dusori ships no default instance, and your browser never contacts YouTube, Google, or `ytimg.com` — even the thumbnail is proxied by the companion and rendered from local bytes, so the app's content-security policy gains no new remote origin.
 - Curriculum import now recognizes AWS Certification exam guides: paste the content outline copied from an official AWS exam guide PDF and Dusori extracts the weighted `Domain N:` sections and `Task Statement N.N:` items, merging the duplicated summary table and rejoining lines the PDF wraps mid-sentence. When no format matches, the error now names every supported outline instead of a generic hint.
 - A deterministic research agent queries every consented provider concurrently, survives partial failures, ranks candidates from explainable public signals, and preserves a diverse top-five shortlist. Keyless browser providers now include Hacker News, GitHub, and Stack Exchange alongside Microsoft Learn and Wikipedia.
 - The local companion adds arXiv and configurable Brave, Tavily, or SearXNG general web search. Optional Ollama, Anthropic, or OpenAI assistance can advise ranking and write a model-named brief from approved sources; deterministic behavior remains the fallback.
 - Local Insights derives a fourteen-day activity pulse, objective progress, artifact mix, link health, topic depth, connected hubs, and source provenance without telemetry, inferred study time, or a proprietary score.
+- **Tags**, read from the Markdown you already write: a `tags:` list in frontmatter or an inline `#tag` in the body, exactly as Obsidian understands them, so a vault edited outside Dusori keeps the same tags. Search gains a `tag:name` filter and shows the tags it found; the graph carries tags onto each node and filters by them; Insights counts your tag vocabulary. Nothing is indexed or stored — tags are read from the files each time, and a Markdown heading, an issue number like `#123`, a URL fragment, and anything inside code are never mistaken for one.
+- Two more keyless research providers your browser can reach on its own: **OpenAlex** for scholarly work and the **npm registry** for packages. Both reach real readable text rather than a bare link — OpenAlex abstracts are rebuilt locally from the inverted index publishers license, and an npm capture saves the published readme. Each has its own egress disclosure naming its exact host.
+- A **Reddit** research provider through the companion. Reddit no longer answers anonymous clients, so this needs a free Reddit app of your own: set `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET` before launching the companion. The credential never leaves the companion process, an unconfigured companion simply skips the provider, and posts marked over 18 are left out. A self post is captured as its own text; a link post is captured as an honest reference.
+- **Export this topic** writes one topic's files as a portable ZIP. It is a copy to keep or read elsewhere, not a workspace archive Dusori can import back, and both the button and a note inside the archive say so.
+- Insights now reports **what the review queue is holding**: how many topics are overdue, how many are due today, how many carry a schedule at all, and a bounded histogram of what falls due over the coming days. Derived on read like everything else there — no stored index, no estimated study time, no mastery claim.
+- Workspace health can now **create the page an unresolved wikilink already names**, at the exact name the link uses, so the link resolves afterwards. This only ever adds a file that does not exist yet; Markdown you already wrote is never rewritten without your explicit acceptance. The new file records which document linked to it, and the action is appended to the topic's dated update log.
+- Two more review prompt kinds. A **cloze** hides the longest word of a source's own opening sentence — nothing is invented, and the excerpt still shows the answer when you ask. A **locate** prompt asks which of your sources covers a section, and appears once a topic has a second source to tell apart. Sessions still run three to five prompts, open with explain and close with compare, and name a source title, section, and workspace path on every prompt.
+- **PDF sources.** Choose a `.pdf` and Dusori reads its text on your device; the file never leaves it. The extracted text becomes an ordinary local source, hashed and logged like any other, and is searchable, linkable, and usable in review prompts. A scanned PDF with no text layer says exactly that instead of saving an empty source — Dusori ships no OCR. The PDF reader is fetched only the first time you import one, so the offline app shell does not grow for sessions that never use it.
+- A **learning preferences editor** for each topic's `TUTOR.md`: set the depth, then add, remove, or reorder preferences. Dusori shows a diff and writes only when you accept it, through the same protocol `roadmap.md` uses, so an edit made outside Dusori becomes a sibling proposal instead of being overwritten. Only the depth line and the bullet list are rewritten — any prose, extra frontmatter, or heading you added stays as you wrote it.
+- With the companion, a configured AI provider, and its own separate consent, a model can propose those preferences instead. It sends the topic title, the current preferences, and the change you type — no note, source, or other file. Its reply is re-read and re-rendered onto your file, so it can change the depth and the bullets and nothing else, an unusable reply changes nothing, and the proposal still reaches you as a diff naming the model.
+
+### Fixed
+
+- The preview server had no MIME type for `.mjs`, so a bundled worker was served as `application/octet-stream` and browsers refused to run it. PDF import could not have worked from a local build before this.
 
 ### Accessibility
 
@@ -120,7 +149,9 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/udhawan97/Dusori/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/udhawan97/Dusori/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/udhawan97/Dusori/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/udhawan97/Dusori/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/udhawan97/Dusori/compare/v0.2.0...v0.3.0

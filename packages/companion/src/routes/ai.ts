@@ -7,6 +7,7 @@ import {
   rerankWithAi,
   writeBriefWithAi,
   writeRecallPromptsWithAi,
+  writeTutorPreferencesWithAi,
   type AiEnv,
 } from '../ai.js';
 
@@ -55,6 +56,14 @@ const RecallPromptsBody = z.object({
     .min(1)
     .max(8),
   objective: z.string().min(1).max(400),
+});
+
+// The preferences page and the learner's own request, and nothing else from the workspace.
+const TutorBody = z.object({
+  depth: z.string().min(1).max(40),
+  preferences: z.array(z.string().min(1).max(200)).max(12),
+  request: z.string().min(1).max(600),
+  topicTitle: z.string().min(1).max(200),
 });
 
 export interface AiRoutesOptions {
@@ -106,6 +115,21 @@ export async function aiRoutes(server: FastifyInstance, options: AiRoutesOptions
       return {
         prompts: await writeRecallPromptsWithAi(body.data.objective, body.data.excerpts, options),
       };
+    } catch (error) {
+      const failure = failureReply(error);
+      return reply.code(failure.code).send(failure.body);
+    }
+  });
+
+  server.post('/api/ai/tutor', async (request, reply) => {
+    const body = TutorBody.safeParse(request.body);
+    if (!body.success) {
+      return reply
+        .code(400)
+        .send({ error: 'A topic, current preferences, and a request are required.' });
+    }
+    try {
+      return await writeTutorPreferencesWithAi(body.data, options);
     } catch (error) {
       const failure = failureReply(error);
       return reply.code(failure.code).send(failure.body);

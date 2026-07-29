@@ -115,20 +115,22 @@ Use `npm run setup` to install and build without launching. After pulling new so
 
 Dusori turns ordinary files into a private learning loop. Start in browser storage or connect one folder, then take the whole workspace elsewhere as a ZIP whenever you want.
 
-|     | You do this                       | Dusori gives you                                                                                     |
-| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 🗺️  | Check roadmap objectives          | A deterministic next-review order, progress, topic state, and seven-day recap                        |
-| 🔁  | Mark a topic reviewed             | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due   |
-| 🧠  | Start a review                    | Active-recall prompts from that topic's own sources, an answer box, and your answers saved as a note |
-| ✍️  | Create or edit Markdown notes     | Portable notes with explicit proposals when another editor changed the same file first               |
-| 🔎  | Search your workspace             | Case- and accent-insensitive local search with no hidden index or network request                    |
-| 🔗  | Explore the knowledge graph       | Adjustable constellation, artifact finder, link ledger, backlinks, and unresolved-link checks        |
-| 📚  | Save sources                      | Paste, local file, URL reference, provenance, and preview-first acceptance                           |
-| 🛰️  | Create a topic                    | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist   |
-| 📈  | Open Insights                     | Local activity, artifact mix, link health, topic depth, hubs, and source provenance                  |
-| 🧭  | Import a study guide              | A reviewable roadmap that preserves the original outline in `Sources/`                               |
-| 🧪  | Open the optional companion       | arXiv, configured web search, readable-page capture, and optional AI assistance on loopback only     |
-| 📦  | Export or replace a workspace ZIP | Validation before confirmation plus rollback if a replacement write fails                            |
+|     | You do this                        | Dusori gives you                                                                                           |
+| --- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 🗺️  | Check roadmap objectives           | A deterministic next-review order, progress, topic state, and seven-day recap                              |
+| 🔁  | Mark a topic reviewed              | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due         |
+| 🧠  | Start a review                     | Active-recall prompts from that topic's own sources, an answer box, and your answers saved as a note       |
+| ✍️  | Create or edit Markdown notes      | Portable notes with explicit proposals when another editor changed the same file first                     |
+| 🔎  | Search your workspace              | Case- and accent-insensitive local search, plus a `tag:` filter, with no hidden index or network request   |
+| 🏷️  | Write `#tags` or `tags:` in a file | Tags read straight from your Markdown, filtering search and the graph and counted in Insights              |
+| 🔗  | Explore the knowledge graph        | Adjustable constellation, artifact finder, link ledger, backlinks, and unresolved-link checks              |
+| 📚  | Save sources                       | Paste, local Markdown, text, or PDF, URL reference, provenance, and preview-first acceptance               |
+| 🛰️  | Create a topic                     | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist         |
+| 🎚️  | Set learning preferences           | Structured edits to a topic's `TUTOR.md`, shown as a diff and written only when you accept it              |
+| 📈  | Open Insights                      | Local activity, artifact mix, link health, topic depth, hubs, provenance, tags, and review-queue pressure  |
+| 🧭  | Import a study guide               | A reviewable roadmap that preserves the original outline in `Sources/`                                     |
+| 🧪  | Open the optional companion        | arXiv, web search, Reddit, YouTube via your own Invidious instance, page capture, and AI, on loopback only |
+| 📦  | Export or replace a workspace ZIP  | Validation before confirmation plus rollback if a replacement write fails, or export a single topic        |
 
 General web search is optional companion configuration: Brave and Tavily accept user-supplied keys, while SearXNG provides a keyless open-source path. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly marked research brief from sources you approved, and reword review prompts under a separate consent; deterministic ranking, briefs, and prompts remain the baseline. Unattended research is not implemented. Review scheduling exists only for topics you explicitly mark reviewed; Dusori generates no calendar, notification, or background work. A review session stores nothing and never claims mastery — only your explicit "Got it" or "Needs work" moves a schedule.
 
@@ -165,8 +167,9 @@ Firefox and Safari use the private browser workspace plus ZIP import/export. Fol
 
 - Notes, roadmaps, state, search, graph layout, backlinks, health checks, and Insights stay in the current local workspace.
 - The hosted app has no account system, telemetry, hosted application backend, or database.
-- Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange discovery calls their public APIs only after per-provider consent. A newly created topic begins one research run as soon as at least one provider is allowed.
-- The optional companion can add arXiv and one configured Brave, Tavily, or SearXNG web-search provider. Credentials remain in the companion process.
+- Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and npm registry discovery call their public APIs only after per-provider consent. A newly created topic begins one research run as soon as at least one provider is allowed.
+- The optional companion can add arXiv, Reddit, and one configured Brave, Tavily, or SearXNG web-search provider. Credentials remain in the companion process; Reddit needs a Reddit application of your own, and is skipped without one.
+- PDFs are read on your device by a reader fetched only on first use. The file is never uploaded, and a scan with no text layer is reported rather than stored empty.
 - The optional companion fetches a URL only after you confirm its exact host. It rejects non-public destinations, rechecks redirects, and stops with the terminal process.
 - Optional AI receives only the disclosed query and candidate or approved-source metadata. AI ranking is advisory, failures retain deterministic order, and generated briefs name their model.
 - The companion binds only to `127.0.0.1`, creates a fresh session token, and removes that token from the browser address after connection.
@@ -319,9 +322,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.5.0` release adds optional spaced review to the **Review next** queue — mark a topic "Got it" or "Needs work" and it rests until its next due date, on a fixed 1, 3, 7, 14, 30, 60 day ladder — plus a cross-platform `npm start` path for running Dusori from a clone.
+The current `v0.7.0` release makes the knowledge graph something you arrange: drag an artifact and it stays where you drop it (arrow keys move a focused one), filter the constellation by artifact kind or hide orphans, and color the dots by kind or by topic. The Artifact finder now searches within what the graph is drawing instead of contradicting it. Every one of those is a browser-local view setting that writes nothing into your workspace.
 
-[Read the v0.5.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.5.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.7.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.7.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

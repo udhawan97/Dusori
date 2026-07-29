@@ -41,18 +41,30 @@ function memoryStorage(initial: Record<string, string> = {}): {
   };
 }
 
+const DEFAULT_SETTINGS = {
+  colorMode: 'kind',
+  hiddenKinds: [],
+  hideOrphans: false,
+  linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
+  repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
+} as const;
+
 describe('graph view settings', () => {
   it('returns defaults when nothing is stored', () => {
-    expect(readGraphViewSettings(memoryStorage())).toEqual({
-      linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
-      repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
-    });
+    expect(readGraphViewSettings(memoryStorage())).toEqual(DEFAULT_SETTINGS);
   });
 
   it('round-trips written settings', () => {
     const storage = memoryStorage();
-    writeGraphViewSettings(storage, { linkDistance: 200, repelStrength: 0.85 });
-    expect(readGraphViewSettings(storage)).toEqual({ linkDistance: 200, repelStrength: 0.85 });
+    const written = {
+      colorMode: 'topic',
+      hiddenKinds: ['update', 'source'],
+      hideOrphans: true,
+      linkDistance: 200,
+      repelStrength: 0.85,
+    } as const;
+    writeGraphViewSettings(storage, { ...written, hiddenKinds: [...written.hiddenKinds] });
+    expect(readGraphViewSettings(storage)).toEqual(written);
   });
 
   it('clamps hostile stored values to the slider ranges', () => {
@@ -60,18 +72,30 @@ describe('graph view settings', () => {
       [GRAPH_VIEW_STORAGE_KEY]: JSON.stringify({ linkDistance: 9999, repelStrength: -3 }),
     });
     expect(readGraphViewSettings(storage)).toEqual({
+      ...DEFAULT_SETTINGS,
       linkDistance: GRAPH_VIEW_LIMITS.linkDistance.max,
       repelStrength: GRAPH_VIEW_LIMITS.repelStrength.min,
+    });
+  });
+
+  it('sanitizes hostile filter and color fields', () => {
+    const storage = memoryStorage({
+      [GRAPH_VIEW_STORAGE_KEY]: JSON.stringify({
+        colorMode: 'neon',
+        hiddenKinds: ['bogus', 'note', 'note', 42],
+        hideOrphans: 'yes',
+      }),
+    });
+    expect(readGraphViewSettings(storage)).toEqual({
+      ...DEFAULT_SETTINGS,
+      hiddenKinds: ['note'],
     });
   });
 
   it('falls back per-field on garbage payloads', () => {
     for (const payload of ['not json', '42', '"str"', JSON.stringify({ linkDistance: 'wide' })]) {
       const storage = memoryStorage({ [GRAPH_VIEW_STORAGE_KEY]: payload });
-      expect(readGraphViewSettings(storage)).toEqual({
-        linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
-        repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,
-      });
+      expect(readGraphViewSettings(storage)).toEqual(DEFAULT_SETTINGS);
     }
   });
 });
@@ -301,6 +325,49 @@ describe('graph relaxation', () => {
       // settle again
     }
     expect(sim.tick()).toBe(true);
+  });
+
+  it('pins a dragged node exactly where it was moved, and neighbors follow', () => {
+    const graph = linkedFixture();
+    const seed = layoutWorkspaceGraph(graph);
+    const sim = createGraphRelaxation(seed.nodes, graph.edges, params, wikilinkDegrees(graph));
+    sim.settle();
+    const neighborId = 'Topics/beta/Notes/0.md';
+    const neighborBefore = sim.nodes.find((entry) => entry.id === neighborId)!;
+    const beforeX = neighborBefore.x;
+    const beforeY = neighborBefore.y;
+
+    expect(sim.hasUserPins()).toBe(false);
+    sim.moveNode('Topics/alpha/Notes/0.md', 900, 900);
+    expect(sim.hasUserPins()).toBe(true);
+    expect(sim.tick()).toBe(false);
+    sim.settle();
+
+    const dragged = sim.nodes.find((entry) => entry.id === 'Topics/alpha/Notes/0.md')!;
+    expect(dragged.x).toBe(900);
+    expect(dragged.y).toBe(900);
+    const neighborAfter = sim.nodes.find((entry) => entry.id === neighborId)!;
+    expect(Math.hypot(neighborAfter.x - beforeX, neighborAfter.y - beforeY)).toBeGreaterThan(1);
+  });
+
+  it('releases every user pin but keeps home anchored', () => {
+    const graph = linkedFixture();
+    const seed = layoutWorkspaceGraph(graph);
+    const home = seed.nodes.find((entry) => entry.kind === 'home')!;
+    const sim = createGraphRelaxation(seed.nodes, graph.edges, params, wikilinkDegrees(graph));
+    sim.settle();
+    sim.moveNode('Topics/alpha/Notes/1.md', 700, -300);
+    sim.settle();
+
+    sim.releasePins();
+    expect(sim.hasUserPins()).toBe(false);
+    expect(sim.tick()).toBe(false);
+    sim.settle();
+    const released = sim.nodes.find((entry) => entry.id === 'Topics/alpha/Notes/1.md')!;
+    expect(Math.hypot(released.x - 700, released.y - -300)).toBeGreaterThan(1);
+    const settledHome = sim.nodes.find((entry) => entry.kind === 'home')!;
+    expect(settledHome.x).toBeCloseTo(home.x, 5);
+    expect(settledHome.y).toBeCloseTo(home.y, 5);
   });
 
   it('separates exactly coincident nodes deterministically', () => {

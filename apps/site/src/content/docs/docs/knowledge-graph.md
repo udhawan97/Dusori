@@ -39,7 +39,17 @@ Notes touched by many wikilinks are hubs, marked with a marigold ring. Select a 
 
 Zoom with the mouse wheel or a trackpad pinch, drag the background to pan, and open **View controls** on the stage for the same actions as buttons and sliders: zoom in and out, **Link length**, **Spacing**, and **Fit view**. Labels appear progressively as you zoom in, and hovering a node highlights its direct connections.
 
-Zoom, pan, and the sliders are local view settings; they never touch your files. The slider positions persist in this browser only, and the settled layout stays deterministic for the same workspace and settings.
+## Arrange, filter, and color
+
+Drag a node to place it. It stays where you drop it instead of drifting back, and its neighbors settle around the new position. A focused node also moves from the keyboard: arrow keys nudge it, and Shift with an arrow key takes a larger step. **Release pins** hands every placed node back to the layout.
+
+**Show on the graph** filters the constellation by artifact kind — Notes, Sources, Updates, Documents, and Meta for roadmaps and learning preferences — and **Hide orphans** removes artifacts with no wikilinks. The workspace center and topic centers always stay visible so the constellation keeps its shape, and the panel counts what survives the filter.
+
+**Color by** switches the dots between **Kind**, the default, and **Topic**, which gives each topic its own hue with a legend beside the control. Topic hues are derived from the topic name, so the same workspace always draws the same colors.
+
+The **Artifact finder** beside the stage searches and narrows within whatever the graph is currently drawing, so hiding a kind on the stage also removes it from the list. The two work in layers: the graph filter decides what exists on screen, the finder helps you locate something inside it.
+
+Zoom, pan, sliders, filters, and the color choice are local view settings; they never touch your files. They persist in this browser only — placed nodes last for the session — and the settled layout stays deterministic for the same workspace and settings.
 
 ## Portability and privacy
 

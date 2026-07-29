@@ -8,7 +8,8 @@ Each topic has a local source library. Open **Research**, use the **Approved evi
 ## Supported source types
 
 - **Pasted text:** stored as a readable `.txt` file.
-- **Local text file:** `.md`, `.markdown`, and `.txt` files up to 2 MiB. Markdown stays Markdown; line endings are normalized for portability.
+- **Local file:** `.md`, `.markdown`, `.txt`, and `.pdf` files up to 2 MiB. Markdown stays Markdown; line endings are normalized for portability.
+- **PDF:** read on your device — the file is never uploaded, and the reader is fetched only the first time you import one. The extracted text becomes an ordinary local source. A scanned PDF has no text layer to read, and Dusori says so instead of saving an empty source; there is no OCR.
 - **URL reference:** stores the complete `http://` or `https://` address in a small Markdown reference file. Dusori does not fetch or copy the page.
 - **Accepted research:** stores a previewed result from an allowed research provider only after explicit acceptance.
 
@@ -18,7 +19,7 @@ URLs containing embedded usernames or passwords are rejected. Opening a saved UR
 
 Creating a topic opens the first-class **Research** workspace and prepares one automatic discovery run for the next unchecked objective. Research begins as soon as at least one provider is allowed. Later runs use **Scan for strong sources**. Each provider is blocked on first use until you accept its host-specific disclosure; consent is stored on this device.
 
-Without the companion, Dusori can query five keyless public providers: Microsoft Learn, English Wikipedia, Hacker News, GitHub, and Stack Exchange. Allowed providers are searched together. A failed or slow provider is reported as skipped without discarding useful results from the others. Candidates are deterministically ranked from objective relevance, provider-relative community signals, recency, and a small transparent host-reputation nudge. Dusori selects a diverse top-five shortlist and displays the reasons behind each result.
+Without the companion, Dusori can query seven keyless public providers: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry. Allowed providers are searched together. A failed or slow provider is reported as skipped without discarding useful results from the others. Candidates are deterministically ranked from objective relevance, provider-relative community signals, recency, and a small transparent host-reputation nudge. Dusori selects a diverse top-five shortlist and displays the reasons behind each result.
 
 Results remain suggestions until you choose **Add to sources**. Microsoft Learn captures are labeled as catalog references, not page snapshots. Wikipedia extracts stay below the same 2 MiB source cap and end with `[truncated]` when the full extract would exceed it. Other browser providers preserve the public reference and provider metadata. **Dismiss** records the result key locally so it stays out of later searches.
 
@@ -34,6 +35,21 @@ The companion also adds arXiv and can expose one general web-search provider con
 - `BRAVE_API_KEY` for Brave Search
 - `TAVILY_API_KEY` for Tavily
 - `RESEARCH_WEB_SEARCH=brave|tavily|searxng` when more than one is configured
+
+## Reddit through your own Reddit app
+
+Reddit no longer answers anonymous clients, so this provider needs a free application of your own. Create a "script" app at [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps), then set both values before launching the companion:
+
+- `REDDIT_CLIENT_ID`
+- `REDDIT_CLIENT_SECRET`
+
+The credential stays in the companion process and never enters the browser. Without both values the companion reports that Reddit is not configured and the run skips it, exactly as it does for a provider that times out. Posts marked over 18 are left out. A self post is captured as its own text; a link post is captured as a reference that says it has no text of its own.
+
+## YouTube through an Invidious instance
+
+Set `INVIDIOUS_URL` to an [Invidious](https://invidious.io/) instance — self-hosted for a fully private path, or any instance you trust — and the companion adds a **YouTube** provider that orders results by view count.
+
+Dusori never ships a default instance and your browser never contacts YouTube, Google, or `ytimg.com`. The companion is the only thing that talks to your instance: it runs the search, fetches the thumbnail (which the app renders from local bytes), and, when you approve a video, downloads its captions. A captioned video becomes an ordinary readable source — searchable, graphable, and usable by review prompts — with a note saying captions are often machine-generated. A video without captions is stored as a plain reference, because a video with no text is a dead end for everything else Dusori does.
 
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 

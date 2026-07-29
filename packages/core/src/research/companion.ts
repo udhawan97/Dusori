@@ -30,6 +30,38 @@ const ArxivResponseSchema = z.object({
   ),
 });
 
+const YouTubeResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      author: z.string(),
+      id: z.string(),
+      lengthSeconds: z.number(),
+      publishedAt: z.string().optional(),
+      summary: z.string(),
+      title: z.string(),
+      url: z.url(),
+      viewCount: z.number(),
+    }),
+  ),
+});
+
+const RedditResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      comments: z.number(),
+      id: z.string(),
+      publishedAt: z.string().optional(),
+      score: z.number(),
+      subreddit: z.string(),
+      summary: z.string(),
+      title: z.string(),
+      url: z.url(),
+    }),
+  ),
+});
+
+const TranscriptResponseSchema = z.object({ label: z.string(), text: z.string().min(1) });
+
 const WebSearchResponseSchema = z.object({
   results: z.array(
     z.object({
@@ -57,7 +89,18 @@ export interface CompanionResearchClient {
   fetchPage(url: string): Promise<FetchedPage>;
   searchMsLearnRanked(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchArxiv(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  searchReddit(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchWeb(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  searchYouTube(query: ResearchQuery): Promise<ResearchCandidate[]>;
+  /** Captions for one video, when the instance has them. Rejects with `no-captions` otherwise. */
+  fetchYouTubeTranscript(videoId: string): Promise<YouTubeTranscript>;
+  /** Image bytes through the companion, so the browser never calls a Google host. */
+  fetchYouTubeThumbnail(videoId: string): Promise<Blob>;
+}
+
+export interface YouTubeTranscript {
+  label: string;
+  text: string;
 }
 
 export interface CompanionClientOptions {
@@ -163,6 +206,110 @@ export function createCompanionResearchClient(
       });
     },
 
+    async searchReddit(query) {
+      const parsed = RedditResponseSchema.safeParse(
+        await readJson(
+          `${base}/api/research/reddit?q=${encodeURIComponent(query.searchText)}`,
+          'Reddit search could not be reached through the companion.',
+        ),
+      );
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar Reddit format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data.results.map((result, index, all) => ({
+        communityScore: result.score,
+        key: `reddit:${result.id}`,
+        kind: 'qa' as const,
+        meta: {
+          comments: String(result.comments),
+          community: `${formatCount(result.score)} points`,
+          subreddit: `r/${result.subreddit}`,
+          ...(result.publishedAt ? { published: result.publishedAt } : {}),
+        },
+        provider: 'reddit',
+        ...(result.publishedAt === undefined ? {} : { publishedAt: result.publishedAt }),
+        score: all.length - index,
+        snippet: result.summary,
+        title: result.title,
+        url: result.url,
+      }));
+    },
+
+    async searchYouTube(query) {
+      const parsed = YouTubeResponseSchema.safeParse(
+        await readJson(
+          `${base}/api/research/youtube?q=${encodeURIComponent(query.searchText)}`,
+          'YouTube search could not be reached through the companion.',
+        ),
+      );
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar YouTube format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data.results.map((result, index, all) => ({
+        communityScore: result.viewCount,
+        key: `youtube:${result.id}`,
+        kind: 'video' as const,
+        meta: {
+          channel: result.author,
+          // The ranker's own words for this signal: views, not "community points".
+          community: `${formatCount(result.viewCount)} views`,
+          duration: formatDuration(result.lengthSeconds),
+          thumbnail: result.id,
+          views: formatCount(result.viewCount),
+          ...(result.publishedAt ? { published: result.publishedAt } : {}),
+        },
+        provider: 'youtube',
+        ...(result.publishedAt === undefined ? {} : { publishedAt: result.publishedAt }),
+        score: all.length - index,
+        snippet: result.summary,
+        title: result.title,
+        url: result.url,
+      }));
+    },
+
+    async fetchYouTubeTranscript(videoId) {
+      const response = await fetchImpl(
+        `${base}/api/research/youtube-transcript?id=${encodeURIComponent(videoId)}`,
+        { headers: authorization },
+      ).catch(() => null);
+      if (!response) {
+        throw new CompanionFetchError(
+          'The companion could not be reached for captions.',
+          'fetch-failed',
+        );
+      }
+      if (!response.ok) throw await failureFrom(response);
+      const parsed = TranscriptResponseSchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success) {
+        throw new CompanionFetchError(
+          'The companion returned an unfamiliar captions format.',
+          'fetch-failed',
+        );
+      }
+      return parsed.data;
+    },
+
+    async fetchYouTubeThumbnail(videoId) {
+      const response = await fetchImpl(
+        `${base}/api/research/youtube-thumbnail?id=${encodeURIComponent(videoId)}`,
+        { headers: authorization },
+      ).catch(() => null);
+      if (!response?.ok) {
+        throw new CompanionFetchError('That thumbnail could not be loaded.', 'fetch-failed');
+      }
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) {
+        throw new CompanionFetchError('That thumbnail was not an image.', 'unsupported-type');
+      }
+      return blob;
+    },
+
     async searchWeb(query) {
       const parsed = WebSearchResponseSchema.safeParse(
         await readJson(
@@ -202,6 +349,21 @@ export function createCompanionResearchClient(
     if (!response.ok) throw await failureFrom(response);
     return response.json().catch(() => null);
   }
+}
+
+/** Compact view counts the way a viewer reads them: 1.2M rather than 1200000. */
+export function formatCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}K`;
+  return String(Math.max(0, Math.trunc(value)));
+}
+
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.trunc(seconds));
+  const minutes = Math.floor(total / 60);
+  const rest = String(total % 60).padStart(2, '0');
+  if (minutes < 60) return `${minutes}:${rest}`;
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${rest}`;
 }
 
 function hostOf(url: string): string {

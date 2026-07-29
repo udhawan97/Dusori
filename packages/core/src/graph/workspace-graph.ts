@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../adapters.js';
+import { extractTags } from '../tags/tags.js';
 
 export type WorkspaceGraphNodeKind =
   'home' | 'overview' | 'roadmap' | 'tutor' | 'note' | 'source' | 'update' | 'document';
@@ -8,6 +9,7 @@ export interface WorkspaceGraphNode {
   kind: WorkspaceGraphNodeKind;
   label: string;
   path: string;
+  tags?: string[];
   topicSlug?: string;
 }
 
@@ -127,11 +129,13 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
   for (const path of paths) {
     const content = (await storage.read(path))?.content ?? '';
     contentByPath.set(path, content);
+    const tags = extractTags(content);
     nodes.push({
       id: path,
       kind: nodeKind(path),
       label: documentLabel(path, content),
       path,
+      ...(tags.length ? { tags } : {}),
       ...(topicSlug(path) ? { topicSlug: topicSlug(path) } : {}),
     });
   }

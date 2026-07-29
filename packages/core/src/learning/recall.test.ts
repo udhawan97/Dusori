@@ -99,7 +99,7 @@ describe('buildRecallSession', () => {
     });
   });
 
-  it('builds three prompts from a single readable source', async () => {
+  it('builds prompts from a single readable source, opening and closing the same way', async () => {
     const storage = await topicStorage();
     const path = await addMarkdownSource(storage, 'Tokenization basics', tokenizationNotes);
 
@@ -107,16 +107,14 @@ describe('buildRecallSession', () => {
 
     expect(session.prompts.map((prompt) => prompt.id)).toEqual([
       'explain',
+      'cloze',
       'contribution-1',
       'compare',
     ]);
     expect(session.prompts[0]?.prompt).toBe(
       'Explain “Describe how attention builds a token representation” in your own words before revealing the source.',
     );
-    expect(session.prompts[1]?.prompt).toBe(
-      'What does “Tokenization basics” in Tokenization basics contribute to “Describe how attention builds a token representation”?',
-    );
-    expect(session.prompts[2]?.prompt).toBe(
+    expect(session.prompts.at(-1)?.prompt).toBe(
       'Compare your explanation with this excerpt. What did you omit or misunderstand?',
     );
     for (const prompt of session.prompts) {
@@ -127,23 +125,71 @@ describe('buildRecallSession', () => {
     }
   });
 
-  it('spreads prompts across sources and stops at five', async () => {
+  it('never leaves the three-to-five range however many sources exist', async () => {
+    const single = await topicStorage();
+    await addMarkdownSource(single, 'Tokenization basics', tokenizationNotes);
+    const many = await topicStorage();
+    await addMarkdownSource(many, 'Transformer notes', transformerNotes);
+    await addMarkdownSource(many, 'Tokenization basics', tokenizationNotes);
+
+    const fewest = await readySession(single);
+    const most = await readySession(many);
+
+    expect(fewest.prompts.length).toBeGreaterThanOrEqual(3);
+    expect(fewest.prompts.length).toBeLessThanOrEqual(5);
+    expect(most.prompts).toHaveLength(5);
+  });
+
+  it('asks a locate prompt once a second source exists, naming a different source', async () => {
     const storage = await topicStorage();
     await addMarkdownSource(storage, 'Transformer notes', transformerNotes);
     await addMarkdownSource(storage, 'Tokenization basics', tokenizationNotes);
 
     const session = await readySession(storage);
-    const contributions = session.prompts.filter((prompt) => prompt.kind === 'contribution');
+    const locate = session.prompts.find((prompt) => prompt.kind === 'locate');
 
-    expect(session.prompts).toHaveLength(5);
-    // Round-robin: the second source is reached before the first source's second section.
-    expect(contributions.map((prompt) => prompt.evidence.heading)).toEqual([
-      'Attention',
-      'Tokenization basics',
-      'Positional encoding',
-    ]);
-    expect(contributions[0]?.evidence.title).toBe('Transformer notes');
-    expect(contributions[1]?.evidence.title).toBe('Tokenization basics');
+    expect(locate).toBeTruthy();
+    expect(locate?.prompt).toContain('which of your sources');
+    expect(locate?.evidence.title).not.toBe(session.prompts[0]?.evidence.title);
+  });
+
+  it('blanks the longest word of a source sentence for the cloze prompt', async () => {
+    const storage = await topicStorage();
+    await addMarkdownSource(storage, 'Tokenization basics', tokenizationNotes);
+
+    const session = await readySession(storage);
+    const cloze = session.prompts.find((prompt) => prompt.kind === 'cloze');
+
+    expect(cloze?.prompt).toContain('_____');
+    expect(cloze?.prompt).toContain('Tokenization basics');
+    // The blank hides a word the excerpt itself still shows on demand, so nothing is invented.
+    expect(cloze?.evidence.excerpt).toContain('Byte pair encoding merges');
+  });
+
+  it('keeps the deterministic order: explain first, compare last', async () => {
+    const storage = await topicStorage();
+    await addMarkdownSource(storage, 'Transformer notes', transformerNotes);
+    await addMarkdownSource(storage, 'Tokenization basics', tokenizationNotes);
+
+    const session = await readySession(storage);
+
+    expect(session.prompts[0]?.kind).toBe('explain');
+    expect(session.prompts.at(-1)?.kind).toBe('compare');
+    expect(new Set(session.prompts.map((prompt) => prompt.id)).size).toBe(session.prompts.length);
+  });
+
+  it('gives every prompt a source title, section, and workspace path', async () => {
+    const storage = await topicStorage();
+    await addMarkdownSource(storage, 'Transformer notes', transformerNotes);
+    await addMarkdownSource(storage, 'Tokenization basics', tokenizationNotes);
+
+    const session = await readySession(storage);
+
+    for (const prompt of session.prompts) {
+      expect(prompt.evidence.title).toBeTruthy();
+      expect(prompt.evidence.heading).toBeTruthy();
+      expect(prompt.evidence.path).toMatch(/^Topics\//u);
+    }
   });
 
   it('bounds every excerpt and cuts on a word boundary', async () => {
@@ -243,19 +289,14 @@ describe('applyAiRecallPrompts', () => {
 
   it('replaces prompt text, names the model, and keeps every piece of evidence', async () => {
     const base = await session();
+    const rewritten = base.prompts.map((_prompt, index) => `  Rewritten  ${index + 1}  `);
 
-    const applied = applyAiRecallPrompts(
-      base,
-      ['  Rewritten  one  ', 'Rewritten two', 'Rewritten three'],
-      'llama3.2',
-    );
+    const applied = applyAiRecallPrompts(base, rewritten, 'llama3.2');
 
     expect(applied.model).toBe('llama3.2');
-    expect(applied.prompts.map((prompt) => prompt.prompt)).toEqual([
-      'Rewritten one',
-      'Rewritten two',
-      'Rewritten three',
-    ]);
+    expect(applied.prompts.map((prompt) => prompt.prompt)).toEqual(
+      base.prompts.map((_prompt, index) => `Rewritten ${index + 1}`),
+    );
     expect(applied.prompts.every((prompt) => prompt.generatedBy === 'ai')).toBe(true);
     expect(applied.prompts.map((prompt) => prompt.evidence)).toEqual(
       base.prompts.map((prompt) => prompt.evidence),
@@ -268,11 +309,15 @@ describe('applyAiRecallPrompts', () => {
   it('keeps the deterministic prompts when the reply is malformed', async () => {
     const base = await session();
     const tooLong = 'x'.repeat(maxRecallPromptCharacters + 1);
+    // Counts are derived from the session, so these stay wrong however many prompts it builds.
+    const exact = base.prompts.map((_prompt, index) => `text ${index + 1}`);
+    const tooFew = exact.slice(0, -1);
+    const tooMany = [...exact, 'one too many'];
 
-    expect(applyAiRecallPrompts(base, ['one', 'two'], 'llama3.2')).toBe(base);
-    expect(applyAiRecallPrompts(base, ['one', 'two', 'three', 'four'], 'llama3.2')).toBe(base);
-    expect(applyAiRecallPrompts(base, ['one', '   ', 'three'], 'llama3.2')).toBe(base);
-    expect(applyAiRecallPrompts(base, ['one', tooLong, 'three'], 'llama3.2')).toBe(base);
+    expect(applyAiRecallPrompts(base, tooFew, 'llama3.2')).toBe(base);
+    expect(applyAiRecallPrompts(base, tooMany, 'llama3.2')).toBe(base);
+    expect(applyAiRecallPrompts(base, [...exact.slice(0, -1), '   '], 'llama3.2')).toBe(base);
+    expect(applyAiRecallPrompts(base, [...exact.slice(0, -1), tooLong], 'llama3.2')).toBe(base);
     expect(applyAiRecallPrompts(base, [], 'llama3.2')).toBe(base);
   });
 });
