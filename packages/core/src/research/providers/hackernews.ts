@@ -78,6 +78,7 @@ export const hackerNewsProvider: ResearchProvider = {
   id: 'hackernews',
   label: 'Hacker News',
   disclosure: HACKER_NEWS_DISCLOSURE,
+  origins: ['https://hn.algolia.com'],
 
   capturedVia: () => 'search-reference',
 

@@ -48,6 +48,13 @@ export interface ResearchProvider {
    * narrower disclosure is asked again rather than silently reused.
    */
   readonly consentScope?: string;
+  /**
+   * Every origin this provider calls from the browser itself. The app's `connect-src` must
+   * name each one or the search dies on the deployed build, so it is declared here where a
+   * test can read it rather than left implicit in a fetch call. Empty when the companion
+   * proxies the request, because that call goes to localhost.
+   */
+  readonly origins: readonly string[];
   search(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]>;
   capture(candidate: ResearchCandidate, fetchImpl: typeof fetch): Promise<ResearchCapture>;
   /**

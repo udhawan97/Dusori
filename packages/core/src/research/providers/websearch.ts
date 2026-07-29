@@ -21,6 +21,8 @@ export function createWebSearchProvider(options: { search: WebSearch }): Researc
     disclosure: WEB_SEARCH_DISCLOSURE,
     id: 'websearch',
     label: 'Web search',
+    // The companion runs the search; the page only ever calls the companion.
+    origins: [],
 
     capturedVia: () => 'search-reference',
 

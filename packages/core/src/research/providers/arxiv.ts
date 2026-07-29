@@ -20,6 +20,8 @@ export function createArxivProvider(options: { search: ArxivSearch }): ResearchP
     disclosure: ARXIV_DISCLOSURE,
     id: 'arxiv',
     label: 'arXiv',
+    // Every request goes through the companion, so the page never calls arxiv.org itself.
+    origins: [],
 
     capturedVia: () => 'search-reference',
 

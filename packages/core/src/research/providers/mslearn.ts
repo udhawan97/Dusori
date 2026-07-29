@@ -112,6 +112,9 @@ export function createMsLearnProvider(
     disclosure: options.ranked ? MS_LEARN_RANKED_DISCLOSURE : MS_LEARN_DISCLOSURE,
     id: 'mslearn',
     label: 'Microsoft Learn',
+    // Ranked search falls back to the catalog when the companion returns nothing,
+    // so this origin is reached from the browser in both variants.
+    origins: ['https://learn.microsoft.com'],
 
     // A ranked result is keyed by URL because the search API returns no module uid, so the
     // key is also the only thing that says which path produced this candidate.

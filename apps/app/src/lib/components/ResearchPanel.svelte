@@ -63,6 +63,8 @@
       "Ranking sends each found candidate's title, summary, and address, plus this topic's name and the objective's text, to the AI provider configured in your local companion. Nothing else from your workspace is sent. Allow on this device?",
     id: 'companion-ai',
     label: 'AI ranking',
+    // Ranking is the companion's own call to the AI provider; the page reaches nothing.
+    origins: [],
     search: () => Promise.resolve([]),
   };
 

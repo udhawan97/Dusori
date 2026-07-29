@@ -74,6 +74,7 @@ export const wikipediaProvider: ResearchProvider = {
   id: 'wikipedia',
   label: 'Wikipedia',
   disclosure: WIKIPEDIA_DISCLOSURE,
+  origins: ['https://en.wikipedia.org'],
 
   capturedVia: () => 'api-extract',
 

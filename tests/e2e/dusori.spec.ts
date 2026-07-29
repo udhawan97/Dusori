@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 
 import AxeBuilder from '@axe-core/playwright';
+import { createResearchProviders } from '@dusori/core';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
 // Axe's scrollable-region-focusable check only reports a region once it really
@@ -920,6 +921,40 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
   await page.getByRole('button', { name: 'Scan for strong sources' }).click();
   await expect(page.getByText('No new suggestions matched this objective.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
+});
+
+// The unit test reads the policy out of `app.html`; this one proves the browser agrees on the
+// artifact that actually ships. Each origin is stubbed with a permissive CORS reply, so an
+// allowed probe is answered locally and nothing leaves the machine. The content-security-policy
+// is enforced ahead of the network stack, so a forbidden origin never reaches its route and is
+// the only way a probe can fail.
+test('the shipped policy lets every browser-called provider origin through', async ({ page }) => {
+  const origins = [...new Set(createResearchProviders().flatMap((provider) => provider.origins))];
+  expect(origins.length).toBeGreaterThan(0);
+  for (const origin of origins) {
+    await page.route(`${origin}/**`, async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        json: {},
+      });
+    });
+  }
+
+  await page.goto('/Dusori/app/');
+  const blocked = await page.evaluate(async (list: string[]) => {
+    const results = await Promise.all(
+      list.map(async (origin) =>
+        fetch(`${origin}/csp-probe`).then(
+          () => null,
+          () => origin,
+        ),
+      ),
+    );
+    return results.filter((origin) => origin !== null);
+  }, origins);
+
+  expect(blocked).toEqual([]);
 });
 
 test('curriculum import previews official objectives, applies explicitly, and never fetches', async ({

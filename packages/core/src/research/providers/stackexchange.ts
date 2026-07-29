@@ -91,6 +91,7 @@ export const stackExchangeProvider: ResearchProvider = {
   id: 'stackexchange',
   label: 'Stack Overflow',
   disclosure: STACK_EXCHANGE_DISCLOSURE,
+  origins: ['https://api.stackexchange.com'],
 
   capturedVia: () => 'search-reference',
 

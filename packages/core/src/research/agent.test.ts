@@ -34,6 +34,7 @@ function stubProvider(
     disclosure: `${id} disclosure`,
     id,
     label: id,
+    origins: [],
     async capture(target) {
       return { content: `# ${target.title}\n`, title: target.title, url: target.url };
     },

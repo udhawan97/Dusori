@@ -84,6 +84,7 @@ export const githubProvider: ResearchProvider = {
   disclosure: GITHUB_DISCLOSURE,
   id: 'github',
   label: 'GitHub',
+  origins: ['https://api.github.com'],
 
   // The README fetch is the only capture path; when it comes back empty the content
   // itself says so, so the provenance line stays true either way.
