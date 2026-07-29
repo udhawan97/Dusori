@@ -1,8 +1,24 @@
+import { readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 
 import AxeBuilder from '@axe-core/playwright';
 import { createResearchProviders } from '@dusori/core';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+
+// The landing page and the docs index both advertise the current release. Pinning the number here
+// made every release edit this file, and it let the two drift apart unnoticed in between. Reading
+// the workspace version instead turns these into what they were always meant to prove: the pages
+// name the release actually being built, and their links point at it.
+const releaseVersion = (
+  JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
+const releaseDocsSlug = `v${releaseVersion.replaceAll('.', '-')}`;
+const releaseNotesName = new RegExp(
+  `v${releaseVersion.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')} release notes`,
+  'iu',
+);
 
 // Axe's scrollable-region-focusable check only reports a region once it really
 // overflows, so short fixtures hide the violation instead of proving its
@@ -286,18 +302,19 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     'href',
     '/Dusori/docs/',
   );
-  await expect(page.getByText('v0.7.0 · available now', { exact: true })).toBeVisible();
+  await expect(page.getByText(`v${releaseVersion} · available now`, { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /release notes/iu })).toHaveAttribute(
     'href',
-    'https://github.com/udhawan97/Dusori/releases/tag/v0.7.0',
+    `https://github.com/udhawan97/Dusori/releases/tag/v${releaseVersion}`,
   );
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/docs/');
   await expect(page.getByRole('heading', { name: 'Dusori documentation' })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /v0\.7\.0 release notes/iu }).first(),
-  ).toHaveAttribute('href', './releases/v0-7-0/');
+  await expect(page.getByRole('link', { name: releaseNotesName }).first()).toHaveAttribute(
+    'href',
+    `./releases/${releaseDocsSlug}/`,
+  );
   await expectNoSeriousA11yViolations(page);
 
   await page.goto('/Dusori/app/');
