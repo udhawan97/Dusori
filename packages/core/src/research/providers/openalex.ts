@@ -71,6 +71,7 @@ export const openAlexProvider: ResearchProvider = {
   id: 'openalex',
   label: 'OpenAlex',
   disclosure: OPENALEX_DISCLOSURE,
+  origins: ['https://api.openalex.org'],
 
   capturedVia: () => 'api-extract',
 

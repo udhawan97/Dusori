@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs';
 import { createResearchProviders, type CompanionResearchClient } from '@dusori/core';
 import { describe, expect, it } from 'vitest';
 
-/** Only the shape matters here: the test reads what a provider declares, never calls it. */
-const unusedCompanion: CompanionResearchClient = {
-  fetchPage: () => Promise.reject(new Error('unused')),
-  searchArxiv: () => Promise.reject(new Error('unused')),
-  searchMsLearnRanked: () => Promise.reject(new Error('unused')),
-  searchWeb: () => Promise.reject(new Error('unused')),
-};
+/**
+ * Only its presence matters: this test reads what a provider declares and never searches, so
+ * every method rejects. A proxy rather than a literal, so growing the companion's interface
+ * does not drag an unrelated test along with it.
+ */
+const unusedCompanion = new Proxy(
+  {},
+  { get: () => () => Promise.reject(new Error('the CSP test never calls the companion')) },
+) as CompanionResearchClient;
 
 const appHtml = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
 

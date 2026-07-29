@@ -22,6 +22,8 @@ export function createRedditProvider(options: { search: RedditSearch }): Researc
     disclosure: REDDIT_DISCLOSURE,
     id: 'reddit',
     label: 'Reddit',
+    // The companion runs the search; the page never calls reddit.com itself.
+    origins: [],
 
     capturedVia: (candidate: ResearchCandidate): string =>
       candidate.snippet ? 'api-extract' : 'search-reference',

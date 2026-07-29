@@ -30,6 +30,8 @@ export function createYouTubeProvider(options: {
     disclosure: YOUTUBE_DISCLOSURE,
     id: 'youtube',
     label: 'YouTube',
+    // Search and transcripts both go through the companion; the page fetches nothing.
+    origins: [],
 
     // Never 'search-reference': a YouTube watch page has no readable article to upgrade to, so
     // the page-fetch path must not be offered for these captures.

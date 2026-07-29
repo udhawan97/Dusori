@@ -44,6 +44,7 @@ export const npmProvider: ResearchProvider = {
   id: 'npm',
   label: 'npm',
   disclosure: NPM_DISCLOSURE,
+  origins: ['https://registry.npmjs.org'],
 
   capturedVia: () => 'api-extract',
 
