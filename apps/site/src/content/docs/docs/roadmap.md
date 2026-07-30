@@ -9,7 +9,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Direct folder connection on supported Chromium desktop browsers
 - Canonical Markdown/JSON topic structure
 - Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export of the whole workspace or one topic
-- Conflict-safe proposals and dated update logs
+- Conflict-safe proposals, a durable topic-local proposal lifecycle, and dated update logs
 - Local source library for pasted text, Markdown/text files, PDFs read on your device, and unfetched URL references
 - Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry, with explainable deterministic ranking and preview-first source capture
 - Tags read from your own Markdown — `tags:` frontmatter or an inline `#tag` — with a `tag:` search filter, a graph filter, and a tag count in Insights
@@ -17,7 +17,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - In-app creation and conflict-safe editing of portable Markdown notes
 - Local full-text workspace search with no stored index or remote query
 - Backlinks and non-mutating workspace health for wikilinks and source manifests/files
-- Interactive Markdown roadmap progress, explicit topic status, deterministic review order, and a seven-day recap
+- Evidence-driven Today lanes for workspace-wide continuation and proven attention, plus interactive Markdown roadmap progress, explicit topic status, and a seven-day recap
 - Optional spaced review: an explicit "Got it" / "Needs work" action schedules a topic's next due date on the review queue from a fixed interval ladder
 - Source-grounded review sessions: three to five deterministic active-recall prompts built from a topic's objective and its own readable approved sources, each showing its source path and excerpt on demand, with optional consent-gated AI rewording
 - Sanitized Markdown, wikilinks, and a strict Mermaid rendering path

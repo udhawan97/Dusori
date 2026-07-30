@@ -117,7 +117,8 @@ Dusori turns ordinary files into a private learning loop. Start in browser stora
 
 |     | You do this                        | Dusori gives you                                                                                           |
 | --- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 🗺️  | Check roadmap objectives           | A deterministic next-review order, progress, topic state, and seven-day recap                              |
+| 🧭  | Open Today                         | Evidence-backed continuation and attention lanes across the workspace, without changing progress           |
+| 🗺️  | Check roadmap objectives           | Portable Markdown progress, explicit topic state, and a seven-day file-derived recap                       |
 | 🔁  | Mark a topic reviewed              | An optional spaced schedule — 1, 3, 7, 14, 30, then 60 days — that rests the topic until it is due         |
 | 🧠  | Start a review                     | Active-recall prompts from that topic's own sources, an answer box, and your answers saved as a note       |
 | ✍️  | Create or edit Markdown notes      | Portable notes with explicit proposals when another editor changed the same file first                     |
@@ -137,7 +138,7 @@ General web search is optional companion configuration: Brave and Tavily accept 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori workspace showing the local learning loop" width="820">
   <br>
-  <sub><em>Today, Roadmap, local notes, source provenance, and review state stay together without becoming a hosted account.</em></sub>
+  <sub><em>Today routes the next evidence-backed learning action and proven attention items without becoming a hosted account.</em></sub>
 </p>
 
 ## Obsidian, Without Surrendering the Vault
@@ -192,6 +193,7 @@ Firefox and Safari use the private browser workspace plus ZIP import/export. Fol
     ├── state.json
     ├── research.json
     ├── review.json
+    ├── proposals.json
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/
@@ -200,7 +202,7 @@ Firefox and Safari use the private browser workspace plus ZIP import/export. Fol
     └── Backups/
 ```
 
-Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If a Markdown file changed outside Dusori, that file stays active and Dusori writes a dated `.proposed-…` version beside it for explicit review.
+Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If a Markdown file changed outside Dusori, that file stays active and Dusori writes a dated `.proposed-…` version beside it for explicit review. The topic's `proposals.json` ledger keeps that decision visible across reloads; accepting the proposal or keeping the current file resolves the ledger entry while preserving both Markdown versions.
 
 </details>
 
@@ -322,9 +324,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.7.1` release makes Dusori more dependable on the paths that matter most: reopening the installed app offline, starting a workspace without hunting below the fold, running Research from its first screen, and using the mobile drawer from a keyboard. Hosted OpenAlex and npm discovery now pass the deployed network policy, retry-exhausted workspace conflicts keep their useful explanation, and the version-aligned companion publishes from the verified GitHub release tag.
+The current `v0.8.0` release turns Today into an evidence-driven workspace dashboard. **Continue learning** routes due source-grounded reviews, objectives that need sources, ordinary roadmap continuation, and paused topics without silently changing progress. **Needs attention** surfaces only current integrity and link-health evidence. Pending Markdown proposals now survive reloads through a portable lifecycle ledger, while both the current and proposed files remain intact.
 
-[Read the v0.7.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.7.1) · [Review the changelog](CHANGELOG.md)
+[Read the v0.8.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.8.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

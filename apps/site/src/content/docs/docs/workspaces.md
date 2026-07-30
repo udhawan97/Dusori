@@ -13,6 +13,9 @@ Topics/<topic-slug>/
   roadmap.md
   TUTOR.md
   state.json
+  research.json
+  review.json
+  proposals.json
   Notes/
   Updates/YYYY/MM/YYYY-MM-DD.md
   Sources/
@@ -34,7 +37,7 @@ Dusori writes only inside that approved root. The resulting Markdown and wikilin
 
 Firefox and Safari use the browser workspace plus ZIP import/export. The optional local companion is the later cross-browser path for direct folder access.
 
-Every topic keeps its own source files and manifest, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
+Every topic keeps its own source files, manifest, research and review state, and proposal lifecycle, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
 
 The [portable knowledge graph](../knowledge-graph/) reads these same files and does not add a graph database or hidden sync layer.
 

@@ -5,7 +5,7 @@ import { appBasePath, docsBasePath, projectBasePath } from '../../../../config/s
 
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
-const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.7.1';
+const releaseHref = 'https://github.com/udhawan97/Dusori/releases/tag/v0.8.0';
 const githubHref = 'https://github.com/udhawan97/Dusori';
 const licenseHref = 'https://github.com/udhawan97/Dusori/blob/main/LICENSE';
 const graphShotHref = `${projectBasePath}/app-graph.png`;
@@ -519,7 +519,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
           </picture>
 
           <figcaption class="stage-caption">
-            <span class="release-flag">v0.7.1 · available now</span>
+            <span class="release-flag">v0.8.0 · available now</span>
             <span>Japanese restraint · Indian geometry</span>
             <a href={releaseHref}>Read the release notes →</a>
           </figcaption>
@@ -540,12 +540,12 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             <span class="ch-icon" aria-hidden="true"
               ><svg class="icon" viewBox="0 0 24 24"><use href="#icon-wheel"></use></svg></span
             >
-            <h2>Today decides what to review next.</h2>
+            <h2>Today routes what the files can prove.</h2>
             <p>
-              Due spaced reviews come first, then active topics least recently updated first. The
-              queue and the seven-day recap are derived from your roadmap, topic state, and dated
-              update files — a schedule exists only where you made one, and Dusori sends no
-              reminders at 6 a.m.
+              Continue learning chooses a due source-grounded review, missing-source research, or
+              roadmap continuation. Needs attention shows only current integrity and link evidence.
+              Both lanes are derived from your local files and opening either one changes no
+              progress.
             </p>
             <a class="chapter-link" href={`${docsHref}learning-loop/`}
               >How the learning loop works →</a
@@ -597,7 +597,8 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             <p>
               Dusori remembers the last content hash it saw. If a file changed elsewhere, that file
               stays untouched and the suggestion becomes a dated <code>.proposed-</code> version beside
-              it. Acceptance is explicit, and recorded in <code>Updates/</code>.
+              it. A portable proposal ledger keeps the exact decision visible after a reload; accepting
+              or keeping records the choice while preserving both Markdown versions.
             </p>
             <a class="chapter-link" href={`${docsHref}conflict-safety/`}
               >The conflict-safety contract →</a
@@ -659,13 +660,13 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             <img
               src={graphShotHref}
               width="1440"
-              height="1000"
+              height="900"
               loading="lazy"
               alt="Dusori dark knowledge graph showing portable learning artifacts"
             />
             <figcaption>
-              The graph view as shipped — 7 artifacts and 13 connections from one topic, counted
-              from files, not a database.
+              The graph view as shipped — artifact and connection counts come from the workspace
+              files, not a graph database.
             </figcaption>
           </figure>
           <figure class="shot shot-work">
@@ -674,11 +675,11 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
               width="1440"
               height="960"
               loading="lazy"
-              alt="Dusori Today view showing local progress, the deterministic review queue, and seven-day recap"
+              alt="Dusori Today view showing Continue learning, Needs attention, and local progress"
             />
             <figcaption>
-              Today, assembled from roadmap, state, and dated updates — review order and the
-              seven-day recap, with due dates only where you made one.
+              Today, assembled from roadmap, state, review, proposal, source, and link evidence —
+              continuation first, proven attention beside it.
             </figcaption>
           </figure>
         </div>
@@ -691,6 +692,9 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
   roadmap.md
   TUTOR.md
   state.json
+  research.json
+  review.json
+  proposals.json
   Notes/
   Updates/YYYY/MM/
   Sources/
@@ -719,7 +723,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
                 ><use href="#icon-browser"></use></svg
               >Modern browsers
             </dt><dd>
-              Private workspace, note authoring, local search and backlinks, deterministic review,
+              Private workspace, note authoring, local search and backlinks, evidence-driven Today,
               automatic consent-gated research, portable graph and Insights, pasted/file/URL
               sources, ZIP portability, offline reload.
             </dd>
@@ -740,8 +744,9 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
                 ><use href="#icon-terminal"></use></svg
               >Local companion
             </dt><dd>
-              Optional, session-scoped loopback service for exact-host-confirmed page extraction and
-              ranked Microsoft Learn search. Ollama and unattended work remain future work.
+              Optional, session-scoped loopback service for exact-host-confirmed page extraction,
+              arXiv, Reddit, configured web search, configured Invidious, and consent-gated Ollama,
+              Anthropic, or OpenAI assistance. Unattended work is not implemented.
             </dd>
           </div>
         </dl>
@@ -763,7 +768,7 @@ const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
             >Optional loopback companion — one explicit folder, a fresh token each run, gone when
             the terminal closes:
           </p>
-          <pre><code>npx @udhawan97/dusori@0.5.0 --root /path/to/Dusori</code></pre>
+          <pre><code>npx @udhawan97/dusori@0.8.0 --root /path/to/Dusori</code></pre>
         </div>
       </section>
     </main>

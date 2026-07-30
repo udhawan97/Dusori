@@ -4,6 +4,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-30
+
 ### Added
 
 - **Today** now opens with two workspace-wide, file-derived lanes. **Continue learning** routes due source-grounded reviews, objectives that need research, ordinary roadmap continuation, and paused topics without changing progress. **Needs attention** gives integrity issues priority, keeps unresolved-link hygiene secondary, and routes every item back to its existing owning workflow.
@@ -170,7 +172,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/udhawan97/Dusori/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/udhawan97/Dusori/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/udhawan97/Dusori/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/udhawan97/Dusori/compare/v0.5.0...v0.6.0
