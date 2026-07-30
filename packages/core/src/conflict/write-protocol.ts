@@ -7,6 +7,7 @@ import {
   topicRoot,
   updateLogPath,
 } from '../workspace/paths.js';
+import { recordPendingProposal, resolvePendingProposal } from './proposal-ledger.js';
 
 export interface MarkdownConflict {
   currentContent: string;
@@ -67,6 +68,14 @@ export async function proposeMarkdownUpdate(
 
   const proposalPath = proposedPath(normalized, now);
   await storage.write(proposalPath, nextContent, { expectedHash: null });
+  await recordPendingProposal(storage, {
+    createdAt: now.toISOString(),
+    currentContentHash: current.hash,
+    currentPath: normalized,
+    expectedContentHash: expected.hash,
+    proposalPath,
+    topicSlug,
+  });
   const updatePath = await appendTopicUpdate(
     storage,
     topicSlug,
@@ -92,6 +101,7 @@ export async function acceptMarkdownUpdate(
   expectedHash: string,
   now = new Date(),
   updateLine?: string,
+  proposalPath?: string,
 ): Promise<TopicState> {
   const root = topicRoot(topicSlug);
   const path = normalizeWorkspacePath(`${root}/${relativePath}`);
@@ -117,6 +127,9 @@ export async function acceptMarkdownUpdate(
       `- Accepted an explicit update to [[../../../${relativePath.replace(/\.md$/u, '')}]].`,
     now,
   );
+  if (proposalPath) {
+    await resolvePendingProposal(storage, topicSlug, proposalPath, 'accepted', now);
+  }
   return nextState;
 }
 

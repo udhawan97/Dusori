@@ -12,20 +12,24 @@
 
   import {
     acceptMarkdownUpdate,
-    buildReviewQueue,
+    buildTodayFocus,
     buildTodaySummary,
     buildWorkspaceRecap,
     lineDiff,
     markTopicReviewed,
     nextScheduledReview,
+    resolvePendingProposal,
     setTopicStatus,
     updateRoadmapObjective,
     type CompanionAiClient,
+    type ContinueLearningItem,
     type MarkdownConflict,
+    type NeedsAttentionItem,
     type NextScheduledReview,
+    type ProposalAttentionItem,
     type ReviewOutcome,
-    type ReviewQueueItem,
     type StorageAdapter,
+    type TodayFocus,
     type TodayTopicSummary,
     type TopicState,
     type Workspace,
@@ -41,12 +45,16 @@
   export let revision = 0;
   export let ai: CompanionAiClient | null = null;
   export let onArtifactSaved: () => void = () => undefined;
+  export let onOpenProposal: (proposal: ProposalAttentionItem) => void = () => undefined;
   export let onOpenRoadmap: (slug: string) => void = () => undefined;
+  export let onOpenResearch: (slug: string) => void = () => undefined;
+  export let onOpenTopic: (slug: string) => void = () => undefined;
+  export let onOpenWorkspaceHealth: () => void = () => undefined;
   export let onRoadmapChanged: (slug: string, content: string) => void = () => undefined;
   export let onStatus: (message: string) => void = () => undefined;
 
   let summaries: TodayTopicSummary[] = [];
-  let reviewQueue: ReviewQueueItem[] = [];
+  let focus: TodayFocus = { continueLearning: [], needsAttention: [] };
   let nextReview: NextScheduledReview | null = null;
   let recap: WorkspaceRecap | null = null;
   let loading = true;
@@ -57,7 +65,7 @@
   let success = '';
   let conflict: MarkdownConflict | null = null;
   let pendingObjective: { completed: boolean; index: number; title: string } | null = null;
-  let sessionItem: ReviewQueueItem | null = null;
+  let sessionItem: ContinueLearningItem | null = null;
 
   $: selected = summaries.find((summary) => summary.slug === topicSlug) ?? null;
   $: activeCount = summaries.filter((summary) => summary.status === 'active').length;
@@ -86,7 +94,7 @@
         buildWorkspaceRecap(storage, workspace),
       ]);
       summaries = nextSummaries;
-      reviewQueue = buildReviewQueue(nextSummaries);
+      focus = await buildTodayFocus(storage, workspace, nextSummaries);
       nextReview = nextScheduledReview(nextSummaries);
       recap = nextRecap;
     } catch (caught) {
@@ -154,6 +162,7 @@
         conflict.currentContentHash,
         new Date(),
         `- ${pendingObjective.completed ? 'Completed' : 'Reopened'} “${pendingObjective.title}” in [[../../../roadmap]] after reviewing an external edit.`,
+        conflict.proposalPath,
       );
       const content = conflict.proposalContent;
       success = 'Progress choice accepted after your review.';
@@ -170,14 +179,21 @@
   }
 
   async function keepExternalRoadmap(): Promise<void> {
-    conflict = null;
-    pendingObjective = null;
-    success = 'External roadmap kept. Progress was reloaded.';
-    onStatus(success);
-    await refresh();
+    if (!conflict) return;
+    error = '';
+    try {
+      await resolvePendingProposal(storage, topicSlug, conflict.proposalPath, 'kept');
+      conflict = null;
+      pendingObjective = null;
+      success = 'External roadmap kept. Progress was reloaded.';
+      onStatus(success);
+      await refresh();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Dusori could not resolve this proposal.';
+    }
   }
 
-  async function markReviewed(item: ReviewQueueItem, outcome: ReviewOutcome): Promise<void> {
+  async function markReviewed(item: ContinueLearningItem, outcome: ReviewOutcome): Promise<void> {
     reviewWorkingSlug = item.slug;
     error = '';
     success = '';
@@ -211,7 +227,7 @@
    * The objective a session should test: the topic's next unfinished one, falling back to the
    * queue's own wording when a roadmap has no objectives left to work on.
    */
-  function sessionObjective(item: ReviewQueueItem): string {
+  function sessionObjective(item: ContinueLearningItem): string {
     const summary = summaries.find((entry) => entry.slug === item.slug);
     return summary?.progress.nextObjective?.title ?? item.objective;
   }
@@ -220,6 +236,38 @@
     return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
       new Date(`${value}T12:00:00`),
     );
+  }
+
+  function continueActionLabel(item: ContinueLearningItem): string {
+    if (item.action === 'start-review') return 'Start review';
+    if (item.action === 'research-objective') return 'Research objective';
+    if (item.action === 'open-topic') return 'Open topic';
+    return 'Open roadmap';
+  }
+
+  function continueFrom(item: ContinueLearningItem): void {
+    if (item.action === 'start-review') {
+      sessionItem = item;
+      return;
+    }
+    if (item.action === 'research-objective') {
+      onOpenResearch(item.slug);
+      return;
+    }
+    if (item.action === 'open-topic') {
+      onOpenTopic(item.slug);
+      return;
+    }
+    onOpenRoadmap(item.slug);
+  }
+
+  function startReview(item: ContinueLearningItem): void {
+    sessionItem = item;
+  }
+
+  function inspectAttention(item: NeedsAttentionItem): void {
+    if (item.action === 'review-proposal') onOpenProposal(item);
+    else onOpenWorkspaceHealth();
   }
 </script>
 
@@ -260,73 +308,63 @@
         <p>Create a topic to start a durable learning loop.</p>
       </div>
     {:else}
-      <div class="today-focus-grid">
-        <section class="review-queue" aria-labelledby="review-queue-title">
+      <div class="today-lanes">
+        <section class="focus-lane continue-lane" aria-labelledby="continue-learning-title">
           <div class="focus-heading">
             <ListOrdered aria-hidden="true" size={22} />
             <div>
-              <p class="section-label">Deterministic queue</p>
-              <h2 id="review-queue-title">Review next</h2>
+              <p class="section-label">Explicit local state</p>
+              <h2 id="continue-learning-title">Continue learning</h2>
             </div>
           </div>
           <p class="focus-explainer">
-            Due reviews come first, then active topics least recently updated first. Deadlines exist
-            only for topics you mark reviewed.
+            Due reviews lead, followed by active topics least recently updated. Dusori routes the
+            next step without changing progress.
           </p>
-          {#if reviewQueue.length === 0}
+          {#if focus.continueLearning.length === 0}
             {#if nextReview}
               <p class="focus-empty">
-                No reviews due. “{nextReview.title}” returns on {activityDate(nextReview.dueOn)}.
+                Nothing needs continuing now. “{nextReview.title}” returns on {activityDate(
+                  nextReview.dueOn,
+                )}.
               </p>
             {:else}
               <p class="focus-empty">No unfinished active or paused topics.</p>
             {/if}
           {:else}
-            <ol aria-label="Review queue">
-              {#each reviewQueue as item, index (item.slug)}
+            <ol class="focus-list" aria-label="Continue learning">
+              {#each focus.continueLearning as item, index (item.slug)}
                 <li>
                   <span class="queue-rank">{String(index + 1).padStart(2, '0')}</span>
-                  <div>
+                  <div class="focus-copy">
                     <strong>{item.title}</strong>
                     <p>{item.objective}</p>
                     <small
-                      >{item.reason} · {item.progressPercent}% complete{item.status === 'paused' &&
-                      item.dueOn
-                        ? ` · scheduled for ${activityDate(item.dueOn)}`
-                        : ''}</small
+                      >{item.reason} · {item.progressPercent}% complete · {item.sourceReady
+                        ? 'local source ready'
+                        : 'research needed'}</small
                     >
                   </div>
-                  <div class="queue-actions">
+                  <div class="lane-actions">
                     <button
-                      class="queue-review queue-start"
-                      aria-label={`Start review — recall ${item.title} from its sources`}
+                      class="lane-action"
+                      aria-label={`${continueActionLabel(item)} — ${item.title}`}
                       disabled={reviewWorkingSlug !== null}
-                      onclick={() => (sessionItem = item)}
+                      onclick={() => continueFrom(item)}
                     >
-                      Start review
-                    </button>
-                    <button
-                      class="queue-review"
-                      aria-label={`Got it — mark ${item.title} reviewed`}
-                      disabled={reviewWorkingSlug !== null}
-                      onclick={() => markReviewed(item, 'good')}
-                    >
-                      Got it
-                    </button>
-                    <button
-                      class="queue-review"
-                      aria-label={`Needs work — review ${item.title} again tomorrow`}
-                      disabled={reviewWorkingSlug !== null}
-                      onclick={() => markReviewed(item, 'again')}
-                    >
-                      Needs work
-                    </button>
-                    <button
-                      aria-label={`Open ${item.title} roadmap`}
-                      onclick={() => onOpenRoadmap(item.slug)}
-                    >
+                      {continueActionLabel(item)}
                       <ArrowRight aria-hidden="true" size={16} />
                     </button>
+                    {#if item.canStartReview && item.action !== 'start-review'}
+                      <button
+                        class="lane-action secondary-review"
+                        aria-label={`Start review — ${item.title}`}
+                        disabled={reviewWorkingSlug !== null}
+                        onclick={() => startReview(item)}
+                      >
+                        Start review
+                      </button>
+                    {/if}
                   </div>
                 </li>
               {/each}
@@ -334,36 +372,83 @@
           {/if}
         </section>
 
-        <section class="workspace-recap" aria-labelledby="workspace-recap-title">
+        <section
+          class:clear={focus.needsAttention.length === 0}
+          class="focus-lane attention-lane"
+          aria-labelledby="needs-attention-title"
+        >
           <div class="focus-heading">
-            <CalendarDays aria-hidden="true" size={22} />
+            <AlertTriangle aria-hidden="true" size={22} />
             <div>
-              <p class="section-label">Dated update files</p>
-              <h2 id="workspace-recap-title">7-day recap</h2>
+              <p class="section-label">Proven workspace evidence</p>
+              <h2 id="needs-attention-title">Needs attention</h2>
             </div>
           </div>
-          {#if recap}
-            <p class="focus-explainer">
-              {recap.entries.length}
-              {recap.entries.length === 1 ? 'event' : 'events'} across
-              {recap.topicsTouched}
-              {recap.topicsTouched === 1 ? 'topic' : 'topics'}.
+          <p class="focus-explainer">
+            Integrity issues lead. Link hygiene stays secondary and never blocks learning.
+          </p>
+          {#if focus.needsAttention.length === 0}
+            <p class="focus-empty clear-state">
+              No local evidence needs a decision. This is a current check, not a promise about
+              future changes.
             </p>
-            {#if recap.entries.length === 0}
-              <p class="focus-empty">No update entries in this date range.</p>
-            {:else}
-              <ul aria-label="Workspace recap">
-                {#each recap.entries as entry, index (`${index}-${entry.slug}-${entry.date}-${entry.text}`)}
-                  <li>
-                    <time datetime={entry.date}>{activityDate(entry.date)}</time>
-                    <span><strong>{entry.title}</strong>{entry.text}</span>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
+          {:else}
+            <ol class="focus-list attention-list" aria-label="Needs attention">
+              {#each focus.needsAttention as item, index (`${item.kind}-${item.title}-${index}`)}
+                <li>
+                  <span class="attention-mark" data-priority={item.priority} aria-hidden="true"
+                  ></span>
+                  <div class="focus-copy">
+                    <small>{item.priority === 'integrity' ? 'Integrity' : 'Hygiene'}</small>
+                    <strong>{item.title}</strong>
+                    <p>{item.detail}</p>
+                  </div>
+                  <button
+                    class="lane-action"
+                    aria-label={`${item.action === 'review-proposal' ? 'Review proposal' : 'Inspect workspace health'} — ${item.title}`}
+                    onclick={() => inspectAttention(item)}
+                  >
+                    {item.action === 'review-proposal'
+                      ? 'Review proposal'
+                      : `Inspect ${item.count} ${item.count === 1 ? 'issue' : 'issues'}`}
+                    <ArrowRight aria-hidden="true" size={16} />
+                  </button>
+                </li>
+              {/each}
+            </ol>
           {/if}
         </section>
       </div>
+
+      <section class="workspace-recap" aria-labelledby="workspace-recap-title">
+        <div class="focus-heading">
+          <CalendarDays aria-hidden="true" size={22} />
+          <div>
+            <p class="section-label">Dated update files</p>
+            <h2 id="workspace-recap-title">7-day recap</h2>
+          </div>
+        </div>
+        {#if recap}
+          <p class="focus-explainer">
+            {recap.entries.length}
+            {recap.entries.length === 1 ? 'event' : 'events'} across
+            {recap.topicsTouched}
+            {recap.topicsTouched === 1 ? 'topic' : 'topics'}.
+          </p>
+          {#if recap.entries.length === 0}
+            <p class="focus-empty">No update entries in this date range.</p>
+          {:else}
+            <ul aria-label="Workspace recap">
+              {#each recap.entries as entry, index (`${index}-${entry.slug}-${entry.date}-${entry.text}`)}
+                <li>
+                  <time datetime={entry.date}>{activityDate(entry.date)}</time>
+                  <span><strong>{entry.title}</strong>{entry.text}</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        {/if}
+      </section>
 
       <div class="topic-ledger">
         {#each summaries as summary (summary.slug)}
@@ -657,16 +742,45 @@
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .today-focus-grid {
+  .today-lanes {
     display: grid;
-    gap: var(--space-xl);
+    overflow: hidden;
+    border-block: var(--rule-hair) solid var(--color-rule);
+    background:
+      linear-gradient(var(--color-rule), var(--color-rule)) center / var(--rule-hair) 100% no-repeat,
+      var(--color-paper-2);
+    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
     margin-block-start: var(--space-2xl);
   }
 
-  .review-queue,
+  .focus-lane,
   .workspace-recap {
     min-width: 0;
     padding: var(--space-lg);
+  }
+
+  .focus-lane {
+    position: relative;
+  }
+
+  .focus-lane::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.2rem;
+    background: var(--color-marigold);
+    content: '';
+  }
+
+  .attention-lane::before {
+    background: var(--color-accent);
+  }
+
+  .attention-lane.clear::before {
+    background: var(--color-success);
+  }
+
+  .workspace-recap {
+    margin-block-start: var(--space-xl);
     border-block: var(--rule-hair) solid var(--color-rule);
     background: var(--color-paper-2);
   }
@@ -692,14 +806,14 @@
     line-height: 1.5;
   }
 
-  .review-queue ol,
+  .focus-list,
   .workspace-recap ul {
     margin: var(--space-md) 0 0;
     padding: 0;
     list-style: none;
   }
 
-  .review-queue li {
+  .focus-list li {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
@@ -709,51 +823,67 @@
   }
 
   .queue-rank,
-  .review-queue small,
+  .focus-list small,
   .workspace-recap time {
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
   }
 
-  .review-queue li strong,
+  .focus-list li strong,
   .workspace-recap li strong {
     display: block;
     font-family: var(--font-display);
   }
 
-  .review-queue li p {
+  .focus-list li p {
     margin-block: var(--space-2xs);
     font-size: var(--text-sm);
     line-height: 1.4;
   }
 
-  .review-queue li button {
-    display: grid;
+  .lane-action {
+    display: inline-flex;
     min-height: 2.75rem;
-    width: 2.75rem;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding-inline: var(--space-sm);
     background: var(--color-paper);
     color: var(--color-accent-text);
-    place-items: center;
-  }
-
-  .queue-actions {
-    display: grid;
-    gap: var(--space-2xs);
-    justify-items: stretch;
-  }
-
-  .queue-actions .queue-review {
-    width: auto;
-    padding-inline: var(--space-sm);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
-  }
-
-  .queue-actions .queue-start {
     border-color: var(--color-accent-text);
     font-weight: 700;
+  }
+
+  .lane-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2xs);
+  }
+
+  .secondary-review {
+    border-color: var(--color-rule);
+    color: var(--color-muted);
+  }
+
+  .attention-mark {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-block-start: 0.35rem;
+    border-radius: 50%;
+    background: var(--color-accent);
+  }
+
+  .attention-mark[data-priority='hygiene'] {
+    background: var(--color-muted);
+  }
+
+  .clear-state {
+    padding-block: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
   .workspace-recap li {
@@ -1146,6 +1276,17 @@
     }
   }
 
+  @media (max-width: 50rem) {
+    .today-lanes {
+      background: var(--color-paper-2);
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .focus-lane + .focus-lane {
+      border-block-start: var(--rule-hair) solid var(--color-rule);
+    }
+  }
+
   @media (min-width: 40rem) {
     .today-ledger {
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1171,10 +1312,6 @@
     .conflict-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-
-    .today-focus-grid {
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-    }
   }
 
   @media (max-width: 25rem) {
@@ -1189,6 +1326,16 @@
 
     .objective-list label {
       padding-inline-start: calc(var(--objective-depth) * var(--space-sm));
+    }
+
+    .focus-list li {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .focus-list .lane-actions,
+    .focus-list > li > .lane-action {
+      grid-column: 2;
+      justify-self: start;
     }
   }
 

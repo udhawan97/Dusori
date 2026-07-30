@@ -8,6 +8,7 @@
     lineDiff,
     maxCurriculumBytes,
     parseCurriculum,
+    resolvePendingProposal,
     type CurriculumAdapterSelection,
     type CurriculumDraft,
     type MarkdownConflict,
@@ -103,6 +104,9 @@
         'roadmap.md',
         conflict.proposalContent,
         conflict.currentContentHash,
+        new Date(),
+        undefined,
+        conflict.proposalPath,
       );
       const content = conflict.proposalContent;
       conflict = null;
@@ -111,6 +115,22 @@
       onRoadmapApplied(content);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not replace the roadmap.';
+    } finally {
+      working = false;
+    }
+  }
+
+  async function keepAfterConflict(): Promise<void> {
+    if (!conflict) return;
+    working = true;
+    error = '';
+    try {
+      await resolvePendingProposal(storage, topicSlug, conflict.proposalPath, 'kept');
+      mode = 'editing';
+      conflict = null;
+      success = 'Current roadmap kept. The imported proposal remains readable in the workspace.';
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Dusori could not resolve this proposal.';
     } finally {
       working = false;
     }
@@ -249,7 +269,9 @@
       Replace only if the imported outline should become the topic’s active roadmap.
     </p>
     <div class="conflict-actions">
-      <button class="quiet-action" onclick={edit} disabled={working}>Keep current roadmap</button>
+      <button class="quiet-action" onclick={keepAfterConflict} disabled={working}
+        >Keep current roadmap</button
+      >
       <button
         class:loading={working}
         class="curriculum-action"

@@ -13,7 +13,9 @@ Before a write:
 4. Dusori writes `<name>.proposed-<timestamp>.md` beside it.
 5. A dated entry links both versions from `Updates/YYYY/MM/YYYY-MM-DD.md`.
 
-The application surfaces the current and proposed text as a diff. There is no last-write-wins path for user-owned Markdown.
+The application surfaces the current and proposed text as a diff. It also records the proposal lifecycle in a schema-versioned, hash-guarded `Topics/<slug>/proposals.json` ledger, so **Today** can recover a pending decision after a reload. Accepting the proposal or keeping the current file records that resolution without deleting or rewriting either Markdown version. Historical `.proposed-*` files that predate the ledger remain ordinary readable files; Dusori does not guess their status.
+
+There is no last-write-wins path for user-owned Markdown.
 
 The same protocol now protects in-app note editing. Dusori creates notes under `Notes/`, tracks them in `state.json`, and records accepted edits in the dated update log. If the note changed after the editor opened, **Save note** keeps that external content active and opens the proposal review instead.
 

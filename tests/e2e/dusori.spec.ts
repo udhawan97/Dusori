@@ -242,8 +242,10 @@ async function noteNames(page: Page): Promise<string[]> {
 /** Reaches Today from any width: the workspace navigation collapses on narrow viewports. */
 async function openTodayView(page: Page): Promise<void> {
   const workspaceNavigation = page.getByRole('navigation', { name: 'Workspace' });
-  if (!(await workspaceNavigation.isVisible())) {
-    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+  const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  await expect(workspaceNavigation.or(navigationButton)).toBeVisible();
+  if (await navigationButton.isVisible()) {
+    await navigationButton.click();
   }
   await workspaceNavigation.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
@@ -256,6 +258,12 @@ async function addReviewSource(page: Page): Promise<void> {
   await page.getByLabel('Source text').fill(reviewSourceText);
   await page.getByRole('button', { name: 'Add source' }).click();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Attention notes');
+}
+
+async function reachLastReviewPrompt(page: Page): Promise<void> {
+  const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
+  const next = session.getByRole('button', { name: 'Next' });
+  while (!(await next.isDisabled())) await next.click();
 }
 
 async function previewCurriculum(page: Page): Promise<void> {
@@ -336,6 +344,51 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
 
   await page.getByRole('button', { name: 'Accept this proposal' }).click();
   await expect(page.getByText('Connect this note to one verified source.')).toBeVisible();
+});
+
+test('Today recovers and resolves a pending proposal after reload', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await runConflictProof(page);
+
+  await page.reload();
+  await openTodayView(page);
+  await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+  const attention = page.getByRole('list', { name: 'Needs attention' });
+  await expect(attention).toContainText('Review proposal for 001-first-look');
+  await attention.getByRole('button', { name: /review proposal.*001-first-look/iu }).click();
+
+  await expect(
+    page.getByRole('heading', { name: 'Your external edit stayed untouched.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('External edit: this sentence must survive.', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Keep current document' }).click();
+  await openTodayView(page);
+  await expect(page.getByText('No local evidence needs a decision.')).toBeVisible();
+
+  const proposalState = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const topic = await (
+      await (await root.getDirectoryHandle('Dusori')).getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const ledger = await (await topic.getFileHandle('proposals.json')).getFile();
+    const proposals = (
+      JSON.parse(await ledger.text()) as {
+        proposals: Array<{ proposalPath: string; resolution: string }>;
+      }
+    ).proposals;
+    const proposalFile = proposals[0]?.proposalPath.split('/').at(-1) ?? '';
+    const notes = await topic.getDirectoryHandle('Notes');
+    const proposalStillExists = await notes
+      .getFileHandle(proposalFile)
+      .then(() => true)
+      .catch(() => false);
+    return { proposalStillExists, resolution: proposals[0]?.resolution };
+  });
+  expect(proposalState).toEqual({ proposalStillExists: true, resolution: 'kept' });
 });
 
 test('website and docs render distinct, usable light and dark themes', async ({ page }) => {
@@ -1376,7 +1429,7 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
   await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
     'Paused this topic.',
   );
-  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText(
+  await expect(page.getByRole('list', { name: 'Continue learning' })).toContainText(
     'Explain the central mechanism in your own words.',
   );
   await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
@@ -1500,7 +1553,7 @@ test('a source-grounded review walks local evidence before the schedule moves', 
 
   await openTodayView(page);
   const start = page.getByRole('button', {
-    name: 'Start review — recall AI Fundamentals from its sources',
+    name: 'Start review — AI Fundamentals',
   });
   await start.click();
 
@@ -1536,7 +1589,9 @@ test('a source-grounded review walks local evidence before the schedule moves', 
   await session.getByRole('button', { name: 'Got it' }).click();
   await expect(session).toBeHidden();
   await expect(page.getByText('Reviewed “AI Fundamentals”. The next review is')).toBeVisible();
-  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+  await expect(
+    page.getByText('Nothing needs continuing now. “AI Fundamentals” returns on'),
+  ).toBeVisible();
 
   const persisted = await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
@@ -1559,7 +1614,7 @@ test('typed review answers are kept only when the learner saves them as a note',
   await openTodayView(page);
 
   const start = page.getByRole('button', {
-    name: 'Start review — recall AI Fundamentals from its sources',
+    name: 'Start review — AI Fundamentals',
   });
   await start.click();
   const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
@@ -1613,7 +1668,7 @@ test('starting and abandoning a review session changes nothing', async ({ page }
 
   await openTodayView(page);
   const start = page.getByRole('button', {
-    name: 'Start review — recall AI Fundamentals from its sources',
+    name: 'Start review — AI Fundamentals',
   });
 
   // Keyboard only: reach the session, reveal evidence, leave, and land back on the invoker.
@@ -1632,7 +1687,9 @@ test('starting and abandoning a review session changes nothing', async ({ page }
   await page.getByRole('button', { name: 'Close without rating' }).click();
   await expect(page.getByRole('dialog', { name: 'AI Fundamentals' })).toBeHidden();
 
-  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText('AI Fundamentals');
+  await expect(page.getByRole('list', { name: 'Continue learning' })).toContainText(
+    'AI Fundamentals',
+  );
   const reviewFileExists = await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
     const dusori = await root.getDirectoryHandle('Dusori');
@@ -1647,9 +1704,7 @@ test('starting and abandoning a review session changes nothing', async ({ page }
   expect(reviewFileExists).toBe(false);
 });
 
-test('a review session says when sources hold no readable text and never fetches', async ({
-  page,
-}) => {
+test('Today routes a URL-only objective back to Research without fetching it', async ({ page }) => {
   const remoteRequests: string[] = [];
   page.on('request', (request) => {
     if (request.url().startsWith('https://arxiv.org/')) remoteRequests.push(request.url());
@@ -1665,14 +1720,11 @@ test('a review session says when sources hold no readable text and never fetches
   await expect(page.getByRole('link', { name: 'Transformers paper' })).toBeVisible();
 
   await openTodayView(page);
-  await page
-    .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
-    .click();
-
-  const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
-  await expect(session).toContainText('URL reference');
-  await expect(session).toContainText('Dusori never fetches a page on its own.');
-  await expect(session.getByRole('button', { name: 'Got it' })).toBeHidden();
+  const research = page.getByRole('button', { name: 'Research objective — AI Fundamentals' });
+  await expect(research).toBeVisible();
+  await research.click();
+  await expect(page.getByRole('heading', { name: 'Sources' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'AI Fundamentals' })).toBeHidden();
   expect(remoteRequests).toEqual([]);
   await expectNoSeriousA11yViolations(page);
 });
@@ -1686,9 +1738,7 @@ test('a review session stays usable at supported narrow widths', async ({ browse
     await addReviewSource(page);
 
     await openTodayView(page);
-    await page
-      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
-      .click();
+    await page.getByRole('button', { name: 'Start review — AI Fundamentals' }).click();
     const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
     await session.getByRole('button', { name: 'Reveal the source' }).click();
     await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
@@ -1714,13 +1764,23 @@ test('a review session stays usable at supported narrow widths', async ({ browse
 test('spaced review schedules a topic and explains the resting queue', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await addReviewSource(page);
 
-  await page.getByRole('button', { name: 'Today', exact: true }).click();
-  await expect(page.getByRole('list', { name: 'Review queue' })).toContainText('AI Fundamentals');
+  await openTodayView(page);
+  await expect(page.getByRole('list', { name: 'Continue learning' })).toContainText(
+    'AI Fundamentals',
+  );
 
-  await page.getByRole('button', { name: 'Got it — mark AI Fundamentals reviewed' }).click();
+  await page.getByRole('button', { name: 'Start review — AI Fundamentals' }).click();
+  await reachLastReviewPrompt(page);
+  await page
+    .getByRole('dialog', { name: 'AI Fundamentals' })
+    .getByRole('button', { name: 'Got it' })
+    .click();
   await expect(page.getByText('Reviewed “AI Fundamentals”. The next review is')).toBeVisible();
-  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+  await expect(
+    page.getByText('Nothing needs continuing now. “AI Fundamentals” returns on'),
+  ).toBeVisible();
   await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
     'Reviewed this topic; the next review is',
   );
@@ -1728,7 +1788,9 @@ test('spaced review schedules a topic and explains the resting queue', async ({ 
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-  await expect(page.getByText('No reviews due. “AI Fundamentals” returns on')).toBeVisible();
+  await expect(
+    page.getByText('Nothing needs continuing now. “AI Fundamentals” returns on'),
+  ).toBeVisible();
 
   const persisted = await page.evaluate(async () => {
     const root = await navigator.storage.getDirectory();
@@ -2337,9 +2399,7 @@ test.describe('companion flows', () => {
     await expect(page.getByText('Connected for this session')).toBeVisible();
 
     await openTodayView(page);
-    await page
-      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
-      .click();
+    await page.getByRole('button', { name: 'Start review — AI Fundamentals' }).click();
     const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
 
     // Consent for AI ranking does not carry over: this scope asks for itself.
@@ -2364,9 +2424,7 @@ test.describe('companion flows', () => {
     await page.route('**/api/ai/recall-prompts', async (route) => {
       await route.fulfill({ json: { error: 'no', reason: 'ai-failed' }, status: 502 });
     });
-    await page
-      .getByRole('button', { name: 'Start review — recall AI Fundamentals from its sources' })
-      .click();
+    await page.getByRole('button', { name: 'Start review — AI Fundamentals' }).click();
     await expect(session).toContainText('Sharper prompts were unavailable');
     await expect(session).toContainText('in your own words before revealing the source');
     await expect(session).toContainText('Deterministic prompt');

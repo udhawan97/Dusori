@@ -6,7 +6,7 @@ description: Track roadmap progress and recent work without giving up portable f
 Dusori’s learning loop has two views backed by the files already inside each topic:
 
 - **Roadmap** reads section headings and `- [ ]` / `- [x]` tasks from `roadmap.md`.
-- **Today** combines roadmap progress, the topic status in `state.json`, a deterministic review queue, and recent entries from `Updates/`.
+- **Today** combines workspace-wide continuation and attention lanes, roadmap progress, topic status, review state, workspace health, and recent entries from `Updates/`.
 
 There is no hosted task database. A schedule exists only where you created one with an explicit review action — Dusori never generates one on its own. The same progress remains readable in Obsidian or any Markdown editor.
 
@@ -20,9 +20,25 @@ Imported curriculum section headings remain visible but are not counted as tasks
 
 Choose **Active**, **Paused**, or **Complete** from the roadmap header. Status is explicit and independent from checklist progress: completing every objective does not silently mark the topic complete.
 
-## Review Today
+## Continue learning
 
-Today shows every topic’s status, completed-task count, next unchecked objective, and recent local activity. **Review next** excludes complete topics, puts due spaced reviews first, then orders remaining active topics before paused topics by the oldest `state.json.updatedAt` value, using title and slug as stable tie-breakers.
+Today begins with **Continue learning**, a deterministic workspace-wide lane. It excludes complete topics, puts due spaced reviews first, then orders remaining active topics before paused topics by the oldest `state.json.updatedAt` value, using title and slug as stable tie-breakers.
+
+The action comes only from explicit local evidence:
+
+- A due review with at least one approved, locally readable source opens **Start review**.
+- An unfinished objective without readable local source text opens **Research objective**.
+- Another unfinished source-ready objective opens its roadmap and also offers **Start review** as an
+  optional, non-scheduling action.
+- A paused topic opens without silently resuming it.
+
+A URL-only reference does not make an objective source-ready. Dusori claims only that text is available on this device; it does not judge source quality, completeness, or understanding. Opening a continuation item never changes progress.
+
+## Needs attention
+
+The adjacent **Needs attention** lane contains only conditions proven by current workspace evidence. Pending edit proposals and invalid or missing source records are integrity issues; unresolved wikilinks remain secondary hygiene and never displace learning. Related health issues are summarized and route to **Workspace health**, where the existing evidence and repairs remain authoritative.
+
+Proposal state is portable and durable in `Topics/<slug>/proposals.json`. If Dusori protects an external edit, Today can recover that pending proposal after a reload and reopen the exact diff. Accepting it or keeping the current document resolves the ledger entry while preserving both Markdown versions. Older `.proposed-*` files created before the ledger remain readable history and are never guessed to be pending.
 
 Marking a review with **Got it** or **Needs work** stores the topic's next due date in its `review.json`, using a fixed interval ladder (1, 3, 7, 14, 30, then 60 days). `Got it` advances one rung; `Needs work` resets to the first rung.
 

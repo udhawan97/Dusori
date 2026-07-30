@@ -9,6 +9,7 @@
     parseTutorPreferences,
     proposeMarkdownUpdate,
     renderTutorPreferences,
+    resolvePendingProposal,
     tutorDepths,
     type CompanionAiClient,
     type MarkdownConflict,
@@ -46,6 +47,11 @@
   $: path = `Topics/${topicSlug}/TUTOR.md`;
   $: proposalDiff = proposal
     ? lineDiff(current, proposal).filter((row) => row.kind !== 'same')
+    : [];
+  $: conflictDiff = conflict
+    ? lineDiff(conflict.currentContent, conflict.proposalContent).filter(
+        (row) => row.kind !== 'same',
+      )
     : [];
 
   async function load(): Promise<void> {
@@ -170,6 +176,53 @@
       }
     } catch (cause) {
       error = cause instanceof Error ? cause.message : 'Those preferences could not be saved.';
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function acceptTutorConflict(): Promise<void> {
+    if (!conflict) return;
+    saving = true;
+    error = '';
+    try {
+      await acceptMarkdownUpdate(
+        storage,
+        topicSlug,
+        'TUTOR.md',
+        conflict.proposalContent,
+        conflict.currentContentHash,
+        new Date(),
+        `- Updated [[../../../TUTOR|learning preferences]] after reviewing an external edit.`,
+        conflict.proposalPath,
+      );
+      conflict = null;
+      proposal = '';
+      aiModel = '';
+      status = 'Learning preferences accepted after reviewing the external edit.';
+      await load();
+      onSaved?.();
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'Those preferences could not be accepted.';
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function keepTutorConflict(): Promise<void> {
+    if (!conflict) return;
+    saving = true;
+    error = '';
+    try {
+      await resolvePendingProposal(storage, topicSlug, conflict.proposalPath, 'kept');
+      conflict = null;
+      proposal = '';
+      aiModel = '';
+      status = 'Current learning preferences kept. The proposal remains readable.';
+      await load();
+      onSaved?.();
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : 'That proposal could not be resolved.';
     } finally {
       saving = false;
     }
@@ -300,10 +353,23 @@
     {/if}
 
     {#if conflict}
-      <p class="help conflict" role="alert">
-        This file changed outside Dusori, so nothing was replaced. Your version is saved as
-        <code>{conflict.proposalPath}</code> for you to review.
-      </p>
+      <div class="proposal conflict" role="alert">
+        <p class="help">
+          This file changed outside Dusori, so nothing was replaced. Your version is saved as
+          <code>{conflict.proposalPath}</code>.
+        </p>
+        <ol class="diff" aria-label="Proposed learning preference changes">
+          {#each conflictDiff as row, index (`conflict:${index}:${row.line}`)}
+            <li class={row.kind}>{row.kind === 'add' ? '+' : '−'} {row.line}</li>
+          {/each}
+        </ol>
+        <div class="conflict-actions">
+          <button type="button" disabled={saving} onclick={keepTutorConflict}>Keep current</button>
+          <button class="save" type="button" disabled={saving} onclick={acceptTutorConflict}>
+            <Save aria-hidden="true" size={16} /> Accept proposal
+          </button>
+        </div>
+      </div>
     {/if}
 
     {#if status}<p class="help" aria-live="polite">{status}</p>{/if}
@@ -392,6 +458,7 @@
 
   .row-actions button,
   .add-row button,
+  .conflict-actions button,
   .save {
     display: inline-flex;
     min-height: 2.25rem;
@@ -461,6 +528,12 @@
 
   .conflict {
     color: var(--color-ink);
+  }
+
+  .conflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
   }
 
   .error {

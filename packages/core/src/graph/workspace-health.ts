@@ -1,9 +1,13 @@
 import type { StorageAdapter } from '../adapters.js';
+import { ProposalLedgerSchema, proposalLedgerPath } from '../conflict/proposal-ledger.js';
 import { SourceManifestSchema } from '../schemas/workspace.js';
 import { buildWorkspaceGraph, type WorkspaceGraph } from './workspace-graph.js';
 
 export type WorkspaceHealthIssueKind =
+  | 'invalid-proposal-ledger'
   | 'invalid-source-manifest'
+  | 'missing-proposal-file'
+  | 'missing-proposal-target'
   | 'missing-source-manifest'
   | 'missing-source-file'
   | 'unresolved-link'
@@ -48,6 +52,49 @@ export async function inspectWorkspaceHealth(storage: StorageAdapter): Promise<W
 
   for (const slug of [...topicSlugs].sort((left, right) => left.localeCompare(right))) {
     const root = `Topics/${slug}`;
+    const ledgerPath = proposalLedgerPath(slug);
+    const ledgerSnapshot = await storage.read(ledgerPath);
+    if (ledgerSnapshot) {
+      let parsedLedger: unknown;
+      try {
+        parsedLedger = JSON.parse(ledgerSnapshot.content);
+      } catch {
+        parsedLedger = null;
+      }
+      const ledger = ProposalLedgerSchema.safeParse(parsedLedger);
+      if (!ledger.success || ledger.data.topicSlug !== slug) {
+        issues.push({
+          kind: 'invalid-proposal-ledger',
+          message: 'This proposal ledger is invalid. Dusori left it untouched.',
+          path: ledgerPath,
+          topicSlug: slug,
+        });
+      } else {
+        for (const proposal of ledger.data.proposals.filter(
+          (entry) => entry.resolution === 'pending',
+        )) {
+          if (!filePaths.has(proposal.currentPath)) {
+            issues.push({
+              kind: 'missing-proposal-target',
+              message: 'A pending proposal points to a document that is missing.',
+              path: ledgerPath,
+              target: proposal.currentPath,
+              topicSlug: slug,
+            });
+          }
+          if (!filePaths.has(proposal.proposalPath)) {
+            issues.push({
+              kind: 'missing-proposal-file',
+              message: 'A pending proposal file is missing.',
+              path: ledgerPath,
+              target: proposal.proposalPath,
+              topicSlug: slug,
+            });
+          }
+        }
+      }
+    }
+
     const manifestPath = `${root}/Sources/manifest.json`;
     const itemPrefix = `${root}/Sources/items/`;
     const itemPaths = [...filePaths].filter((path) => path.startsWith(itemPrefix));

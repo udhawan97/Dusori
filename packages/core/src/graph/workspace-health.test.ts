@@ -92,6 +92,43 @@ describe('workspace backlinks and health', () => {
     );
   });
 
+  it('reports an invalid proposal ledger and a missing pending proposal file', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'AI Fundamentals', now);
+    const notePath = 'Topics/ai-fundamentals/Notes/001-first-look.md';
+    const note = await storage.read(notePath);
+    await storage.externalWrite(notePath, `${note?.content}\nExternal edit.\n`);
+    const conflict = await proposeMarkdownUpdate(
+      storage,
+      'ai-fundamentals',
+      'Notes/001-first-look.md',
+      `${note?.content}\nProposed edit.\n`,
+      now,
+    );
+    if (!('proposalPath' in conflict)) throw new Error('Expected a proposal.');
+    await storage.remove(conflict.proposalPath);
+
+    expect((await inspectWorkspaceHealth(storage)).issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'missing-proposal-file',
+          target: conflict.proposalPath,
+        }),
+      ]),
+    );
+
+    const ledgerPath = 'Topics/ai-fundamentals/proposals.json';
+    await storage.write(conflict.proposalPath, conflict.proposalContent, {
+      expectedHash: null,
+    });
+    await storage.externalWrite(ledgerPath, '{ invalid json');
+    expect((await inspectWorkspaceHealth(storage)).issues).toEqual([
+      expect.objectContaining({ kind: 'invalid-proposal-ledger', path: ledgerPath }),
+    ]);
+    expect((await storage.read(ledgerPath))?.content).toBe('{ invalid json');
+  });
+
   it('resolves links written by roadmap and conflict update entries', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);

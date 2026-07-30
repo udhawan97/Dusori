@@ -1,5 +1,6 @@
 export * from './adapters.js';
 export * from './analytics/workspace-insights.js';
+export * from './conflict/proposal-ledger.js';
 export * from './conflict/write-protocol.js';
 export * from './curriculum/import.js';
 export * from './graph/health-actions.js';
@@ -10,6 +11,7 @@ export * from './learning/loop.js';
 export * from './learning/recall.js';
 export * from './learning/tutor.js';
 export * from './learning/review.js';
+export * from './learning/today-focus.js';
 export * from './notes/edit.js';
 export * from './portable.js';
 export * from './research/index.js';

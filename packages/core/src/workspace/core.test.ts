@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { acceptMarkdownUpdate, proposeMarkdownUpdate } from '../conflict/write-protocol.js';
+import { readPendingProposals, readProposalLedger } from '../conflict/proposal-ledger.js';
 import {
   clearWorkspace,
   exportWorkspace,
@@ -77,12 +78,42 @@ describe('workspace vertical slice', () => {
         result.proposalContent,
         result.currentContentHash,
         new Date('2026-07-20T12:31:00.000Z'),
+        undefined,
+        result.proposalPath,
       );
       expect((await storage.read(notePath))?.content).toBe('# Dusori proposal\n');
       expect((await storage.read(result.updatePath))?.content).toContain(
         'Accepted an explicit update',
       );
+      expect((await readProposalLedger(storage, created.topicSlug)).proposals[0]).toMatchObject({
+        resolution: 'accepted',
+      });
     }
+  });
+
+  it('preserves pending proposal decisions through workspace export and import', async () => {
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Dusori', now);
+    const created = await createTopic(source, 'AI Fundamentals', now);
+    await source.externalWrite(created.notePath, '# External note\n');
+    const conflict = await proposeMarkdownUpdate(
+      source,
+      created.topicSlug,
+      'Notes/001-first-look.md',
+      '# Proposed note\n',
+      now,
+    );
+    if (!('proposalPath' in conflict)) throw new Error('Expected a proposal.');
+
+    const target = new MemoryStorageAdapter();
+    await importWorkspace(target, await exportWorkspace(source));
+
+    expect(await readPendingProposals(target, created.topicSlug)).toEqual([
+      expect.objectContaining({
+        currentPath: conflict.currentPath,
+        proposalPath: conflict.proposalPath,
+      }),
+    ]);
   });
 
   it('rejects an invalid topic state without writing partial files', async () => {

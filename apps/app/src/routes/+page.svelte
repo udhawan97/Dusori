@@ -38,9 +38,11 @@
     proposeMarkdownUpdate,
     readMachineFile,
     replaceWorkspace,
+    resolvePendingProposal,
     type CompanionAiClient,
     type CompanionResearchClient,
     type MarkdownConflict,
+    type ProposalAttentionItem,
     type StorageAdapter,
     type Workspace,
   } from '@dusori/core';
@@ -101,6 +103,8 @@
   let creatingTopic = false;
   let previousSlug = '';
   let conflictPanel: HTMLElement | undefined;
+  let workspaceHealthPanel: HTMLElement | undefined;
+  let workspaceHealthComponent: WorkspaceHealth | undefined;
 
   const unlockHint = 'Select or create a topic to open these views.';
 
@@ -560,6 +564,45 @@
     conflictPanel?.scrollIntoView({ block: 'start' });
   }
 
+  async function openPendingProposal(item: ProposalAttentionItem): Promise<void> {
+    if (!storage) return;
+    await perform(async () => {
+      const [current, proposed] = await Promise.all([
+        storage!.read(item.currentPath),
+        storage!.read(item.proposalPath),
+      ]);
+      if (!current) throw new Error(`The proposal target is missing: ${item.currentPath}`);
+      if (!proposed) throw new Error(`The proposal file is missing: ${item.proposalPath}`);
+      stopEditingNote();
+      creatingTopic = false;
+      selectedSlug = item.topicSlug;
+      notePath = item.currentPath;
+      noteContent = current.content;
+      conflict = {
+        currentContent: current.content,
+        currentContentHash: current.hash,
+        currentPath: item.currentPath,
+        expectedContentHash: current.hash,
+        proposalContent: proposed.content,
+        proposalPath: item.proposalPath,
+        updatePath: '',
+      };
+      workspaceView = 'note';
+      mobileNavOpen = false;
+      syncLocation();
+      await tick();
+      conflictPanel?.scrollIntoView({ block: 'start' });
+    });
+  }
+
+  async function openWorkspaceHealth(): Promise<void> {
+    inspectorOpen = true;
+    mobileNavOpen = false;
+    await workspaceHealthComponent?.refresh();
+    await tick();
+    workspaceHealthPanel?.scrollIntoView({ block: 'start' });
+  }
+
   async function acceptConflict(): Promise<void> {
     if (!storage || !selectedSlug || !conflict) return;
     await perform(async () => {
@@ -570,10 +613,32 @@
         noteRelativePath(pending.currentPath),
         pending.proposalContent,
         pending.currentContentHash,
+        new Date(),
+        undefined,
+        pending.proposalPath,
       );
       noteContent = pending.proposalContent;
       conflict = null;
+      artifactRevision += 1;
+      learningRevision += 1;
       status = 'You accepted the proposal. Dusori updated the note and logged that decision.';
+    });
+  }
+
+  async function keepConflict(): Promise<void> {
+    if (!storage || !selectedSlug || !conflict) return;
+    await perform(async () => {
+      const pending = conflict!;
+      await resolvePendingProposal(
+        storage!,
+        selectedSlug,
+        pending.proposalPath,
+        'kept',
+        new Date(),
+      );
+      conflict = null;
+      learningRevision += 1;
+      status = 'You kept the current document. The proposal remains as readable history.';
     });
   }
 
@@ -1050,7 +1115,11 @@
             view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
             revision={learningRevision}
             onArtifactSaved={refreshArtifacts}
+            onOpenProposal={(proposal) => void openPendingProposal(proposal)}
             onOpenRoadmap={(slug) => void openRoadmap(slug)}
+            onOpenResearch={(slug) => openResearch(slug)}
+            onOpenTopic={(slug) => openToday(slug)}
+            onOpenWorkspaceHealth={() => void openWorkspaceHealth()}
             onRoadmapChanged={handleRoadmapChanged}
             onStatus={announceStatus}
           />
@@ -1128,9 +1197,14 @@
               </div>
             {/each}
           </div>
-          <button class="primary-button accept-proposal" disabled={busy} onclick={acceptConflict}>
-            Accept this proposal
-          </button>
+          <div class="proposal-actions">
+            <button class="secondary-button" disabled={busy} onclick={keepConflict}>
+              Keep current document
+            </button>
+            <button class="primary-button accept-proposal" disabled={busy} onclick={acceptConflict}>
+              Accept this proposal
+            </button>
+          </div>
         </section>
       {/if}
     </section>
@@ -1164,12 +1238,15 @@
 
       {#if storage}
         <WorkspaceSearch {storage} onOpen={(path) => void openSearchDocument(path)} />
-        <WorkspaceHealth
-          {storage}
-          currentPath={notePath}
-          onOpen={(path) => void openSearchDocument(path)}
-          onArtifactsChanged={() => (artifactRevision += 1)}
-        />
+        <div bind:this={workspaceHealthPanel}>
+          <WorkspaceHealth
+            bind:this={workspaceHealthComponent}
+            {storage}
+            currentPath={notePath}
+            onOpen={(path) => void openSearchDocument(path)}
+            onArtifactsChanged={() => (artifactRevision += 1)}
+          />
+        </div>
       {/if}
 
       {#if selectedSlug && storage}
@@ -1941,8 +2018,16 @@
     border-inline-start: 3px solid var(--color-error);
   }
 
-  .accept-proposal {
+  .proposal-actions {
+    display: grid;
+    gap: var(--space-sm);
     margin-block-start: var(--space-lg);
+  }
+
+  @media (min-width: 38rem) {
+    .proposal-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .mobile-status {

@@ -4,6 +4,11 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Added
+
+- **Today** now opens with two workspace-wide, file-derived lanes. **Continue learning** routes due source-grounded reviews, objectives that need research, ordinary roadmap continuation, and paused topics without changing progress. **Needs attention** gives integrity issues priority, keeps unresolved-link hygiene secondary, and routes every item back to its existing owning workflow.
+- Pending Markdown proposals now have a schema-versioned, hash-guarded `Topics/<slug>/proposals.json` lifecycle ledger. Proposal review survives reloads; accepting the proposal or keeping the current document resolves the attention item while preserving both Markdown versions. Historical proposal files are left untouched and are never guessed to be pending.
+
 ## [0.7.1] - 2026-07-29
 
 ### Fixed

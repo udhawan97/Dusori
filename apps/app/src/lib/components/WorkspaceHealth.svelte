@@ -30,7 +30,7 @@
   let creating = '';
   let created = '';
 
-  async function refresh(): Promise<void> {
+  export async function refresh(): Promise<void> {
     loading = true;
     error = '';
     try {
@@ -78,7 +78,7 @@
 <section class="workspace-health" aria-labelledby="workspace-health-title" aria-busy={loading}>
   <div class="health-heading">
     <div>
-      <p class="kicker">Link integrity</p>
+      <p class="kicker">Local integrity</p>
       <h2 id="workspace-health-title">Workspace health</h2>
     </div>
     <button

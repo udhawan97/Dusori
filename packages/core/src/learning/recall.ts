@@ -1,5 +1,7 @@
 import type { StorageAdapter } from '../adapters.js';
+import { SourceManifestSchema } from '../schemas/workspace.js';
 import { readSourceManifest } from '../sources/import.js';
+import { topicRoot } from '../workspace/paths.js';
 
 /** Longest excerpt shown beside a prompt, ellipsis included. */
 export const maxRecallExcerptCharacters = 320;
@@ -53,6 +55,12 @@ export interface RecallSessionInput {
   objective: string;
   topicSlug: string;
   topicTitle: string;
+}
+
+export interface SourceReadiness {
+  approvedSources: number;
+  readableSources: number;
+  sourceReady: boolean;
 }
 
 export type RecallSessionResult =
@@ -139,6 +147,40 @@ function readableSections(content: string, fallbackHeading: string): Section[] {
       heading: section.heading || fallbackHeading,
     }))
     .filter((section) => section.body.length >= minRecallExcerptCharacters);
+}
+
+/**
+ * Checks whether a topic has learner-approved text that can be read on this device.
+ * Invalid or missing manifests stay untouched here; Workspace health owns their diagnosis.
+ */
+export async function inspectSourceReadiness(
+  storage: StorageAdapter,
+  topicSlug: string,
+): Promise<SourceReadiness> {
+  const manifestFile = await storage.read(`${topicRoot(topicSlug)}/Sources/manifest.json`);
+  if (!manifestFile) return { approvedSources: 0, readableSources: 0, sourceReady: false };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(manifestFile.content);
+  } catch {
+    return { approvedSources: 0, readableSources: 0, sourceReady: false };
+  }
+  const manifest = SourceManifestSchema.safeParse(parsed);
+  if (!manifest.success) return { approvedSources: 0, readableSources: 0, sourceReady: false };
+
+  let readableSources = 0;
+  for (const record of manifest.data.sources.slice(0, maxSourceReads)) {
+    if (!record.path) continue;
+    const file = await storage.read(record.path);
+    if (!file) continue;
+    if (readableSections(file.content, record.title).length > 0) readableSources += 1;
+  }
+  return {
+    approvedSources: manifest.data.sources.length,
+    readableSources,
+    sourceReady: readableSources > 0,
+  };
 }
 
 function toEvidence(section: Section, title: string, path: string): RecallEvidence {

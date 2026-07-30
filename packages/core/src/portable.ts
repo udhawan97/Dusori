@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 
 import type { StorageAdapter } from './adapters.js';
+import { ProposalLedgerSchema } from './conflict/proposal-ledger.js';
 import { SourceManifestSchema, TopicStateSchema, WorkspaceSchema } from './schemas/workspace.js';
 import { normalizeWorkspacePath, topicRoot } from './workspace/paths.js';
 
@@ -70,6 +71,25 @@ function validatePreparedFiles(files: readonly WorkspaceImportFile[]): Workspace
           : undefined;
       if (sourcePath && !byPath.has(sourcePath)) {
         throw new Error(`The import is missing a recorded source file: ${sourcePath}`);
+      }
+    }
+
+    const proposalLedgerPath = `${root}/proposals.json`;
+    if (byPath.has(proposalLedgerPath)) {
+      const proposalResult = ProposalLedgerSchema.safeParse(
+        parseJsonFile(byPath, proposalLedgerPath, 'proposal ledger'),
+      );
+      if (!proposalResult.success || proposalResult.data.topicSlug !== topic.slug) {
+        throw new Error(`The import's proposal ledger is invalid: ${topic.slug}`);
+      }
+      for (const proposal of proposalResult.data.proposals.filter(
+        (entry) => entry.resolution === 'pending',
+      )) {
+        for (const path of [proposal.currentPath, proposal.proposalPath]) {
+          if (!byPath.has(path)) {
+            throw new Error(`The import is missing a pending proposal file: ${path}`);
+          }
+        }
       }
     }
   }
