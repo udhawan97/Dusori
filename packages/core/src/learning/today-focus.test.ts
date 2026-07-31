@@ -27,10 +27,51 @@ describe('Today focus', () => {
 
     expect(focus.continueLearning[0]).toMatchObject({
       action: 'research-objective',
-      sourceReady: false,
+      sourceDetail: 'no sources yet',
       title: 'Evidence loops',
     });
     expect(focus.needsAttention).toEqual([]);
+  });
+
+  it('separates a topic holding only unreadable sources from one holding none', async () => {
+    const { storage, topic, workspace } = await oneTopic();
+    await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Deterministic evidence',
+        topicSlug: topic.topicSlug,
+        url: 'https://example.com/evidence',
+      },
+      now,
+    );
+
+    let summaries = await buildTodaySummary(storage, workspace);
+    expect(
+      (await buildTodayFocus(storage, workspace, summaries, now)).continueLearning[0],
+    ).toMatchObject({
+      action: 'research-objective',
+      sourceDetail: '1 source saved, none readable on this device',
+    });
+
+    await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Second reference',
+        topicSlug: topic.topicSlug,
+        url: 'https://example.com/second',
+      },
+      now,
+    );
+
+    summaries = await buildTodaySummary(storage, workspace);
+    expect(
+      (await buildTodayFocus(storage, workspace, summaries, now)).continueLearning[0],
+    ).toMatchObject({
+      action: 'research-objective',
+      sourceDetail: '2 sources saved, none readable on this device',
+    });
   });
 
   it('routes a source-ready objective to its roadmap and a due review to recall', async () => {
@@ -54,7 +95,7 @@ describe('Today focus', () => {
     ).toMatchObject({
       action: 'open-roadmap',
       canStartReview: true,
-      sourceReady: true,
+      sourceDetail: 'local source ready',
     });
 
     await markTopicReviewed(storage, topic.topicSlug, 'good', new Date('2026-07-29T12:00:00.000Z'));

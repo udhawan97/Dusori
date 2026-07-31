@@ -7,7 +7,7 @@ import {
 } from '../graph/workspace-health.js';
 import type { Workspace } from '../schemas/workspace.js';
 import { buildReviewQueue, type ReviewQueueItem, type TodayTopicSummary } from './loop.js';
-import { inspectSourceReadiness } from './recall.js';
+import { inspectSourceReadiness, type SourceReadiness } from './recall.js';
 import { localDateOf } from './review.js';
 
 export type ContinueLearningAction =
@@ -16,7 +16,8 @@ export type ContinueLearningAction =
 export interface ContinueLearningItem extends ReviewQueueItem {
   action: ContinueLearningAction;
   canStartReview: boolean;
-  sourceReady: boolean;
+  /** Names which source gap the learner faces, so "none yet" never reads like "none readable". */
+  sourceDetail: string;
 }
 
 export interface ProposalAttentionItem {
@@ -47,6 +48,20 @@ export type NeedsAttentionItem = HealthAttentionItem | ProposalAttentionItem;
 export interface TodayFocus {
   continueLearning: ContinueLearningItem[];
   needsAttention: NeedsAttentionItem[];
+}
+
+const noReadiness: SourceReadiness = { approvedSources: 0, readableSources: 0, sourceReady: false };
+
+/**
+ * Distinguishes a topic with nothing saved from one whose saved sources hold no text here.
+ * The counts are not comparable — `readableSources` reads only the first sources of a manifest —
+ * so this never reports one as a fraction of the other.
+ */
+function sourceDetailFor(readiness: SourceReadiness): string {
+  if (readiness.readableSources > 0) return 'local source ready';
+  if (readiness.approvedSources === 0) return 'no sources yet';
+  const noun = readiness.approvedSources === 1 ? 'source' : 'sources';
+  return `${readiness.approvedSources} ${noun} saved, none readable on this device`;
 }
 
 const integrityIssueKinds = new Set<WorkspaceHealthIssueKind>([
@@ -139,22 +154,20 @@ export async function buildTodayFocus(
         try {
           return [summary.slug, await inspectSourceReadiness(storage, summary.slug)] as const;
         } catch {
-          return [
-            summary.slug,
-            { approvedSources: 0, readableSources: 0, sourceReady: false },
-          ] as const;
+          return [summary.slug, noReadiness] as const;
         }
       }),
     ),
   ]);
   const readinessBySlug = new Map(readiness);
   const continueLearning = buildReviewQueue(summaries, 5, now).map((item) => {
-    const sourceReady = readinessBySlug.get(item.slug)?.sourceReady ?? false;
+    const topicReadiness = readinessBySlug.get(item.slug) ?? noReadiness;
+    const sourceReady = topicReadiness.sourceReady;
     return {
       ...item,
       action: actionFor(item, sourceReady, today),
       canStartReview: item.status === 'active' && sourceReady && hasReviewableObjective(item),
-      sourceReady,
+      sourceDetail: sourceDetailFor(topicReadiness),
     };
   });
 

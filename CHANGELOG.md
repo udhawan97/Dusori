@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Changed
+
+- **Continue learning** now names which source gap it means. A topic with nothing saved reads "no sources yet"; a topic whose saved sources hold no readable text on this device reads "2 sources saved, none readable on this device". Both used to read "research needed", which sent you to run another discovery scan even when the sources were already there and only needed their text fetched or pasted. The count is what the manifest records and the readability is what Dusori actually read, so the two are never reported as a fraction of each other. Where the button takes you is unchanged.
+
 ## [0.8.0] - 2026-07-30
 
 ### Added

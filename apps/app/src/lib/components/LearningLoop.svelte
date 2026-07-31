@@ -340,9 +340,7 @@
                     <strong>{item.title}</strong>
                     <p>{item.objective}</p>
                     <small
-                      >{item.reason} · {item.progressPercent}% complete · {item.sourceReady
-                        ? 'local source ready'
-                        : 'research needed'}</small
+                      >{item.reason} · {item.progressPercent}% complete · {item.sourceDetail}</small
                     >
                   </div>
                   <div class="lane-actions">

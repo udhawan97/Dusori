@@ -27,11 +27,11 @@ can only escape by guessing.
 `ContinueLearningItem` loses `sourceReady: boolean` and gains
 `sourceDetail: string`, derived from the readiness record already loaded:
 
-| Readiness                            | `sourceDetail`                                |
-| ------------------------------------ | --------------------------------------------- |
-| `readableSources > 0`                | `local source ready`                           |
+| Readiness                            | `sourceDetail`                                  |
+| ------------------------------------ | ----------------------------------------------- |
+| `readableSources > 0`                | `local source ready`                            |
 | `approvedSources > 0`, none readable | `3 sources saved, none readable on this device` |
-| no manifest, invalid, or empty       | `no sources yet`                               |
+| no manifest, invalid, or empty       | `no sources yet`                                |
 
 The second row is singular at one: `1 source saved, none readable on this device`.
 
