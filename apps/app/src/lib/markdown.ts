@@ -39,6 +39,25 @@ function keepCodeBlocksKeyboardReachable() {
   };
 }
 
+const wikilinkHrefPrefix = '#wiki-';
+
+/**
+ * Reads back the target `renderMarkdown` encoded into a wikilink href. It lives beside the
+ * emitter so the two halves cannot drift, and returns null for every other kind of link, which
+ * keeps ordinary anchors behaving like ordinary anchors.
+ */
+export function wikilinkTarget(href: string | null): string | null {
+  if (!href?.startsWith(wikilinkHrefPrefix)) return null;
+  const encoded = href.slice(wikilinkHrefPrefix.length);
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(encoded) || null;
+  } catch {
+    // A hand-edited href can carry a malformed escape; that is not a link to follow.
+    return null;
+  }
+}
+
 export async function renderMarkdown(markdown: string): Promise<RenderedMarkdown> {
   const mermaid: string[] = [];
   const withoutFrontmatter = markdown.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/u, '');
