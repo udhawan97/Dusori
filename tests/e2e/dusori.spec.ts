@@ -1432,6 +1432,10 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
   await expect(page.getByRole('list', { name: 'Continue learning' })).toContainText(
     'Explain the central mechanism in your own words.',
   );
+  // A topic with an empty manifest says so, rather than reporting sources it could not read.
+  await expect(page.getByRole('list', { name: 'Continue learning' })).toContainText(
+    'no sources yet',
+  );
   await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
     'Completed “Establish the terms and boundaries.”',
   );
