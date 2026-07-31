@@ -39,6 +39,7 @@
     readMachineFile,
     replaceWorkspace,
     resolvePendingProposal,
+    resolveWikilink,
     type CompanionAiClient,
     type CompanionResearchClient,
     type MarkdownConflict,
@@ -55,6 +56,7 @@
     stripCompanionCredentials,
   } from '$lib/companion-origin';
   import { containTab, modal } from '$lib/actions/modal';
+  import { wikilinkTarget } from '$lib/markdown';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -449,6 +451,29 @@
     conflict = null;
     mobileNavOpen = false;
     if (record) syncLocation();
+  }
+
+  // Delegated from the note sheet rather than from MarkdownView, which also renders research
+  // snippets and fetched captures. Only a document already inside the workspace steers navigation.
+  async function followWikilink(event: MouseEvent): Promise<void> {
+    if (!storage) return;
+    const anchor = (event.target as Element | null)?.closest('a');
+    const target = wikilinkTarget(anchor?.getAttribute('href') ?? null);
+    if (!target) return;
+    event.preventDefault();
+    const entries = await storage.list('', true);
+    const paths = new Set(
+      entries
+        .filter((entry) => entry.kind === 'file' && /\.(?:md|txt)$/iu.test(entry.path))
+        .map((entry) => entry.path),
+    );
+    const resolved = resolveWikilink(notePath, target, paths);
+    if (!resolved) {
+      // Creating the page a link names stays with workspace health, which asks first.
+      announceStatus(`“${target}” is not a document here yet. Workspace health can create it.`);
+      return;
+    }
+    await openGraphDocument(resolved);
   }
 
   async function openSearchDocument(path: string): Promise<void> {
@@ -1078,7 +1103,9 @@
               </div>
             </section>
           {:else}
-            <div class="note-sheet">
+            <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
+            <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
+            <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
               <MarkdownView content={noteContent} />
             </div>
           {/if}

@@ -634,6 +634,31 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
 
+test('a wikilink in a rendered document opens what it names', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  const sheet = page.locator('.note-sheet');
+  const openOverview = async (): Promise<void> => {
+    await page.getByRole('button', { name: 'Graph' }).click();
+    await page
+      .getByRole('list', { name: 'Graph documents' })
+      .getByRole('button', { name: 'AI Fundamentals overview', exact: true })
+      .click();
+    await expect(sheet.getByRole('heading', { name: 'AI Fundamentals' })).toBeVisible();
+  };
+
+  await openOverview();
+  await sheet.getByRole('link', { name: 'First look' }).click();
+  await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
+
+  // The sheet delegates clicks, so a link must still work from the keyboard alone.
+  await openOverview();
+  await sheet.getByRole('link', { name: 'roadmap' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(sheet).toContainText('Establish the terms and boundaries.');
+});
+
 test('graph view zooms, adjusts forces, and remembers the sliders', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);

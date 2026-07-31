@@ -86,31 +86,35 @@ function withoutMarkdownExtension(path: string): string {
   return path.replace(/\.md$/iu, '');
 }
 
-function resolveWikilink(
-  source: WorkspaceGraphNode,
+/**
+ * Resolves one Obsidian wikilink to a workspace path, or null when nothing — or more than one
+ * document — answers to it. It needs the workspace's paths and nothing else, so a reader can
+ * follow a link without building the graph, which would read every file to do it.
+ */
+export function resolveWikilink(
+  fromPath: string,
   rawTarget: string,
-  nodesByPath: Map<string, WorkspaceGraphNode>,
+  paths: ReadonlySet<string>,
 ): string | null {
   const target = rawTarget.split('|', 1)[0]!.split('#', 1)[0]!.trim();
   if (!target) return null;
   const targetWithExtension = /\.(?:md|txt)$/iu.test(target) ? target : `${target}.md`;
-  const directory = source.path.includes('/')
-    ? source.path.slice(0, source.path.lastIndexOf('/'))
-    : '';
+  const directory = fromPath.includes('/') ? fromPath.slice(0, fromPath.lastIndexOf('/')) : '';
   const candidates = new Set<string>();
 
   candidates.add(targetWithExtension.replace(/^\//u, ''));
   const relative = normalizeRelativePath(directory, targetWithExtension);
   if (relative) candidates.add(relative);
-  if (source.topicSlug) candidates.add(`Topics/${source.topicSlug}/${targetWithExtension}`);
+  const slug = topicSlug(fromPath);
+  if (slug) candidates.add(`Topics/${slug}/${targetWithExtension}`);
 
   for (const candidate of candidates) {
-    if (nodesByPath.has(candidate)) return candidate;
+    if (paths.has(candidate)) return candidate;
   }
 
   const targetBasename = target.slice(target.lastIndexOf('/') + 1);
   const wanted = withoutMarkdownExtension(targetBasename).toLocaleLowerCase();
-  const basenameMatches = [...nodesByPath.keys()].filter((path) => {
+  const basenameMatches = [...paths].filter((path) => {
     const basename = withoutMarkdownExtension(path.slice(path.lastIndexOf('/') + 1));
     return basename.toLocaleLowerCase() === wanted.toLocaleLowerCase();
   });
@@ -140,7 +144,7 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     });
   }
 
-  const nodesByPath = new Map(nodes.map((node) => [node.path, node]));
+  const pathSet = new Set(paths);
   const edges: WorkspaceGraphEdge[] = [];
   const unresolvedLinks: UnresolvedWorkspaceLink[] = [];
   const edgeIds = new Set<string>();
@@ -163,7 +167,7 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     const content = contentByPath.get(source.path) ?? '';
     for (const match of content.matchAll(/\[\[([^\]]+)\]\]/gu)) {
       const rawTarget = match[1]!.split('|', 1)[0]!.split('#', 1)[0]!.trim();
-      const resolved = resolveWikilink(source, rawTarget, nodesByPath);
+      const resolved = resolveWikilink(source.path, rawTarget, pathSet);
       if (resolved) addEdge(source.id, resolved, 'links');
       else if (rawTarget) unresolvedLinks.push({ source: source.id, target: rawTarget });
     }

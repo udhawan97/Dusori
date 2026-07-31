@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Added
+
+- Wikilinks are followable. A `[[link]]` in any document you read inside Dusori now opens what it names, by the same rules the knowledge graph already uses to draw its edges — a path from the workspace root, a path relative to the document you are reading, a bare name inside the same topic, or a filename that exactly one document in the workspace answers to. A link naming a page that does not exist, or a name two documents share, says so and changes nothing; creating the page an unresolved link names remains workspace health's job, where you are asked first. Links are followed only in your own workspace documents — a research result's Markdown never steers the app.
+
 ### Changed
 
 - **Continue learning** now names which source gap it means. A topic with nothing saved reads "no sources yet"; a topic whose saved sources hold no readable text on this device reads "2 sources saved, none readable on this device". Both used to read "research needed", which sent you to run another discovery scan even when the sources were already there and only needed their text fetched or pasted. The count is what the manifest records and the readability is what Dusori actually read, so the two are never reported as a fraction of each other. Where the button takes you is unchanged.

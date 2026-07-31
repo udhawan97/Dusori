@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { renderMarkdown } from './markdown';
+import { renderMarkdown, wikilinkTarget } from './markdown';
 
 describe('untrusted markdown rendering', () => {
   it('removes machine frontmatter and unsafe HTML while preserving safe links', async () => {
@@ -34,5 +34,33 @@ title: Hidden metadata
     const rendered = await renderMarkdown('<pre onclick="alert(1)">raw</pre>\n');
 
     expect(rendered.html).not.toContain('onclick');
+  });
+});
+
+describe('wikilink hrefs', () => {
+  it('decodes the target a rendered wikilink carries', async () => {
+    const rendered = await renderMarkdown('See [[Topics/ai/Notes/second look|the note]].\n');
+    const href = /href="([^"]+)"/u.exec(rendered.html)?.[1];
+
+    expect(wikilinkTarget(href ?? null)).toBe('Topics/ai/Notes/second look');
+  });
+
+  it('decodes a target holding a heading anchor, since resolution strips it later', () => {
+    expect(wikilinkTarget('#wiki-roadmap%23Objectives')).toBe('roadmap#Objectives');
+  });
+
+  it('ignores every href that is not a wikilink', () => {
+    expect(wikilinkTarget('#section-two')).toBeNull();
+    expect(wikilinkTarget('https://example.com/#wiki-spoof')).toBeNull();
+    expect(wikilinkTarget('')).toBeNull();
+    expect(wikilinkTarget(null)).toBeNull();
+  });
+
+  it('returns null rather than throwing on a malformed escape', () => {
+    expect(wikilinkTarget('#wiki-%E0%A4%A')).toBeNull();
+  });
+
+  it('returns null for a wikilink with an empty target', () => {
+    expect(wikilinkTarget('#wiki-')).toBeNull();
   });
 });
