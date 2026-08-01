@@ -324,9 +324,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.8.0` release turns Today into an evidence-driven workspace dashboard. **Continue learning** routes due source-grounded reviews, objectives that need sources, ordinary roadmap continuation, and paused topics without silently changing progress. **Needs attention** surfaces only current integrity and link-health evidence. Pending Markdown proposals now survive reloads through a portable lifecycle ledger, while both the current and proposed files remain intact.
+The current `v0.8.1` release makes the daily loop easier to trust on a phone. Review navigation stays visible on short screens, failed provider runs are distinct from completed searches with no matches, workspace view changes start at their own focused heading, and Research keeps its first consent control in the opening viewport. It also includes followable local wikilinks, clearer source-gap language, and topic-status controls directly on Today.
 
-[Read the v0.8.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.8.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.8.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.8.1) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

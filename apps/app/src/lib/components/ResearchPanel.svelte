@@ -77,6 +77,7 @@
   let loadingObjectives = true;
   let running = false;
   let runResult: ResearchRunResult | null = null;
+  let attemptedProviderCount = 0;
   let runError = '';
   let showOverflow = false;
   let notices: string[] = [];
@@ -108,6 +109,13 @@
   $: aiAllowed = readConsented([aiConsent], consentTick).has(aiConsent.id);
   $: shortlist = runResult?.shortlist ?? [];
   $: overflow = runResult?.overflow ?? [];
+  $: allProvidersFailed = Boolean(
+    runResult &&
+    attemptedProviderCount > 0 &&
+    runResult.skipped.length >= attemptedProviderCount &&
+    shortlist.length === 0 &&
+    overflow.length === 0,
+  );
 
   onMount(() => {
     void loadObjectives();
@@ -185,6 +193,7 @@
     notices = [];
     showOverflow = false;
     actionError = null;
+    attemptedProviderCount = providerList.length;
     try {
       const query = buildResearchQuery(topicTitle, objective);
       const result = await runResearchAgent({
@@ -633,6 +642,18 @@
           {/each}
         </ol>
       {/if}
+    {:else if allProvidersFailed && !running}
+      <div class="research-empty research-failure" role="alert">
+        <p>The allowed providers could not complete this scan.</p>
+        <span>
+          No suggestions were returned or saved. Check your connection or provider availability,
+          then retry.
+        </span>
+        <button class="quiet retry-action" onclick={run}>
+          <Search aria-hidden="true" size={17} />
+          Retry scan
+        </button>
+      </div>
     {:else if runResult && !running}
       <div class="research-empty">
         <p>No new suggestions matched this objective.</p>
@@ -915,6 +936,15 @@
     font-weight: 700;
   }
 
+  .research-failure {
+    padding-inline-start: var(--space-sm);
+    border-inline-start: 3px solid var(--color-error);
+  }
+
+  .retry-action {
+    margin-block-start: var(--space-sm);
+  }
+
   .result-list {
     margin: 0;
     padding: 0;
@@ -1169,6 +1199,12 @@
   @media (min-width: 40rem) {
     .dialog-actions {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 22rem) {
+    .research-panel {
+      gap: var(--space-md);
     }
   }
 

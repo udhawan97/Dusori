@@ -4,6 +4,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-01
+
 ### Added
 
 - A topic's status can be set from its card on **Today**. Active, Paused, and Complete sit under each topic in the ledger, using the same controls, the same hash-guarded write, and the same update-log entry as the roadmap view — so a paused topic can be resumed where you noticed it was paused, instead of only from inside the topic. Each card names its own topic on every control, and a change to one topic no longer disables the buttons on the others.
@@ -12,6 +14,13 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 ### Changed
 
 - **Continue learning** now names which source gap it means. A topic with nothing saved reads "no sources yet"; a topic whose saved sources hold no readable text on this device reads "2 sources saved, none readable on this device". Both used to read "research needed", which sent you to run another discovery scan even when the sources were already there and only needed their text fetched or pasted. The count is what the manifest records and the readability is what Dusori actually read, so the two are never reported as a fraction of each other. Where the button takes you is unchanged.
+
+### Fixed
+
+- Source-grounded review keeps **Back** and **Next** in the pinned decision area, so the controls are visible and hit-testable at 320×720, 375×812, and other short phone viewports instead of sitting below an unmarked inner scroll fold.
+- A scan where every allowed research provider fails now renders one honest failure state with a retry action. It no longer pairs a provider failure with “No new suggestions matched,” which is reserved for providers that completed successfully and returned no candidates.
+- User-requested workspace view changes reset the inherited document scroll and focus the destination heading. Today, Research, roadmap, graph, insights, notes, and the new-topic form no longer begin partially hidden beneath the sticky canvas bar.
+- Research keeps its first provider consent control in the opening viewport at 320×720 and 375×812. The phone layout retains the Discover / Compare / Capture explanation with tighter, approval-first copy instead of making the first action a full screen away.
 
 ## [0.8.0] - 2026-07-30
 
@@ -181,7 +190,8 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/udhawan97/Dusori/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/udhawan97/Dusori/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/udhawan97/Dusori/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/udhawan97/Dusori/compare/v0.6.0...v0.7.0

@@ -324,15 +324,6 @@
           </button>
         {/if}
 
-        <div class="session-nav">
-          <button class="quiet" disabled={index === 0} onclick={() => step(-1)}>
-            <ArrowLeft aria-hidden="true" size={16} /> Back
-          </button>
-          <button class="quiet" disabled={onLastPrompt} onclick={() => step(1)}>
-            Next <ArrowRight aria-hidden="true" size={16} />
-          </button>
-        </div>
-
         {#if aiCapability}
           <div class="ai-row">
             {#if askingConsent}
@@ -385,6 +376,14 @@
         </div>
       </div>
     {:else if current}
+      <div class="session-nav" aria-label="Review prompt navigation">
+        <button class="quiet" disabled={index === 0} onclick={() => step(-1)}>
+          <ArrowLeft aria-hidden="true" size={16} /> Back
+        </button>
+        <button class="quiet" disabled={onLastPrompt} onclick={() => step(1)}>
+          Next <ArrowRight aria-hidden="true" size={16} />
+        </button>
+      </div>
       {#if written}
         <div class="save-row">
           {#if savedPath}
@@ -671,6 +670,13 @@
     gap: var(--space-xs);
   }
 
+  /* Prompt navigation is part of the pinned decision row and remains one compact line even when
+   * the other dialog actions stack. A short phone must never require a hidden inner scroll before
+   * the learner can advance. */
+  .session-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   button {
     display: inline-flex;
     min-height: 2.75rem;
@@ -768,7 +774,6 @@
   }
 
   @media (min-width: 30rem) {
-    .session-nav,
     .dialog-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

@@ -29,8 +29,13 @@
       <p class="kicker">Research observatory · {topicTitle}</p>
       <h1 id="research-workspace-title">Let the strongest evidence find you.</h1>
       <p class="hero-copy">
-        Scan every allowed provider at once. Dusori ranks the results, explains why they surfaced,
-        and keeps the final source choice with you.
+        <span class="hero-copy-wide">
+          Scan every allowed provider at once. Dusori ranks the results, explains why they surfaced,
+          and keeps the final source choice with you.
+        </span>
+        <span class="hero-copy-compact">
+          Compare allowed providers. Nothing is saved without your approval.
+        </span>
       </p>
     </div>
     <div class="radar-mark" aria-hidden="true">
@@ -182,6 +187,10 @@
     font-size: var(--text-md);
   }
 
+  .hero-copy-compact {
+    display: none;
+  }
+
   .radar-mark {
     position: absolute;
     z-index: 1;
@@ -274,6 +283,88 @@
     padding-block-start: var(--space-lg);
     color: var(--color-muted);
     font-size: var(--text-sm);
+  }
+
+  /* On a phone this is the handoff immediately after topic creation, not a landing page. Keep the
+   * three-part explanation, but compress it into a single visual legend so the first consent
+   * decision stays in the opening viewport. */
+  @media (max-width: 47.99rem) {
+    .research-workspace {
+      padding-block: var(--space-md) var(--space-2xl);
+    }
+
+    .research-hero {
+      min-height: 0;
+      padding: var(--space-md);
+    }
+
+    .hero-copy {
+      font-size: var(--text-sm);
+    }
+
+    .radar-mark {
+      display: none;
+    }
+
+    .research-orbit {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .research-orbit li {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-2xs);
+      padding: var(--space-sm) var(--space-2xs);
+      text-align: center;
+    }
+
+    .research-orbit li + li {
+      border-inline-start: var(--rule-hair) solid var(--color-rule);
+    }
+
+    .research-orbit small {
+      display: none;
+    }
+
+    .research-grid {
+      margin-block-start: var(--space-md);
+    }
+
+    .agent-bay,
+    .evidence-bay {
+      padding-block: var(--space-lg);
+    }
+
+    .bay-label {
+      margin-block-end: var(--space-md);
+    }
+  }
+
+  @media (max-width: 22rem) {
+    .research-hero {
+      padding-block: var(--space-sm);
+    }
+
+    h1 {
+      font-size: 1.75rem;
+    }
+
+    .hero-copy-wide {
+      display: none;
+    }
+
+    .hero-copy-compact {
+      display: inline;
+    }
+
+    .agent-bay,
+    .evidence-bay {
+      padding-block: var(--space-md);
+    }
+
+    .bay-label {
+      margin-block-end: var(--space-sm);
+    }
   }
 
   @media (min-width: 48rem) {

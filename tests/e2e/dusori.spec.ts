@@ -1218,6 +1218,36 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
 });
 
+test('an all-provider failure stays distinct from a completed search with no matches', async ({
+  page,
+}) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    await route.abort('internetdisconnected');
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
+  await page
+    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
+    .getByRole('button', { name: 'Allow search' })
+    .click();
+
+  await expect(page.getByText('The allowed providers could not complete this scan.')).toBeVisible();
+  await expect(page.getByText('No new suggestions matched this objective.')).toBeHidden();
+  const retry = page.getByRole('button', { name: 'Retry scan' });
+  await expect(retry).toBeVisible();
+  await expect(page.getByText('No suggestions were returned or saved.')).toBeVisible();
+
+  await page.unroute('https://en.wikipedia.org/w/api.php**');
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+  });
+  await retry.click();
+  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
+  await expect(page.getByText('The allowed providers could not complete this scan.')).toBeHidden();
+});
+
 // The unit test reads the policy out of `app.html`; this one proves the browser agrees on the
 // artifact that actually ships. Each origin is stubbed with a permissive CORS reply, so an
 // allowed probe is answered locally and nothing leaves the machine. The content-security-policy
@@ -1798,9 +1828,15 @@ test('Today routes a URL-only objective back to Research without fetching it', a
   await expectNoSeriousA11yViolations(page);
 });
 
-test('a review session stays usable at supported narrow widths', async ({ browser }) => {
-  for (const width of [320, 414]) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
+test('a review session keeps its decisions hit-testable at supported phone sizes', async ({
+  browser,
+}) => {
+  for (const [width, height] of [
+    [320, 720],
+    [375, 812],
+    [414, 896],
+  ]) {
+    const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
     await createBrowserWorkspace(page);
     await createTopic(page);
@@ -1811,9 +1847,12 @@ test('a review session stays usable at supported narrow widths', async ({ browse
     const session = page.getByRole('dialog', { name: 'AI Fundamentals' });
     await session.getByRole('button', { name: 'Reveal the source' }).click();
     await expect(session.getByRole('region', { name: 'Source excerpt' })).toBeVisible();
+    const next = session.getByRole('button', { name: 'Next' });
+    await expectHitTestable(next, `Next at ${width}×${height}`);
     // The last prompt carries the widest footer: rating pair, trust line, and the way out.
     for (let step = 0; step < 4; step += 1) {
-      await session.getByRole('button', { name: 'Next' }).click();
+      await expectHitTestable(next, `Next on prompt ${step + 1} at ${width}×${height}`);
+      await next.click();
     }
     await expect(session).toContainText('Prompt 5 of 5');
 
@@ -1825,7 +1864,7 @@ test('a review session stays usable at supported narrow widths', async ({ browse
       dimensions.clientWidth,
     );
     const gotIt = session.getByRole('button', { name: 'Got it' });
-    expect(await gotIt.evaluate((button) => button.getClientRects().length)).toBe(1);
+    await expectHitTestable(gotIt, `Got it at ${width}×${height}`);
     await context.close();
   }
 });
@@ -2534,6 +2573,31 @@ async function expectWithinFold(page: Page, locator: Locator, what: string): Pro
   ).toBeLessThanOrEqual(height);
 }
 
+async function expectHitTestable(locator: Locator, what: string): Promise<void> {
+  const result = await locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const hit = document.elementFromPoint(center.x, center.y);
+    const dialogRect = element.closest('dialog')?.getBoundingClientRect();
+    return {
+      hit: hit === element || element.contains(hit),
+      insideDialog: dialogRect
+        ? rect.top >= dialogRect.top && rect.bottom <= dialogRect.bottom
+        : false,
+      insideViewport:
+        rect.left >= 0 &&
+        rect.right <= document.documentElement.clientWidth &&
+        rect.top >= 0 &&
+        rect.bottom <= window.innerHeight,
+    };
+  });
+  expect(result, `${what} is not fully visible and hit-testable`).toEqual({
+    hit: true,
+    insideDialog: true,
+    insideViewport: true,
+  });
+}
+
 test('the first run offers a workspace without scrolling', async ({ page }) => {
   for (const [width, height] of [
     [1440, 900],
@@ -2551,24 +2615,64 @@ test('the first run offers a workspace without scrolling', async ({ page }) => {
   }
 });
 
-test('the research view the app opens on shows its first control without scrolling', async ({
+test('the research view the app opens on shows its first control at desktop and phone sizes', async ({
+  browser,
+}) => {
+  for (const [width, height] of [
+    [1440, 900],
+    [375, 812],
+    [320, 720],
+  ]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    const page = await context.newPage();
+    await createBrowserWorkspace(page);
+    await createTopic(page, { remainInResearch: true });
+
+    await expectWithinFold(page, page.getByText('Research objective'), 'the research objective');
+    await expectWithinFold(
+      page,
+      page.getByRole('button', { name: 'Allow Wikipedia' }),
+      `the first provider control at ${width}×${height}`,
+    );
+
+    // The creation toast lands over that same region now. It announces; it must not absorb a click.
+    await expect(page.getByText('Topic created.')).toBeVisible();
+    await page.getByRole('button', { name: 'Allow GitHub' }).click();
+    await expect(page.getByRole('dialog', { name: /Allow GitHub/u })).toBeVisible();
+    await context.close();
+  }
+});
+
+test('a user-requested mobile view change resets scroll and focuses its heading', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 375, height: 812 });
   await createBrowserWorkspace(page);
+  await expect(
+    page.getByRole('heading', { name: 'What do you want to understand?' }),
+  ).toBeFocused();
   await createTopic(page, { remainInResearch: true });
+  await expect(
+    page.getByRole('heading', { name: 'Let the strongest evidence find you.' }),
+  ).toBeFocused();
 
-  await expectWithinFold(page, page.getByText('Research objective'), 'the research objective');
-  await expectWithinFold(
-    page,
-    page.getByRole('button', { name: 'Allow Wikipedia' }),
-    'the first provider control',
-  );
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Open workspace navigation' }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace' })
+    .getByRole('button', { name: 'Today', exact: true })
+    .click();
 
-  // The creation toast lands over that same region now. It announces; it must not absorb a click.
-  await expect(page.getByText('Topic created.')).toBeVisible();
-  await page.getByRole('button', { name: 'Allow GitHub' }).click();
-  await expect(page.getByRole('dialog', { name: /Allow GitHub/u })).toBeVisible();
+  const heading = page.getByRole('heading', { name: 'Today' });
+  await expect(heading).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const placement = await page.evaluate(() => {
+    const bar = document.querySelector('.canvas-bar')?.getBoundingClientRect();
+    const title = document.querySelector('.learning-loop h1')?.getBoundingClientRect();
+    return { barBottom: Math.round(bar?.bottom ?? 0), titleTop: Math.round(title?.top ?? 0) };
+  });
+  expect(placement.titleTop).toBeGreaterThanOrEqual(placement.barBottom);
 });
 
 test('the topic form starts empty and waits for a name', async ({ page }) => {

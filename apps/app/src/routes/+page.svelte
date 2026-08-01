@@ -107,6 +107,7 @@
   let conflictPanel: HTMLElement | undefined;
   let workspaceHealthPanel: HTMLElement | undefined;
   let workspaceHealthComponent: WorkspaceHealth | undefined;
+  let canvasElement: HTMLElement | undefined;
 
   const unlockHint = 'Select or create a topic to open these views.';
 
@@ -160,6 +161,16 @@
   function dismissMobileNav(): void {
     mobileNavOpen = false;
     mobileMenuButton?.focus();
+  }
+
+  /** Starts a user-requested view at its own heading instead of inheriting another view's scroll. */
+  async function orientView(): Promise<void> {
+    await tick();
+    window.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+    const heading = canvasElement?.querySelector<HTMLElement>('h1');
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
   }
 
   /** Reflects the open view in the URL so reload, Back and Forward all land where the user was. */
@@ -274,10 +285,16 @@
     storageLabel = label;
     workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
     const first = workspace.topics[0];
-    if (!first) return;
+    if (!first) {
+      if (!restoreView) await orientView();
+      return;
+    }
     openToday(first.slug, false);
     if (restoreView) await applyLocationView();
-    else syncLocation(true);
+    else {
+      syncLocation(true);
+      await orientView();
+    }
   }
 
   async function createBrowserWorkspace(): Promise<void> {
@@ -334,6 +351,7 @@
     conflict = null;
     mobileNavOpen = false;
     syncLocation();
+    void orientView();
   }
 
   function cancelNewTopic(): void {
@@ -362,6 +380,7 @@
     conflict = null;
     mobileNavOpen = false;
     syncLocation();
+    await orientView();
   }
 
   function showImportedRoadmap(content: string): void {
@@ -372,6 +391,7 @@
     artifactRevision += 1;
     conflict = null;
     syncLocation();
+    void orientView();
     announceStatus('Curriculum applied. The imported roadmap is open.');
   }
 
@@ -388,7 +408,10 @@
     notePath = '';
     conflict = null;
     mobileNavOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
   }
 
   async function openRoadmap(slug = selectedSlug, record = true): Promise<void> {
@@ -401,7 +424,10 @@
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      await orientView();
+    }
   }
 
   function openResearch(slug = selectedSlug, record = true): void {
@@ -414,7 +440,10 @@
     conflict = null;
     mobileNavOpen = false;
     if (window.innerWidth >= 960) inspectorOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
   }
 
   function openGraph(record = true): void {
@@ -425,7 +454,10 @@
     conflict = null;
     mobileNavOpen = false;
     if (window.innerWidth >= 960) inspectorOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
   }
 
   function openInsights(record = true): void {
@@ -436,7 +468,10 @@
     conflict = null;
     mobileNavOpen = false;
     if (window.innerWidth >= 960) inspectorOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
   }
 
   async function openGraphDocument(path: string, record = true): Promise<void> {
@@ -450,7 +485,10 @@
     noteContent = (await storage.read(path))?.content ?? '';
     conflict = null;
     mobileNavOpen = false;
-    if (record) syncLocation();
+    if (record) {
+      syncLocation();
+      await orientView();
+    }
   }
 
   // Delegated from the note sheet rather than from MarkdownView, which also renders research
@@ -1031,7 +1069,7 @@
       ></button>
     {/if}
 
-    <section class="canvas" id="note">
+    <section class="canvas" id="note" bind:this={canvasElement}>
       <header class="canvas-bar">
         <button
           bind:this={mobileMenuButton}
