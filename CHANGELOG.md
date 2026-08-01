@@ -6,6 +6,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ### Added
 
+- A topic's status can be set from its card on **Today**. Active, Paused, and Complete sit under each topic in the ledger, using the same controls, the same hash-guarded write, and the same update-log entry as the roadmap view — so a paused topic can be resumed where you noticed it was paused, instead of only from inside the topic. Each card names its own topic on every control, and a change to one topic no longer disables the buttons on the others.
 - Wikilinks are followable. A `[[link]]` in any document you read inside Dusori now opens what it names, by the same rules the knowledge graph already uses to draw its edges — a path from the workspace root, a path relative to the document you are reading, a bare name inside the same topic, or a filename that exactly one document in the workspace answers to. A link naming a page that does not exist, or a name two documents share, says so and changes nothing; creating the page an unresolved link names remains workspace health's job, where you are asked first. Links are followed only in your own workspace documents — a research result's Markdown never steers the app.
 
 ### Changed

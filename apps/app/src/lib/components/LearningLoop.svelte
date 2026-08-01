@@ -60,7 +60,9 @@
   let loading = true;
   let workingIndex: number | null = null;
   let reviewWorkingSlug: string | null = null;
-  let statusWorking = false;
+  // Per topic, not a single flag: the Today ledger renders one control group per topic, and one
+  // in-flight write must not freeze the others. Each writes its own hash-guarded state.json.
+  let statusWorkingSlug: string | null = null;
   let error = '';
   let success = '';
   let conflict: MarkdownConflict | null = null;
@@ -128,24 +130,27 @@
     }
   }
 
-  async function changeStatus(status: TopicState['status']): Promise<void> {
-    if (!selected || selected.status === status) return;
-    statusWorking = true;
+  async function changeStatus(
+    topic: TodayTopicSummary,
+    status: TopicState['status'],
+  ): Promise<void> {
+    if (topic.status === status) return;
+    statusWorkingSlug = topic.slug;
     error = '';
     success = '';
     try {
-      await setTopicStatus(storage, topicSlug, status);
+      await setTopicStatus(storage, topic.slug, status);
       success =
         status === 'complete'
-          ? 'Topic marked complete.'
+          ? `“${topic.title}” marked complete.`
           : status === 'paused'
-            ? 'Topic paused.'
-            : 'Topic resumed.';
+            ? `“${topic.title}” paused.`
+            : `“${topic.title}” resumed.`;
       await refresh();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not update topic status.';
     } finally {
-      statusWorking = false;
+      statusWorkingSlug = null;
     }
   }
 
@@ -270,6 +275,44 @@
     else onOpenWorkspaceHealth();
   }
 </script>
+
+<!--
+  One control group, two call sites: the roadmap acts on the single topic in view, while the
+  Today ledger renders one group per topic. `qualify` only changes accessible naming — on Today
+  three identically-labelled buttons per card would otherwise be indistinguishable by name.
+-->
+{#snippet statusControls(topic: TodayTopicSummary, qualify: boolean)}
+  <div
+    class="status-controls"
+    role="group"
+    aria-label={qualify ? `Topic status — ${topic.title}` : 'Topic status'}
+  >
+    <button
+      aria-label={qualify ? `Active — ${topic.title}` : undefined}
+      aria-pressed={topic.status === 'active'}
+      disabled={statusWorkingSlug === topic.slug}
+      onclick={() => void changeStatus(topic, 'active')}
+    >
+      <Play aria-hidden="true" size={15} /> Active
+    </button>
+    <button
+      aria-label={qualify ? `Paused — ${topic.title}` : undefined}
+      aria-pressed={topic.status === 'paused'}
+      disabled={statusWorkingSlug === topic.slug}
+      onclick={() => void changeStatus(topic, 'paused')}
+    >
+      <Pause aria-hidden="true" size={15} /> Paused
+    </button>
+    <button
+      aria-label={qualify ? `Complete — ${topic.title}` : undefined}
+      aria-pressed={topic.status === 'complete'}
+      disabled={statusWorkingSlug === topic.slug}
+      onclick={() => void changeStatus(topic, 'complete')}
+    >
+      <Check aria-hidden="true" size={15} /> Complete
+    </button>
+  </div>
+{/snippet}
 
 <section class="learning-loop" aria-busy={loading} aria-labelledby="learning-loop-title">
   {#if view === 'today'}
@@ -480,6 +523,11 @@
               </button>
             </div>
 
+            <div class="topic-status">
+              <p class="section-label">Topic status</p>
+              {@render statusControls(summary, true)}
+            </div>
+
             {#if summary.recentActivity.length}
               <div class="recent-activity">
                 <p class="section-label">Recent local activity</p>
@@ -515,29 +563,7 @@
       <div class="roadmap-meta">
         <div>
           <p class="section-label">Topic status</p>
-          <div class="status-controls" role="group" aria-label="Topic status">
-            <button
-              aria-pressed={selected.status === 'active'}
-              disabled={statusWorking}
-              onclick={() => changeStatus('active')}
-            >
-              <Play aria-hidden="true" size={15} /> Active
-            </button>
-            <button
-              aria-pressed={selected.status === 'paused'}
-              disabled={statusWorking}
-              onclick={() => changeStatus('paused')}
-            >
-              <Pause aria-hidden="true" size={15} /> Paused
-            </button>
-            <button
-              aria-pressed={selected.status === 'complete'}
-              disabled={statusWorking}
-              onclick={() => changeStatus('complete')}
-            >
-              <Check aria-hidden="true" size={15} /> Complete
-            </button>
-          </div>
+          {@render statusControls(selected, false)}
         </div>
         <p class="progress-number">
           <strong>{selected.progress.percent}%</strong>
@@ -956,8 +982,13 @@
   }
 
   .next-step,
-  .recent-activity {
+  .recent-activity,
+  .topic-status {
     margin-block-start: var(--space-lg);
+  }
+
+  .topic-status .status-controls {
+    margin-block-start: var(--space-xs);
   }
 
   .next-step > p:nth-child(2) {

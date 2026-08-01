@@ -1492,6 +1492,46 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
   expect(persisted.state.status).toBe('paused');
 });
 
+test('a topic is paused and resumed from its Today card', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  await page.getByRole('button', { name: 'Today', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+
+  // Each card names its own topic, so three identical labels never collide.
+  const card = page.getByRole('group', { name: 'Topic status — AI Fundamentals' });
+  await expect(card.getByRole('button', { name: 'Active — AI Fundamentals' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await card.getByRole('button', { name: 'Paused — AI Fundamentals' }).click();
+  await expect(page.getByText('“AI Fundamentals” paused.')).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Paused — AI Fundamentals' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('list', { name: 'Workspace recap' })).toContainText(
+    'Paused this topic.',
+  );
+
+  await card.getByRole('button', { name: 'Active — AI Fundamentals' }).click();
+  await expect(page.getByText('“AI Fundamentals” resumed.')).toBeVisible();
+
+  const persisted = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const state = await (await topic.getFileHandle('state.json')).getFile();
+    return JSON.parse(await state.text()) as { status: string };
+  });
+  expect(persisted.status).toBe('active');
+});
+
 test('learning loop protects an externally edited roadmap before accepting progress', async ({
   page,
 }) => {
