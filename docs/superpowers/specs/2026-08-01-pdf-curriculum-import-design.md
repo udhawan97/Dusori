@@ -40,7 +40,7 @@ readonly (readonly (readonly string[])[])[]
 ```
 
 Runs join with a space and then collapse whitespace — today's rule, which was
-always about glyph runs *within* a line and stays correct. Lines join with
+always about glyph runs _within_ a line and stays correct. Lines join with
 `\n`. Pages join with `\n\n`. An empty line is dropped rather than left as a
 gap, matching how an empty page is already dropped. `maxPdfPages` and the
 scanned-document message are unchanged.
@@ -53,7 +53,7 @@ space in a PDF produces no text items at all, so nothing real is lost.
 
 `extractPdfText` groups `getTextContent().items` into lines on `hasEOL`
 (`TextItem.hasEOL: boolean`, pdfjs-dist 6.1.200). Order matters inside the
-loop: push `item.str` when it is non-empty, *then* close the line when
+loop: push `item.str` when it is non-empty, _then_ close the line when
 `item.hasEOL` is set. pdfjs emits standalone end-of-line markers carrying
 `str: ''`, and today's `.filter(Boolean)` (`pdf-text.ts:48`) would swallow them.
 

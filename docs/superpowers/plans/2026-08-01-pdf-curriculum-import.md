@@ -40,10 +40,12 @@ These were confirmed empirically before this plan was written. Do not re-litigat
 ### Task 1: The extractor keeps line breaks
 
 **Files:**
+
 - Modify: `apps/app/src/lib/pdf-text.ts:20-29`
 - Test: `apps/app/src/lib/pdf-text.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `assemblePdfText(pages: readonly (readonly (readonly string[])[])[]): string` — pages of lines of glyph runs. `maxPdfPages` and the scanned-document message are unchanged.
 
@@ -165,10 +167,12 @@ git commit -m "feat(app): keep pdf line breaks when assembling extracted text"
 ### Task 2: Group pdfjs runs into lines
 
 **Files:**
+
 - Modify: `apps/app/src/lib/pdf-text.ts:31-54`
 - Test: `apps/app/src/lib/pdf-text.test.ts`
 
 **Interfaces:**
+
 - Consumes: `assemblePdfText` from Task 1.
 - Produces: `groupTextItemLines(items: readonly PdfPageItem[]): string[][]` and the exported type `PdfPageItem = { readonly hasEOL: boolean; readonly str: string } | { readonly type: string }`. `extractPdfText(file: Blob): Promise<string>` keeps its signature.
 
@@ -227,8 +231,7 @@ In `apps/app/src/lib/pdf-text.ts`, add above `extractPdfText`:
 ```ts
 /** The two shapes pdfjs reports on a page: a glyph run, or a marked-content boundary. */
 export type PdfPageItem =
-  | { readonly hasEOL: boolean; readonly str: string }
-  | { readonly type: string };
+  { readonly hasEOL: boolean; readonly str: string } | { readonly type: string };
 
 /**
  * Groups a page's glyph runs into lines. pdfjs infers the line break itself and reports it as
@@ -254,14 +257,14 @@ export function groupTextItemLines(items: readonly PdfPageItem[]): string[][] {
 Then replace the page loop inside `extractPdfText` (currently lines 43-50) with:
 
 ```ts
-    const pages: string[][][] = [];
-    const count = Math.min(document.numPages, maxPdfPages);
-    for (let number = 1; number <= count; number += 1) {
-      const page = await document.getPage(number);
-      const content = await page.getTextContent();
-      pages.push(groupTextItemLines(content.items));
-    }
-    return assemblePdfText(pages);
+const pages: string[][][] = [];
+const count = Math.min(document.numPages, maxPdfPages);
+for (let number = 1; number <= count; number += 1) {
+  const page = await document.getPage(number);
+  const content = await page.getTextContent();
+  pages.push(groupTextItemLines(content.items));
+}
+return assemblePdfText(pages);
 ```
 
 - [ ] **Step 4: Run the tests and the typecheck**
@@ -284,9 +287,11 @@ git commit -m "feat(app): group extracted pdf runs into the lines pdfjs reports"
 ### Task 3: Prove extracted text parses into a roadmap
 
 **Files:**
+
 - Create: `apps/app/src/lib/curriculum-pdf.test.ts`
 
 **Interfaces:**
+
 - Consumes: `assemblePdfText` (Task 1) and `parseCurriculum` from `@dusori/core`.
 - Produces: nothing later tasks depend on. This is the acceptance test for the core half of the feature.
 
@@ -358,9 +363,11 @@ git commit -m "test(app): extracted pdf exam guide text parses into roadmap obje
 ### Task 4: Choose a PDF in the curriculum importer
 
 **Files:**
+
 - Modify: `apps/app/src/lib/components/CurriculumImporter.svelte`
 
 **Interfaces:**
+
 - Consumes: `extractPdfText` (Task 2) via `import('$lib/pdf-text')`.
 - Produces: the `Exam guide PDF` labelled file input that Task 5's journey drives.
 
@@ -369,35 +376,35 @@ git commit -m "test(app): extracted pdf exam guide text parses into roadmap obje
 In the `<script>` block, after `let success = '';` (line 32), add:
 
 ```ts
-  let pdfName = '';
-  let reading = false;
+let pdfName = '';
+let reading = false;
 ```
 
 After the `edit()` function (line 51), add:
 
 ```ts
-  async function readPdf(event: Event): Promise<void> {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    reading = true;
-    error = '';
-    success = '';
-    try {
-      // Local extraction: the file never leaves the device, and a scan without a text layer
-      // reports that cause instead of filling the outline with nothing.
-      const { extractPdfText } = await import('$lib/pdf-text');
-      outline = await extractPdfText(file);
-      pdfName = file.name;
-      if (!sourceTitle.trim()) sourceTitle = file.name.replace(/\.pdf$/iu, '');
-    } catch (caught) {
-      error = caught instanceof Error ? caught.message : 'Dusori could not read this PDF.';
-    } finally {
-      reading = false;
-      // Cleared so choosing the same file again still fires a change.
-      input.value = '';
-    }
+async function readPdf(event: Event): Promise<void> {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  reading = true;
+  error = '';
+  success = '';
+  try {
+    // Local extraction: the file never leaves the device, and a scan without a text layer
+    // reports that cause instead of filling the outline with nothing.
+    const { extractPdfText } = await import('$lib/pdf-text');
+    outline = await extractPdfText(file);
+    pdfName = file.name;
+    if (!sourceTitle.trim()) sourceTitle = file.name.replace(/\.pdf$/iu, '');
+  } catch (caught) {
+    error = caught instanceof Error ? caught.message : 'Dusori could not read this PDF.';
+  } finally {
+    reading = false;
+    // Cleared so choosing the same file again still fires a change.
+    input.value = '';
   }
+}
 ```
 
 In `startAnother()` (line 139), add `pdfName = '';` beside the other resets.
@@ -407,24 +414,24 @@ In `startAnother()` (line 139), add `pdfName = '';` beside the other resets.
 In the `editing` branch, insert immediately before `<label for="curriculum-outline">Outline text</label>` (line 206):
 
 ```svelte
-      <label for="curriculum-pdf">Exam guide PDF <span>optional</span></label>
-      <input
-        id="curriculum-pdf"
-        type="file"
-        accept=".pdf,application/pdf"
-        disabled={working || reading}
-        onchange={readPdf}
-        aria-describedby="curriculum-pdf-help"
-      />
-      <p class="field-help" id="curriculum-pdf-help">
-        {#if reading}
-          Reading the PDF on this device…
-        {:else if pdfName}
-          Read {pdfName} into the outline below. Edit it before previewing.
-        {:else}
-          Read on this device and never uploaded. A scanned PDF says so.
-        {/if}
-      </p>
+<label for="curriculum-pdf">Exam guide PDF <span>optional</span></label>
+<input
+  id="curriculum-pdf"
+  type="file"
+  accept=".pdf,application/pdf"
+  disabled={working || reading}
+  onchange={readPdf}
+  aria-describedby="curriculum-pdf-help"
+/>
+<p class="field-help" id="curriculum-pdf-help">
+  {#if reading}
+    Reading the PDF on this device…
+  {:else if pdfName}
+    Read {pdfName} into the outline below. Edit it before previewing.
+  {:else}
+    Read on this device and never uploaded. A scanned PDF says so.
+  {/if}
+</p>
 ```
 
 Change the section's busy flag on line 151 from `aria-busy={working}` to `aria-busy={working || reading}`, and the submit button on line 219 from `disabled={working}` to `disabled={working || reading}`.
@@ -434,10 +441,10 @@ Change the section's busy flag on line 151 from `aria-busy={working}` to `aria-b
 In the `<style>` block, after the `.field-help` rule (line 440), add:
 
 ```css
-  input[type='file'] {
-    cursor: pointer;
-    padding-block: var(--space-2xs);
-  }
+input[type='file'] {
+  cursor: pointer;
+  padding-block: var(--space-2xs);
+}
 ```
 
 - [ ] **Step 4: Verify it builds and typechecks**
@@ -460,9 +467,11 @@ git commit -m "feat(app): read an exam guide pdf into the curriculum outline"
 ### Task 5: End-to-end journey
 
 **Files:**
+
 - Modify: `tests/e2e/dusori.spec.ts:940-960` (`samplePdf`) and add one test after the AWS paste journey at line 1321.
 
 **Interfaces:**
+
 - Consumes: the `Exam guide PDF` input from Task 4 and the existing `awsExamGuide` fixture (`dusori.spec.ts:71`).
 - Produces: nothing later tasks depend on.
 
@@ -572,6 +581,7 @@ git commit -m "test(e2e): import an aws exam guide from its pdf"
 ### Task 6: Documentation and release bookkeeping
 
 **Files:**
+
 - Modify: `CHANGELOG.md` (the `[Unreleased]` → `### Added` list)
 - Modify: `docs/product/spec.md:86` (remove the not-built line) and the curriculum paragraph
 - Modify: `README.md:132` (the "Import a study guide" capability row)
@@ -597,7 +607,7 @@ An AWS exam guide can also be read directly from a PDF: extraction happens on th
 In `README.md` line 132, change the "Import a study guide" description to:
 
 ```markdown
-| 🧭  | Import a study guide               | A reviewable roadmap from pasted text or an AWS exam guide PDF, preserving the original outline in `Sources/` |
+| 🧭 | Import a study guide | A reviewable roadmap from pasted text or an AWS exam guide PDF, preserving the original outline in `Sources/` |
 ```
 
 - [ ] **Step 4: Verify the full gate**
