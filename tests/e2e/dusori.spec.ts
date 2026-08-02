@@ -933,16 +933,28 @@ async function readWorkspaceFile(page: Page, path: string): Promise<string> {
   }, path);
 }
 
+/** PDF strings are parenthesised, so a literal parenthesis or backslash must be escaped. */
+function escapePdfText(text: string): string {
+  return text.replace(/([\\()])/gu, '\\$1');
+}
+
 /**
- * A real, minimal PDF, so the import path is exercised end to end. Passing no text produces a
- * structurally valid page with an empty content stream — what a scan looks like to a reader.
+ * A real, minimal PDF, so the import path is exercised end to end. Each line is drawn at its own
+ * offset, which is what makes pdfjs report the line breaks an outline parser needs. Passing no
+ * text produces a structurally valid page with an empty content stream — what a scan looks like
+ * to a reader. Text is encoded latin1, so `·` reads back as a bullet and `•` would not survive.
  */
-function samplePdf(text: string): Buffer {
-  const stream = text ? `BT /F1 12 Tf 20 120 Td (${text}) Tj ET` : '';
+function samplePdf(text: string | readonly string[]): Buffer {
+  const lines = (typeof text === 'string' ? [text] : text).filter((line) => line.trim());
+  const stream = lines.length
+    ? `BT /F1 12 Tf 40 740 Td ${lines
+        .map((line, index) => `${index === 0 ? '' : '0 -16 Td '}(${escapePdfText(line)}) Tj`)
+        .join(' ')} ET`
+    : '';
   const objects = [
     '<</Type/Catalog/Pages 2 0 R>>',
     '<</Type/Pages/Kids[3 0 R]/Count 1>>',
-    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
     `<</Length ${stream.length}>>\nstream\n${stream}\nendstream`,
     '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
   ];
@@ -1303,6 +1315,43 @@ test('curriculum import recognizes AWS exam guide text pasted from the PDF', asy
     .getByLabel('Official page')
     .fill('https://aws.amazon.com/certification/certified-solutions-architect-associate/');
   await page.getByLabel('Outline text').fill(awsExamGuide);
+  await page.getByRole('button', { name: 'Preview roadmap' }).click();
+
+  await expect(page.getByText('AWS Certification exam guide', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '9 roadmap items' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Curriculum preview' })).toContainText(
+    'Design Secure Architectures (30%)',
+  );
+  await expect(page.getByRole('list', { name: 'Curriculum preview' })).toContainText(
+    'Design secure workloads and applications',
+  );
+  await expectNoSeriousA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Apply roadmap' }).click();
+  await expect(page.locator('.learning-loop')).toContainText('Design Secure Architectures');
+  await expect(page.getByRole('heading', { name: 'Curriculum ready.' })).toBeVisible();
+});
+
+test('curriculum import reads an AWS exam guide straight from its PDF', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  if (!(await page.getByRole('heading', { name: 'Curriculum' }).isVisible())) {
+    await page.getByRole('button', { name: 'Open inspector' }).click();
+  }
+  await page.getByRole('button', { name: 'Import curriculum' }).click();
+
+  // The same outline the paste journey uses, delivered as a PDF. `·` is what latin1 can carry,
+  // and pdfjs reads it back as the bullet the adapter already knows.
+  await page.getByLabel('Exam guide PDF').setInputFiles({
+    buffer: samplePdf(awsExamGuide.replace(/•/gu, '·').split('\n')),
+    mimeType: 'application/pdf',
+    name: 'saa-c03-exam-guide.pdf',
+  });
+
+  // The filename seeds the title, and the extracted text is editable before previewing.
+  await expect(page.getByLabel('Source title').last()).toHaveValue('saa-c03-exam-guide');
+  await expect(page.getByLabel('Outline text')).toHaveValue(/Task Statement 1\.1/u);
+
   await page.getByRole('button', { name: 'Preview roadmap' }).click();
 
   await expect(page.getByText('AWS Certification exam guide', { exact: true })).toBeVisible();
