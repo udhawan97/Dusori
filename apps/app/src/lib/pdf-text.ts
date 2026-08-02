@@ -40,8 +40,7 @@ export function assemblePdfText(pages: readonly (readonly (readonly string[])[])
 
 /** The two shapes pdfjs reports on a page: a glyph run, or a marked-content boundary. */
 export type PdfPageItem =
-  | { readonly hasEOL: boolean; readonly str: string }
-  | { readonly type: string };
+  { readonly hasEOL: boolean; readonly str: string } | { readonly type: string };
 
 /**
  * Groups a page's glyph runs into lines. pdfjs infers the line break itself and reports it as

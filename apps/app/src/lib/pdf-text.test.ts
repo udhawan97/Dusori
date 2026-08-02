@@ -26,9 +26,9 @@ describe('assemblePdfText', () => {
   });
 
   it('drops a whitespace-only line rather than closing a wrapped sentence', () => {
-    expect(assemblePdfText([[['Task Statement 1.2: Design secure'], ['   '], ['workloads.']]])).toBe(
-      'Task Statement 1.2: Design secure\nworkloads.',
-    );
+    expect(
+      assemblePdfText([[['Task Statement 1.2: Design secure'], ['   '], ['workloads.']]]),
+    ).toBe('Task Statement 1.2: Design secure\nworkloads.');
   });
 
   it('drops a page that carries no text rather than leaving a gap', () => {
