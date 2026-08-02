@@ -4,11 +4,16 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
-## [0.8.1] - 2026-08-01
+## [0.9.0] - 2026-08-01
 
 ### Added
 
 - An AWS Certification exam guide can be imported straight from its PDF. Choose the file and Dusori reads it on your device, fills the outline box with the text, and takes the source title from the filename; you trim the cover page or the appendix, preview, and apply exactly as with pasted text. The extraction now keeps the guide's own line breaks, which is what lets its domains and task statements be recognized at all — a page read as one block has no outline left in it. A PDF of any other shape says no format matched and leaves its text in the box to edit by hand. The file never leaves your device, and a scanned PDF still says it has no text layer rather than importing nothing.
+
+## [0.8.1] - 2026-08-01
+
+### Added
+
 - A topic's status can be set from its card on **Today**. Active, Paused, and Complete sit under each topic in the ledger, using the same controls, the same hash-guarded write, and the same update-log entry as the roadmap view — so a paused topic can be resumed where you noticed it was paused, instead of only from inside the topic. Each card names its own topic on every control, and a change to one topic no longer disables the buttons on the others.
 - Wikilinks are followable. A `[[link]]` in any document you read inside Dusori now opens what it names, by the same rules the knowledge graph already uses to draw its edges — a path from the workspace root, a path relative to the document you are reading, a bare name inside the same topic, or a filename that exactly one document in the workspace answers to. A link naming a page that does not exist, or a name two documents share, says so and changes nothing; creating the page an unresolved link names remains workspace health's job, where you are asked first. Links are followed only in your own workspace documents — a research result's Markdown never steers the app.
 

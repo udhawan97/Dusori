@@ -324,9 +324,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Release Notes
 
-The current `v0.8.1` release makes the daily loop easier to trust on a phone. Review navigation stays visible on short screens, failed provider runs are distinct from completed searches with no matches, workspace view changes start at their own focused heading, and Research keeps its first consent control in the opening viewport. It also includes followable local wikilinks, clearer source-gap language, and topic-status controls directly on Today.
+The current `v0.9.0` release lets an AWS Certification exam guide become a topic roadmap straight from its PDF. Dusori reads the file on your device and fills the outline box, so you trim what you do not want and preview before anything is written. The extractor now keeps a document's own line breaks — the reason an outline was unreadable from a PDF at all — which PDF sources benefit from too. A PDF of any other shape says no format matched and leaves its text in the box to edit.
 
-[Read the v0.8.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.8.1) · [Review the changelog](CHANGELOG.md)
+[Read the v0.9.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.9.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing
 

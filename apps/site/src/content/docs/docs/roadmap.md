@@ -13,7 +13,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Local source library for pasted text, Markdown/text files, PDFs read on your device, and unfetched URL references
 - Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry, with explainable deterministic ranking and preview-first source capture
 - Tags read from your own Markdown — `tags:` frontmatter or an inline `#tag` — with a `tag:` search filter, a graph filter, and a tag count in Insights
-- Preview-first curriculum import for English Microsoft Learn study guides and structured Markdown syllabi
+- Preview-first curriculum import for English Microsoft Learn study guides, AWS Certification exam guides, and structured Markdown syllabi, from pasted text or from an AWS exam guide PDF read on your device
 - In-app creation and conflict-safe editing of portable Markdown notes
 - Local full-text workspace search with no stored index or remote query
 - Backlinks and non-mutating workspace health for wikilinks and source manifests/files
@@ -35,7 +35,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 ## Planned—not built
 
 - OCR for scanned PDFs and other image-only documents
-- Importing a curriculum from a PDF, rather than only reading one as a source
+- Recognizing a curriculum PDF that is not an AWS exam guide, which needs an outline adapter for PDF-native structure rather than Markdown headings
 - Importing a single-topic bundle back into an existing workspace
 - Scheduled or unattended research and source acceptance
 - Inline video playback inside Dusori
