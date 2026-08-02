@@ -3,30 +3,42 @@ import { describe, expect, it } from 'vitest';
 import { assemblePdfText, maxPdfPages } from './pdf-text';
 
 describe('assemblePdfText', () => {
-  it('joins the text items of a page in reading order', () => {
-    expect(assemblePdfText([['Attention', 'weighs', 'every', 'token.']])).toBe(
+  it('joins the glyph runs of a line in reading order', () => {
+    expect(assemblePdfText([[['Attention', 'weighs', 'every', 'token.']]])).toBe(
       'Attention weighs every token.',
     );
   });
 
+  it('keeps the line breaks an outline parser reads', () => {
+    expect(assemblePdfText([[['Domain 1: Design.'], ['Task Statement 1.1: Scope.']]])).toBe(
+      'Domain 1: Design.\nTask Statement 1.1: Scope.',
+    );
+  });
+
   it('separates pages with a blank line so sections stay distinguishable', () => {
-    expect(assemblePdfText([['Page one.'], ['Page two.']])).toBe('Page one.\n\nPage two.');
+    expect(assemblePdfText([[['Page one.']], [['Page two.']]])).toBe('Page one.\n\nPage two.');
   });
 
   it('collapses the run of spaces pdf extraction leaves between glyph runs', () => {
-    expect(assemblePdfText([['Byte   pair', '  encoding  ', 'merges.']])).toBe(
+    expect(assemblePdfText([[['Byte   pair', '  encoding  ', 'merges.']]])).toBe(
       'Byte pair encoding merges.',
     );
   });
 
+  it('drops a whitespace-only line rather than closing a wrapped sentence', () => {
+    expect(assemblePdfText([[['Task Statement 1.2: Design secure'], ['   '], ['workloads.']]])).toBe(
+      'Task Statement 1.2: Design secure\nworkloads.',
+    );
+  });
+
   it('drops a page that carries no text rather than leaving a gap', () => {
-    expect(assemblePdfText([['Page one.'], ['   '], ['Page three.']])).toBe(
+    expect(assemblePdfText([[['Page one.']], [['   ']], [['Page three.']]])).toBe(
       'Page one.\n\nPage three.',
     );
   });
 
   it('names the scanned-document cause when a pdf has no text layer at all', () => {
-    expect(() => assemblePdfText([[], ['  '], []])).toThrow(/no extractable text/iu);
+    expect(() => assemblePdfText([[], [['  ']], []])).toThrow(/no extractable text/iu);
   });
 
   it('says a scan needs another route rather than implying dusori will read it', () => {
@@ -39,7 +51,7 @@ describe('assemblePdfText', () => {
 
   it('caps how many pages one import will read', () => {
     expect(maxPdfPages).toBeGreaterThan(0);
-    const pages = Array.from({ length: maxPdfPages + 10 }, (_page, index) => [`Page ${index}.`]);
+    const pages = Array.from({ length: maxPdfPages + 10 }, (_page, index) => [[`Page ${index}.`]]);
 
     const text = assemblePdfText(pages);
 

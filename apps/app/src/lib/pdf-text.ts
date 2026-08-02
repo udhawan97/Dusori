@@ -14,15 +14,25 @@ const noTextMessage =
   'document. Dusori ships no OCR, so add it as a URL reference or paste the text you need.';
 
 /**
- * Assembles page text into one document. Pure, so the rules that actually matter — how runs are
- * joined, what an empty page does, and what a scan reports — are testable without a real PDF.
+ * Assembles pages of lines of glyph runs into one document. Pure, so the rules that actually
+ * matter — how runs join, which line breaks survive, what an empty page does, and what a scan
+ * reports — are testable without a real PDF.
+ *
+ * The line breaks are the point. An outline parser anchors on the start of a line, so a page
+ * flattened into one string has no outline left in it.
  */
-export function assemblePdfText(pages: readonly (readonly string[])[]): string {
+export function assemblePdfText(pages: readonly (readonly (readonly string[])[])[]): string {
   const rendered: string[] = [];
   for (const page of pages.slice(0, maxPdfPages)) {
-    // pdfjs emits a text item per glyph run, so runs are joined and then whitespace collapsed.
-    const text = page.join(' ').replace(/\s+/gu, ' ').trim();
-    if (text) rendered.push(text);
+    const lines: string[] = [];
+    for (const line of page) {
+      // pdfjs emits a text item per glyph run, so runs are joined and then whitespace collapsed.
+      const text = line.join(' ').replace(/\s+/gu, ' ').trim();
+      // A blank line closes an open task statement in the curriculum adapters, so a
+      // whitespace-only line is dropped rather than allowed to truncate a wrapped sentence.
+      if (text) lines.push(text);
+    }
+    if (lines.length > 0) rendered.push(lines.join('\n'));
   }
   if (rendered.length === 0) throw new Error(noTextMessage);
   return rendered.join('\n\n');
