@@ -111,13 +111,18 @@ Out of scope, and unchanged on the not-built list: OCR for a scanned PDF, a
 PDF-native outline adapter that guesses at bullet glyphs and ALL-CAPS headers,
 and any loosening of the Markdown adapter's matcher.
 
-## Risk
+## Risk, since resolved
 
 `hasEOL` is pdfjs's own inference from the text matrix rather than a value the
-file states. It should be set for runs placed at distinct vertical offsets. If
-it proves unreliable, the fallback is grouping runs by `item.transform[5]`, the
-y coordinate, with a small tolerance. Verify this before building on it; the
-end-to-end test below is what proves it.
+file states, so it was verified before the plan was written rather than assumed.
+Against a synthetic PDF drawing each line at its own `Td` offset, pdfjs reports
+one item per line with `hasEOL` set on every line but the last. The fallback of
+grouping by `item.transform[5]` is not needed and is not built.
+
+That probe also settled the end-to-end fixture: text is encoded latin1, where
+`·` (U+00B7) round-trips and pdfjs reads it back as a bullet, while a literal
+`•` (U+2022) mangles to `"`. Both `·` and `•` are inside the adapter's bullet
+class (`import.ts:201`), so a fixture writes `·` and parses as if it were `•`.
 
 ## Testing
 
