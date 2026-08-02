@@ -38,6 +38,31 @@ export function assemblePdfText(pages: readonly (readonly (readonly string[])[])
   return rendered.join('\n\n');
 }
 
+/** The two shapes pdfjs reports on a page: a glyph run, or a marked-content boundary. */
+export type PdfPageItem =
+  | { readonly hasEOL: boolean; readonly str: string }
+  | { readonly type: string };
+
+/**
+ * Groups a page's glyph runs into lines. pdfjs infers the line break itself and reports it as
+ * `hasEOL`, sometimes on a marker item carrying no text of its own — so the run is taken first
+ * and the line closed afterwards, or those breaks would be dropped along with the empty string.
+ */
+export function groupTextItemLines(items: readonly PdfPageItem[]): string[][] {
+  const lines: string[][] = [];
+  let current: string[] = [];
+  for (const item of items) {
+    if (!('str' in item)) continue;
+    if (item.str) current.push(item.str);
+    if (item.hasEOL) {
+      lines.push(current);
+      current = [];
+    }
+  }
+  if (current.length > 0) lines.push(current);
+  return lines;
+}
+
 /** Reads one PDF's text in the browser. The pdfjs import happens here so it stays out of the shell. */
 export async function extractPdfText(file: Blob): Promise<string> {
   const pdfjs = await import('pdfjs-dist');
@@ -50,12 +75,12 @@ export async function extractPdfText(file: Blob): Promise<string> {
   const loading = pdfjs.getDocument({ data: await file.arrayBuffer() });
   try {
     const document = await loading.promise;
-    const pages: string[][] = [];
+    const pages: string[][][] = [];
     const count = Math.min(document.numPages, maxPdfPages);
     for (let number = 1; number <= count; number += 1) {
       const page = await document.getPage(number);
       const content = await page.getTextContent();
-      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).filter(Boolean));
+      pages.push(groupTextItemLines(content.items));
     }
     return assemblePdfText(pages);
   } finally {

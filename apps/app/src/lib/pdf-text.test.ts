@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assemblePdfText, maxPdfPages } from './pdf-text';
+import { assemblePdfText, groupTextItemLines, maxPdfPages } from './pdf-text';
 
 describe('assemblePdfText', () => {
   it('joins the glyph runs of a line in reading order', () => {
@@ -57,5 +57,42 @@ describe('assemblePdfText', () => {
 
     expect(text).toContain(`Page ${maxPdfPages - 1}.`);
     expect(text).not.toContain(`Page ${maxPdfPages}.`);
+  });
+});
+
+describe('groupTextItemLines', () => {
+  it('closes a line on the end-of-line pdfjs infers', () => {
+    expect(
+      groupTextItemLines([
+        { hasEOL: true, str: 'Domain 1: Design.' },
+        { hasEOL: false, str: 'Task Statement 1.1: Scope.' },
+      ]),
+    ).toEqual([['Domain 1: Design.'], ['Task Statement 1.1: Scope.']]);
+  });
+
+  it('keeps a line break reported by a marker carrying no text of its own', () => {
+    expect(
+      groupTextItemLines([
+        { hasEOL: false, str: 'Domain 1: Design.' },
+        { hasEOL: true, str: '' },
+        { hasEOL: false, str: 'Task Statement 1.1: Scope.' },
+      ]),
+    ).toEqual([['Domain 1: Design.'], ['Task Statement 1.1: Scope.']]);
+  });
+
+  it('gathers the glyph runs of one line together', () => {
+    expect(
+      groupTextItemLines([
+        { hasEOL: false, str: 'Task ' },
+        { hasEOL: false, str: 'Statement' },
+        { hasEOL: true, str: ' 1.1' },
+      ]),
+    ).toEqual([['Task ', 'Statement', ' 1.1']]);
+  });
+
+  it('ignores a marked-content boundary that carries no glyph run', () => {
+    expect(
+      groupTextItemLines([{ type: 'beginMarkedContent' }, { hasEOL: true, str: 'Domain 1.' }]),
+    ).toEqual([['Domain 1.']]);
   });
 });
