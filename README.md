@@ -129,7 +129,7 @@ Dusori turns ordinary files into a private learning loop. Start in browser stora
 | 🛰️  | Create a topic                     | Automatic, consent-gated discovery across allowed providers with an explainable top-five shortlist         |
 | 🎚️  | Set learning preferences           | Structured edits to a topic's `TUTOR.md`, shown as a diff and written only when you accept it              |
 | 📈  | Open Insights                      | Local activity, artifact mix, link health, topic depth, hubs, provenance, tags, and review-queue pressure  |
-| 🧭  | Import a study guide               | A reviewable roadmap that preserves the original outline in `Sources/`                                     |
+| 🧭  | Import a study guide               | A reviewable roadmap from pasted text or an AWS exam guide PDF, preserving the outline in `Sources/`       |
 | 🧪  | Open the optional companion        | arXiv, web search, Reddit, YouTube via your own Invidious instance, page capture, and AI, on loopback only |
 | 📦  | Export or replace a workspace ZIP  | Validation before confirmation plus rollback if a replacement write fails, or export a single topic        |
 

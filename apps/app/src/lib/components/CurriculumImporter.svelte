@@ -30,6 +30,8 @@
   let working = false;
   let error = '';
   let success = '';
+  let pdfName = '';
+  let reading = false;
 
   $: changedRows = conflict
     ? lineDiff(conflict.currentContent, conflict.proposalContent)
@@ -48,6 +50,29 @@
     conflict = null;
     error = '';
     success = '';
+  }
+
+  async function readPdf(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    reading = true;
+    error = '';
+    success = '';
+    try {
+      // Local extraction: the file never leaves the device, and a scan without a text layer
+      // reports that cause instead of filling the outline with nothing.
+      const { extractPdfText } = await import('$lib/pdf-text');
+      outline = await extractPdfText(file);
+      pdfName = file.name;
+      if (!sourceTitle.trim()) sourceTitle = file.name.replace(/\.pdf$/iu, '');
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'Dusori could not read this PDF.';
+    } finally {
+      reading = false;
+      // Cleared so choosing the same file again still fires a change.
+      input.value = '';
+    }
   }
 
   async function preview(): Promise<void> {
@@ -143,12 +168,17 @@
     sourceTitle = '';
     sourceUrl = '';
     outline = '';
+    pdfName = '';
     success = '';
     error = '';
   }
 </script>
 
-<section class="curriculum-importer" aria-labelledby="curriculum-title" aria-busy={working}>
+<section
+  class="curriculum-importer"
+  aria-labelledby="curriculum-title"
+  aria-busy={working || reading}
+>
   <div class="curriculum-heading">
     <div>
       <h2 id="curriculum-title">Curriculum</h2>
@@ -203,6 +233,25 @@
       />
       <p class="field-help" id="curriculum-url-help">Saved for provenance; never fetched.</p>
 
+      <label for="curriculum-pdf">Exam guide PDF <span>optional</span></label>
+      <input
+        id="curriculum-pdf"
+        type="file"
+        accept=".pdf,application/pdf"
+        disabled={working || reading}
+        onchange={readPdf}
+        aria-describedby="curriculum-pdf-help"
+      />
+      <p class="field-help" id="curriculum-pdf-help">
+        {#if reading}
+          Reading the PDF on this device…
+        {:else if pdfName}
+          Read {pdfName} into the outline below. Edit it before previewing.
+        {:else}
+          Read on this device and never uploaded. A scanned PDF says so.
+        {/if}
+      </p>
+
       <label for="curriculum-outline">Outline text</label>
       <textarea
         id="curriculum-outline"
@@ -216,7 +265,7 @@
         Markdown, Microsoft Learn, or AWS exam guide text · up to 512 KiB
       </p>
 
-      <button class:loading={working} class="curriculum-action" disabled={working}>
+      <button class:loading={working} class="curriculum-action" disabled={working || reading}>
         {working ? 'Reading outline…' : 'Preview roadmap'}
       </button>
     </form>
@@ -439,6 +488,11 @@
 
   .field-help {
     min-height: 1lh;
+  }
+
+  input[type='file'] {
+    cursor: pointer;
+    padding-block: var(--space-2xs);
   }
 
   .curriculum-action,
