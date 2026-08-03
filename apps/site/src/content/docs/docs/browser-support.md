@@ -23,4 +23,4 @@ description: The capability matrix for browser workspaces, real folders, offline
 
 ² Chrome Android 132+ exposes folder access, but its writes are not atomic. Dusori treats it as best-effort and keeps import/export as the portability baseline.
 
-All modern-browser columns can use the five keyless, consent-gated browser research providers. The companion can add arXiv, configured Brave/Tavily/SearXNG search, and optional Ollama/Anthropic/OpenAI assistance where its localhost connection is supported. Closed-app scheduling and an always-running daemon are not part of the product.
+All modern-browser columns can use the seven keyless, consent-gated browser research providers. The companion can add arXiv, Reddit through your own Reddit app, YouTube through your own Invidious instance, configured Brave/Tavily/SearXNG search, and optional Ollama/Anthropic/OpenAI assistance where its localhost connection is supported. Closed-app scheduling and an always-running daemon are not part of the product.

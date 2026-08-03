@@ -11,13 +11,13 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - Validated ZIP import with rollback-safe browser-workspace replacement, plus ZIP export of the whole workspace or one topic
 - Conflict-safe proposals, a durable topic-local proposal lifecycle, and dated update logs
 - Local source library for pasted text, Markdown/text files, PDFs read on your device, and unfetched URL references
-- Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry, with explainable deterministic ranking and preview-first source capture
+- Automatic, consent-gated research across Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and the npm registry, with explainable deterministic ranking and preview-first source capture
 - Research missions on Today, derived from your own files: candidates discovered, sources saved and read, passages quoted, freshness, and which source lenses are still empty
 - A durable research trail recording every run's exact query and each provider's outcome, so a provider failure is never shown as an absence of material
 - Five deterministic research angles that ask about the topic itself, alongside the existing roadmap-objective search
 - Verbatim quoted passages extracted from approved local source text, and a cited `Synthesis.md` that marks agreement, thin evidence, timeline, and open questions
 - An optional self-contained interactive learning page, generated from those passages, that makes no network request and opens without Dusori — readable inside Dusori from a sandbox that denies it the app's origin
-- Per-topic standing permission to re-scan a stale mission when you open Dusori, using only providers you already allowed, at most once per session and never while the app is closed
+- Per-topic standing permission to re-scan a stale mission when you open that topic, using only providers you already allowed, at most once per session and never while the app is closed
 - Optional model-written synthesis overview prose over already-quoted passages, labeled with its model, with the deterministic document as its fallback
 - Tags read from your own Markdown — `tags:` frontmatter or an inline `#tag` — with a `tag:` search filter, a graph filter, and a tag count in Insights
 - Preview-first curriculum import for English Microsoft Learn study guides, AWS Certification exam guides, and structured Markdown syllabi, from pasted text or from an AWS exam guide PDF read on your device

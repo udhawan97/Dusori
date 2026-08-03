@@ -50,7 +50,7 @@ The first milestone must prove:
 36. Deterministic extraction of verbatim quoted passages from approved local source text, and a cited synthesis built from them.
 37. An optional self-contained interactive learning page generated from those quoted passages.
 38. In-app reading of that learning page from a sandbox that denies it the application's origin.
-39. Per-topic standing permission to re-scan a stale mission when the application is opened, with no closed-app work.
+39. Per-topic standing permission to re-scan a stale mission when that topic is opened, with no closed-app work.
 40. Optional model-written synthesis overview prose over already-quoted passages, with the deterministic document as its fallback.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt`/`.pdf` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. A PDF is read on the device with a lazily loaded browser library, never uploaded; a PDF with no text layer reports that cause rather than storing an empty source, because Dusori ships no OCR. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
@@ -77,7 +77,7 @@ The shipped workspace search scans `.md` and `.txt` files in the current session
 
 The shipped ZIP import path normalizes and validates the entire archive before replacement confirmation, including required workspace/topic schemas, file count, and compressed/expanded size limits. The destination is untouched when preflight fails. If a storage write fails during replacement, Dusori restores the previous snapshot before surfacing the error.
 
-The shipped Research workspace starts from a selected roadmap objective and defaults to the next unchecked item. Creating a topic arms one automatic discovery run; granting the first provider consent starts it. Later runs are explicit. Seven keyless browser providers ship: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry. OpenAlex rebuilds a work's abstract locally from the inverted index it publishes; an npm capture stores the package's published readme.
+The shipped Research workspace starts from a selected roadmap objective and defaults to the next unchecked item. Creating a topic arms one automatic discovery run; granting the first provider consent starts it. Later runs are explicit. Seven keyless browser providers ship: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and the npm registry. OpenAlex rebuilds a work's abstract locally from the inverted index it publishes; an npm capture stores the package's published readme.
 
 Each provider is blocked behind an exact egress disclosure naming its host and what leaves the device. Consent is stored per provider on the device. Every allowed provider is queried in parallel; one timeout or failure yields a visible skip notice without failing the run. Deterministic ranking combines objective relevance, provider-relative community signals, recency, and a bounded host-reputation nudge, then selects a diverse top-five shortlist. Ranking reasons remain visible. Accepted captures reuse the normal URL-source path, keep `method: "url"`, deduplicate by URL, record capture origin, append the dated update log, and remain ordinary portable Markdown. Dismissed and previously seen suggestions are kept in the topic's machine-owned `research.json` file.
 

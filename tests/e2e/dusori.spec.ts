@@ -321,7 +321,9 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     if (message.text().includes('Content Security Policy')) cspViolations.push(message.text());
   });
   await page.goto('/Dusori/');
-  await expect(page.getByRole('heading', { name: 'Learn deeply. Keep the files.' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Tell it what you want to understand.' }),
+  ).toBeVisible();
   expect(cspViolations).toEqual([]);
   await expect(page.getByRole('link', { name: /open dusori/iu })).toHaveAttribute(
     'href',
@@ -501,7 +503,7 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expect(page.locator('#run-locally code')).toHaveText('npx @udhawan97/dusori@latest');
 
   for (const imageName of [
-    'Dusori research view: seven allowed providers, quoted passages read from an approved source, and a per-topic freshness setting',
+    'Dusori research view: one of seven providers allowed, quoted passages read from an approved source, and a per-topic freshness setting',
     'Dusori Today view with evidence-backed learning and attention lanes',
     'Dusori curriculum preview showing Microsoft Learn roadmap items before the user applies them',
     'Dusori knowledge constellation built from portable local artifacts',

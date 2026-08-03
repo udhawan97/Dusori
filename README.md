@@ -2,16 +2,17 @@
   <img src="docs/assets/dusori-readme-logo-inverted.svg" alt="Dusori — private learning, ordinary files" width="720">
 </p>
 
-<h1 align="center">A private learning workbench you can leave.</h1>
+<h1 align="center">Tell it what you want to understand.</h1>
 
 <p align="center">
-  Dusori turns your Markdown, PDFs, and saved sources into a calm daily learning loop.<br>
-  Your useful work stays on your device, in ordinary files—not inside an account.
+  Dusori researches the sources you allow, keeps a trail of what it found,<br>
+  and turns what you approve into a synthesis you can learn from—every quoted passage citing its source.<br>
+  It all stays on your device, in ordinary files, not inside an account.
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
-  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.0 source ZIP" width="226"></a>
+  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.1 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
 </p>
 
@@ -37,21 +38,18 @@
 
 You do not need to understand the technology before using Dusori.
 
-| If you want to…                  | Choose                                                                                    | What happens                                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                | It opens in your browser. No account or terminal.                                              |
-| Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                  | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
-| Run the current release locally  | **[Use the npm companion](#fastest-local-start)**                                         | With Node.js 24 installed, `npx` downloads and opens Dusori without a global install.          |
-| Run the current release yourself | **[Download v0.11.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
-| Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                      | You get the full monorepo and contributor workflow.                                            |
+| If you want to…                | Choose                                                     | What happens                                                                                                                           |
+| ------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Just use it                    | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)** | It opens in your browser. No account, no terminal. Use **Install**, **Add to Dock**, or **Add to Home Screen** to keep it like an app. |
+| Read web pages it finds        | **[Run the companion](#fastest-local-start)**              | One `npx` command. Needs [Node.js 24 LTS](https://nodejs.org/en/download).                                                             |
+| Inspect, modify, or contribute | **[Get the source](#run-dusori-on-your-computer)**         | Download the ZIP or clone the repository, then `npm start`.                                                                            |
 
-> [!IMPORTANT]
-> The app and the [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori) are released together at **v0.11.0**; `npx @udhawan97/dusori@latest` always fetches the current published companion. Dusori requires Node.js 24 LTS when you run it locally.
+The **companion** is a small optional program you run on your own machine. Dusori works without it; with it, Dusori can read a web page you explicitly confirm and reach a few extra sources. It runs only on your own machine and stops when you close its terminal.
 
 <p align="center">
-  <img src="apps/site/public/app-workspace.png" alt="Dusori Today showing Continue learning and Needs attention from a local workspace" width="920">
+  <img src="apps/site/public/app-research.png" alt="Dusori research view showing one of seven providers allowed, three quoted passages read from an approved source, and a per-topic freshness setting" width="920">
   <br>
-  <sub><em>Today is a quiet routing desk: continue what has evidence, or fix what genuinely needs attention.</em></sub>
+  <sub><em>A research mission: only the providers you allowed, what was read into quoted passages, and whether this topic keeps itself current.</em></sub>
 </p>
 
 ## What Dusori helps you do
@@ -60,10 +58,10 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 | Part of Dusori         | In plain English                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Today**              | Opens with your research missions, the next evidence-backed action, and real workspace problems worth fixing.         |
 | **Research**           | Searches the providers you allow, shows why each result surfaced, and keeps a durable trail of every run.             |
 | **Synthesis**          | Turns approved sources into quoted passages and a cited synthesis that marks what only one source claims.             |
 | **Learn**              | Builds an optional self-contained learning page from those passages. It works offline and opens without Dusori.       |
+| **Today**              | Opens with your research missions, the next evidence-backed action, and real workspace problems worth fixing.         |
 | **Curriculum**         | Turns a study guide—or a supported AWS exam-guide PDF—into a roadmap you review before saving.                        |
 | **Notes and sources**  | Keeps Markdown, text—including text extracted locally from PDFs—saved pages, provenance, and links together by topic. |
 | **Review**             | Builds recall prompts from your own sources. Only your explicit answer changes the review schedule.                   |
@@ -73,7 +71,7 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 1. **Name what you want to understand.** Dusori opens Research and prepares a scan for that topic.
 2. **Choose the evidence.** Providers are off until you allow them, each one naming exactly what it sends. Results stay suggestions until you accept them, and the trail records what every provider returned — or failed to return.
-3. **Read what you kept.** Dusori quotes your approved sources verbatim, then builds a synthesis where every line cites where it came from and single-source claims are marked as thin evidence.
+3. **Read what you kept.** Dusori quotes your approved sources verbatim, then builds a synthesis where every quoted passage cites its source and single-source claims are marked as thin evidence.
 4. **Learn from it, and keep it.** Turn a well-supported topic into an offline learning page, or return to the open questions the evidence itself raised.
 
 <p align="center">
@@ -96,7 +94,7 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 | Build a synthesis             | A cited `Synthesis.md` marking agreement, thin evidence, timeline, and the open questions left.                    |
 | Create a learning page        | A self-contained interactive HTML file with no network requests, openable outside Dusori.                          |
 | Open a learning page          | The same page read inside Dusori, sandboxed so it can never reach your workspace.                                  |
-| Keep a topic fresh            | An opt-in re-scan when you open Dusori and that topic has gone a week unscanned. Never while closed.               |
+| Keep a topic fresh            | An opt-in re-scan when you open that topic and it has gone a week unscanned. Never while closed.                   |
 | Check roadmap objectives      | Portable Markdown progress, explicit topic state, and a seven-day file-derived recap.                              |
 | Mark a topic reviewed         | An optional spaced schedule—1, 3, 7, 14, 30, then 60 days—that rests the topic until it is due.                    |
 | Start a review                | Active-recall prompts from that topic’s sources, an answer box, and answers saved as a note.                       |
@@ -112,9 +110,9 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 | Run the companion             | Loopback-only page capture, optional search providers, arXiv, Reddit, YouTube, and optional AI.                    |
 | Export or replace a workspace | A validated ZIP with confirmation and rollback protection, or one portable topic.                                  |
 
-General web search is optional companion configuration. Brave and Tavily use your keys; SearXNG offers a keyless, open-source route. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly labeled brief from accepted sources, or reword review prompts under separate consent. Deterministic ranking, briefs, and prompts remain the baseline.
+General web search is optional companion configuration. Brave and Tavily use your keys; SearXNG offers a keyless, open-source route. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly labeled brief from accepted sources, add a model-named overview to a synthesis, reword review prompts, or rewrite tutor preferences — each under consent, each labeled with the model. Deterministic ranking, briefs, synthesis, and prompts remain the baseline.
 
-Nothing runs while Dusori is closed. A topic you explicitly arm may re-scan itself when you open Dusori and it has gone seven days without a scan, using only providers you already allowed — at most once per session. Every other scan is one you ask for. Reading arbitrary web pages needs the local companion; without it, the providers that reach real text are Wikipedia, OpenAlex, GitHub, Stack Exchange, Hacker News, and npm. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
+Nothing runs while Dusori is closed. A topic you explicitly arm may re-scan itself when you open that topic and it has gone seven days without a scan, using only providers you already allowed — at most once per session. Every other scan is one you ask for. Reading arbitrary web pages needs the local companion; without it, the providers that reach real text are Wikipedia, OpenAlex, GitHub, Stack Overflow, Hacker News, and npm. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
 
 </details>
 
@@ -206,8 +204,8 @@ npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 
 ### From the release ZIP
 
-1. **[Download Dusori v0.11.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip)** and unzip it.
-2. Open a terminal in the unzipped `Dusori-0.11.0` folder.
+1. **[Download Dusori v0.11.1](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip)** and unzip it.
+2. Open a terminal in the unzipped `Dusori-0.11.1` folder.
 3. Run:
 
 ```bash
@@ -247,14 +245,16 @@ Use `npm run setup` to install and build without launching. Run it once after pu
 
 ## Network and privacy boundaries
 
-<details>
+Dusori has no account, no telemetry, and no hosted database. Your workspace is never uploaded. The list below is everything that can leave your device, and every item on it is something you turned on.
+
+<details open>
 <summary><strong>What can leave the device?</strong></summary>
 
-- Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and npm discovery call their public APIs only after per-provider consent.
+- Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and npm discovery call their public APIs only after per-provider consent.
 - The optional companion can add arXiv, Reddit, YouTube through your Invidious instance, and one Brave, Tavily, or SearXNG provider. Credentials stay in the companion process.
 - PDFs are read on your device by a reader bundled with the app and loaded on first use. The original document is never uploaded or copied into the workspace; its extracted text is stored instead. A scan without a text layer is reported rather than stored empty.
 - Page capture begins only after you confirm the exact host. The companion rejects non-public destinations and rechecks redirects.
-- Optional AI receives only the disclosed query plus candidate or accepted-source metadata. A failed AI step keeps the deterministic result.
+- Optional AI is off until you allow it, under three separate consents that each name what they send. Research AI covers ranking, briefs, and the synthesis overview: ranking and briefs send candidate or accepted-source metadata, and the overview sends up to sixty passages already quoted in that topic. Review prompts send the objective plus up to four 320-character excerpts. Tutor preferences send the topic name, your own preference lines, and the change you type. Nothing else from the workspace is sent, keys stay in the companion, and a failed AI step keeps the deterministic result.
 - The companion binds only to `127.0.0.1`, creates a fresh session token, and removes that token from the browser address after connecting.
 
 </details>
@@ -314,11 +314,11 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Current release
 
-**v0.11.0** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every line cites the source it came from. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
+**v0.11.1** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every quoted passage cites its source. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
 
 It keeps the v0.9.1 release-integrity guard, so npm provenance must match the exact tagged source.
 
-[Read the v0.11.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.11.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.11.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.11.1) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing and license
 

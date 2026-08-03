@@ -86,7 +86,7 @@
     consentScope: 'companion-ai',
     describeMeta: () => '',
     disclosure:
-      "Ranking sends each found candidate's title, summary, and address, plus this topic's name and the objective's text, to the AI provider configured in your local companion. Nothing else from your workspace is sent. Allow on this device?",
+      "This one permission covers three things, all sent to the AI provider configured in your local companion. Ranking sends each found candidate's title, summary, and address. A research brief sends the title, address, and ranking reasons of sources you approved. A synthesis overview sends up to sixty passages already quoted in this topic. All three send this topic's name, and ranking and briefs also send the objective's text. Nothing else from your workspace is sent, and each one still works without AI. Allow on this device?",
     id: 'companion-ai',
     label: 'AI ranking',
     // Ranking is the companion's own call to the AI provider; the page reaches nothing.
@@ -801,7 +801,10 @@
       <h3 id="understand-title">Understand this topic</h3>
       <p class="understand-explainer">
         Read what you saved into quoted passages, then build a synthesis and an optional learning
-        page from those quotes. Nothing here contacts the network.
+        page from those quotes.
+        {aiAllowed && aiCapability
+          ? `Only the synthesis overview leaves this device, to ${aiCapability.model}.`
+          : 'Nothing here contacts the network.'}
       </p>
       <div class="understand-actions">
         <button disabled={readingSources} onclick={() => void readSources()}>

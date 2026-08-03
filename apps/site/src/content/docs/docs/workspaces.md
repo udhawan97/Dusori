@@ -11,11 +11,13 @@ dusori.json
 Topics/<topic-slug>/
   Overview.md
   roadmap.md
+  Synthesis.md
   TUTOR.md
   state.json
   research.json
   review.json
   proposals.json
+  Learning/learn.html
   Notes/
   Updates/YYYY/MM/YYYY-MM-DD.md
   Sources/
@@ -38,6 +40,8 @@ Dusori writes only inside that approved root. The resulting Markdown and wikilin
 Firefox and Safari use the browser workspace plus ZIP import/export. The optional local companion is the later cross-browser path for direct folder access.
 
 Every topic keeps its own source files, manifest, research and review state, and proposal lifecycle, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
+
+Two of those files are generated rather than written by you. `Synthesis.md` is ordinary Markdown quoting your approved sources, and `Learning/learn.html` is a self-contained page that inlines its own styles and script and makes no network request — it opens in any browser without Dusori. Both travel in a ZIP export and both are protected if you edit them: a rebuilt synthesis becomes a proposal for review instead of overwriting your version, and an edited learning page is kept while the rebuild is written beside it. `research.json` holds the topic's research trail and its freshness setting.
 
 The [portable knowledge graph](../knowledge-graph/) reads these same files and does not add a graph database or hidden sync layer.
 

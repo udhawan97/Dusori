@@ -25,23 +25,25 @@ Creating a topic opens the first-class **Research** workspace and prepares one a
 
 **What to ask** chooses the question the scan puts to providers. Five angles are derived from the topic itself — definition and scope, how it works, debates and criticism, practice and tools, and recent developments — and each sends the topic's own name plus that angle's words. Curriculum topics can instead pick **Your roadmap objective** and scan for the objective selected beside it.
 
-Without the companion, Dusori can query seven keyless public providers: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Exchange, OpenAlex, and the npm registry. Allowed providers are searched together. A failed or slow provider is reported as skipped without discarding useful results from the others. Candidates are deterministically ranked from query relevance, provider-relative community signals, recency, and a small transparent host-reputation nudge. Dusori selects a diverse top-five shortlist and displays the reasons behind each result.
+Without the companion, Dusori can query seven keyless public providers: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and the npm registry. Allowed providers are searched together. A failed or slow provider is reported as skipped without discarding useful results from the others. Candidates are deterministically ranked from query relevance, provider-relative community signals, recency, and a small transparent host-reputation nudge. Dusori selects a diverse top-five shortlist and displays the reasons behind each result.
 
 Results remain suggestions until you choose **Add to sources**. Microsoft Learn captures are labeled as catalog references, not page snapshots. Wikipedia extracts stay below the same 2 MiB source cap and end with `[truncated]` when the full extract would exceed it. Other browser providers preserve the public reference and provider metadata. An accepted source keeps the ranking reasons that surfaced it, along with the publisher, the author, and the publication date where the provider reports them. **Dismiss** records the result key locally so it stays out of later searches.
 
-## The research trail
+## Keep this topic fresh
 
 **Keep this topic fresh** gives Dusori standing permission to re-scan this topic when you open it and it has gone seven days without a scan, using only the providers you already allowed. It never runs on a first visit, never more than once per session, and never while Dusori is closed. The refresh says what it found, including when it found nothing new. The setting lives in `research.json` and travels with your workspace.
+
+## The research trail
 
 Every scan is written into the topic's `research.json` and shown under **Research trail**: when it ran, the exact text providers received, which angle asked, how many results were new, and one line per provider reporting `found` with a count, `nothing matched`, or `failed` with the failure's own message. The trail holds the fifty most recent runs and survives reload, so a provider outage still reads as an outage the next day. A scan in which every provider failed is recorded like any other — Dusori never presents a failure as an absence of material.
 
 ## Understand this topic
 
-Three actions turn approved sources into something you can learn from. None of them contacts the network.
+Three actions turn approved sources into something you can learn from. Reading sources and building the learning page never contact the network, and neither does the synthesis unless you have separately allowed AI — see below.
 
 **Read saved sources** reads the text already on your device and stores up to twelve verbatim excerpts per source, each tagged with the heading it sat under. Excerpts are quotations, never paraphrase, and no model takes part. A source that holds only an unfetched reference is reported with the route to its text rather than skipped in silence.
 
-**Build synthesis** writes `Synthesis.md` into the topic. It groups those quotations by subject, names which ideas more than one source supports, marks single-source ideas as thin evidence, builds a timeline once at least three sources carry dates, and lists the open questions the evidence raises. Every line is a quotation linking back to its source file. Rebuilding over a synthesis you have edited produces a proposal for review instead of overwriting your work.
+**Build synthesis** writes `Synthesis.md` into the topic. It groups those quotations by subject, names which ideas more than one source supports, marks single-source ideas as thin evidence, builds a timeline once at least three sources carry dates, and lists the open questions the evidence raises. Every quoted passage links back to its source file. Rebuilding over a synthesis you have edited produces a proposal for review instead of overwriting your work.
 
 With the companion running and an AI provider configured, the synthesis also gains two or three paragraphs of overview prose, written over those same quoted passages and labeled with the model that wrote it. Nothing else is sent. The quotations, their citations, the thin-evidence marking, the timeline, and the evidence table stay deterministic, and an unavailable model writes the document without commentary and says so.
 
@@ -79,7 +81,7 @@ Dusori never ships a default instance and your browser never contacts YouTube, G
 
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
-The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.11.0. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.11.0 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
+The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.11.1. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.11.1 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
 
 ## Topic file contract
 

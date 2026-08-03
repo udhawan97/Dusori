@@ -6,7 +6,7 @@ description: Track roadmap progress and recent work without giving up portable f
 Dusori’s learning loop has two views backed by the files already inside each topic:
 
 - **Roadmap** reads section headings and `- [ ]` / `- [x]` tasks from `roadmap.md`.
-- **Today** combines workspace-wide continuation and attention lanes, roadmap progress, topic status, review state, workspace health, and recent entries from `Updates/`.
+- **Today** opens with one research mission strip per unfinished topic — sources discovered, sources saved, passages read, when it was last refreshed, and which source lenses are still empty — then workspace-wide continuation and attention lanes, roadmap progress, topic status, review state, workspace health, and recent entries from `Updates/`. See [Sources](../sources/) for how a mission is researched.
 
 There is no hosted task database. A schedule exists only where you created one with an explicit review action — Dusori never generates one on its own. The same progress remains readable in Obsidian or any Markdown editor.
 
@@ -52,7 +52,7 @@ Every prompt has an answer box. What you type stays in the session until you cho
 
 Nothing else in a session is stored. Opening it, moving between prompts, and revealing evidence write nothing; only the final **Got it** or **Needs work** changes the schedule. Nothing in a session is a score, a streak, or evidence that you understand the topic.
 
-With the local companion running and an AI provider configured, **Allow sharper prompts** may reword the questions. It is a separate consent from AI ranking, because it sends the objective and up to four short source excerpts — your notes, roadmap, and review history are never sent. The model can only change wording: the prompt count, their order, the evidence, and the rating actions are fixed, generated prompts are labelled with the model that wrote them, and any failure falls back to the deterministic templates.
+With the local companion running and an AI provider configured, **Allow sharper prompts** may reword the questions. It is a separate consent from AI ranking, because it sends the objective and up to four short excerpts of 320 characters each — your notes, roadmap, and review history are never sent. The model can only change wording: the prompt count, their order, the evidence, and the rating actions are fixed, generated prompts are labelled with the model that wrote them, and any failure falls back to the deterministic templates.
 
 The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first, including review actions. It writes no summary file. Dusori never generates a calendar entry, notification, or closed-app work.
 

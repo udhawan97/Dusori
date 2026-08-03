@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.11.0';
+const releaseVersion = '0.11.1';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const gettingStartedHref = `${docsHref}getting-started/`;
@@ -46,7 +46,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
       content="Tell Dusori what you want to understand. It researches the sources you allow, keeps the evidence trail, and stays entirely on your device."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Dusori — learn deeply, keep the files" />
+    <meta property="og:title" content="Dusori — research it, understand it, keep the files" />
     <meta
       property="og:description"
       content="A private research workbench built from ordinary files. It finds sources, keeps the evidence trail, and teaches from what you approve. No account, no telemetry, useful without AI."
@@ -57,7 +57,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Dusori research view on a dark local learning desk" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Dusori — learn deeply, keep the files</title>
+    <title>Dusori — research it, understand it, keep the files</title>
   </head>
   <body>
     <svg class="icon-defs" aria-hidden="true" focusable="false">
@@ -153,11 +153,11 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             </picture>
             <a href={releaseHref}>v{releaseVersion} available now</a>
           </div>
-          <h1 id="hero-title">Learn deeply.<br />Keep the files.</h1>
+          <h1 id="hero-title">Tell it what you<br />want to understand.</h1>
           <p class="hero-lede">
-            Tell Dusori what you want to understand. It searches the sources you allow, keeps the
-            evidence trail, and turns what you approve into a synthesis you can learn from —
-            entirely on your device, in formats you can open without Dusori.
+            Dusori searches the sources you allow, keeps the evidence trail, and turns what you
+            approve into a synthesis you can learn from — entirely on your device, in formats you
+            can open without Dusori.
           </p>
           <div class="hero-actions">
             <a class="button button--primary" href={appHref}>
@@ -166,7 +166,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             </a>
             <a class="button button--secondary" href={sourceZipHref}>
               <svg aria-hidden="true"><use href="#icon-download"></use></svg>
-              Download ZIP
+              Download source ZIP
             </a>
           </div>
           <p class="hero-trust">
@@ -177,7 +177,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <figure class="hero-proof">
           <img
             src={researchShotHref}
-            alt="Dusori research view: seven allowed providers, quoted passages read from an approved source, and a per-topic freshness setting"
+            alt="Dusori research view: one of seven providers allowed, quoted passages read from an approved source, and a per-topic freshness setting"
             width="1280"
             height="900"
             fetchpriority="high"
@@ -347,23 +347,32 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <ol class="steps">
           <li>
             <span class="step-number">1</span>
-            <h3>Choose a topic.</h3>
-            <p>Start with what you want to understand, not a template or a streak.</p>
+            <h3>Name what you want to understand.</h3>
+            <p>Dusori opens a research mission for that topic and prepares its first scan.</p>
           </li>
           <li>
             <span class="step-number">2</span>
-            <h3>Add what you trust.</h3>
-            <p>Paste text, bring a local file, or allow a named research provider.</p>
+            <h3>Choose the evidence.</h3>
+            <p>
+              Providers stay off until you allow them, each naming what it sends. The trail records
+              what every provider returned — or failed to return.
+            </p>
           </li>
           <li>
             <span class="step-number">3</span>
-            <h3>Recall from the source.</h3>
-            <p>Review prompts come from approved local material and never claim mastery.</p>
+            <h3>Read what you kept.</h3>
+            <p>
+              Approved sources become verbatim quoted passages and a synthesis where every quoted
+              passage cites its source and thin evidence is marked as thin.
+            </p>
           </li>
           <li>
             <span class="step-number">4</span>
-            <h3>Keep the result.</h3>
-            <p>Notes, roadmaps, and exports remain Markdown and JSON you can read anywhere.</p>
+            <h3>Learn from it, and keep it.</h3>
+            <p>
+              Build an optional interactive learning page, then keep everything as Markdown, JSON,
+              and HTML you can read anywhere.
+            </p>
           </li>
         </ol>
       </section>
@@ -401,16 +410,40 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         </header>
         <dl class="capability-ledger">
           <div>
+            <dt>Research</dt>
+            <dd>
+              Asks before each provider can search, shows why each result surfaced, and keeps a
+              durable trail of every run — including the ones that failed.
+            </dd>
+          </div>
+          <div>
+            <dt>Synthesis</dt>
+            <dd>
+              Reads approved sources into verbatim quoted passages, then writes a cited synthesis
+              that marks what only one source claims.
+            </dd>
+          </div>
+          <div>
+            <dt>Learn</dt>
+            <dd>
+              Builds an optional self-contained learning page from those passages. Read it inside
+              Dusori, or open the file without Dusori.
+            </dd>
+          </div>
+          <div>
+            <dt>Keep a topic fresh</dt>
+            <dd>
+              Optional, per topic: re-scan when you open it after seven days, using only the
+              providers you already allowed. Nothing runs while Dusori is closed.
+            </dd>
+          </div>
+          <div>
             <dt>Today</dt>
-            <dd>Routes the next evidence-backed action across your workspace.</dd>
+            <dd>Opens with your research missions and the next evidence-backed action.</dd>
           </div>
           <div>
             <dt>Review</dt>
             <dd>Builds active-recall prompts from sources you approved.</dd>
-          </div>
-          <div>
-            <dt>Research</dt>
-            <dd>Asks before each provider can search, then lets you choose what to save.</dd>
           </div>
           <div>
             <dt>Roadmaps</dt>
@@ -445,7 +478,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             </a>
             <a class="button button--secondary" href={sourceZipHref}>
               <svg aria-hidden="true"><use href="#icon-download"></use></svg>
-              Download ZIP
+              Download source ZIP
             </a>
           </div>
         </div>

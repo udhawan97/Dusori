@@ -23,4 +23,6 @@ Malformed machine JSON is renamed with an `.invalid-<timestamp>` suffix and surf
 
 Upgrading a URL source to its fetched full page text follows the same guard, but checks the content hash the app just read rather than one already on file: a URL source's recorded hash identifies its URL, not its saved content, so there is nothing else to compare against. An external edit made between that read and the confirmed replacement is still caught and refused.
 
+Generated artifacts follow two rules of their own, because Dusori writes them but you may edit them. Rebuilding `Synthesis.md` over a version you changed writes a proposal for review instead of overwriting it, exactly like a note. `Learning/learn.html` is not Markdown and has no proposal lifecycle, so an edited page is simply kept and the rebuilt page is written beside it — the message names the path so you can compare the two and delete whichever you do not want.
+
 ZIP replacement uses a different safety boundary because it replaces the whole browser workspace. Dusori validates the full archive before confirmation, snapshots the destination, and restores that snapshot if any replacement write fails. Preflight failures make no writes.

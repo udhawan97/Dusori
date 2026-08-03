@@ -197,6 +197,11 @@ main > section,
 }
 
 .hero-signature a {
+  /* Inline-flex with a floor keeps this above the 24px minimum target size; the text alone
+     renders about 19px tall, which is too small to tap reliably. */
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
   color: var(--color-accent-text);
   font-family: var(--font-mono);
   font-size: var(--text-xs);

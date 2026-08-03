@@ -4,6 +4,23 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-08-03
+
+### Fixed
+
+- The AI permission in Research now names everything it covers. It always granted ranking, research briefs, and the synthesis overview together, but its wording described only ranking — so the synthesis overview could send quoted passages under a consent that never mentioned them. The dialog now states all three and what each sends.
+- **Understand this topic** no longer claims "Nothing here contacts the network" when AI is allowed; it names the model the synthesis overview is sent to. The same correction was made on the Sources documentation page.
+- Corrected the README's network-and-privacy list, which said optional AI receives "only the disclosed query plus candidate or accepted-source metadata". Three features send text from sources you already saved, and the list now says which and how much.
+
+### Documentation
+
+- The public surfaces now describe the research-first product: the landing page, README, and docs index lead with research, and the landing page's four-step loop, capability list, page title, and social card were still describing the pre-v0.10.0 product.
+- Added the research view as the lead screenshot on both the README and the landing page, captured from the current build.
+- Getting started now covers **Read saved sources**, **Build synthesis**, **Create learning page**, and **Keep this topic fresh**, and ends with a troubleshooting section instead of a v0.2.0 migration warning.
+- The workspace file contract, conflict-safety rules, and browser-support provider count were missing `Synthesis.md`, `Learning/learn.html`, and two of the seven keyless providers.
+- Provider naming now matches the app: the Stack Exchange provider is labeled **Stack Overflow**.
+- Restored the correct review-excerpt figure (up to four 320-character excerpts) and fixed the CHANGELOG comparison links, which had no entries for 0.10.0 or 0.11.0.
+
 ## [0.11.0] - 2026-08-03
 
 ### Added
@@ -233,7 +250,10 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/udhawan97/Dusori/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/udhawan97/Dusori/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/udhawan97/Dusori/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/udhawan97/Dusori/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/udhawan97/Dusori/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/udhawan97/Dusori/compare/v0.8.0...v0.8.1
