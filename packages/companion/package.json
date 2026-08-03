@@ -40,7 +40,7 @@
     "provenance": true
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.112.4",
+    "@anthropic-ai/sdk": "0.115.0",
     "@fastify/cors": "11.3.0",
     "@fastify/static": "10.1.2",
     "@mozilla/readability": "0.6.0",
