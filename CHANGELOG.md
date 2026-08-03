@@ -4,9 +4,13 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-03
+
 ### Added
 
 - The generated learning page can be opened inside Dusori. It renders in a sandbox that allows its own scripts but denies it the app's origin, so it keeps its interactivity while being unable to reach your workspace, storage, or cookies. The stored file stays theme-neutral and follows your system preference when opened directly; only the embedded copy is matched to the app's theme.
+- **Keep this topic fresh.** A per-topic setting lets Dusori re-scan a topic when you open it and it has gone seven days without a scan, using only the providers you already allowed. It never runs on a first visit, never more than once per session, and never while Dusori is closed. The refresh says what it found, including when it found nothing new.
+- With the companion and a configured AI provider, the synthesis gains two or three paragraphs of overview prose written over the passages your workspace already quotes. The prose is labeled with its model; the quotations, their citations, thin-evidence marking, and the evidence table stay deterministic, and an unavailable model writes the document without commentary and says so.
 
 ## [0.10.0] - 2026-08-02
 

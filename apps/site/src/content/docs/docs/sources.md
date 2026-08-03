@@ -31,6 +31,8 @@ Results remain suggestions until you choose **Add to sources**. Microsoft Learn 
 
 ## The research trail
 
+**Keep this topic fresh** gives Dusori standing permission to re-scan this topic when you open it and it has gone seven days without a scan, using only the providers you already allowed. It never runs on a first visit, never more than once per session, and never while Dusori is closed. The refresh says what it found, including when it found nothing new. The setting lives in `research.json` and travels with your workspace.
+
 Every scan is written into the topic's `research.json` and shown under **Research trail**: when it ran, the exact text providers received, which angle asked, how many results were new, and one line per provider reporting `found` with a count, `nothing matched`, or `failed` with the failure's own message. The trail holds the fifty most recent runs and survives reload, so a provider outage still reads as an outage the next day. A scan in which every provider failed is recorded like any other — Dusori never presents a failure as an absence of material.
 
 ## Understand this topic
@@ -40,6 +42,8 @@ Three actions turn approved sources into something you can learn from. None of t
 **Read saved sources** reads the text already on your device and stores up to twelve verbatim excerpts per source, each tagged with the heading it sat under. Excerpts are quotations, never paraphrase, and no model takes part. A source that holds only an unfetched reference is reported with the route to its text rather than skipped in silence.
 
 **Build synthesis** writes `Synthesis.md` into the topic. It groups those quotations by subject, names which ideas more than one source supports, marks single-source ideas as thin evidence, builds a timeline once at least three sources carry dates, and lists the open questions the evidence raises. Every line is a quotation linking back to its source file. Rebuilding over a synthesis you have edited produces a proposal for review instead of overwriting your work.
+
+With the companion running and an AI provider configured, the synthesis also gains two or three paragraphs of overview prose, written over those same quoted passages and labeled with the model that wrote it. Nothing else is sent. The quotations, their citations, the thin-evidence marking, the timeline, and the evidence table stay deterministic, and an unavailable model writes the document without commentary and says so.
 
 **Create learning page** writes `Learning/learn.html`: concepts with their supporting quotations, an optional timeline, and reveal-style check-yourself prompts that keep no score and store nothing. The page inlines its own styles and script, makes no network request of any kind, works offline, opens without Dusori, and travels in your ZIP export. A page edited outside Dusori is kept and the rebuild is written beside it.
 
@@ -75,7 +79,7 @@ Dusori never ships a default instance and your browser never contacts YouTube, G
 
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
-The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.10.0. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.10.0 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
+The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.11.0. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.11.0 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
 
 ## Topic file contract
 

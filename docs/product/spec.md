@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.10.0 release · **Date:** 2026-08-02
+**Status:** v0.11.0 release · **Date:** 2026-08-03
 
 ## Product contract
 
@@ -49,6 +49,9 @@ The first milestone must prove:
 35. Topic-level research angles that ask about the subject itself rather than only about a roadmap objective.
 36. Deterministic extraction of verbatim quoted passages from approved local source text, and a cited synthesis built from them.
 37. An optional self-contained interactive learning page generated from those quoted passages.
+38. In-app reading of that learning page from a sandbox that denies it the application's origin.
+39. Per-topic standing permission to re-scan a stale mission when the application is opened, with no closed-app work.
+40. Optional model-written synthesis overview prose over already-quoted passages, with the deterministic document as its fallback.
 
 The shipped source library accepts pasted text, local `.md`/`.markdown`/`.txt`/`.pdf` files up to 2 MiB, and `http://` or `https://` URL references. URL capture stores the reference without fetching remote content. A PDF is read on the device with a lazily loaded browser library, never uploaded; a PDF with no text layer reports that cause rather than storing an empty source, because Dusori ships no OCR. Every new source is hashed, recorded in the topic manifest, and appended to the dated update log.
 
@@ -100,7 +103,7 @@ The shipped Insights view derives a bounded fourteen-day activity pulse, objecti
 
 ## Explicitly not built yet
 
-- Automatic refresh of a stale mission when the app is opened
+- Any research, refresh, or source acceptance while the application is closed
 - Fetching arbitrary page text without the local companion
 - OCR for scanned PDFs or other image-only documents
 - AI-generated diagrams

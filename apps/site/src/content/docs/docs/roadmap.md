@@ -16,7 +16,9 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - A durable research trail recording every run's exact query and each provider's outcome, so a provider failure is never shown as an absence of material
 - Five deterministic research angles that ask about the topic itself, alongside the existing roadmap-objective search
 - Verbatim quoted passages extracted from approved local source text, and a cited `Synthesis.md` that marks agreement, thin evidence, timeline, and open questions
-- An optional self-contained interactive learning page, generated from those passages, that makes no network request and opens without Dusori
+- An optional self-contained interactive learning page, generated from those passages, that makes no network request and opens without Dusori — readable inside Dusori from a sandbox that denies it the app's origin
+- Per-topic standing permission to re-scan a stale mission when you open Dusori, using only providers you already allowed, at most once per session and never while the app is closed
+- Optional model-written synthesis overview prose over already-quoted passages, labeled with its model, with the deterministic document as its fallback
 - Tags read from your own Markdown — `tags:` frontmatter or an inline `#tag` — with a `tag:` search filter, a graph filter, and a tag count in Insights
 - Preview-first curriculum import for English Microsoft Learn study guides, AWS Certification exam guides, and structured Markdown syllabi, from pasted text or from an AWS exam guide PDF read on your device
 - In-app creation and conflict-safe editing of portable Markdown notes
@@ -42,7 +44,7 @@ description: Planned work is separated explicitly from what Dusori ships today.
 - OCR for scanned PDFs and other image-only documents
 - Recognizing a curriculum PDF that is not an AWS exam guide, which needs an outline adapter for PDF-native structure rather than Markdown headings
 - Importing a single-topic bundle back into an existing workspace
-- Scheduled or unattended research and source acceptance, including refreshing a stale mission when you open Dusori
+- Research, refresh, or source acceptance while Dusori is closed
 - Inline video playback inside Dusori
 
 ## Not planned
