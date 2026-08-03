@@ -98,6 +98,6 @@ Topics/<topic-slug>/
 
 `manifest.json` records the capture method, SHA-256 hash, local path, media type, byte size, timestamp, and optional original filename, URL, or capture origin. Capture origin names the research or capture provider, how it was captured, and when. A research capture also keeps the ranking reasons that selected it, the publisher, the author, the publication date, whether its text has been read, and its quoted passages. URL sources—including research captures—deduplicate by canonical URL. A successful new capture also appends a line to the topic’s dated update log.
 
-Source files, `research.json`, `Synthesis.md`, and the learning page are all included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. OCR for a scanned PDF, automatic refresh of a stale mission, and unattended source acceptance remain [planned work](../roadmap/).
+Source files, `research.json`, `Synthesis.md`, and the learning page are all included in workspace ZIP exports and remain ordinary readable files when the Dusori root sits inside an Obsidian vault. OCR for a scanned PDF, and any research or source acceptance while Dusori is closed, remain [planned work](../roadmap/).
 
 Applying a [curriculum import](../curricula/) also stores the official outline here before updating the topic roadmap, whether you pasted it or Dusori read it from an AWS exam guide PDF. Re-importing identical outline text reuses the existing source record.

@@ -22,6 +22,7 @@ const releaseHref = `${githubHref}/releases/tag/v${releaseVersion}`;
 const sourceZipHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
 const licenseHref = `${githubHref}/blob/main/LICENSE`;
 const graphShotHref = `${projectBasePath}/app-graph.png`;
+const researchShotHref = `${projectBasePath}/app-research.png`;
 const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
 const curriculumShotHref = `${projectBasePath}/app-curriculum.png`;
 const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
@@ -42,19 +43,19 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <link rel="canonical" href={hostedProjectUrl} />
     <meta
       name="description"
-      content="Dusori turns your Markdown, PDFs, and saved sources into a private learning loop that stays on your device."
+      content="Tell Dusori what you want to understand. It researches the sources you allow, keeps the evidence trail, and stays entirely on your device."
     />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Dusori — learn deeply, keep the files" />
     <meta
       property="og:description"
-      content="A private learning workbench built from ordinary files. No account, no telemetry, useful without AI."
+      content="A private research workbench built from ordinary files. It finds sources, keeps the evidence trail, and teaches from what you approve. No account, no telemetry, useful without AI."
     />
     <meta property="og:url" content={hostedProjectUrl} />
     <meta property="og:image" content={socialImageHref} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Dusori Today view on a dark local learning desk" />
+    <meta property="og:image:alt" content="Dusori research view on a dark local learning desk" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Dusori — learn deeply, keep the files</title>
   </head>
@@ -154,8 +155,9 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           </div>
           <h1 id="hero-title">Learn deeply.<br />Keep the files.</h1>
           <p class="hero-lede">
-            Dusori turns your Markdown, PDFs, and saved sources into a calm daily learning loop.
-            Everything important stays on your device, in formats you can open without Dusori.
+            Tell Dusori what you want to understand. It searches the sources you allow, keeps the
+            evidence trail, and turns what you approve into a synthesis you can learn from —
+            entirely on your device, in formats you can open without Dusori.
           </p>
           <div class="hero-actions">
             <a class="button button--primary" href={appHref}>
@@ -174,14 +176,14 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
 
         <figure class="hero-proof">
           <img
-            src={workspaceShotHref}
-            alt="Dusori Today view showing Continue learning and Needs attention from local workspace evidence"
-            width="1440"
-            height="960"
+            src={researchShotHref}
+            alt="Dusori research view: seven allowed providers, quoted passages read from an approved source, and a per-topic freshness setting"
+            width="1280"
+            height="900"
             fetchpriority="high"
           />
           <figcaption>
-            <span>Real app · Today view</span>
+            <span>Real app · research mission</span>
             <span>Browser workspace · private</span>
           </figcaption>
         </figure>

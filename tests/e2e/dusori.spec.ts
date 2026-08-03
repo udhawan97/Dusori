@@ -501,7 +501,8 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expect(page.locator('#run-locally code')).toHaveText('npx @udhawan97/dusori@latest');
 
   for (const imageName of [
-    'Dusori Today view showing Continue learning and Needs attention from local workspace evidence',
+    'Dusori research view: seven allowed providers, quoted passages read from an approved source, and a per-topic freshness setting',
+    'Dusori Today view with evidence-backed learning and attention lanes',
     'Dusori curriculum preview showing Microsoft Learn roadmap items before the user applies them',
     'Dusori knowledge constellation built from portable local artifacts',
   ]) {
