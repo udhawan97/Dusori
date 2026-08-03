@@ -1,0 +1,266 @@
+- main [ref=e33]:
+    - navigation "Workspace" [ref=e34]:
+        - generic [ref=e35]: Dusori
+        - generic [ref=e38]:
+            - paragraph [ref=e39]: Workspace
+            - button "Today" [ref=e40] [cursor=pointer]
+            - button "Research" [ref=e42] [cursor=pointer]
+            - button "Roadmap" [ref=e44] [cursor=pointer]
+            - button "Graph" [ref=e46] [cursor=pointer]
+            - button "Insights" [ref=e48] [cursor=pointer]
+        - generic [ref=e51]:
+            - paragraph [ref=e52]: Topics
+            - button "Spaced repetition learning" [ref=e123] [cursor=pointer]
+            - button "New topic" [ref=e53] [cursor=pointer]
+        - generic [ref=e56]:
+            - generic [ref=e57]: Browser workspace · private
+            - generic [ref=e58]: Online · local data
+    - generic [ref=e59]:
+        - generic [ref=e60]:
+            - generic [ref=e61]:
+                - paragraph [ref=e62]: Research · automatic discovery
+                - paragraph [ref=e63]: Plain Markdown · changes stay local
+            - generic [ref=e64]:
+                - button "Switch to light mode" [ref=e65] [cursor=pointer]
+                - button "Close inspector" [pressed] [ref=e213] [cursor=pointer]
+        - region [ref=e128]:
+            - generic [ref=e130]:
+                - paragraph [ref=e131]: Research observatory · Spaced repetition learning
+                - heading "Let the strongest evidence find you." [level=1] [ref=e132]
+                - paragraph [ref=e133]: Scan every allowed provider at once. Dusori ranks the results, explains why they surfaced, and keeps the final source choice with you.
+            - list "Research flow" [ref=e137]:
+                - listitem [ref=e138]:
+                    - generic [ref=e139]: '01'
+                    - generic [ref=e140]:
+                        - strong [ref=e141]: Discover
+                        - generic [ref=e142]: Allowed providers search together
+                - listitem [ref=e143]:
+                    - generic [ref=e144]: '02'
+                    - generic [ref=e145]:
+                        - strong [ref=e146]: Compare
+                        - generic [ref=e147]: Quality signals stay visible
+                - listitem [ref=e148]:
+                    - generic [ref=e149]: '03'
+                    - generic [ref=e150]:
+                        - strong [ref=e151]: Capture
+                        - generic [ref=e152]: Approve before readable text is saved
+            - generic [ref=e153]:
+                - region "Automatic research" [ref=e154]:
+                    - generic [ref=e155]: Automatic discovery
+                    - region [ref=e158]:
+                        - generic [ref=e160]:
+                            - heading "Research" [level=2] [ref=e161]
+                            - paragraph [ref=e162]: Find a useful next source from the objective you are working on.
+                        - generic [ref=e164]: Research objective
+                        - combobox "Research objective" [ref=e165]:
+                            - option "Establish the terms and boundaries." [selected]
+                            - option "Explain the central mechanism in your own words."
+                            - option "Connect the topic to a practical example."
+                        - generic "Research providers" [ref=e166]:
+                            - paragraph [ref=e167]: Providers 1 of 7 allowed
+                            - list [ref=e168]:
+                                - listitem [ref=e169]:
+                                    - button "Allow Microsoft Learn" [ref=e170] [cursor=pointer]
+                                - listitem [ref=e171]:
+                                    - generic [ref=e302]: Wikipedia
+                                - listitem [ref=e173]:
+                                    - button "Allow Hacker News" [ref=e174] [cursor=pointer]
+                                - listitem [ref=e175]:
+                                    - button "Allow GitHub" [ref=e176] [cursor=pointer]
+                                - listitem [ref=e177]:
+                                    - button "Allow Stack Overflow" [ref=e178] [cursor=pointer]
+                                - listitem [ref=e179]:
+                                    - button "Allow OpenAlex" [ref=e180] [cursor=pointer]
+                                - listitem [ref=e181]:
+                                    - button "Allow npm" [ref=e182] [cursor=pointer]
+                        - button "Scan for strong sources" [ref=e183] [cursor=pointer]
+                        - list "Research shortlist" [ref=e304]:
+                            - listitem [ref=e319]:
+                                - generic [ref=e320]:
+                                    - generic "Rank 1" [ref=e444]: '01'
+                                    - generic [ref=e322]:
+                                        - generic [ref=e323]: Wikipedia · Docs
+                                        - heading "Perceptual learning" [level=3] [ref=e324]
+                                - article [ref=e326]:
+                                    - paragraph [ref=e327]: Perceptual learning is the learning of perception skills, such as differentiating two musical tones from one another or categorizations of spatial and temporal
+                                - paragraph [ref=e328]: matches 1 objective term
+                                - paragraph [ref=e329]: 7152 words · 58869 bytes
+                                - generic [ref=e330]:
+                                    - button "Preview" [ref=e331] [cursor=pointer]
+                                    - button "Dismiss" [ref=e332] [cursor=pointer]
+                            - listitem [ref=e333]:
+                                - generic [ref=e334]:
+                                    - generic "Rank 2" [ref=e445]: '02'
+                                    - generic [ref=e336]:
+                                        - generic [ref=e337]: Wikipedia · Docs
+                                        - heading "Practice theory" [level=3] [ref=e338]
+                                - article [ref=e340]:
+                                    - paragraph [ref=e341]: 'tacit knowledge sharing in practice. Agency, boundaries , and commitment". Journal of Workplace Learning . 35 (9): 197–217. doi:10.1108/JWL-02-2023-0025'
+                                - paragraph [ref=e342]: matches 2 objective terms
+                                - paragraph [ref=e343]: 2624 words · 20607 bytes
+                                - generic [ref=e344]:
+                                    - button "Preview" [ref=e345] [cursor=pointer]
+                                    - button "Dismiss" [ref=e346] [cursor=pointer]
+                            - listitem [ref=e347]:
+                                - generic [ref=e348]:
+                                    - generic "Rank 3" [ref=e446]: '03'
+                                    - generic [ref=e350]:
+                                        - generic [ref=e351]: Wikipedia · Docs
+                                        - heading "Glossary of computer science" [level=3] [ref=e352]
+                                - article [ref=e354]:
+                                    - paragraph [ref=e355]: objects in which repetitions are allowed and order does matter. Like a set, it contains members (also called elements, or terms ). The number of elements
+                                - paragraph [ref=e356]: matches 1 objective term
+                                - paragraph [ref=e357]: 24183 words · 223274 bytes
+                                - generic [ref=e358]:
+                                    - button "Preview" [ref=e359] [cursor=pointer]
+                                    - button "Dismiss" [ref=e360] [cursor=pointer]
+                            - listitem [ref=e361]:
+                                - generic [ref=e362]:
+                                    - generic "Rank 4" [ref=e447]: '04'
+                                    - generic [ref=e364]:
+                                        - generic [ref=e365]: Wikipedia · Docs
+                                        - heading "Go (game)" [level=3] [ref=e366]
+                                - article [ref=e368]:
+                                    - paragraph [ref=e369]: returns the game to the immediately prior position. This rule, called the ko rule, prevents unending repetition (a stalemate). As shown in the example
+                                - paragraph [ref=e370]: matches 1 objective term
+                                - paragraph [ref=e371]: 16553 words · 142936 bytes
+                                - generic [ref=e372]:
+                                    - button "Preview" [ref=e373] [cursor=pointer]
+                                    - button "Dismiss" [ref=e374] [cursor=pointer]
+                        - button "Show 3 more results" [ref=e375] [cursor=pointer]
+                        - generic [ref=e448]:
+                            - paragraph [ref=e449]: Research brief 1 source approved this session
+                            - button "Write research brief" [ref=e450] [cursor=pointer]
+                - complementary "Saved research evidence" [ref=e189]:
+                    - generic [ref=e190]: Approved evidence
+                    - region [ref=e451]:
+                        - generic [ref=e452]:
+                            - generic [ref=e453]:
+                                - heading "Sources" [level=2] [ref=e454]
+                                - paragraph [ref=e455]: Keep the material beside your notes. URL contents are never fetched automatically.
+                            - generic "1 saved sources" [ref=e456]: '1'
+                        - generic [ref=e457]:
+                            - generic [ref=e458]: Source type
+                            - combobox "Source type" [ref=e459]:
+                                - option "Pasted text" [selected]
+                                - option "Local file"
+                                - option "URL reference"
+                            - generic [ref=e460]: Source title
+                            - textbox "Source title" [ref=e461]
+                            - generic [ref=e462]: Source text
+                            - textbox "Source text" [ref=e463]
+                            - paragraph [ref=e464]: Plain text · up to 2 MiB
+                            - button "Add source" [ref=e465] [cursor=pointer]
+                        - list "Saved sources" [ref=e467]:
+                            - listitem [ref=e468]:
+                                - link "Learning theory (education)" [ref=e469] [cursor=pointer]:
+                                    - /url: https://en.wikipedia.org/?curid=17994
+                                - generic [ref=e470]: URL reference · 33 KiB
+                        - paragraph [ref=e471]: Run the companion (npx @udhawan97/dusori) to fetch full page content.
+            - paragraph [ref=e212]: Discovery can start automatically after provider consent. No result is added to your topic until you approve it.
+    - complementary "Workspace details" [ref=e79]:
+        - generic [ref=e80]:
+            - paragraph [ref=e81]: Storage
+            - heading "Browser workspace" [level=2] [ref=e82]
+            - paragraph [ref=e83]: Browser workspace · private
+        - region [ref=e84]:
+            - paragraph [ref=e85]: Local discovery
+            - heading "Search workspace" [level=2] [ref=e86]
+            - paragraph [ref=e87]:
+                - text: Markdown and text are read in this session. No index or query leaves Dusori. Use
+                - code [ref=e88]: tag:name
+                - text: to filter by a tag written in frontmatter or as
+                - code [ref=e89]: '#name'
+                - text: .
+            - search [ref=e90]:
+                - generic [ref=e91]: Words to find
+                - generic [ref=e92]:
+                    - searchbox "Words to find" [ref=e93]
+                    - button "Search local workspace" [disabled] [ref=e94]
+        - region [ref=e97]:
+            - generic [ref=e98]:
+                - generic [ref=e99]:
+                    - paragraph [ref=e100]: Local integrity
+                    - heading "Workspace health" [level=2] [ref=e101]
+                - button "Refresh workspace health" [ref=e102] [cursor=pointer]
+            - generic [ref=e106]:
+                - strong [ref=e107]: Healthy
+                - text: · 1 documents checked
+            - generic [ref=e108]:
+                - paragraph [ref=e109]: Linked from
+                - generic [ref=e111]: Open a document to see its backlinks.
+        - generic [ref=e215]:
+            - paragraph [ref=e216]: Notes
+            - heading "Create a study note" [level=2] [ref=e217]
+            - paragraph [ref=e218]: Dusori writes portable Markdown and records the new file in this topic.
+            - generic [ref=e219]:
+                - generic [ref=e220]: New note title
+                - textbox "New note title" [ref=e221]:
+                    - /placeholder: Evidence map
+                - button "Create note" [disabled] [ref=e222]
+        - region [ref=e225]:
+            - generic [ref=e227]:
+                - heading "Curriculum" [level=2] [ref=e228]
+                - paragraph [ref=e229]: Turn an official study outline into a reviewable topic roadmap.
+            - generic [ref=e231]:
+                - paragraph [ref=e232]: No curriculum has been imported in this session.
+                - generic [ref=e233]: Paste an outline; Dusori will not open or fetch its source page.
+            - button "Import curriculum" [ref=e234] [cursor=pointer]
+        - generic [ref=e112]:
+            - paragraph [ref=e113]: Portability
+            - button "Export workspace" [ref=e114] [cursor=pointer]
+            - button "Export this topic" [ref=e237] [cursor=pointer]
+            - generic [ref=e116] [cursor=pointer]:
+                - text: Import workspace
+                - button "Import workspace" [ref=e118]
+            - paragraph [ref=e119]: A topic bundle holds one topic's files. It is a portable copy, not a workspace archive Dusori can import.
+        - region [ref=e240]:
+            - paragraph [ref=e241]: How this topic is taught
+            - heading "Learning preferences" [level=2] [ref=e242]
+            - paragraph [ref=e243]:
+                - text: These live in
+                - code [ref=e244]: Topics/spaced-repetition-learning/TUTOR.md
+                - text: as ordinary Markdown. Dusori proposes a change and shows the diff; nothing is replaced until you accept it.
+            - generic [ref=e245]:
+                - generic [ref=e246]: Depth
+                - combobox "Depth" [ref=e247]:
+                    - option "brief"
+                    - option "layered" [selected]
+                    - option "deep"
+            - list "Learning preferences" [ref=e248]:
+                - listitem [ref=e249]:
+                    - generic [ref=e250]: Prefer concrete examples before abstractions.
+                    - generic [ref=e251]:
+                        - button "Move “Prefer concrete examples before abstractions.” earlier" [disabled] [ref=e252]
+                        - button "Move “Prefer concrete examples before abstractions.” later" [ref=e254] [cursor=pointer]
+                        - button "Remove “Prefer concrete examples before abstractions.”" [ref=e256] [cursor=pointer]
+                - listitem [ref=e258]:
+                    - generic [ref=e259]: Keep source provenance visible.
+                    - generic [ref=e260]:
+                        - button "Move “Keep source provenance visible.” earlier" [ref=e261] [cursor=pointer]
+                        - button "Move “Keep source provenance visible.” later" [ref=e263] [cursor=pointer]
+                        - button "Remove “Keep source provenance visible.”" [ref=e265] [cursor=pointer]
+                - listitem [ref=e267]:
+                    - generic [ref=e268]: Ask exactly three self-check questions per study note.
+                    - generic [ref=e269]:
+                        - button "Move “Ask exactly three self-check questions per study note.” earlier" [ref=e270] [cursor=pointer]
+                        - button "Move “Ask exactly three self-check questions per study note.” later" [ref=e272] [cursor=pointer]
+                        - button "Remove “Ask exactly three self-check questions per study note.”" [ref=e274] [cursor=pointer]
+                - listitem [ref=e276]:
+                    - generic [ref=e277]: Never treat generated text as authoritative.
+                    - generic [ref=e278]:
+                        - button "Move “Never treat generated text as authoritative.” earlier" [ref=e279] [cursor=pointer]
+                        - button "Move “Never treat generated text as authoritative.” later" [disabled] [ref=e281]
+                        - button "Remove “Never treat generated text as authoritative.”" [ref=e283] [cursor=pointer]
+            - generic [ref=e285]:
+                - generic [ref=e286]: New learning preference
+                - textbox "New learning preference" [ref=e287]:
+                    - /placeholder: Prefer a worked example before the rule
+                - button "Add" [disabled] [ref=e288]
+        - generic [ref=e290]:
+            - paragraph [ref=e291]: Safety proof
+            - paragraph [ref=e292]: Exercise the stale-write path without replacing the current note.
+            - button "Run conflict proof" [ref=e293] [cursor=pointer]
+        - generic [ref=e120]:
+            - paragraph [ref=e121]: Local companion
+            - paragraph [ref=e122]: Not connected

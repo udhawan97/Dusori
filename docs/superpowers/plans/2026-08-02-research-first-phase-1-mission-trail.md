@@ -25,11 +25,13 @@
 ### Task 1: Run-ledger schema and `recordResearchRun` rework
 
 **Files:**
+
 - Modify: `packages/core/src/research/research-file.ts`
 - Create: `packages/core/src/research/research-file.test.ts`
 - Modify: `packages/core/src/research/suggest.test.ts` (one call site, line ~8 import is unchanged; the `recordResearchRun` calls inside change shape)
 
 **Interfaces:**
+
 - Consumes: existing `ResearchFileSchema`, `readMachineFile`, `topicRoot`, `MemoryStorageAdapter`, `createWorkspace(storage, name, now)`, `createTopic(storage, title, now)`.
 - Produces (later tasks rely on these exact names):
 
@@ -60,7 +62,10 @@ export interface ResearchRunInput {
 }
 // New signature (breaking for the old positional candidates array):
 export async function recordResearchRun(
-  storage: StorageAdapter, topicSlug: string, run: ResearchRunInput, now?: Date,
+  storage: StorageAdapter,
+  topicSlug: string,
+  run: ResearchRunInput,
+  now?: Date,
 ): Promise<ResearchFile>;
 ```
 
@@ -73,11 +78,7 @@ import { describe, expect, it } from 'vitest';
 
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
-import {
-  readResearchFile,
-  recordResearchRun,
-  type ResearchRunInput,
-} from './research-file.js';
+import { readResearchFile, recordResearchRun, type ResearchRunInput } from './research-file.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
 
@@ -261,18 +262,18 @@ export async function recordResearchRun(
 5. Fix the compile break in `packages/core/src/research/agent.ts` minimally for now (Task 2 does the real work): change the call at the bottom to
 
 ```ts
-  if (ranked.length > 0) {
-    await recordResearchRun(
-      input.storage,
-      input.topicSlug,
-      {
-        candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
-        providers: [],
-        searchText: input.query.searchText,
-      },
-      now,
-    );
-  }
+if (ranked.length > 0) {
+  await recordResearchRun(
+    input.storage,
+    input.topicSlug,
+    {
+      candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      providers: [],
+      searchText: input.query.searchText,
+    },
+    now,
+  );
+}
 ```
 
 6. Update the `recordResearchRun` calls in `packages/core/src/research/suggest.test.ts` to the object shape (`{ candidates: [...], providers: [], searchText: 'query' }`). Do not change what those tests assert.
@@ -296,10 +297,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: Agent records outcomes for every run, including total failure
 
 **Files:**
+
 - Modify: `packages/core/src/research/agent.ts`
 - Modify: `packages/core/src/research/agent.test.ts`
 
 **Interfaces:**
+
 - Consumes: `recordResearchRun(storage, topicSlug, ResearchRunInput, now)`, `RunProviderOutcome`, `ResearchRunRecord` from Task 1.
 - Produces: `ResearchRunResult` gains `run: ResearchRunRecord | null` (the persisted record for this scan; `null` only when persistence itself failed). `SkippedProvider` stays for UI compatibility.
 
@@ -347,55 +350,55 @@ In `agent.ts`:
 2. While walking `settled` (existing forEach), also build outcomes:
 
 ```ts
-  const outcomes: RunProviderOutcome[] = [];
-  settled.forEach((result, index) => {
-    const provider = input.providers[index];
-    if (!provider) return;
-    if (result.status === 'fulfilled') {
-      found.push(...result.value);
-      outcomes.push({
-        count: result.value.length,
-        id: provider.id,
-        label: provider.label,
-        outcome: result.value.length > 0 ? 'found' : 'empty',
-      });
-      return;
-    }
-    const message = skipMessage(result.reason, provider.label);
-    skipped.push({ id: provider.id, label: provider.label, message });
+const outcomes: RunProviderOutcome[] = [];
+settled.forEach((result, index) => {
+  const provider = input.providers[index];
+  if (!provider) return;
+  if (result.status === 'fulfilled') {
+    found.push(...result.value);
     outcomes.push({
-      count: 0,
+      count: result.value.length,
       id: provider.id,
       label: provider.label,
-      message,
-      outcome: 'failed',
+      outcome: result.value.length > 0 ? 'found' : 'empty',
     });
+    return;
+  }
+  const message = skipMessage(result.reason, provider.label);
+  skipped.push({ id: provider.id, label: provider.label, message });
+  outcomes.push({
+    count: 0,
+    id: provider.id,
+    label: provider.label,
+    message,
+    outcome: 'failed',
   });
+});
 ```
 
 3. Replace the guarded record call with an always-record (a run that asked zero providers never reaches here — `runWith` guards `providerList.length === 0`):
 
 ```ts
-  // The run itself is evidence: a failure trail must survive reload exactly like a
-  // success, or "no research found" and "research broke" become indistinguishable.
-  let run: ResearchRunRecord | null = null;
-  try {
-    const file = await recordResearchRun(
-      input.storage,
-      input.topicSlug,
-      {
-        candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
-        providers: outcomes,
-        searchText: input.query.searchText,
-      },
-      now,
-    );
-    run = file.runs?.at(-1) ?? null;
-  } catch {
-    run = null;
-  }
+// The run itself is evidence: a failure trail must survive reload exactly like a
+// success, or "no research found" and "research broke" become indistinguishable.
+let run: ResearchRunRecord | null = null;
+try {
+  const file = await recordResearchRun(
+    input.storage,
+    input.topicSlug,
+    {
+      candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      providers: outcomes,
+      searchText: input.query.searchText,
+    },
+    now,
+  );
+  run = file.runs?.at(-1) ?? null;
+} catch {
+  run = null;
+}
 
-  return { overflow, run, shortlist, skipped };
+return { overflow, run, shortlist, skipped };
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -417,11 +420,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Source provenance fields survive acceptance
 
 **Files:**
+
 - Modify: `packages/core/src/schemas/workspace.ts:43-54` (`SourceRecordSchema`)
 - Modify: `packages/core/src/sources/import.ts` (`AddSourceInput` url variant, `addSource` record build)
 - Modify: `packages/core/src/sources/import.test.ts`
 
 **Interfaces:**
+
 - Produces on `SourceRecordSchema` (tolerant strings like `origin`, spec §2):
 
 ```ts
@@ -502,11 +507,13 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 4: Mission overview derivation and lens map
 
 **Files:**
+
 - Create: `packages/core/src/research/mission.ts`
 - Create: `packages/core/src/research/mission.test.ts`
 - Modify: `packages/core/src/research/index.ts` (re-export), `packages/core/src/index.ts` if that is where the public barrel lives (check how `readResearchFile` is exported and mirror it)
 
 **Interfaces:**
+
 - Consumes: `readResearchFile`, `readSourceManifest`, `createResearchProviders` (for the totality test), Task 1's `ResearchRunRecord`.
 - Produces:
 
@@ -516,13 +523,15 @@ export function lensFor(providerId: string): MissionLens;
 export interface MissionOverview {
   topicSlug: string;
   savedSources: number;
-  discovered: number;                       // seen[].length (bounded history)
+  discovered: number; // seen[].length (bounded history)
   lastRunAt: string | null;
   lastRun: ResearchRunRecord | null;
-  lensCounts: Record<MissionLens, number>;  // saved sources per lens via origin.provider
+  lensCounts: Record<MissionLens, number>; // saved sources per lens via origin.provider
 }
 export async function deriveMissionOverview(
-  storage: StorageAdapter, topicSlug: string, now?: Date,
+  storage: StorageAdapter,
+  topicSlug: string,
+  now?: Date,
 ): Promise<MissionOverview>;
 ```
 
@@ -707,10 +716,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Research trail UI and provenance pass-through in the panel
 
 **Files:**
+
 - Create: `apps/app/src/lib/components/ResearchTrail.svelte`
 - Modify: `apps/app/src/lib/components/ResearchPanel.svelte` (imports ~line 5-28; state ~line 79; `runWith` ~line 186-213; `addPreviewToSources` ~line 336-348; template after the skipped-list block ~line 550)
 
 **Interfaces:**
+
 - Consumes: `readResearchFile`, `type ResearchRunRecord` from `@dusori/core`; `runResult.run` from Task 2; `provenance` input from Task 3.
 - Produces: `ResearchTrail` props: `{ runs: ResearchRunRecord[] }` (already newest-first).
 
@@ -847,18 +858,18 @@ In `ResearchPanel.svelte`:
 3. In `loadObjectives()` (or a new `onMount` body beside it), load the persisted trail:
 
 ```ts
-    try {
-      const file = await readResearchFile(storage, topicSlug);
-      trailRuns = [...(file?.runs ?? [])].reverse();
-    } catch {
-      trailRuns = [];
-    }
+try {
+  const file = await readResearchFile(storage, topicSlug);
+  trailRuns = [...(file?.runs ?? [])].reverse();
+} catch {
+  trailRuns = [];
+}
 ```
 
 4. In `runWith`, after `runResult = await withAiRanking(query, result);` add:
 
 ```ts
-      if (result.run) trailRuns = [result.run, ...trailRuns];
+if (result.run) trailRuns = [result.run, ...trailRuns];
 ```
 
 5. In `addPreviewToSources`, extend the `addSource` call (Task 3 input):
@@ -873,8 +884,7 @@ In `ResearchPanel.svelte`:
         },
 ```
 
-   (`candidate` is in scope from the destructure at the top of the function; `meta` values are `string | undefined` — the record schema strips `undefined` cleanly.)
-6. Template: render `<ResearchTrail runs={trailRuns} />` immediately after the `{#if runResult?.skipped.length}` block (~line 550), still inside the `{:else}` objectives branch.
+(`candidate` is in scope from the destructure at the top of the function; `meta` values are `string | undefined` — the record schema strips `undefined` cleanly.) 6. Template: render `<ResearchTrail runs={trailRuns} />` immediately after the `{#if runResult?.skipped.length}` block (~line 550), still inside the `{:else}` objectives branch.
 
 - [ ] **Step 3: Typecheck and unit-test the app**
 
@@ -895,10 +905,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: Mission strip on Today
 
 **Files:**
+
 - Create: `apps/app/src/lib/components/MissionStrip.svelte`
 - Modify: `apps/app/src/lib/components/LearningLoop.svelte` (imports ~line 13-37; load path where `summaries`/`focus` are read; template immediately before `<div class="today-lanes">` ~line 354)
 
 **Interfaces:**
+
 - Consumes: `deriveMissionOverview`, `type MissionOverview`, `lensFor` types from Task 4; `TodayTopicSummary` (existing).
 - Produces: `MissionStrip` props: `{ missions: Array<MissionOverview & { title: string }>; onOpenResearch: (slug: string) => void }`.
 
@@ -1058,22 +1070,19 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 3. In the existing load function (the one that fills `summaries` and `focus` — find it by `summaries =`), after summaries resolve add:
 
 ```ts
-    const activeSummaries = summaries.filter((summary) => summary.status !== 'complete');
-    missions = await Promise.all(
-      activeSummaries.map(async (summary) => ({
-        ...(await deriveMissionOverview(storage, summary.slug)),
-        title: summary.title,
-      })),
-    );
+const activeSummaries = summaries.filter((summary) => summary.status !== 'complete');
+missions = await Promise.all(
+  activeSummaries.map(async (summary) => ({
+    ...(await deriveMissionOverview(storage, summary.slug)),
+    title: summary.title,
+  })),
+);
 ```
 
 4. Template, `view === 'today'` branch, directly before `<div class="today-lanes">`:
 
 ```svelte
-      <MissionStrip
-        {missions}
-        onOpenResearch={(slug) => onOpenResearch(slug)}
-      />
+<MissionStrip {missions} onOpenResearch={(slug) => onOpenResearch(slug)} />
 ```
 
 - [ ] **Step 3: Typecheck**
@@ -1095,16 +1104,17 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: Lanes stack by container width, not viewport width
 
 **Files:**
+
 - Modify: `apps/app/src/lib/components/LearningLoop.svelte` (`.today-lanes` rules ~line 769-778 and the `@media (max-width: 50rem)` block ~line 1308-1317; the component's outermost `view === 'today'` wrapper element)
 
-The bug: `.today-lanes` stacks via a *viewport* media query, but the inspector drawer overlays ~350 px of the main column at ≥1200 px viewports, so the lanes render two-up in ~600 px and the Continue-learning actions overlap the copy (verified in the rendered app, 2026-08-02).
+The bug: `.today-lanes` stacks via a _viewport_ media query, but the inspector drawer overlays ~350 px of the main column at ≥1200 px viewports, so the lanes render two-up in ~600 px and the Continue-learning actions overlap the copy (verified in the rendered app, 2026-08-02).
 
 - [ ] **Step 1: Make the loop's Today wrapper a size container**
 
 Find the outermost element the Today branch renders into (the element whose class the `.today-lanes` selector nests under — likely a `<section>` or `<div>` wrapping the whole view). Add to its existing style rule:
 
 ```css
-    container-type: inline-size;
+container-type: inline-size;
 ```
 
 If the wrapper has no class yet, give it `class="today-view"` and the rule above.
@@ -1114,16 +1124,16 @@ If the wrapper has no class yet, give it `class="today-view"` and the rule above
 Replace the `.today-lanes` part of the `@media (max-width: 50rem)` block with a container query (keep any other selectors in that media block where they are):
 
 ```css
-  @container (max-width: 50rem) {
-    .today-lanes {
-      background: var(--color-paper-2);
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .focus-lane + .focus-lane {
-      border-block-start: var(--rule-hair) solid var(--color-rule);
-    }
+@container (max-width: 50rem) {
+  .today-lanes {
+    background: var(--color-paper-2);
+    grid-template-columns: minmax(0, 1fr);
   }
+
+  .focus-lane + .focus-lane {
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+}
 ```
 
 - [ ] **Step 3: Verify in the rendered app**
@@ -1147,9 +1157,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 8: E2E — the trail, the strip, and honest failure survive reload
 
 **Files:**
+
 - Modify: `tests/e2e/dusori.spec.ts` (new tests after the research block ending ~line 1288; extend the all-failed test at ~line 1260)
 
 **Interfaces:**
+
 - Consumes: existing helpers `createBrowserWorkspace(page)`, `createTopic(page, { remainInResearch: true })`, `wikipediaSearch` fixture (exactly 1 result: "Microsoft Entra Connect"), `expectNoSeriousA11yViolations(page)`.
 
 - [ ] **Step 1: Add the trail persistence test**
@@ -1194,14 +1206,14 @@ test('a research run leaves a durable trail on disk and a mission strip on Today
 - [ ] **Step 2: Extend the all-failed test (~line 1275, after the existing expectations and before `unroute`)**
 
 ```ts
-  await page.reload();
-  const failedTrail = page.getByRole('list', { name: 'Research trail runs' });
-  await expect(failedTrail).toContainText('Wikipedia');
-  await expect(failedTrail).toContainText('failed');
-  await expect(page.getByText('No new suggestions matched this objective.')).toBeHidden();
+await page.reload();
+const failedTrail = page.getByRole('list', { name: 'Research trail runs' });
+await expect(failedTrail).toContainText('Wikipedia');
+await expect(failedTrail).toContainText('failed');
+await expect(page.getByText('No new suggestions matched this objective.')).toBeHidden();
 ```
 
-Note: after the reload the retry flow continues; re-establish the fulfilled route *after* these
+Note: after the reload the retry flow continues; re-establish the fulfilled route _after_ these
 assertions exactly where the existing `unroute`/`route`/`retry` sequence sits, and click
 'Scan for strong sources' instead of the pre-reload 'Retry scan' button if the retry button only
 renders with an in-memory failed run — adjust to whichever button the reloaded view shows, the
@@ -1252,6 +1264,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 9: Contract docs, changelog, and the full gate
 
 **Files:**
+
 - Modify: `docs/adr/003-portable-file-contract.md` (the `research.json` example and the source-record field list)
 - Modify: `CHANGELOG.md` (new Unreleased section at top)
 - Modify: `docs/product/spec.md` (research paragraph: one sentence that runs, outcomes, and ranking reasons persist in `research.json` / the manifest)
@@ -1283,7 +1296,7 @@ CHANGELOG (top):
   Continue-learning actions over their copy at ~1200 px.
 ```
 
-spec.md: in the "shipped Research workspace" paragraph (§ current milestone body, the paragraph beginning "Each provider is blocked behind an exact egress disclosure"), append: *"Every run — including one in which every provider failed — is recorded in the topic's `research.json` with per-provider outcomes and shown as a durable research trail; accepted sources keep the ranking reasons and any reported publication metadata."*
+spec.md: in the "shipped Research workspace" paragraph (§ current milestone body, the paragraph beginning "Each provider is blocked behind an exact egress disclosure"), append: _"Every run — including one in which every provider failed — is recorded in the topic's `research.json` with per-provider outcomes and shown as a durable research trail; accepted sources keep the ranking reasons and any reported publication metadata."_
 
 - [ ] **Step 3: Run the full gate**
 
@@ -1307,5 +1320,5 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ## Deferred out of this phase (spec-tracked)
 
 - `readState`, `claims[]`, angles, auto-refresh, deep pass, synthesis, Learn mode → Phases 2-5.
-- Lens *unavailability reasons* on the strip ("Community — Reddit not configured") need provider-availability plumbing into `LearningLoop`; lands with Phase 2's provider work.
+- Lens _unavailability reasons_ on the strip ("Community — Reddit not configured") need provider-availability plumbing into `LearningLoop`; lands with Phase 2's provider work.
 - Showing `whySelected` per source in the library UI rides with Phase 3's evidence table.

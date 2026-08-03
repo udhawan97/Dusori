@@ -1,0 +1,217 @@
+- main [ref=e33]:
+    - navigation "Workspace" [ref=e34]:
+        - generic [ref=e35]: Dusori
+        - generic [ref=e38]:
+            - paragraph [ref=e39]: Workspace
+            - button "Today" [ref=e40] [cursor=pointer]
+            - button "Research" [ref=e42] [cursor=pointer]
+            - button "Roadmap" [ref=e44] [cursor=pointer]
+            - button "Graph" [ref=e46] [cursor=pointer]
+            - button "Insights" [ref=e48] [cursor=pointer]
+        - generic [ref=e51]:
+            - paragraph [ref=e52]: Topics
+            - button "Spaced repetition learning" [ref=e123] [cursor=pointer]
+            - button "New topic" [ref=e53] [cursor=pointer]
+        - generic [ref=e56]:
+            - generic [ref=e57]: Browser workspace · private
+            - generic [ref=e58]: Online · local data
+    - generic [ref=e59]:
+        - generic [ref=e60]:
+            - generic [ref=e61]:
+                - paragraph [ref=e62]: Research · automatic discovery
+                - paragraph [ref=e63]: Plain Markdown · changes stay local
+            - generic [ref=e64]:
+                - button "Switch to light mode" [ref=e65] [cursor=pointer]
+                - button "Close inspector" [pressed] [ref=e213] [cursor=pointer]
+        - region [ref=e128]:
+            - generic [ref=e130]:
+                - paragraph [ref=e131]: Research observatory · Spaced repetition learning
+                - heading "Let the strongest evidence find you." [level=1] [ref=e132]
+                - paragraph [ref=e133]: Scan every allowed provider at once. Dusori ranks the results, explains why they surfaced, and keeps the final source choice with you.
+            - list "Research flow" [ref=e137]:
+                - listitem [ref=e138]:
+                    - generic [ref=e139]: '01'
+                    - generic [ref=e140]:
+                        - strong [ref=e141]: Discover
+                        - generic [ref=e142]: Allowed providers search together
+                - listitem [ref=e143]:
+                    - generic [ref=e144]: '02'
+                    - generic [ref=e145]:
+                        - strong [ref=e146]: Compare
+                        - generic [ref=e147]: Quality signals stay visible
+                - listitem [ref=e148]:
+                    - generic [ref=e149]: '03'
+                    - generic [ref=e150]:
+                        - strong [ref=e151]: Capture
+                        - generic [ref=e152]: Approve before readable text is saved
+            - generic [ref=e153]:
+                - region "Automatic research" [ref=e154]:
+                    - generic [ref=e155]: Automatic discovery
+                    - region [ref=e158]:
+                        - generic [ref=e160]:
+                            - heading "Research" [level=2] [ref=e161]
+                            - paragraph [ref=e162]: Find a useful next source from the objective you are working on.
+                        - generic [ref=e164]: Research objective
+                        - combobox "Research objective" [ref=e165]:
+                            - option "Establish the terms and boundaries." [selected]
+                            - option "Explain the central mechanism in your own words."
+                            - option "Connect the topic to a practical example."
+                        - generic "Research providers" [ref=e166]:
+                            - paragraph [ref=e167]: Providers 0 of 7 allowed
+                            - list [ref=e168]:
+                                - listitem [ref=e169]:
+                                    - button "Allow Microsoft Learn" [ref=e170] [cursor=pointer]
+                                - listitem [ref=e171]:
+                                    - button "Allow Wikipedia" [ref=e172] [cursor=pointer]
+                                - listitem [ref=e173]:
+                                    - button "Allow Hacker News" [ref=e174] [cursor=pointer]
+                                - listitem [ref=e175]:
+                                    - button "Allow GitHub" [ref=e176] [cursor=pointer]
+                                - listitem [ref=e177]:
+                                    - button "Allow Stack Overflow" [ref=e178] [cursor=pointer]
+                                - listitem [ref=e179]:
+                                    - button "Allow OpenAlex" [ref=e180] [cursor=pointer]
+                                - listitem [ref=e181]:
+                                    - button "Allow npm" [ref=e182] [cursor=pointer]
+                        - button "Scan for strong sources" [disabled] [ref=e183]
+                        - paragraph [ref=e185]: Allow at least one provider to scan. You choose once, and this topic’s research begins.
+                        - generic [ref=e186]:
+                            - paragraph [ref=e187]: The web stays quiet until you run a search.
+                            - generic [ref=e188]: Each provider states exactly what it receives before its first search.
+                    - dialog [ref=e295]:
+                        - paragraph [ref=e296]: Egress disclosure
+                        - heading "Allow Wikipedia search?" [level=2] [ref=e297]
+                        - paragraph [ref=e298]: Searching sends this topic's name and the objective's text to Wikipedia (en.wikipedia.org) over HTTPS. Nothing else from your workspace is sent. Allow on this device?
+                        - generic [ref=e299]:
+                            - button "Keep search off" [ref=e300] [cursor=pointer]
+                            - button "Allow search" [active] [ref=e301] [cursor=pointer]
+                - complementary "Saved research evidence" [ref=e189]:
+                    - generic [ref=e190]: Approved evidence
+                    - region [ref=e193]:
+                        - generic [ref=e194]:
+                            - generic [ref=e195]:
+                                - heading "Sources" [level=2] [ref=e196]
+                                - paragraph [ref=e197]: Keep the material beside your notes. URL contents are never fetched automatically.
+                            - generic "0 saved sources" [ref=e198]: '0'
+                        - generic [ref=e199]:
+                            - generic [ref=e200]: Source type
+                            - combobox "Source type" [ref=e201]:
+                                - option "Pasted text" [selected]
+                                - option "Local file"
+                                - option "URL reference"
+                            - generic [ref=e202]: Source title
+                            - textbox "Source title" [ref=e203]
+                            - generic [ref=e204]: Source text
+                            - textbox "Source text" [ref=e205]
+                            - paragraph [ref=e206]: Plain text · up to 2 MiB
+                            - button "Add source" [ref=e207] [cursor=pointer]
+                        - generic [ref=e209]:
+                            - paragraph [ref=e210]: No sources yet.
+                            - generic [ref=e211]: Add text, a local file, or a URL reference above.
+            - paragraph [ref=e212]: Discovery can start automatically after provider consent. No result is added to your topic until you approve it.
+    - complementary "Workspace details" [ref=e79]:
+        - generic [ref=e80]:
+            - paragraph [ref=e81]: Storage
+            - heading "Browser workspace" [level=2] [ref=e82]
+            - paragraph [ref=e83]: Browser workspace · private
+        - region [ref=e84]:
+            - paragraph [ref=e85]: Local discovery
+            - heading "Search workspace" [level=2] [ref=e86]
+            - paragraph [ref=e87]:
+                - text: Markdown and text are read in this session. No index or query leaves Dusori. Use
+                - code [ref=e88]: tag:name
+                - text: to filter by a tag written in frontmatter or as
+                - code [ref=e89]: '#name'
+                - text: .
+            - search [ref=e90]:
+                - generic [ref=e91]: Words to find
+                - generic [ref=e92]:
+                    - searchbox "Words to find" [ref=e93]
+                    - button "Search local workspace" [disabled] [ref=e94]
+        - region [ref=e97]:
+            - generic [ref=e98]:
+                - generic [ref=e99]:
+                    - paragraph [ref=e100]: Local integrity
+                    - heading "Workspace health" [level=2] [ref=e101]
+                - button "Refresh workspace health" [ref=e102] [cursor=pointer]
+            - generic [ref=e106]:
+                - strong [ref=e107]: Healthy
+                - text: · 1 documents checked
+            - generic [ref=e108]:
+                - paragraph [ref=e109]: Linked from
+                - generic [ref=e111]: Open a document to see its backlinks.
+        - generic [ref=e215]:
+            - paragraph [ref=e216]: Notes
+            - heading "Create a study note" [level=2] [ref=e217]
+            - paragraph [ref=e218]: Dusori writes portable Markdown and records the new file in this topic.
+            - generic [ref=e219]:
+                - generic [ref=e220]: New note title
+                - textbox "New note title" [ref=e221]:
+                    - /placeholder: Evidence map
+                - button "Create note" [disabled] [ref=e222]
+        - region [ref=e225]:
+            - generic [ref=e227]:
+                - heading "Curriculum" [level=2] [ref=e228]
+                - paragraph [ref=e229]: Turn an official study outline into a reviewable topic roadmap.
+            - generic [ref=e231]:
+                - paragraph [ref=e232]: No curriculum has been imported in this session.
+                - generic [ref=e233]: Paste an outline; Dusori will not open or fetch its source page.
+            - button "Import curriculum" [ref=e234] [cursor=pointer]
+        - generic [ref=e112]:
+            - paragraph [ref=e113]: Portability
+            - button "Export workspace" [ref=e114] [cursor=pointer]
+            - button "Export this topic" [ref=e237] [cursor=pointer]
+            - generic [ref=e116] [cursor=pointer]:
+                - text: Import workspace
+                - button "Import workspace" [ref=e118]
+            - paragraph [ref=e119]: A topic bundle holds one topic's files. It is a portable copy, not a workspace archive Dusori can import.
+        - region [ref=e240]:
+            - paragraph [ref=e241]: How this topic is taught
+            - heading "Learning preferences" [level=2] [ref=e242]
+            - paragraph [ref=e243]:
+                - text: These live in
+                - code [ref=e244]: Topics/spaced-repetition-learning/TUTOR.md
+                - text: as ordinary Markdown. Dusori proposes a change and shows the diff; nothing is replaced until you accept it.
+            - generic [ref=e245]:
+                - generic [ref=e246]: Depth
+                - combobox "Depth" [ref=e247]:
+                    - option "brief"
+                    - option "layered" [selected]
+                    - option "deep"
+            - list "Learning preferences" [ref=e248]:
+                - listitem [ref=e249]:
+                    - generic [ref=e250]: Prefer concrete examples before abstractions.
+                    - generic [ref=e251]:
+                        - button "Move “Prefer concrete examples before abstractions.” earlier" [disabled] [ref=e252]
+                        - button "Move “Prefer concrete examples before abstractions.” later" [ref=e254] [cursor=pointer]
+                        - button "Remove “Prefer concrete examples before abstractions.”" [ref=e256] [cursor=pointer]
+                - listitem [ref=e258]:
+                    - generic [ref=e259]: Keep source provenance visible.
+                    - generic [ref=e260]:
+                        - button "Move “Keep source provenance visible.” earlier" [ref=e261] [cursor=pointer]
+                        - button "Move “Keep source provenance visible.” later" [ref=e263] [cursor=pointer]
+                        - button "Remove “Keep source provenance visible.”" [ref=e265] [cursor=pointer]
+                - listitem [ref=e267]:
+                    - generic [ref=e268]: Ask exactly three self-check questions per study note.
+                    - generic [ref=e269]:
+                        - button "Move “Ask exactly three self-check questions per study note.” earlier" [ref=e270] [cursor=pointer]
+                        - button "Move “Ask exactly three self-check questions per study note.” later" [ref=e272] [cursor=pointer]
+                        - button "Remove “Ask exactly three self-check questions per study note.”" [ref=e274] [cursor=pointer]
+                - listitem [ref=e276]:
+                    - generic [ref=e277]: Never treat generated text as authoritative.
+                    - generic [ref=e278]:
+                        - button "Move “Never treat generated text as authoritative.” earlier" [ref=e279] [cursor=pointer]
+                        - button "Move “Never treat generated text as authoritative.” later" [disabled] [ref=e281]
+                        - button "Remove “Never treat generated text as authoritative.”" [ref=e283] [cursor=pointer]
+            - generic [ref=e285]:
+                - generic [ref=e286]: New learning preference
+                - textbox "New learning preference" [ref=e287]:
+                    - /placeholder: Prefer a worked example before the rule
+                - button "Add" [disabled] [ref=e288]
+        - generic [ref=e290]:
+            - paragraph [ref=e291]: Safety proof
+            - paragraph [ref=e292]: Exercise the stale-write path without replacing the current note.
+            - button "Run conflict proof" [ref=e293] [cursor=pointer]
+        - generic [ref=e120]:
+            - paragraph [ref=e121]: Local companion
+            - paragraph [ref=e122]: Not connected

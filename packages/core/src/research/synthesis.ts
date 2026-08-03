@@ -32,12 +32,70 @@ export interface TopicSynthesis {
 }
 
 const stopwords = new Set([
-  'a', 'about', 'after', 'also', 'an', 'and', 'are', 'as', 'at', 'be', 'been', 'both', 'but',
-  'by', 'can', 'for', 'from', 'had', 'has', 'have', 'how', 'in', 'into', 'is', 'it', 'its',
-  'may', 'more', 'most', 'not', 'of', 'on', 'or', 'over', 'own', 'result', 'results', 'said',
-  'same', 'than', 'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they', 'this',
-  'those', 'to', 'under', 'up', 'was', 'were', 'what', 'when', 'which', 'while', 'who', 'why',
-  'will', 'with', 'would',
+  'a',
+  'about',
+  'after',
+  'also',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'been',
+  'both',
+  'but',
+  'by',
+  'can',
+  'for',
+  'from',
+  'had',
+  'has',
+  'have',
+  'how',
+  'in',
+  'into',
+  'is',
+  'it',
+  'its',
+  'may',
+  'more',
+  'most',
+  'not',
+  'of',
+  'on',
+  'or',
+  'over',
+  'own',
+  'result',
+  'results',
+  'said',
+  'same',
+  'than',
+  'that',
+  'the',
+  'their',
+  'them',
+  'then',
+  'there',
+  'these',
+  'they',
+  'this',
+  'those',
+  'to',
+  'under',
+  'up',
+  'was',
+  'were',
+  'what',
+  'when',
+  'which',
+  'while',
+  'who',
+  'why',
+  'will',
+  'with',
+  'would',
 ]);
 
 function sourceLinkFor(record: SourceRecord): string | undefined {
@@ -107,7 +165,9 @@ function buildTimeline(sources: SourceRecord[]): { year: string; title: string; 
       year: String(record.publishedAt).slice(0, 4),
     }))
     .filter((entry) => /^\d{4}$/u.test(entry.year))
-    .sort((left, right) => left.year.localeCompare(right.year) || left.title.localeCompare(right.title));
+    .sort(
+      (left, right) => left.year.localeCompare(right.year) || left.title.localeCompare(right.title),
+    );
 }
 
 /**
@@ -141,7 +201,9 @@ export function buildTopicSynthesis(input: BuildSynthesisInput): TopicSynthesis 
   const thinEvidence = clusters.filter((cluster) => cluster.sourceCount === 1);
 
   const covered = new Set(
-    input.sources.filter((record) => record.origin).map((record) => lensFor(record.origin!.provider)),
+    input.sources
+      .filter((record) => record.origin)
+      .map((record) => lensFor(record.origin!.provider)),
   );
   const missingLenses = (['docs', 'academic', 'community', 'video', 'web'] as const)
     .filter((lens) => !covered.has(lens))
@@ -222,7 +284,9 @@ export function renderSynthesisMarkdown(
     lines.push('Backed by more than one source:', '');
     for (const cluster of supported) {
       const sources = [...new Set(cluster.claims.map((claim) => claim.sourceTitle))];
-      lines.push(`- **${cluster.heading}** — ${cluster.sourceCount} sources: ${sources.join('; ')}`);
+      lines.push(
+        `- **${cluster.heading}** — ${cluster.sourceCount} sources: ${sources.join('; ')}`,
+      );
     }
     lines.push('');
   } else {
@@ -239,7 +303,9 @@ export function renderSynthesisMarkdown(
   if (synthesis.timeline.length >= 3) {
     lines.push('## Timeline', '');
     for (const entry of synthesis.timeline) {
-      lines.push(`- **${entry.year}** — ${entry.url ? `[${entry.title}](${entry.url})` : entry.title}`);
+      lines.push(
+        `- **${entry.year}** — ${entry.url ? `[${entry.title}](${entry.url})` : entry.title}`,
+      );
     }
     lines.push('');
   }

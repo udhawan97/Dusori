@@ -1,0 +1,152 @@
+- main [ref=f2e33]:
+    - navigation "Workspace" [ref=f2e34]:
+        - generic [ref=f2e35]: Dusori
+        - generic [ref=f2e38]:
+            - paragraph [ref=f2e39]: Workspace
+            - button "Today" [ref=f2e40] [cursor=pointer]
+            - button "Research" [ref=f2e42] [cursor=pointer]
+            - button "Roadmap" [ref=f2e44] [cursor=pointer]
+            - button "Graph" [ref=f2e46] [cursor=pointer]
+            - button "Insights" [ref=f2e48] [cursor=pointer]
+        - generic [ref=f2e51]:
+            - paragraph [ref=f2e52]: Topics
+            - button "Spaced repetition learning" [ref=f2e123] [cursor=pointer]
+            - button "New topic" [ref=f2e53] [cursor=pointer]
+        - generic [ref=f2e56]:
+            - generic [ref=f2e57]: Browser workspace · private
+            - generic [ref=f2e58]: Online · local data
+    - generic [ref=f2e59]:
+        - generic [ref=f2e60]:
+            - generic [ref=f2e61]:
+                - paragraph [ref=f2e62]: Today · local activity
+                - paragraph [ref=f2e63]: Plain Markdown · changes stay local
+            - generic [ref=f2e64]:
+                - button "Switch to light mode" [ref=f2e65] [cursor=pointer]
+                - button "Open inspector" [ref=f2e126] [cursor=pointer]
+        - region [ref=f2e470]:
+            - generic [ref=f2e471]:
+                - paragraph [ref=f2e472]: Local learning loop
+                - heading "Today" [active] [level=1] [ref=f2e473]
+                - paragraph [ref=f2e474]: Continue from the next unfinished objective. This view is derived from your roadmap, topic state, and dated update files.
+            - generic "Workspace progress summary" [ref=f2e475]:
+                - generic [ref=f2e476]:
+                    - term [ref=f2e477]: Active topics
+                    - definition [ref=f2e478]: '1'
+                - generic [ref=f2e479]:
+                    - term [ref=f2e480]: Objectives complete
+                    - definition [ref=f2e481]: 0 / 3
+                - generic [ref=f2e482]:
+                    - term [ref=f2e483]: Storage
+                    - definition [ref=f2e484]: Local
+            - region [ref=f2e485]:
+                - generic [ref=f2e488]:
+                    - paragraph [ref=f2e489]: Derived from research and source files
+                    - heading "Research missions" [level=2] [ref=f2e490]
+                - paragraph [ref=f2e491]: What Dusori has looked for, what it found, and what it has actually read. Every number comes from files in your workspace.
+                - list "Research missions" [ref=f2e492]:
+                    - listitem [ref=f2e493]:
+                        - generic [ref=f2e494]:
+                            - strong [ref=f2e495]: Spaced repetition learning
+                            - paragraph [ref=f2e496]: 8 discovered · 1 saved · 1 read · 12 quoted
+                            - generic [ref=f2e497]: Refreshed today
+                            - list "Source coverage for Spaced repetition learning" [ref=f2e498]:
+                                - listitem [ref=f2e499]:
+                                    - generic [ref=f2e501]: 'Docs: 1 saved source'
+                                - listitem [ref=f2e502]:
+                                    - generic [ref=f2e504]: 'Academic: 0 saved sources'
+                                - listitem [ref=f2e505]:
+                                    - generic [ref=f2e507]: 'Community: 0 saved sources'
+                                - listitem [ref=f2e508]:
+                                    - generic [ref=f2e510]: 'Video: 0 saved sources'
+                                - listitem [ref=f2e511]:
+                                    - generic [ref=f2e513]: 'Web: 0 saved sources'
+                        - button "Open research — Spaced repetition learning" [ref=f2e514]: Open research
+            - generic [ref=f2e516]:
+                - region [ref=f2e517]:
+                    - generic [ref=f2e520]:
+                        - paragraph [ref=f2e521]: Explicit local state
+                        - heading "Continue learning" [level=2] [ref=f2e522]
+                    - paragraph [ref=f2e523]: Due reviews lead, followed by active topics least recently updated. Dusori routes the next step without changing progress.
+                    - list "Continue learning" [ref=f2e524]:
+                        - listitem [ref=f2e525]:
+                            - generic [ref=f2e526]: '01'
+                            - generic [ref=f2e527]:
+                                - strong [ref=f2e528]: Spaced repetition learning
+                                - paragraph [ref=f2e529]: Establish the terms and boundaries.
+                                - text: Active · least recently updated first · 0% complete · local source ready
+                            - generic [ref=f2e530]:
+                                - button "Open roadmap — Spaced repetition learning" [ref=f2e531] [cursor=pointer]: Open roadmap
+                                - button "Start review — Spaced repetition learning" [ref=f2e533] [cursor=pointer]: Start review
+                - region [ref=f2e534]:
+                    - generic [ref=f2e537]:
+                        - paragraph [ref=f2e538]: Proven workspace evidence
+                        - heading "Needs attention" [level=2] [ref=f2e539]
+                    - paragraph [ref=f2e540]: Integrity issues lead. Link hygiene stays secondary and never blocks learning.
+                    - paragraph [ref=f2e541]: No local evidence needs a decision. This is a current check, not a promise about future changes.
+            - region [ref=f2e542]:
+                - generic [ref=f2e545]:
+                    - paragraph [ref=f2e546]: Dated update files
+                    - heading "7-day recap" [level=2] [ref=f2e547]
+                - paragraph [ref=f2e548]: 6 events across 1 topic.
+                - list "Workspace recap" [ref=f2e549]:
+                    - listitem [ref=f2e550]:
+                        - time [ref=f2e551]: Aug 3
+                        - generic [ref=f2e552]:
+                            - strong [ref=f2e553]: Spaced repetition learning
+                            - text: Built the learning page from 12 quoted passages.
+                    - listitem [ref=f2e554]:
+                        - time [ref=f2e555]: Aug 3
+                        - generic [ref=f2e556]:
+                            - strong [ref=f2e557]: Spaced repetition learning
+                            - text: Wrote the topic synthesis from 1 read source.
+                    - listitem [ref=f2e558]:
+                        - time [ref=f2e559]: Aug 3
+                        - generic [ref=f2e560]:
+                            - strong [ref=f2e561]: Spaced repetition learning
+                            - text: Added url source Spaced repetition.
+                    - listitem [ref=f2e562]:
+                        - time [ref=f2e563]: Aug 3
+                        - generic [ref=f2e564]:
+                            - strong [ref=f2e565]: Spaced repetition learning
+                            - text: Created the roadmap, learning preferences, source manifest, and machine state.
+                    - listitem [ref=f2e566]:
+                        - time [ref=f2e567]: Aug 3
+                        - generic [ref=f2e568]:
+                            - strong [ref=f2e569]: Spaced repetition learning
+                            - text: Added First look.
+                    - listitem [ref=f2e570]:
+                        - time [ref=f2e571]: Aug 3
+                        - generic [ref=f2e572]:
+                            - strong [ref=f2e573]: Spaced repetition learning
+                            - text: Created Spaced repetition learning.
+            - article [ref=f2e575]:
+                - generic [ref=f2e576]:
+                    - generic [ref=f2e577]:
+                        - paragraph [ref=f2e578]: active
+                        - heading "Spaced repetition learning" [level=2] [ref=f2e579]
+                    - paragraph [ref=f2e580]:
+                        - strong [ref=f2e581]: 0%
+                        - generic [ref=f2e582]: 0 of 3
+                - 'progressbar "Spaced repetition learning: 0% complete" [ref=f2e583]'
+                - generic [ref=f2e584]:
+                    - paragraph [ref=f2e585]: Next objective
+                    - paragraph [ref=f2e586]: Establish the terms and boundaries.
+                    - button "Open roadmap" [ref=f2e587] [cursor=pointer]
+                - generic [ref=f2e589]:
+                    - paragraph [ref=f2e590]: Topic status
+                    - group "Topic status — Spaced repetition learning" [ref=f2e591]:
+                        - button "Active — Spaced repetition learning" [pressed] [ref=f2e592] [cursor=pointer]: Active
+                        - button "Paused — Spaced repetition learning" [ref=f2e594] [cursor=pointer]: Paused
+                        - button "Complete — Spaced repetition learning" [ref=f2e596] [cursor=pointer]: Complete
+                - generic [ref=f2e598]:
+                    - paragraph [ref=f2e599]: Recent local activity
+                    - list [ref=f2e600]:
+                        - listitem [ref=f2e601]:
+                            - time [ref=f2e602]: Aug 3
+                            - generic [ref=f2e603]: Built the learning page from 12 quoted passages.
+                        - listitem [ref=f2e604]:
+                            - time [ref=f2e605]: Aug 3
+                            - generic [ref=f2e606]: Wrote the topic synthesis from 1 read source.
+                        - listitem [ref=f2e607]:
+                            - time [ref=f2e608]: Aug 3
+                            - generic [ref=f2e609]: Added url source Spaced repetition.

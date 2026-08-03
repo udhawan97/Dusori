@@ -10,20 +10,20 @@ mission with a durable trail, deep-reads approved sources into verbatim claims, 
 a living topic document, and can generate an optional interactive HTML learning page — all
 with a transparent path from every statement back to its evidence.
 
-The promise: *"Tell Dusori what you want to understand. It finds, evaluates, organizes, and
-teaches the best available information, with a transparent trail back to the evidence."*
+The promise: _"Tell Dusori what you want to understand. It finds, evaluates, organizes, and
+teaches the best available information, with a transparent trail back to the evidence."_
 
 ## Decisions (settled 2026-08-02)
 
-| Decision | Choice |
-| --- | --- |
-| First user | Curious generalist typing any topic; certification learners keep working |
-| Depth vs speed | Fast scan first (~10 s), explicit one-click deep pass after |
-| Source reach | Companion-first; hosted browser app degrades honestly to its 7 keyless providers |
-| Refresh autonomy | Per-topic standing toggle; on-open re-scan when stale; no closed-app work |
-| AI reliance | AI writes prose over a deterministic structure; no-AI path stays genuinely useful |
-| Learn mode | Portable self-contained HTML file, rendered in a locked sandbox iframe |
-| Architecture | Persist-first evolution: extend `research.json` + `SourceRecord` additively; mission status is derived from evidence, never a stored state machine |
+| Decision         | Choice                                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First user       | Curious generalist typing any topic; certification learners keep working                                                                           |
+| Depth vs speed   | Fast scan first (~10 s), explicit one-click deep pass after                                                                                        |
+| Source reach     | Companion-first; hosted browser app degrades honestly to its 7 keyless providers                                                                   |
+| Refresh autonomy | Per-topic standing toggle; on-open re-scan when stale; no closed-app work                                                                          |
+| AI reliance      | AI writes prose over a deterministic structure; no-AI path stays genuinely useful                                                                  |
+| Learn mode       | Portable self-contained HTML file, rendered in a locked sandbox iframe                                                                             |
+| Architecture     | Persist-first evolution: extend `research.json` + `SourceRecord` additively; mission status is derived from evidence, never a stored state machine |
 
 ## Background — what exists (verified in code and rendered app)
 
@@ -103,13 +103,13 @@ read-modify-write with `expectedHash`, 3× retry on `StorageConflictError`, boun
 
 Deterministic derivation from the topic title (STORM's perspectives, no AI required):
 
-| id | title | searchText suffix |
-| --- | --- | --- |
-| `overview` | Definition and scope | *(topic alone)* |
-| `mechanism` | How it works | `how it works` |
-| `debate` | Debates and criticism | `criticism limitations` |
-| `practice` | Practice and tools | `guide tools practice` |
-| `recent` | Recent developments | `recent developments` |
+| id          | title                 | searchText suffix       |
+| ----------- | --------------------- | ----------------------- |
+| `overview`  | Definition and scope  | _(topic alone)_         |
+| `mechanism` | How it works          | `how it works`          |
+| `debate`    | Debates and criticism | `criticism limitations` |
+| `practice`  | Practice and tools    | `guide tools practice`  |
+| `recent`    | Recent developments   | `recent developments`   |
 
 Angles are derived at runtime from the topic title — never stored, so there is no second
 source of truth; `runs[].angleId` plus the verbatim `searchText` reconstruct any past run.
@@ -177,7 +177,7 @@ Deterministic structure (always available):
 
 With companion AI consented (existing `companion-ai` scope): a new `/api/ai/synthesize`
 endpoint (same capped-body → `complete()` → `extractJsonObject` → zod pattern; ≤60 claims
-in) returns prose for *What matters* and *Agreements and tensions* plus suggested open
+in) returns prose for _What matters_ and _Agreements and tensions_ plus suggested open
 questions. AI prose is labeled with its model inline; the deterministic sections and the
 evidence table are never AI-written. AI failure keeps the deterministic document.
 
@@ -241,20 +241,20 @@ v0.4.0 (publish pipeline broken) — README/site language stays truthful about `
 1. **Mission trail persistence + surface** — persist `runs[]` (incl. failures) and
    `whySelected`/`publishedAt`/`publisher`/`author`; Research trail UI; Today mission strip
    (counts, freshness, lens dots, next action); inspector-overlap bug fix.
-   *Acceptance:* run → reload → trail visible with per-provider outcomes; an all-failed run
+   _Acceptance:_ run → reload → trail visible with per-provider outcomes; an all-failed run
    shows as failure after reload; axe + 375×812 pass.
 2. **Generalist missions** — angles + relevance fix (`topicTerms`/`angleTerms`, phrase
    bonus); multi-select accept; `readState`; refresh diff + on-open auto-refresh toggle.
-   *Acceptance:* "Spaced repetition learning" scan surfaces the topic's own article first
+   _Acceptance:_ "Spaced repetition learning" scan surfaces the topic's own article first
    (fixture-locked); stale auto-refresh runs once and badges what's new.
 3. **Deep pass** — browser-reachable text + companion fetch into `upgradeSource`; claim
-   extraction; evidence table UI. *Acceptance:* read source shows claims with headings;
+   extraction; evidence table UI. _Acceptance:_ read source shows claims with headings;
    no-companion path names its boundary; conflict-safe on concurrent edit.
 4. **Synthesis** — deterministic `Synthesis.md` + `/api/ai/synthesize` prose upgrade +
-   open questions loop. *Acceptance:* deterministic doc cites every claim; regen over
+   open questions loop. _Acceptance:_ deterministic doc cites every claim; regen over
    user edit yields proposal; AI failure keeps deterministic output (fixture).
 5. **Learn mode** — HTML generator + sandboxed render + export/graph integration.
-   *Acceptance:* generated file has zero external references (asserted by test), renders
+   _Acceptance:_ generated file has zero external references (asserted by test), renders
    sandboxed, survives export/import round-trip.
 6. **Docs and site sync** — README, product spec, site pages, CHANGELOG; graphify update
    gate before any release/tag.
@@ -267,11 +267,11 @@ egress of any kind.
 
 ## Risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Deterministic claim extraction reads as shallow | Verbatim quotes with location are honest by construction; AI prose layers on top; copy states what it is |
-| `runs[]`/`claims[]` bloat portable files | Hard bounds (50 runs, 12 claims/source, 20 questions) with oldest-first drop, mirroring `seen[]` |
-| Angle queries still misrank on some topics | Phrase bonus + halved angle-term weight, fixture-locked ranking tests, reasons stay visible so failures are inspectable |
-| Sandbox iframe scripting regressions | `allow-scripts` without `allow-same-origin` only; self-containment asserted by unit test; ADR records the decision |
-| On-open refresh surprises users | Off by default, per-topic toggle, runs only with existing consents, ≤1/topic/session, badge names what changed |
-| Old app versions rewriting manifests drop new optional fields | Same accepted trade-off as `origin` (ADR-003); content files untouched |
+| Risk                                                          | Mitigation                                                                                                              |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Deterministic claim extraction reads as shallow               | Verbatim quotes with location are honest by construction; AI prose layers on top; copy states what it is                |
+| `runs[]`/`claims[]` bloat portable files                      | Hard bounds (50 runs, 12 claims/source, 20 questions) with oldest-first drop, mirroring `seen[]`                        |
+| Angle queries still misrank on some topics                    | Phrase bonus + halved angle-term weight, fixture-locked ranking tests, reasons stay visible so failures are inspectable |
+| Sandbox iframe scripting regressions                          | `allow-scripts` without `allow-same-origin` only; self-containment asserted by unit test; ADR records the decision      |
+| On-open refresh surprises users                               | Off by default, per-topic toggle, runs only with existing consents, ≤1/topic/session, badge names what changed          |
+| Old app versions rewriting manifests drop new optional fields | Same accepted trade-off as `origin` (ADR-003); content files untouched                                                  |

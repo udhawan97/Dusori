@@ -36,7 +36,6 @@
     type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
-    type ResearchAngle,
     type ResearchCapture,
     type ResearchProvider,
     type ResearchQuery,
@@ -242,10 +241,7 @@
     return buildAngleQuery(topicTitle, angle);
   }
 
-  async function runWith(
-    query: ResearchQuery,
-    providerList: ResearchProvider[],
-  ): Promise<void> {
+  async function runWith(query: ResearchQuery, providerList: ResearchProvider[]): Promise<void> {
     if (providerList.length === 0) return;
     running = true;
     runError = '';
@@ -585,50 +581,36 @@
   {#if loadingObjectives}
     <p class="research-empty">Reading the topic roadmap…</p>
   {:else}
-    <div class="angle-picker" aria-label="Research angles">
-      <p class="field-label">
-        What to ask about <span class="quiet-note">{angle.intent}</span>
-      </p>
-      <ul class="angle-list">
-        {#each researchAngles as item (item.id)}
-          <li>
-            <button
-              class="angle-chip"
-              class:selected={angleId === item.id}
-              aria-pressed={angleId === item.id}
-              disabled={running}
-              onclick={() => void selectAngle(item.id)}
-            >
-              {item.title}
-            </button>
-          </li>
-        {/each}
-        {#if objectives.length > 0}
-          <li>
-            <button
-              class="angle-chip"
-              class:selected={angleId === objectiveAngleId}
-              aria-pressed={angleId === objectiveAngleId}
-              disabled={running}
-              onclick={() => void selectAngle(objectiveAngleId)}
-            >
-              Roadmap objective
-            </button>
-          </li>
-        {/if}
-      </ul>
+    <div class="query-fields">
+      <div>
+        <label for="research-angle">What to ask</label>
+        <select
+          id="research-angle"
+          value={angleId}
+          disabled={running}
+          onchange={(event) => void selectAngle(event.currentTarget.value)}
+        >
+          {#each researchAngles as item (item.id)}
+            <option value={item.id}>{item.title}</option>
+          {/each}
+          {#if objectives.length > 0}
+            <option value={objectiveAngleId}>Your roadmap objective</option>
+          {/if}
+        </select>
+      </div>
+      {#if objectives.length > 0}
+        <div>
+          <label for="research-objective">Research objective</label>
+          <select id="research-objective" bind:value={objectiveIndex} disabled={running}>
+            {#each objectives as objective (objective.index)}
+              <option value={objective.index}>
+                {objective.completed ? 'Complete · ' : ''}{objective.title}
+              </option>
+            {/each}
+          </select>
+        </div>
+      {/if}
     </div>
-
-    {#if objectives.length > 0}
-      <label for="research-objective">Research objective</label>
-      <select id="research-objective" bind:value={objectiveIndex} disabled={running}>
-        {#each objectives as objective (objective.index)}
-          <option value={objective.index}>
-            {objective.completed ? 'Complete · ' : ''}{objective.title}
-          </option>
-        {/each}
-      </select>
-    {/if}
 
     <div class="provider-consents" aria-label="Research providers">
       <p class="field-label">
@@ -981,6 +963,7 @@
 <style>
   .research-panel {
     display: grid;
+    container-type: inline-size;
     gap: var(--space-lg);
   }
 
@@ -1040,27 +1023,17 @@
     font-weight: 400;
   }
 
-  .angle-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2xs);
-    margin: var(--space-xs) 0 0;
-    padding: 0;
-    list-style: none;
+  /* The two selects always share one row, so asking which question to research costs no
+     vertical space and the first provider control stays above the fold at every size. */
+  .query-fields {
+    display: grid;
+    gap: var(--space-xs);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .angle-chip {
-    min-height: 2.75rem;
-    padding-inline: var(--space-sm);
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font-size: var(--text-xs);
-  }
-
-  .angle-chip.selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-    color: var(--color-paper);
+  .query-fields label {
+    display: block;
+    margin-block-end: var(--space-2xs);
   }
 
   .understand-bay {

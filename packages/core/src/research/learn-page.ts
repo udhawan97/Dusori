@@ -124,7 +124,9 @@ export function renderLearnPage(synthesis: TopicSynthesis): string {
   if (synthesis.timeline.length >= 3) {
     body.push('<h2>Timeline</h2>', '<ol class="timeline">');
     for (const entry of synthesis.timeline) {
-      body.push(`<li><b>${escapeHtml(entry.year)}</b><span>${sourceLine(entry.title, entry.url)}</span></li>`);
+      body.push(
+        `<li><b>${escapeHtml(entry.year)}</b><span>${sourceLine(entry.title, entry.url)}</span></li>`,
+      );
     }
     body.push('</ol>');
   }

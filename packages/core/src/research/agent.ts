@@ -110,24 +110,20 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
 
   // The run itself is evidence: a failure trail must survive reload exactly like a success,
   // or "no research found" and "research broke" become indistinguishable after a reload.
-  let run: ResearchRunRecord | null = null;
-  try {
-    const file = await recordResearchRun(
-      input.storage,
-      input.topicSlug,
-      {
-        angleId: input.query.angleId,
-        candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
-        providers: outcomes,
-        searchText: input.query.searchText,
-      },
-      now,
-    );
-    run = file.runs?.at(-1) ?? null;
-  } catch {
-    // A trail that cannot be written must not cost the user the results themselves.
-    run = null;
-  }
+  // A trail that cannot be written must not cost the user the results themselves.
+  const run = await recordResearchRun(
+    input.storage,
+    input.topicSlug,
+    {
+      angleId: input.query.angleId,
+      candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      providers: outcomes,
+      searchText: input.query.searchText,
+    },
+    now,
+  )
+    .then((file): ResearchRunRecord | null => file.runs?.at(-1) ?? null)
+    .catch((): null => null);
 
   return { overflow, run, shortlist, skipped };
 }

@@ -1,0 +1,198 @@
+- main [ref=f2e33]:
+    - navigation "Workspace" [ref=f2e34]:
+        - generic [ref=f2e35]: Dusori
+        - generic [ref=f2e38]:
+            - paragraph [ref=f2e39]: Workspace
+            - button "Today" [ref=f2e40] [cursor=pointer]
+            - button "Research" [ref=f2e42] [cursor=pointer]
+            - button "Roadmap" [ref=f2e44] [cursor=pointer]
+            - button "Graph" [ref=f2e46] [cursor=pointer]
+            - button "Insights" [ref=f2e48] [cursor=pointer]
+        - generic [ref=f2e51]:
+            - paragraph [ref=f2e52]: Topics
+            - button "Spaced repetition learning" [ref=f2e123] [cursor=pointer]
+            - button "New topic" [ref=f2e53] [cursor=pointer]
+        - generic [ref=f2e56]:
+            - generic [ref=f2e57]: Browser workspace · private
+            - generic [ref=f2e58]: Online · local data
+    - generic [ref=f2e59]:
+        - generic [ref=f2e60]:
+            - generic [ref=f2e61]:
+                - paragraph [ref=f2e62]: Research · automatic discovery
+                - paragraph [ref=f2e63]: Plain Markdown · changes stay local
+            - generic [ref=f2e64]:
+                - button "Switch to light mode" [ref=f2e65] [cursor=pointer]
+                - button "Open inspector" [ref=f2e126] [cursor=pointer]
+        - region [ref=f2e128]:
+            - generic [ref=f2e130]:
+                - paragraph [ref=f2e131]: Research observatory · Spaced repetition learning
+                - heading "Let the strongest evidence find you." [level=1] [ref=f2e132]
+                - paragraph [ref=f2e133]: Scan every allowed provider at once. Dusori ranks the results, explains why they surfaced, and keeps the final source choice with you.
+            - list "Research flow" [ref=f2e137]:
+                - listitem [ref=f2e138]:
+                    - generic [ref=f2e139]: '01'
+                    - generic [ref=f2e140]:
+                        - strong [ref=f2e141]: Discover
+                        - generic [ref=f2e142]: Allowed providers search together
+                - listitem [ref=f2e143]:
+                    - generic [ref=f2e144]: '02'
+                    - generic [ref=f2e145]:
+                        - strong [ref=f2e146]: Compare
+                        - generic [ref=f2e147]: Quality signals stay visible
+                - listitem [ref=f2e148]:
+                    - generic [ref=f2e149]: '03'
+                    - generic [ref=f2e150]:
+                        - strong [ref=f2e151]: Capture
+                        - generic [ref=f2e152]: Approve before readable text is saved
+            - generic [ref=f2e153]:
+                - region "Automatic research" [ref=f2e154]:
+                    - generic [ref=f2e155]: Automatic discovery
+                    - region [ref=f2e158]:
+                        - generic [ref=f2e160]:
+                            - heading "Research" [level=2] [ref=f2e161]
+                            - paragraph [ref=f2e162]: Find a useful next source from the objective you are working on.
+                        - generic "Research angles" [ref=f2e164]:
+                            - paragraph [ref=f2e165]: What to ask about Definitions, scope, and the shape of the subject.
+                            - list [ref=f2e166]:
+                                - listitem [ref=f2e167]:
+                                    - button "Definition and scope" [pressed] [ref=f2e168] [cursor=pointer]
+                                - listitem [ref=f2e169]:
+                                    - button "How it works" [ref=f2e170] [cursor=pointer]
+                                - listitem [ref=f2e171]:
+                                    - button "Debates and criticism" [ref=f2e172] [cursor=pointer]
+                                - listitem [ref=f2e173]:
+                                    - button "Practice and tools" [ref=f2e174] [cursor=pointer]
+                                - listitem [ref=f2e175]:
+                                    - button "Recent developments" [ref=f2e176] [cursor=pointer]
+                                - listitem [ref=f2e177]:
+                                    - button "Roadmap objective" [ref=f2e178] [cursor=pointer]
+                        - generic [ref=f2e179]: Research objective
+                        - combobox "Research objective" [ref=f2e180]:
+                            - option "Establish the terms and boundaries." [selected]
+                            - option "Explain the central mechanism in your own words."
+                            - option "Connect the topic to a practical example."
+                        - generic "Research providers" [ref=f2e181]:
+                            - paragraph [ref=f2e182]: Providers 1 of 7 allowed
+                            - list [ref=f2e183]:
+                                - listitem [ref=f2e184]:
+                                    - button "Allow Microsoft Learn" [ref=f2e185] [cursor=pointer]
+                                - listitem [ref=f2e186]:
+                                    - generic [ref=f2e245]: Wikipedia
+                                - listitem [ref=f2e188]:
+                                    - button "Allow Hacker News" [ref=f2e189] [cursor=pointer]
+                                - listitem [ref=f2e190]:
+                                    - button "Allow GitHub" [ref=f2e191] [cursor=pointer]
+                                - listitem [ref=f2e192]:
+                                    - button "Allow Stack Overflow" [ref=f2e193] [cursor=pointer]
+                                - listitem [ref=f2e194]:
+                                    - button "Allow OpenAlex" [ref=f2e195] [cursor=pointer]
+                                - listitem [ref=f2e196]:
+                                    - button "Allow npm" [ref=f2e197] [cursor=pointer]
+                        - button "Scan for strong sources" [ref=f2e198] [cursor=pointer]
+                        - region [ref=f2e201]:
+                            - heading "Understand this topic" [level=3] [ref=f2e202]
+                            - paragraph [ref=f2e203]: Read what you saved into quoted passages, then build a synthesis and an optional learning page from those quotes. Nothing here contacts the network.
+                            - generic [ref=f2e204]:
+                                - button "Read saved sources" [ref=f2e205] [cursor=pointer]
+                                - button "Build synthesis" [ref=f2e207] [cursor=pointer]
+                                - button "Create learning page" [ref=f2e209] [cursor=pointer]
+                            - status [ref=f2e404]: Read 1 source into 12 quoted passages.
+                            - status [ref=f2e426]: Synthesis written from 12 quoted passages across 1 sources.
+                        - region [ref=f2e247]:
+                            - generic [ref=f2e250]:
+                                - heading "Research trail" [level=3] [ref=f2e251]
+                                - paragraph [ref=f2e252]: Every scan this topic has run, kept in your workspace. A provider that failed is reported as a failure, never as an empty result.
+                            - list "Research trail runs" [ref=f2e253]:
+                                - listitem [ref=f2e254]:
+                                    - paragraph [ref=f2e255]:
+                                        - time [ref=f2e256]: 2026-08-03 · 02:08
+                                        - generic [ref=f2e257]: “Spaced repetition learning”
+                                        - generic [ref=f2e258]: 8 new
+                                    - list [ref=f2e259]:
+                                        - listitem [ref=f2e260]:
+                                            - strong [ref=f2e261]: Wikipedia
+                                            - generic [ref=f2e262]: found 8
+                        - list "Research shortlist" [ref=f2e263]:
+                            - listitem [ref=f2e279]:
+                                - generic [ref=f2e280]:
+                                    - generic "Rank 1" [ref=f2e375]: '01'
+                                    - generic [ref=f2e282]:
+                                        - generic [ref=f2e283]: Wikipedia · Docs
+                                        - heading "Spaced learning" [level=3] [ref=f2e284]
+                                - article [ref=f2e286]:
+                                    - paragraph [ref=f2e287]: Spaced learning is a learning method in which highly condensed learning content is repeated three times, with two 10-minute breaks during which distractor
+                                - paragraph [ref=f2e288]: matches 2 objective terms
+                                - paragraph [ref=f2e289]: 664 words · 4808 bytes
+                                - generic [ref=f2e290]:
+                                    - button "Preview" [ref=f2e291] [cursor=pointer]
+                                    - button "Dismiss" [ref=f2e293] [cursor=pointer]
+                            - listitem [ref=f2e294]:
+                                - generic [ref=f2e295]:
+                                    - generic "Rank 2" [ref=f2e376]: '02'
+                                    - generic [ref=f2e297]:
+                                        - generic [ref=f2e298]: Wikipedia · Docs
+                                        - heading "Rote learning" [level=3] [ref=f2e299]
+                                - article [ref=f2e301]:
+                                    - paragraph [ref=f2e302]: alternatives to rote learning include meaningful learning , associative learning , spaced repetition and active learning . Rote learning is widely used in the
+                                - paragraph [ref=f2e303]: matches 3 objective terms
+                                - paragraph [ref=f2e304]: 914 words · 10539 bytes
+                                - generic [ref=f2e305]:
+                                    - button "Preview" [ref=f2e306] [cursor=pointer]
+                                    - button "Dismiss" [ref=f2e308] [cursor=pointer]
+                            - listitem [ref=f2e309]:
+                                - generic [ref=f2e310]:
+                                    - generic "Rank 3" [ref=f2e377]: '03'
+                                    - generic [ref=f2e312]:
+                                        - generic [ref=f2e313]: Wikipedia · Docs
+                                        - heading "Flashcard" [level=3] [ref=f2e314]
+                                - article [ref=f2e316]:
+                                    - paragraph [ref=f2e317]: spaced repetition has been shown to generally increase one's rate of learning . Although the principle is useful in many contexts, spaced repetition is
+                                - paragraph [ref=f2e318]: matches 3 objective terms
+                                - paragraph [ref=f2e319]: 1244 words · 11442 bytes
+                                - generic [ref=f2e320]:
+                                    - button "Preview" [ref=f2e321] [cursor=pointer]
+                                    - button "Dismiss" [ref=f2e323] [cursor=pointer]
+                            - listitem [ref=f2e324]:
+                                - generic [ref=f2e325]:
+                                    - generic "Rank 4" [ref=f2e378]: '04'
+                                    - generic [ref=f2e327]:
+                                        - generic [ref=f2e328]: Wikipedia · Docs
+                                        - heading "Forgetting curve" [level=3] [ref=f2e329]
+                                - article [ref=f2e331]:
+                                    - paragraph [ref=f2e332]: mnemonic techniques) repetition based on active recall (especially spaced repetition ). His premise was that each repetition in learning increases the optimum
+                                - paragraph [ref=f2e333]: matches 3 objective terms
+                                - paragraph [ref=f2e334]: 1578 words · 13554 bytes
+                                - generic [ref=f2e335]:
+                                    - button "Preview" [ref=f2e336] [cursor=pointer]
+                                    - button "Dismiss" [ref=f2e338] [cursor=pointer]
+                        - button "Show 3 more results" [ref=f2e339] [cursor=pointer]
+                        - generic [ref=f2e379]:
+                            - paragraph [ref=f2e380]: Research brief 1 source approved this session
+                            - button "Write research brief" [ref=f2e381] [cursor=pointer]
+                - complementary "Saved research evidence" [ref=f2e214]:
+                    - generic [ref=f2e215]: Approved evidence
+                    - region [ref=f2e427]:
+                        - generic [ref=f2e428]:
+                            - generic [ref=f2e429]:
+                                - heading "Sources" [level=2] [ref=f2e430]
+                                - paragraph [ref=f2e431]: Keep the material beside your notes. URL contents are never fetched automatically.
+                            - generic "1 saved sources" [ref=f2e432]: '1'
+                        - generic [ref=f2e433]:
+                            - generic [ref=f2e434]: Source type
+                            - combobox "Source type" [ref=f2e435]:
+                                - option "Pasted text" [selected]
+                                - option "Local file"
+                                - option "URL reference"
+                            - generic [ref=f2e436]: Source title
+                            - textbox "Source title" [ref=f2e437]
+                            - generic [ref=f2e438]: Source text
+                            - textbox "Source text" [ref=f2e439]
+                            - paragraph [ref=f2e440]: Plain text · up to 2 MiB
+                            - button "Add source" [ref=f2e441] [cursor=pointer]
+                        - list "Saved sources" [ref=f2e443]:
+                            - listitem [ref=f2e444]:
+                                - link "Spaced repetition" [ref=f2e445] [cursor=pointer]:
+                                    - /url: https://en.wikipedia.org/?curid=27805
+                                - generic [ref=f2e446]: URL reference · 16 KiB
+                        - paragraph [ref=f2e447]: Run the companion (npx @udhawan97/dusori) to fetch full page content.
+            - paragraph [ref=f2e237]: Discovery can start automatically after provider consent. No result is added to your topic until you approve it.

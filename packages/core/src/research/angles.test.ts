@@ -39,10 +39,7 @@ describe('research angles', () => {
   // boundaries", scoring treated its filler words as equal to the topic's own words, so
   // "Go (game)" and "Glossary of computer science" outranked the topic's own article.
   it('ranks the topic’s own article above a page that only matches the angle words', () => {
-    const query = buildAngleQuery(
-      'Spaced repetition learning',
-      angleById('mechanism')!,
-    );
+    const query = buildAngleQuery('Spaced repetition learning', angleById('mechanism')!);
     const ranked = rankCandidates(
       query,
       [

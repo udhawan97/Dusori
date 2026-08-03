@@ -1,0 +1,119 @@
+- main [ref=e33]:
+    - navigation "Workspace" [ref=e34]:
+        - generic [ref=e35]: Dusori
+        - generic [ref=e38]:
+            - paragraph [ref=e39]: Workspace
+            - button "Today" [ref=e40] [cursor=pointer]
+            - button "Research" [ref=e42] [cursor=pointer]
+            - button "Roadmap" [ref=e44] [cursor=pointer]
+            - button "Graph" [ref=e46] [cursor=pointer]
+            - button "Insights" [ref=e48] [cursor=pointer]
+        - generic [ref=e51]:
+            - paragraph [ref=e52]: Topics
+            - button "Spaced repetition learning" [ref=e123] [cursor=pointer]
+            - button "New topic" [ref=e53] [cursor=pointer]
+        - generic [ref=e56]:
+            - generic [ref=e57]: Browser workspace · private
+            - generic [ref=e58]: Online · local data
+    - generic [ref=e59]:
+        - generic [ref=e60]:
+            - generic [ref=e61]:
+                - paragraph [ref=e62]: Today · local activity
+                - paragraph [ref=e63]: Plain Markdown · changes stay local
+            - generic [ref=e64]:
+                - button "Switch to light mode" [ref=e65] [cursor=pointer]
+                - button "Open inspector" [active] [ref=e574] [cursor=pointer]
+        - region [ref=e472]:
+            - generic [ref=e473]:
+                - paragraph [ref=e474]: Local learning loop
+                - heading "Today" [level=1] [ref=e475]
+                - paragraph [ref=e476]: Continue from the next unfinished objective. This view is derived from your roadmap, topic state, and dated update files.
+            - generic "Workspace progress summary" [ref=e477]:
+                - generic [ref=e478]:
+                    - term [ref=e479]: Active topics
+                    - definition [ref=e480]: '1'
+                - generic [ref=e481]:
+                    - term [ref=e482]: Objectives complete
+                    - definition [ref=e483]: 0 / 3
+                - generic [ref=e484]:
+                    - term [ref=e485]: Storage
+                    - definition [ref=e486]: Local
+            - generic [ref=e487]:
+                - region [ref=e488]:
+                    - generic [ref=e491]:
+                        - paragraph [ref=e492]: Explicit local state
+                        - heading "Continue learning" [level=2] [ref=e493]
+                    - paragraph [ref=e494]: Due reviews lead, followed by active topics least recently updated. Dusori routes the next step without changing progress.
+                    - list "Continue learning" [ref=e495]:
+                        - listitem [ref=e496]:
+                            - generic [ref=e497]: '01'
+                            - generic [ref=e498]:
+                                - strong [ref=e499]: Spaced repetition learning
+                                - paragraph [ref=e500]: Establish the terms and boundaries.
+                                - text: Active · least recently updated first · 0% complete · local source ready
+                            - generic [ref=e501]:
+                                - button "Open roadmap — Spaced repetition learning" [ref=e502] [cursor=pointer]: Open roadmap
+                                - button "Start review — Spaced repetition learning" [ref=e504] [cursor=pointer]: Start review
+                - region [ref=e505]:
+                    - generic [ref=e508]:
+                        - paragraph [ref=e509]: Proven workspace evidence
+                        - heading "Needs attention" [level=2] [ref=e510]
+                    - paragraph [ref=e511]: Integrity issues lead. Link hygiene stays secondary and never blocks learning.
+                    - paragraph [ref=e512]: No local evidence needs a decision. This is a current check, not a promise about future changes.
+            - region [ref=e513]:
+                - generic [ref=e516]:
+                    - paragraph [ref=e517]: Dated update files
+                    - heading "7-day recap" [level=2] [ref=e518]
+                - paragraph [ref=e519]: 4 events across 1 topic.
+                - list "Workspace recap" [ref=e520]:
+                    - listitem [ref=e521]:
+                        - time [ref=e522]: Aug 3
+                        - generic [ref=e523]:
+                            - strong [ref=e524]: Spaced repetition learning
+                            - text: Added url source Learning theory (education).
+                    - listitem [ref=e525]:
+                        - time [ref=e526]: Aug 3
+                        - generic [ref=e527]:
+                            - strong [ref=e528]: Spaced repetition learning
+                            - text: Created the roadmap, learning preferences, source manifest, and machine state.
+                    - listitem [ref=e529]:
+                        - time [ref=e530]: Aug 3
+                        - generic [ref=e531]:
+                            - strong [ref=e532]: Spaced repetition learning
+                            - text: Added First look.
+                    - listitem [ref=e533]:
+                        - time [ref=e534]: Aug 3
+                        - generic [ref=e535]:
+                            - strong [ref=e536]: Spaced repetition learning
+                            - text: Created Spaced repetition learning.
+            - article [ref=e538]:
+                - generic [ref=e539]:
+                    - generic [ref=e540]:
+                        - paragraph [ref=e541]: active
+                        - heading "Spaced repetition learning" [level=2] [ref=e542]
+                    - paragraph [ref=e543]:
+                        - strong [ref=e544]: 0%
+                        - generic [ref=e545]: 0 of 3
+                - 'progressbar "Spaced repetition learning: 0% complete" [ref=e546]'
+                - generic [ref=e547]:
+                    - paragraph [ref=e548]: Next objective
+                    - paragraph [ref=e549]: Establish the terms and boundaries.
+                    - button "Open roadmap" [ref=e550] [cursor=pointer]
+                - generic [ref=e552]:
+                    - paragraph [ref=e553]: Topic status
+                    - group "Topic status — Spaced repetition learning" [ref=e554]:
+                        - button "Active — Spaced repetition learning" [pressed] [ref=e555] [cursor=pointer]: Active
+                        - button "Paused — Spaced repetition learning" [ref=e557] [cursor=pointer]: Paused
+                        - button "Complete — Spaced repetition learning" [ref=e559] [cursor=pointer]: Complete
+                - generic [ref=e561]:
+                    - paragraph [ref=e562]: Recent local activity
+                    - list [ref=e563]:
+                        - listitem [ref=e564]:
+                            - time [ref=e565]: Aug 3
+                            - generic [ref=e566]: Added url source Learning theory (education).
+                        - listitem [ref=e567]:
+                            - time [ref=e568]: Aug 3
+                            - generic [ref=e569]: Created the roadmap, learning preferences, source manifest, and machine state.
+                        - listitem [ref=e570]:
+                            - time [ref=e571]: Aug 3
+                            - generic [ref=e572]: Added First look.

@@ -21,7 +21,11 @@ function source(overrides: Partial<SourceRecord>): SourceRecord {
 
 const wiki = source({
   claims: [
-    { at, heading: 'Forgetting curve', text: 'Reviews at increasing intervals counter forgetting.' },
+    {
+      at,
+      heading: 'Forgetting curve',
+      text: 'Reviews at increasing intervals counter forgetting.',
+    },
   ],
   publishedAt: '2024-03-01',
 });
@@ -37,7 +41,9 @@ const paper = source({
   url: 'https://api.openalex.org/works/W1',
 });
 const solo = source({
-  claims: [{ at, heading: 'Tooling', text: 'Anki schedules cards with a modified SM-2 algorithm.' }],
+  claims: [
+    { at, heading: 'Tooling', text: 'Anki schedules cards with a modified SM-2 algorithm.' },
+  ],
   path: 'Topics/t/Sources/items/ghi123456789-anki.md',
   publishedAt: '2023-01-01',
   sha256: 'c'.repeat(64),
@@ -82,7 +88,11 @@ describe('topic synthesis', () => {
 
   it('cites every quoted passage back to its source file', () => {
     const markdown = renderSynthesisMarkdown(
-      buildTopicSynthesis({ now, sources: [wiki, paper], topicTitle: 'Spaced repetition learning' }),
+      buildTopicSynthesis({
+        now,
+        sources: [wiki, paper],
+        topicTitle: 'Spaced repetition learning',
+      }),
     );
 
     expect(markdown).toContain('generated: synthesis');

@@ -1,0 +1,225 @@
+- main [ref=e33]:
+    - navigation "Workspace" [ref=e34]:
+        - generic [ref=e35]: Dusori
+        - generic [ref=e38]:
+            - paragraph [ref=e39]: Workspace
+            - button "Today" [ref=e40] [cursor=pointer]
+            - button "Research" [ref=e42] [cursor=pointer]
+            - button "Roadmap" [ref=e44] [cursor=pointer]
+            - button "Graph" [ref=e46] [cursor=pointer]
+            - button "Insights" [ref=e48] [cursor=pointer]
+        - generic [ref=e51]:
+            - paragraph [ref=e52]: Topics
+            - button "Spaced repetition learning" [ref=e123] [cursor=pointer]
+            - button "New topic" [ref=e53] [cursor=pointer]
+        - generic [ref=e56]:
+            - generic [ref=e57]: Browser workspace · private
+            - generic [ref=e58]: Online · local data
+    - generic [ref=e59]:
+        - generic [ref=e60]:
+            - generic [ref=e61]:
+                - paragraph [ref=e62]: Today · local activity
+                - paragraph [ref=e63]: Plain Markdown · changes stay local
+            - generic [ref=e64]:
+                - button "Switch to light mode" [ref=e65] [cursor=pointer]
+                - button "Close inspector" [pressed] [ref=e213] [cursor=pointer]
+        - region [ref=e472]:
+            - generic [ref=e473]:
+                - paragraph [ref=e474]: Local learning loop
+                - heading "Today" [active] [level=1] [ref=e475]
+                - paragraph [ref=e476]: Continue from the next unfinished objective. This view is derived from your roadmap, topic state, and dated update files.
+            - generic "Workspace progress summary" [ref=e477]:
+                - generic [ref=e478]:
+                    - term [ref=e479]: Active topics
+                    - definition [ref=e480]: '1'
+                - generic [ref=e481]:
+                    - term [ref=e482]: Objectives complete
+                    - definition [ref=e483]: 0 / 3
+                - generic [ref=e484]:
+                    - term [ref=e485]: Storage
+                    - definition [ref=e486]: Local
+            - generic [ref=e487]:
+                - region [ref=e488]:
+                    - generic [ref=e491]:
+                        - paragraph [ref=e492]: Explicit local state
+                        - heading "Continue learning" [level=2] [ref=e493]
+                    - paragraph [ref=e494]: Due reviews lead, followed by active topics least recently updated. Dusori routes the next step without changing progress.
+                    - list "Continue learning" [ref=e495]:
+                        - listitem [ref=e496]:
+                            - generic [ref=e497]: '01'
+                            - generic [ref=e498]:
+                                - strong [ref=e499]: Spaced repetition learning
+                                - paragraph [ref=e500]: Establish the terms and boundaries.
+                                - text: Active · least recently updated first · 0% complete · local source ready
+                            - generic [ref=e501]:
+                                - button "Open roadmap — Spaced repetition learning" [ref=e502] [cursor=pointer]: Open roadmap
+                                - button "Start review — Spaced repetition learning" [ref=e504] [cursor=pointer]: Start review
+                - region [ref=e505]:
+                    - generic [ref=e508]:
+                        - paragraph [ref=e509]: Proven workspace evidence
+                        - heading "Needs attention" [level=2] [ref=e510]
+                    - paragraph [ref=e511]: Integrity issues lead. Link hygiene stays secondary and never blocks learning.
+                    - paragraph [ref=e512]: No local evidence needs a decision. This is a current check, not a promise about future changes.
+            - region [ref=e513]:
+                - generic [ref=e516]:
+                    - paragraph [ref=e517]: Dated update files
+                    - heading "7-day recap" [level=2] [ref=e518]
+                - paragraph [ref=e519]: 4 events across 1 topic.
+                - list "Workspace recap" [ref=e520]:
+                    - listitem [ref=e521]:
+                        - time [ref=e522]: Aug 3
+                        - generic [ref=e523]:
+                            - strong [ref=e524]: Spaced repetition learning
+                            - text: Added url source Learning theory (education).
+                    - listitem [ref=e525]:
+                        - time [ref=e526]: Aug 3
+                        - generic [ref=e527]:
+                            - strong [ref=e528]: Spaced repetition learning
+                            - text: Created the roadmap, learning preferences, source manifest, and machine state.
+                    - listitem [ref=e529]:
+                        - time [ref=e530]: Aug 3
+                        - generic [ref=e531]:
+                            - strong [ref=e532]: Spaced repetition learning
+                            - text: Added First look.
+                    - listitem [ref=e533]:
+                        - time [ref=e534]: Aug 3
+                        - generic [ref=e535]:
+                            - strong [ref=e536]: Spaced repetition learning
+                            - text: Created Spaced repetition learning.
+            - article [ref=e538]:
+                - generic [ref=e539]:
+                    - generic [ref=e540]:
+                        - paragraph [ref=e541]: active
+                        - heading "Spaced repetition learning" [level=2] [ref=e542]
+                    - paragraph [ref=e543]:
+                        - strong [ref=e544]: 0%
+                        - generic [ref=e545]: 0 of 3
+                - 'progressbar "Spaced repetition learning: 0% complete" [ref=e546]'
+                - generic [ref=e547]:
+                    - paragraph [ref=e548]: Next objective
+                    - paragraph [ref=e549]: Establish the terms and boundaries.
+                    - button "Open roadmap" [ref=e550] [cursor=pointer]
+                - generic [ref=e552]:
+                    - paragraph [ref=e553]: Topic status
+                    - group "Topic status — Spaced repetition learning" [ref=e554]:
+                        - button "Active — Spaced repetition learning" [pressed] [ref=e555] [cursor=pointer]: Active
+                        - button "Paused — Spaced repetition learning" [ref=e557] [cursor=pointer]: Paused
+                        - button "Complete — Spaced repetition learning" [ref=e559] [cursor=pointer]: Complete
+                - generic [ref=e561]:
+                    - paragraph [ref=e562]: Recent local activity
+                    - list [ref=e563]:
+                        - listitem [ref=e564]:
+                            - time [ref=e565]: Aug 3
+                            - generic [ref=e566]: Added url source Learning theory (education).
+                        - listitem [ref=e567]:
+                            - time [ref=e568]: Aug 3
+                            - generic [ref=e569]: Created the roadmap, learning preferences, source manifest, and machine state.
+                        - listitem [ref=e570]:
+                            - time [ref=e571]: Aug 3
+                            - generic [ref=e572]: Added First look.
+    - complementary "Workspace details" [ref=e79]:
+        - generic [ref=e80]:
+            - paragraph [ref=e81]: Storage
+            - heading "Browser workspace" [level=2] [ref=e82]
+            - paragraph [ref=e83]: Browser workspace · private
+        - region [ref=e84]:
+            - paragraph [ref=e85]: Local discovery
+            - heading "Search workspace" [level=2] [ref=e86]
+            - paragraph [ref=e87]:
+                - text: Markdown and text are read in this session. No index or query leaves Dusori. Use
+                - code [ref=e88]: tag:name
+                - text: to filter by a tag written in frontmatter or as
+                - code [ref=e89]: '#name'
+                - text: .
+            - search [ref=e90]:
+                - generic [ref=e91]: Words to find
+                - generic [ref=e92]:
+                    - searchbox "Words to find" [ref=e93]
+                    - button "Search local workspace" [disabled] [ref=e94]
+        - region [ref=e97]:
+            - generic [ref=e98]:
+                - generic [ref=e99]:
+                    - paragraph [ref=e100]: Local integrity
+                    - heading "Workspace health" [level=2] [ref=e101]
+                - button "Refresh workspace health" [ref=e102] [cursor=pointer]
+            - generic [ref=e106]:
+                - strong [ref=e107]: Healthy
+                - text: · 1 documents checked
+            - generic [ref=e108]:
+                - paragraph [ref=e109]: Linked from
+                - generic [ref=e111]: Open a document to see its backlinks.
+        - generic [ref=e215]:
+            - paragraph [ref=e216]: Notes
+            - heading "Create a study note" [level=2] [ref=e217]
+            - paragraph [ref=e218]: Dusori writes portable Markdown and records the new file in this topic.
+            - generic [ref=e219]:
+                - generic [ref=e220]: New note title
+                - textbox "New note title" [ref=e221]:
+                    - /placeholder: Evidence map
+                - button "Create note" [disabled] [ref=e222]
+        - region [ref=e225]:
+            - generic [ref=e227]:
+                - heading "Curriculum" [level=2] [ref=e228]
+                - paragraph [ref=e229]: Turn an official study outline into a reviewable topic roadmap.
+            - generic [ref=e231]:
+                - paragraph [ref=e232]: No curriculum has been imported in this session.
+                - generic [ref=e233]: Paste an outline; Dusori will not open or fetch its source page.
+            - button "Import curriculum" [ref=e234] [cursor=pointer]
+        - generic [ref=e112]:
+            - paragraph [ref=e113]: Portability
+            - button "Export workspace" [ref=e114] [cursor=pointer]
+            - button "Export this topic" [ref=e237] [cursor=pointer]
+            - generic [ref=e116] [cursor=pointer]:
+                - text: Import workspace
+                - button "Import workspace" [ref=e118]
+            - paragraph [ref=e119]: A topic bundle holds one topic's files. It is a portable copy, not a workspace archive Dusori can import.
+        - region [ref=e240]:
+            - paragraph [ref=e241]: How this topic is taught
+            - heading "Learning preferences" [level=2] [ref=e242]
+            - paragraph [ref=e243]:
+                - text: These live in
+                - code [ref=e244]: Topics/spaced-repetition-learning/TUTOR.md
+                - text: as ordinary Markdown. Dusori proposes a change and shows the diff; nothing is replaced until you accept it.
+            - generic [ref=e245]:
+                - generic [ref=e246]: Depth
+                - combobox "Depth" [ref=e247]:
+                    - option "brief"
+                    - option "layered" [selected]
+                    - option "deep"
+            - list "Learning preferences" [ref=e248]:
+                - listitem [ref=e249]:
+                    - generic [ref=e250]: Prefer concrete examples before abstractions.
+                    - generic [ref=e251]:
+                        - button "Move “Prefer concrete examples before abstractions.” earlier" [disabled] [ref=e252]
+                        - button "Move “Prefer concrete examples before abstractions.” later" [ref=e254] [cursor=pointer]
+                        - button "Remove “Prefer concrete examples before abstractions.”" [ref=e256] [cursor=pointer]
+                - listitem [ref=e258]:
+                    - generic [ref=e259]: Keep source provenance visible.
+                    - generic [ref=e260]:
+                        - button "Move “Keep source provenance visible.” earlier" [ref=e261] [cursor=pointer]
+                        - button "Move “Keep source provenance visible.” later" [ref=e263] [cursor=pointer]
+                        - button "Remove “Keep source provenance visible.”" [ref=e265] [cursor=pointer]
+                - listitem [ref=e267]:
+                    - generic [ref=e268]: Ask exactly three self-check questions per study note.
+                    - generic [ref=e269]:
+                        - button "Move “Ask exactly three self-check questions per study note.” earlier" [ref=e270] [cursor=pointer]
+                        - button "Move “Ask exactly three self-check questions per study note.” later" [ref=e272] [cursor=pointer]
+                        - button "Remove “Ask exactly three self-check questions per study note.”" [ref=e274] [cursor=pointer]
+                - listitem [ref=e276]:
+                    - generic [ref=e277]: Never treat generated text as authoritative.
+                    - generic [ref=e278]:
+                        - button "Move “Never treat generated text as authoritative.” earlier" [ref=e279] [cursor=pointer]
+                        - button "Move “Never treat generated text as authoritative.” later" [disabled] [ref=e281]
+                        - button "Remove “Never treat generated text as authoritative.”" [ref=e283] [cursor=pointer]
+            - generic [ref=e285]:
+                - generic [ref=e286]: New learning preference
+                - textbox "New learning preference" [ref=e287]:
+                    - /placeholder: Prefer a worked example before the rule
+                - button "Add" [disabled] [ref=e288]
+        - generic [ref=e290]:
+            - paragraph [ref=e291]: Safety proof
+            - paragraph [ref=e292]: Exercise the stale-write path without replacing the current note.
+            - button "Run conflict proof" [ref=e293] [cursor=pointer]
+        - generic [ref=e120]:
+            - paragraph [ref=e121]: Local companion
+            - paragraph [ref=e122]: Not connected
