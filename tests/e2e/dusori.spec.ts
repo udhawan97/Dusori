@@ -2740,6 +2740,72 @@ test.describe('companion flows', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('synthesis prose is written by the model and the document survives its failure', async ({
+    page,
+  }) => {
+    const synthesisRequests: string[] = [];
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.route('**/api/ai/capabilities', async (route) => {
+      await route.fulfill({ json: { providers: [{ id: 'ollama', model: 'gemma3:4b' }] } });
+    });
+    await page.route('**/api/ai/synthesize', async (route) => {
+      synthesisRequests.push(route.request().postData() ?? '');
+      await route.fulfill({
+        json: { overview: 'Attention is the mechanism these passages keep returning to.' },
+      });
+    });
+
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await addReviewSource(page);
+    await page.goto('/Dusori/app/?token=e2e-companion-token');
+    await expect(page.getByText('Connected for this session')).toBeVisible();
+    await page.goto('/Dusori/app/?token=e2e-companion-token&topic=ai-fundamentals&view=research');
+
+    await page.getByRole('button', { name: 'Read saved sources' }).click();
+    // A plain string, not a regex: the notice wraps across lines and only string matching
+    // normalizes that whitespace.
+    await expect(page.getByText('Read 1 source into')).toBeVisible();
+
+    // Prose is off until this device allows the AI scope, so the first build stays deterministic.
+    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    await expect(page.getByText('Synthesis written from')).toBeVisible();
+    expect(synthesisRequests).toEqual([]);
+
+    await page.getByRole('button', { name: /Allow AI ranking · gemma3:4b/u }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Allow search' }).click();
+
+    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    await expect(page.getByText('Synthesis written from')).toBeVisible();
+    expect(synthesisRequests).toHaveLength(1);
+
+    // Only the topic and the passages already quoted in the workspace are sent.
+    const sent = JSON.parse(synthesisRequests[0] ?? '{}') as Record<string, unknown>;
+    expect(Object.keys(sent).sort()).toEqual(['claims', 'topic']);
+    expect(synthesisRequests[0]).not.toContain('Topics/');
+
+    const withProse = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
+    expect(withProse).toContain('Attention is the mechanism these passages keep returning to.');
+    // The document names its author and still says the evidence is not the model's.
+    expect(withProse).toContain('written by gemma3:4b');
+    expect(withProse).toContain('not from the model');
+
+    // A failing model must cost the prose and nothing else.
+    await page.unroute('**/api/ai/synthesize');
+    await page.route('**/api/ai/synthesize', async (route) => {
+      await route.fulfill({ json: { error: 'no', reason: 'ai-failed' }, status: 502 });
+    });
+    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    await expect(page.getByText('AI was unavailable, so the synthesis quotes')).toBeVisible();
+
+    const withoutProse = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
+    expect(withoutProse).not.toContain('Attention is the mechanism these passages keep');
+    expect(withoutProse).not.toContain('written by gemma3:4b');
+    expect(withoutProse).toContain('Every line below is quoted from a source you approved.');
+  });
+
   test('sharper review prompts need their own consent and fall back to the templates', async ({
     page,
   }) => {
