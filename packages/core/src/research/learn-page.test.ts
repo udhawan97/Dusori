@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SourceRecord } from '../schemas/workspace.js';
-import { renderLearnPage } from './learn-page.js';
+import { renderLearnPage, withLearnPageTheme } from './learn-page.js';
 import { buildTopicSynthesis } from './synthesis.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
@@ -77,6 +77,15 @@ describe('learn page', () => {
     expect(html).toContain('<h2>Check yourself</h2>');
     expect(html).toContain('No score is kept and nothing is stored.');
     expect(html).toContain('<details class="check">');
+  });
+
+  it('carries no theme of its own but honours one an embedder stamps on', () => {
+    const html = pageFor([source({})]);
+
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain(':root[data-theme="dark"]');
+    expect(withLearnPageTheme(html, 'dark')).toContain('<html lang="en" data-theme="dark">');
+    expect(withLearnPageTheme(html, 'light')).toContain('<html lang="en" data-theme="light">');
   });
 
   it('says plainly when nothing has been read, and ships no script', () => {

@@ -1369,7 +1369,29 @@ test('reading a saved source produces quoted passages, a synthesis, and a learni
   expect(files.synthesis).toContain('Every line below is quoted from a source you approved.');
   expect(files.learn.startsWith('<!doctype html>')).toBe(true);
   expect(files.learn).not.toMatch(/<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)=/iu);
+  // The stored file stays theme-neutral so it follows the reader's own preference elsewhere.
+  expect(files.learn).toContain('<html lang="en">');
   await expectNoSeriousA11yViolations(page);
+
+  // The page is viewable inside Dusori, but only from a sandbox that cannot reach the app.
+  await page.getByRole('button', { name: 'Open learning page' }).click();
+  const frameElement = page.locator('iframe[title^="Learning page"]');
+  await expect(frameElement).toHaveAttribute('sandbox', 'allow-scripts');
+  const sandbox = await frameElement.getAttribute('sandbox');
+  expect(sandbox).not.toContain('allow-same-origin');
+
+  // Its content really renders, and its check-yourself prompts really work.
+  const learnFrame = page.frameLocator('iframe[title^="Learning page"]');
+  await expect(
+    learnFrame.getByRole('heading', { name: 'AI Fundamentals', level: 1 }),
+  ).toBeVisible();
+  await expect(
+    learnFrame.getByText('Every passage links back to where it came from.'),
+  ).toBeVisible();
+  const firstCheck = learnFrame.locator('details.check').first();
+  await expect(firstCheck).toHaveJSProperty('open', false);
+  await learnFrame.getByRole('button', { name: 'Reveal every answer' }).click();
+  await expect(firstCheck).toHaveJSProperty('open', true);
 });
 
 test('an all-provider failure stays distinct from a completed search with no matches', async ({

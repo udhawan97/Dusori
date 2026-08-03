@@ -94,6 +94,19 @@ export async function writeTopicSynthesis(
   return { conflict: proposal as MarkdownConflict, status: 'conflict', synthesis };
 }
 
+export function learnPagePath(topicSlug: string): string {
+  return `${topicRoot(topicSlug)}/${learnPageRelativePath}`;
+}
+
+/** The stored learning page, or null when this topic has never built one. */
+export async function readLearnPage(
+  storage: StorageAdapter,
+  topicSlug: string,
+): Promise<string | null> {
+  const file = await storage.read(learnPagePath(topicSlug));
+  return file?.content ?? null;
+}
+
 export type WriteLearnPageResult =
   | { status: 'written'; path: string; synthesis: TopicSynthesis }
   | { status: 'proposed'; path: string; proposalPath: string; synthesis: TopicSynthesis };

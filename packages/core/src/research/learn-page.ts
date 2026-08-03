@@ -35,6 +35,10 @@ function sourceLine(title: string, url?: string): string {
 const styles = `
 :root{color-scheme:light dark;--ink:#191410;--paper:#fbf7f1;--muted:#6b6058;--rule:#ddd2c6;--accent:#cb4832}
 @media (prefers-color-scheme:dark){:root{--ink:#f2e9df;--paper:#14100d;--muted:#a2958a;--rule:#33291f}}
+/* A host embedding this page may stamp data-theme on <html> to match its own surface. The
+   stored file carries no theme of its own, so on its own it still follows the reader's OS. */
+:root[data-theme="dark"]{color-scheme:dark;--ink:#f2e9df;--paper:#14100d;--muted:#a2958a;--rule:#33291f}
+:root[data-theme="light"]{color-scheme:light;--ink:#191410;--paper:#fbf7f1;--muted:#6b6058;--rule:#ddd2c6}
 *{box-sizing:border-box}
 body{margin:0;padding:1.5rem;background:var(--paper);color:var(--ink);
 font:16px/1.6 ui-serif,Georgia,serif;-webkit-text-size-adjust:100%}
@@ -169,6 +173,14 @@ export function renderLearnPage(synthesis: TopicSynthesis): string {
   );
 
   return page(title, body.join('\n'), checks.length > 0);
+}
+
+/**
+ * Stamps a theme onto a generated page for embedding, without changing the stored file.
+ * A page opened on its own keeps following the reader's own light/dark preference.
+ */
+export function withLearnPageTheme(html: string, theme: 'dark' | 'light'): string {
+  return html.replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`);
 }
 
 function page(title: string, body: string, withScript: boolean): string {
