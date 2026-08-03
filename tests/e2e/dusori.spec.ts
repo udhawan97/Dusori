@@ -1394,6 +1394,54 @@ test('reading a saved source produces quoted passages, a synthesis, and a learni
   await expect(firstCheck).toHaveJSProperty('open', true);
 });
 
+test('an armed topic refreshes itself on open only once it is stale', async ({ page }) => {
+  let searches = 0;
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    searches += 1;
+    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
+  await page
+    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
+    .getByRole('button', { name: 'Allow search' })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
+  expect(searches).toBe(1);
+
+  // Reloading a fresh topic must not re-scan, armed or not. The checkbox surviving the
+  // reload is also what proves the standing permission reached the workspace file.
+  const keepFresh = page.getByRole('checkbox', { name: /Keep this topic fresh/u });
+  await keepFresh.check();
+  // The control re-enables only once the workspace file holds the answer.
+  await expect(keepFresh).toBeEnabled();
+  await page.reload();
+  await expect(page.getByRole('list', { name: 'Research trail runs' })).toBeVisible();
+  await expect(keepFresh).toBeChecked();
+  expect(searches).toBe(1);
+
+  // Age the recorded run past the window; opening the topic then refreshes it exactly once.
+  await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const dusori = await root.getDirectoryHandle('Dusori');
+    const topics = await dusori.getDirectoryHandle('Topics');
+    const topic = await topics.getDirectoryHandle('ai-fundamentals');
+    const handle = await topic.getFileHandle('research.json');
+    const parsed = JSON.parse(await (await handle.getFile()).text());
+    const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    parsed.lastRunAt = old;
+    const writable = await handle.createWritable();
+    await writable.write(JSON.stringify(parsed, null, 2));
+    await writable.close();
+  });
+
+  await page.reload();
+  await expect(page.getByText(/Refreshed on open because this topic/u)).toBeVisible();
+  expect(searches).toBe(2);
+});
+
 test('an all-provider failure stays distinct from a completed search with no matches', async ({
   page,
 }) => {

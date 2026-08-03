@@ -524,6 +524,7 @@ describe('ai routes', () => {
       ['GET', '/api/ai/capabilities'],
       ['POST', '/api/ai/rerank'],
       ['POST', '/api/ai/brief'],
+      ['POST', '/api/ai/synthesize'],
       ['POST', '/api/ai/recall-prompts'],
     ] as const) {
       expect((await server.inject({ method, url })).statusCode).toBe(401);
@@ -700,6 +701,62 @@ describe('ai routes', () => {
       method: 'POST',
       payload,
       url: '/api/ai/brief',
+    });
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json().reason).toBe('ai-failed');
+  });
+
+  it('writes synthesis prose, caps the passages it accepts, and fails as a 502', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    let call = 0;
+    const fetchImpl = (async () => {
+      call += 1;
+      if (call === 1) {
+        return new Response(
+          JSON.stringify({ response: 'Spacing works because retrieval strengthens memory.' }),
+          { headers: { 'Content-Type': 'application/json' }, status: 200 },
+        );
+      }
+      return new Response('upstream broke', { status: 500 });
+    }) as unknown as typeof fetch;
+    const server = await createServer({
+      ai: { env: { OLLAMA_MODEL: 'gemma3:4b' }, fetchImpl },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const payload = {
+      claims: [{ heading: 'Forgetting curve', source: 'Spaced repetition', text: 'Reviews help.' }],
+      topic: 'Spaced repetition learning',
+    };
+    const written = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload,
+      url: '/api/ai/synthesize',
+    });
+    expect(written.statusCode).toBe(200);
+    expect(written.json().overview).toContain('retrieval strengthens memory');
+
+    // The cap is the disclosure: a payload beyond it never reaches the model.
+    const oversized = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload: {
+        claims: Array.from({ length: 61 }, () => ({ source: 'S', text: 'A passage.' })),
+        topic: 'T',
+      },
+      url: '/api/ai/synthesize',
+    });
+    expect(oversized.statusCode).toBe(400);
+
+    const failed = await server.inject({
+      headers: headers(),
+      method: 'POST',
+      payload,
+      url: '/api/ai/synthesize',
     });
     expect(failed.statusCode).toBe(502);
     expect(failed.json().reason).toBe('ai-failed');

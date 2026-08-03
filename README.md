@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
-  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.10.0 source ZIP" width="226"></a>
+  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.0 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
 </p>
 
@@ -42,11 +42,11 @@ You do not need to understand the technology before using Dusori.
 | Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                | It opens in your browser. No account or terminal.                                              |
 | Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                  | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
 | Run the current release locally  | **[Use the npm companion](#fastest-local-start)**                                         | With Node.js 24 installed, `npx` downloads and opens Dusori without a global install.          |
-| Run the current release yourself | **[Download v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
+| Run the current release yourself | **[Download v0.11.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
 | Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                      | You get the full monorepo and contributor workflow.                                            |
 
 > [!IMPORTANT]
-> The app and the [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori) are released together at **v0.10.0**; `npx @udhawan97/dusori@latest` always fetches the current published companion. Dusori requires Node.js 24 LTS when you run it locally.
+> The app and the [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori) are released together at **v0.11.0**; `npx @udhawan97/dusori@latest` always fetches the current published companion. Dusori requires Node.js 24 LTS when you run it locally.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori Today showing Continue learning and Needs attention from a local workspace" width="920">
@@ -95,6 +95,8 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 | Read saved sources            | Up to twelve verbatim quoted passages per source, each tagged with the heading it came from.                       |
 | Build a synthesis             | A cited `Synthesis.md` marking agreement, thin evidence, timeline, and the open questions left.                    |
 | Create a learning page        | A self-contained interactive HTML file with no network requests, openable outside Dusori.                          |
+| Open a learning page          | The same page read inside Dusori, sandboxed so it can never reach your workspace.                                  |
+| Keep a topic fresh            | An opt-in re-scan when you open Dusori and that topic has gone a week unscanned. Never while closed.               |
 | Check roadmap objectives      | Portable Markdown progress, explicit topic state, and a seven-day file-derived recap.                              |
 | Mark a topic reviewed         | An optional spaced schedule—1, 3, 7, 14, 30, then 60 days—that rests the topic until it is due.                    |
 | Start a review                | Active-recall prompts from that topic’s sources, an answer box, and answers saved as a note.                       |
@@ -112,7 +114,7 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 General web search is optional companion configuration. Brave and Tavily use your keys; SearXNG offers a keyless, open-source route. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly labeled brief from accepted sources, or reword review prompts under separate consent. Deterministic ranking, briefs, and prompts remain the baseline.
 
-Unattended research is not implemented: every scan is one you ask for, and a mission never refreshes itself. Reading arbitrary web pages needs the local companion; without it, the providers that reach real text are Wikipedia, OpenAlex, GitHub, Stack Exchange, Hacker News, and npm. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
+Nothing runs while Dusori is closed. A topic you explicitly arm may re-scan itself when you open Dusori and it has gone seven days without a scan, using only providers you already allowed — at most once per session. Every other scan is one you ask for. Reading arbitrary web pages needs the local companion; without it, the providers that reach real text are Wikipedia, OpenAlex, GitHub, Stack Exchange, Hacker News, and npm. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
 
 </details>
 
@@ -204,8 +206,8 @@ npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 
 ### From the release ZIP
 
-1. **[Download Dusori v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** and unzip it.
-2. Open a terminal in the unzipped `Dusori-0.10.0` folder.
+1. **[Download Dusori v0.11.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.0.zip)** and unzip it.
+2. Open a terminal in the unzipped `Dusori-0.11.0` folder.
 3. Run:
 
 ```bash
@@ -312,11 +314,11 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Current release
 
-**v0.10.0** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every line cites the source it came from. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
+**v0.11.0** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every line cites the source it came from. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
 
 It keeps the v0.9.1 release-integrity guard, so npm provenance must match the exact tagged source.
 
-[Read the v0.10.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.10.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.11.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.11.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing and license
 

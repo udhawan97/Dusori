@@ -17,6 +17,7 @@ const RerankResponseSchema = z.object({
 });
 
 const BriefResponseSchema = z.object({ brief: z.string().min(1) });
+const SynthesisResponseSchema = z.object({ overview: z.string().min(1) });
 
 const RecallPromptsResponseSchema = z.object({ prompts: z.array(z.string().min(1)).min(1).max(8) });
 
@@ -44,6 +45,14 @@ export interface CompanionAiClient {
   /** A proposed depth and preference list for one topic's TUTOR.md. Never applied on its own. */
   tutorPreferences(request: TutorAiRequest): Promise<TutorAiProposal>;
   writeBrief(query: ResearchQuery, sources: BriefSource[]): Promise<string>;
+  /** Overview prose for a synthesis, from passages the workspace already quotes. */
+  writeSynthesis(topic: string, claims: SynthesisAiClaim[]): Promise<string>;
+}
+
+export interface SynthesisAiClaim {
+  text: string;
+  source: string;
+  heading?: string;
 }
 
 export interface TutorAiRequest {
@@ -145,6 +154,24 @@ export function createCompanionAiClient(options: CompanionClientOptions): Compan
       );
       if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
       return parsed.data.brief;
+    },
+
+    async writeSynthesis(topic, claims) {
+      const parsed = SynthesisResponseSchema.safeParse(
+        await readJson('/api/ai/synthesize', {
+          body: JSON.stringify({
+            claims: claims.map((claim) => ({
+              ...(claim.heading === undefined ? {} : { heading: claim.heading }),
+              source: claim.source,
+              text: claim.text,
+            })),
+            topic,
+          }),
+          method: 'POST',
+        }),
+      );
+      if (!parsed.success) throw new CompanionFetchError(unavailable, 'ai-failed');
+      return parsed.data.overview;
     },
   };
 }
