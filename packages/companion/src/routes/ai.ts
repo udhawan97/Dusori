@@ -7,6 +7,7 @@ import {
   rerankWithAi,
   writeBriefWithAi,
   writeRecallPromptsWithAi,
+  writeSynthesisWithAi,
   writeTutorPreferencesWithAi,
   type AiEnv,
 } from '../ai.js';
@@ -40,6 +41,22 @@ const BriefBody = z.object({
     )
     .min(1)
     .max(20),
+});
+
+// A synthesis sends the passages already quoted in the learner's own workspace. The caps are
+// the contract: sixty passages is more than any one topic's synthesis draws on.
+const SynthesisBody = z.object({
+  claims: z
+    .array(
+      z.object({
+        heading: z.string().max(160).optional(),
+        source: z.string().min(1).max(160),
+        text: z.string().min(1).max(600),
+      }),
+    )
+    .min(1)
+    .max(60),
+  topic: z.string().min(1).max(160),
 });
 
 // A review session sends the objective and the excerpts already on the learner's screen, and
@@ -130,6 +147,19 @@ export async function aiRoutes(server: FastifyInstance, options: AiRoutesOptions
     }
     try {
       return await writeTutorPreferencesWithAi(body.data, options);
+    } catch (error) {
+      const failure = failureReply(error);
+      return reply.code(failure.code).send(failure.body);
+    }
+  });
+
+  server.post('/api/ai/synthesize', async (request, reply) => {
+    const body = SynthesisBody.safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ error: 'A topic and quoted passages are required.' });
+    }
+    try {
+      return { overview: await writeSynthesisWithAi(body.data.topic, body.data.claims, options) };
     } catch (error) {
       const failure = failureReply(error);
       return reply.code(failure.code).send(failure.body);

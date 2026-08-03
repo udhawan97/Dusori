@@ -26,6 +26,7 @@
     dismissSuggestion,
     isMissionStale,
     readResearchFile,
+    readSourceManifest,
     readSourcesIntoClaims,
     readTopicProgress,
     researchAngles,
@@ -42,6 +43,7 @@
     type ResearchCapture,
     type ResearchProvider,
     type ResearchQuery,
+    type RenderSynthesisOptions,
     type ResearchRunRecord,
     type ResearchRunResult,
     type RoadmapObjective,
@@ -586,12 +588,48 @@
     }
   }
 
+  /**
+   * Overview prose from the configured model, over the passages the workspace already quotes.
+   * Advisory in the same way ranking is: the quotations, their citations, and the evidence
+   * accounting are deterministic, and any failure simply writes the document without prose.
+   */
+  async function synthesisProse(): Promise<RenderSynthesisOptions> {
+    if (!ai || !aiCapability || !hasConsent(aiConsent)) return {};
+    try {
+      const manifest = await readSourceManifest(storage, topicSlug);
+      const claims = manifest.sources.flatMap((record) =>
+        (record.claims ?? []).map((claim) => ({
+          ...(claim.heading === undefined ? {} : { heading: claim.heading }),
+          source: record.title,
+          text: claim.text,
+        })),
+      );
+      if (claims.length === 0) return {};
+      return {
+        aiModel: aiCapability.model,
+        aiOverview: await ai.writeSynthesis(topicTitle, claims.slice(0, 60)),
+      };
+    } catch {
+      notices = [
+        ...notices,
+        'AI was unavailable, so the synthesis quotes your sources without commentary.',
+      ];
+      return {};
+    }
+  }
+
   async function buildSynthesis(): Promise<void> {
     buildingSynthesis = true;
     synthesisError = '';
     synthesisNotice = '';
     try {
-      const result = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+      const result = await writeTopicSynthesis(
+        storage,
+        topicSlug,
+        topicTitle,
+        new Date(),
+        await synthesisProse(),
+      );
       synthesisNotice =
         result.status === 'written'
           ? `Synthesis written from ${result.synthesis.claimCount} quoted passages across ${result.synthesis.readCount} sources.`

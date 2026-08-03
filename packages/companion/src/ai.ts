@@ -292,6 +292,44 @@ export async function writeTutorPreferencesWithAi(
   };
 }
 
+export interface SynthesisClaimInput {
+  text: string;
+  source: string;
+  heading?: string;
+}
+
+/**
+ * Writes only the overview prose for a synthesis. The quotations, their citations, and the
+ * evidence accounting are the workspace's own and are never sent back through the model —
+ * this returns paragraphs about material the learner already approved, nothing more.
+ */
+export async function writeSynthesisWithAi(
+  topic: string,
+  claims: SynthesisClaimInput[],
+  options: AiOptions = {},
+): Promise<string> {
+  const listing = claims
+    .map(
+      (claim) => `- "${claim.text}" — ${claim.source}${claim.heading ? ` (${claim.heading})` : ''}`,
+    )
+    .join('\n');
+  const prompt = [
+    `A learner is trying to understand "${topic}". These passages are quoted verbatim from`,
+    'sources they approved:',
+    '',
+    listing,
+    '',
+    'Write two or three short Markdown paragraphs saying what matters here and where the',
+    'passages agree or pull against each other. Ground every statement in the passages above',
+    'and never introduce a fact they do not contain. Where only one passage supports a point,',
+    'say so plainly. No headings, no bullet list, no frontmatter — prose only.',
+  ].join('\n');
+
+  const text = (await complete(prompt, options)).trim();
+  if (!text) throw new AiError(failedMessage, 'ai-failed');
+  return text;
+}
+
 export interface BriefSourceInput {
   title: string;
   url: string;
