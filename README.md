@@ -11,6 +11,11 @@
 </p>
 
 <p align="center">
+  <em>For people who need to check the answer, not just receive it</em>—self-directed learners<br>
+  who want the sources behind a claim, and researchers who need the provenance to hold up.
+</p>
+
+<p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
   <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.1 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
