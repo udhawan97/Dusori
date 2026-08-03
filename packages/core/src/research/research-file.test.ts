@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
-import { readResearchFile, recordResearchRun, type ResearchRunInput } from './research-file.js';
+import {
+  isMissionStale,
+  readResearchFile,
+  recordResearchRun,
+  setAutoRefresh,
+  type ResearchRunInput,
+} from './research-file.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
 
@@ -87,6 +93,18 @@ describe('research run ledger', () => {
     expect(first?.at).toBe(now.toISOString());
   });
 
+  it('stores the standing refresh permission without touching the trail', async () => {
+    const storage = await topicStorage();
+    await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+
+    await setAutoRefresh(storage, 'spaced-repetition-learning', true, now);
+
+    const file = await readResearchFile(storage, 'spaced-repetition-learning', now);
+    expect(file?.autoRefresh).toBe(true);
+    expect(file?.runs).toHaveLength(1);
+    expect(file?.seen).toHaveLength(1);
+  });
+
   it('drops the oldest run beyond fifty', async () => {
     const storage = await topicStorage();
 
@@ -103,5 +121,29 @@ describe('research run ledger', () => {
     expect(file?.runs).toHaveLength(50);
     expect(file?.runs?.[0]?.searchText).toBe('query 1');
     expect(file?.runs?.at(-1)?.searchText).toBe('query 50');
+  });
+});
+
+describe('stale mission detection', () => {
+  const eightDaysLater = new Date('2026-08-10T10:00:00.000Z');
+
+  it('never treats an unarmed topic as stale, however old', () => {
+    const file = { autoRefresh: false, lastRunAt: now.toISOString() } as never;
+    expect(isMissionStale(file, eightDaysLater)).toBe(false);
+    expect(isMissionStale(null, eightDaysLater)).toBe(false);
+  });
+
+  // A topic that has never been scanned has nothing to refresh, so the first run stays a
+  // choice the learner makes rather than something opening the app does for them.
+  it('never treats a never-scanned topic as stale', () => {
+    expect(isMissionStale({ autoRefresh: true } as never, eightDaysLater)).toBe(false);
+  });
+
+  it('is stale only once an armed topic passes the window', () => {
+    const file = { autoRefresh: true, lastRunAt: now.toISOString() } as never;
+
+    expect(isMissionStale(file, now)).toBe(false);
+    expect(isMissionStale(file, new Date('2026-08-08T09:00:00.000Z'))).toBe(false);
+    expect(isMissionStale(file, eightDaysLater)).toBe(true);
   });
 });

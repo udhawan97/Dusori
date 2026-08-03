@@ -24,11 +24,14 @@
     createNote,
     createResearchProviders,
     dismissSuggestion,
+    isMissionStale,
     readResearchFile,
     readSourcesIntoClaims,
     readTopicProgress,
     researchAngles,
     runResearchAgent,
+    setAutoRefresh,
+    staleMissionDays,
     writeLearnPage,
     writeTopicSynthesis,
     type AiCapability,
@@ -136,6 +139,16 @@
   let learnRevision = 0;
 
   const objectiveAngleId = 'roadmap-objective';
+
+  // Per app session, not persisted: a stale topic refreshes itself at most once however many
+  // times you navigate back to it, and closing Dusori always ends the arrangement. A plain
+  // array, not a Set, because nothing renders from it and it never needs to be reactive.
+  const refreshedThisSession: string[] = [];
+  let autoRefresh = false;
+  let autoRefreshError = '';
+  let refreshedNotice = '';
+  let staleOnOpen = false;
+  let savingAutoRefresh = false;
   $: angle = researchAngles.find((item) => item.id === angleId) ?? researchAngles[0]!;
 
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
@@ -172,15 +185,63 @@
     await loadTrail();
     await tick();
     await maybeAutoRun(nextObjective);
+    // A first-run arming and a stale refresh are mutually exclusive: maybeAutoRun already
+    // scanned if this topic was newly created, and that scan is not stale by definition.
+    await maybeRefreshOnOpen();
   }
 
   async function loadTrail(): Promise<void> {
     try {
       const file = await readResearchFile(storage, topicSlug);
       trailRuns = [...(file?.runs ?? [])].reverse();
+      autoRefresh = file?.autoRefresh ?? false;
+      staleOnOpen = isMissionStale(file);
     } catch {
       trailRuns = [];
+      autoRefresh = false;
+      staleOnOpen = false;
     }
+  }
+
+  // The control stays disabled until the workspace file has the answer, so the setting can
+  // never look saved while the write is still in flight.
+  async function toggleAutoRefresh(enabled: boolean): Promise<void> {
+    autoRefreshError = '';
+    const previous = autoRefresh;
+    autoRefresh = enabled;
+    savingAutoRefresh = true;
+    try {
+      await setAutoRefresh(storage, topicSlug, enabled);
+    } catch (caught) {
+      autoRefresh = previous;
+      autoRefreshError =
+        caught instanceof Error ? caught.message : 'That refresh setting could not be saved.';
+    } finally {
+      savingAutoRefresh = false;
+    }
+  }
+
+  /**
+   * Opening Dusori may re-scan a topic that armed itself and has gone stale, using only the
+   * providers already consented on this device. Never on a first visit, never more than once
+   * per session, and never while the app is closed.
+   */
+  async function maybeRefreshOnOpen(): Promise<void> {
+    if (!staleOnOpen || refreshedThisSession.includes(topicSlug) || running) return;
+    const allowedProviders = providers.filter(hasConsent);
+    if (allowedProviders.length === 0) return;
+    refreshedThisSession.push(topicSlug);
+    staleOnOpen = false;
+    const before = trailRuns.length;
+    await runWith(currentQuery(selectedObjective), allowedProviders);
+    const latest = trailRuns.length > before ? trailRuns[0] : null;
+    refreshedNotice = latest
+      ? `Refreshed on open because this topic had not been scanned for ${staleMissionDays} days. ${
+          latest.newKeys > 0
+            ? `${latest.newKeys} new ${latest.newKeys === 1 ? 'result' : 'results'}.`
+            : 'Nothing new since the last scan.'
+        }`
+      : '';
   }
 
   // Keyed by consentScope so a variant that widens egress (companion-ranked search, AI) asks
@@ -741,6 +802,26 @@
       <LearnPanel {storage} {topicSlug} {topicTitle} revision={learnRevision} />
     </section>
 
+    <div class="refresh-setting">
+      <label>
+        <input
+          type="checkbox"
+          checked={autoRefresh}
+          disabled={savingAutoRefresh}
+          onchange={(event) => void toggleAutoRefresh(event.currentTarget.checked)}
+        />
+        <span>
+          <strong>Keep this topic fresh</strong>
+          <small>
+            When you open Dusori and this topic has not been scanned for {staleMissionDays} days, re-scan
+            it using only the providers you already allowed. Nothing runs while Dusori is closed.
+          </small>
+        </span>
+      </label>
+      {#if refreshedNotice}<p class="notice" role="status">{refreshedNotice}</p>{/if}
+      {#if autoRefreshError}<p class="action-error" role="alert">{autoRefreshError}</p>{/if}
+    </div>
+
     <ResearchTrail runs={trailRuns} />
 
     {#if shortlist.length > 0}
@@ -1073,6 +1154,42 @@
     background: var(--color-paper);
     color: var(--color-accent-text);
     font-size: var(--text-xs);
+  }
+
+  .refresh-setting {
+    margin-block-start: var(--space-lg);
+    padding-block-start: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .refresh-setting label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-xs);
+    margin-block-end: 0;
+    font-weight: 400;
+  }
+
+  .refresh-setting input {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: none;
+    margin-block-start: 0.15rem;
+    accent-color: var(--color-accent);
+  }
+
+  .refresh-setting strong {
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+
+  .refresh-setting small {
+    display: block;
+    margin-block-start: var(--space-2xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   .unreadable-list {

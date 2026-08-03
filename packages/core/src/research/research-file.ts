@@ -51,6 +51,8 @@ export const ResearchFileSchema = z.object({
   lastRunAt: z.string().datetime().optional(),
   seen: z.array(SeenResearchCandidateSchema).optional(),
   runs: z.array(ResearchRunRecordSchema).optional(),
+  /** Standing permission to re-scan this topic when it is stale and Dusori is opened. */
+  autoRefresh: z.boolean().optional(),
 });
 
 export type DismissedResearchSuggestion = z.infer<typeof DismissedResearchSuggestionSchema>;
@@ -198,6 +200,53 @@ export async function recordResearchRun(
   }
 
   throw new Error('Research run history changed repeatedly. Try running research again.');
+}
+
+/** How long a mission may sit before an armed topic re-scans itself on open. */
+export const staleMissionDays = 7;
+
+export async function setAutoRefresh(
+  storage: StorageAdapter,
+  topicSlug: string,
+  enabled: boolean,
+  now = new Date(),
+): Promise<ResearchFile> {
+  const normalizedSlug = topicRoot(topicSlug).slice('Topics/'.length);
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const currentSnapshot = await storage.read(path);
+    const current = currentSnapshot
+      ? await readMachineFile(storage, path, ResearchFileSchema, now)
+      : ResearchFileSchema.parse({ dismissed: [], schemaVersion, topicSlug: normalizedSlug });
+    const next = ResearchFileSchema.parse({ ...current, autoRefresh: enabled });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: currentSnapshot?.hash ?? null,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research settings changed repeatedly. Try the refresh setting again.');
+}
+
+/**
+ * Whether opening Dusori should re-scan this topic. A topic that was never scanned is not
+ * stale — it has nothing to refresh — so the first run always stays an explicit choice.
+ */
+export function isMissionStale(
+  file: ResearchFile | null,
+  now = new Date(),
+  staleDays = staleMissionDays,
+): boolean {
+  if (!file?.autoRefresh || !file.lastRunAt) return false;
+  const last = new Date(file.lastRunAt).getTime();
+  if (Number.isNaN(last)) return false;
+  return now.getTime() - last >= staleDays * 24 * 60 * 60 * 1000;
 }
 
 export async function readSeenKeys(
