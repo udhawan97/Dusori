@@ -36,8 +36,18 @@ export type AddSourceInput =
       content?: string;
       method: 'url';
       origin?: SourceOrigin;
+      provenance?: SourceProvenance;
       url: string;
     });
+
+/** What the discovering provider reported about the artifact itself, plus why it ranked. */
+export interface SourceProvenance {
+  author?: string;
+  publishedAt?: string;
+  publisher?: string;
+  whySelected?: string[];
+  readState?: 'read' | 'readable' | 'reference';
+}
 
 export interface AddedSource {
   deduplicated: boolean;
@@ -164,17 +174,23 @@ export async function addSource(
       if (!existing || existing.hash !== (await sha256(sourceContent))) throw error;
     }
 
+    const provenance = input.method === 'url' ? input.provenance : undefined;
     const record = SourceRecordSchema.parse({
+      author: provenance?.author,
       fetchedAt: now.toISOString(),
       mediaType: input.method === 'url' ? 'text/markdown' : (input.mediaType ?? 'text/plain'),
       method: input.method,
       originalName: input.method === 'file' ? input.originalName : undefined,
       origin: input.method === 'url' ? input.origin : undefined,
       path,
+      publishedAt: provenance?.publishedAt,
+      publisher: provenance?.publisher,
+      readState: provenance?.readState,
       sha256: contentHash,
       size,
       title,
       url,
+      whySelected: provenance?.whySelected,
     });
     const nextManifest = SourceManifestSchema.parse({
       schemaVersion,

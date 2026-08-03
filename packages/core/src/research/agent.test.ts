@@ -167,7 +167,9 @@ describe('runResearchAgent', () => {
     expect(result.overflow).toHaveLength(4);
   });
 
-  it('writes nothing when every provider was skipped', async () => {
+  // A failed run is evidence too. Writing nothing used to make "the providers broke" and
+  // "the providers found nothing" indistinguishable the moment the page reloaded.
+  it('records the failure when every provider was skipped, saving no candidates', async () => {
     const { storage, topicSlug } = await workspace();
 
     const result = await runResearchAgent({
@@ -179,6 +181,35 @@ describe('runResearchAgent', () => {
     });
 
     expect(result.shortlist).toEqual([]);
-    expect(await readResearchFile(storage, topicSlug, now)).toBeNull();
+    expect(result.run?.providers).toEqual([
+      { count: 0, id: 'alpha', label: 'alpha', message: 'no network', outcome: 'failed' },
+    ]);
+    expect(result.run?.newKeys).toBe(0);
+    const file = await readResearchFile(storage, topicSlug, now);
+    expect(file?.runs).toHaveLength(1);
+    expect(file?.seen ?? []).toEqual([]);
+  });
+
+  it('records per-provider outcomes for a mixed run', async () => {
+    const { storage, topicSlug } = await workspace();
+
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('alpha', [candidate({ key: 'alpha:1', url: 'https://example.com/1' })]),
+        stubProvider('beta', []),
+        stubProvider('gamma', [], { fails: 'boom' }),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.run?.providers).toEqual([
+      { count: 1, id: 'alpha', label: 'alpha', outcome: 'found' },
+      { count: 0, id: 'beta', label: 'beta', outcome: 'empty' },
+      { count: 0, id: 'gamma', label: 'gamma', message: 'boom', outcome: 'failed' },
+    ]);
+    expect(result.run?.searchText).toBe(query.searchText);
   });
 });

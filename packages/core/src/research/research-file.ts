@@ -24,6 +24,24 @@ export const SeenResearchCandidateSchema = z.object({
   url: z.url().max(2048).optional(),
 });
 
+// What one provider did in one run. `count` is candidates returned before ranking, so a
+// provider that answered with nothing is `empty` with 0 — never confused with `failed`.
+export const RunProviderOutcomeSchema = z.object({
+  id: z.string().min(1).max(40),
+  label: z.string().min(1).max(60),
+  outcome: z.enum(['empty', 'failed', 'found']),
+  count: z.number().int().nonnegative(),
+  message: z.string().min(1).max(300).optional(),
+});
+
+export const ResearchRunRecordSchema = z.object({
+  at: z.string().datetime(),
+  searchText: z.string().min(1).max(400),
+  angleId: z.string().min(1).max(40).optional(),
+  providers: z.array(RunProviderOutcomeSchema).max(24),
+  newKeys: z.number().int().nonnegative(),
+});
+
 export const ResearchFileSchema = z.object({
   schemaVersion: z.literal(schemaVersion),
   topicSlug: z.string().min(1).max(80),
@@ -32,14 +50,20 @@ export const ResearchFileSchema = z.object({
   // parses unchanged, which is why adding them needs no schemaVersion bump.
   lastRunAt: z.string().datetime().optional(),
   seen: z.array(SeenResearchCandidateSchema).optional(),
+  runs: z.array(ResearchRunRecordSchema).optional(),
 });
 
 export type DismissedResearchSuggestion = z.infer<typeof DismissedResearchSuggestionSchema>;
 export type SeenResearchCandidate = z.infer<typeof SeenResearchCandidateSchema>;
+export type RunProviderOutcome = z.infer<typeof RunProviderOutcomeSchema>;
+export type ResearchRunRecord = z.infer<typeof ResearchRunRecordSchema>;
 export type ResearchFile = z.infer<typeof ResearchFileSchema>;
 
 /** Keeps the file bounded; oldest entries are dropped first. */
 const maxSeenEntries = 500;
+
+/** Same bounding rule for the run trail; fifty runs is far more history than a topic needs. */
+const maxRunEntries = 50;
 
 // Normalizes a URL for comparison so equivalent references (e.g. differing
 // only in how the URL constructor formats them) match. Falls back to the raw
@@ -115,10 +139,18 @@ export async function writeDismissedResearchSuggestion(
   throw new Error('Research dismissals changed repeatedly. Try dismissing this suggestion again.');
 }
 
+export interface ResearchRunInput {
+  searchText: string;
+  angleId?: string;
+  providers: RunProviderOutcome[];
+  /** Ranked candidates that survived dedupe; empty on a failed or genuinely empty run. */
+  candidates: { key: string; url?: string }[];
+}
+
 export async function recordResearchRun(
   storage: StorageAdapter,
   topicSlug: string,
-  candidates: { key: string; url?: string }[],
+  run: ResearchRunInput,
   now = new Date(),
 ): Promise<ResearchFile> {
   const normalizedSlug = topicRoot(topicSlug).slice('Topics/'.length);
@@ -134,13 +166,23 @@ export async function recordResearchRun(
     // An already-seen key keeps its original `at`: re-stamping it every run
     // would make nothing ever count as new again.
     const merged = new Map((current.seen ?? []).map((entry) => [entry.key, entry]));
-    for (const candidate of candidates) {
+    let newKeys = 0;
+    for (const candidate of run.candidates) {
       if (merged.has(candidate.key)) continue;
+      newKeys += 1;
       merged.set(candidate.key, { at, key: candidate.key, url: candidate.url });
     }
+    const record = ResearchRunRecordSchema.parse({
+      angleId: run.angleId,
+      at,
+      newKeys,
+      providers: run.providers,
+      searchText: run.searchText,
+    });
     const next = ResearchFileSchema.parse({
       ...current,
       lastRunAt: at,
+      runs: [...(current.runs ?? []), record].slice(-maxRunEntries),
       seen: [...merged.values()]
         .sort((left, right) => left.at.localeCompare(right.at))
         .slice(-maxSeenEntries),
