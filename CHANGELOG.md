@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Added
+
+- The generated learning page can be opened inside Dusori. It renders in a sandbox that allows its own scripts but denies it the app's origin, so it keeps its interactivity while being unable to reach your workspace, storage, or cookies. The stored file stays theme-neutral and follows your system preference when opened directly; only the embedded copy is matched to the app's theme.
+
 ## [0.10.0] - 2026-08-02
 
 Dusori becomes research-first: you name a topic you want to understand, and the research it does is visible, inspectable, and traceable back to the evidence.

@@ -43,6 +43,8 @@ Three actions turn approved sources into something you can learn from. None of t
 
 **Create learning page** writes `Learning/learn.html`: concepts with their supporting quotations, an optional timeline, and reveal-style check-yourself prompts that keep no score and store nothing. The page inlines its own styles and script, makes no network request of any kind, works offline, opens without Dusori, and travels in your ZIP export. A page edited outside Dusori is kept and the rebuild is written beside it.
 
+**Open learning page** reads it back inside Dusori. It runs in a sandbox that permits its own scripts but denies it the app's origin, so the page keeps its interactivity while being unable to reach your workspace, its storage, or its cookies. The stored file carries no theme of its own and follows your system preference when you open it directly; only the copy shown inside Dusori is matched to the app's current theme.
+
 After approving one or more results, **Write research brief** creates a clearly marked portable note. The deterministic brief groups approved links and explains their ranking signals; it states that Dusori has not read the pages. No discovered item is accepted automatically.
 
 ## Full-content upgrades with the companion

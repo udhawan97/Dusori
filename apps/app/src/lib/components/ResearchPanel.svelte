@@ -47,6 +47,7 @@
 
   import { modal } from '$lib/actions/modal';
   import { grantConsent, hasConsent as deviceHasConsent } from '$lib/consent';
+  import LearnPanel from './LearnPanel.svelte';
   import MarkdownView from './MarkdownView.svelte';
   import ResearchTrail from './ResearchTrail.svelte';
   import VideoThumbnail from './VideoThumbnail.svelte';
@@ -132,6 +133,7 @@
   let buildingLearnPage = false;
   let learnNotice = '';
   let learnError = '';
+  let learnRevision = 0;
 
   const objectiveAngleId = 'roadmap-objective';
   $: angle = researchAngles.find((item) => item.id === angleId) ?? researchAngles[0]!;
@@ -552,6 +554,7 @@
         result.status === 'written'
           ? `Learning page built at ${result.path}. It works offline and needs no network.`
           : `Your edited page was kept. The rebuilt page is at ${result.proposalPath}.`;
+      learnRevision += 1;
       onSourceSaved();
     } catch (caught) {
       learnError =
@@ -734,6 +737,8 @@
       {#if synthesisError}<p class="action-error" role="alert">{synthesisError}</p>{/if}
       {#if learnNotice}<p class="notice" role="status">{learnNotice}</p>{/if}
       {#if learnError}<p class="action-error" role="alert">{learnError}</p>{/if}
+
+      <LearnPanel {storage} {topicSlug} {topicTitle} revision={learnRevision} />
     </section>
 
     <ResearchTrail runs={trailRuns} />
