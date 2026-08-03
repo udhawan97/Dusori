@@ -4,6 +4,13 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-08-02
+
+### Fixed
+
+- npm publishing now refuses to run unless the checked-out release tag, the workflow event revision, and the packaged source are the same commit, keeping package provenance tied to the exact code in the tarball.
+- The README, website, documentation, and download artwork now lead with the current `npx @udhawan97/dusori@latest` path while preserving the browser and source-ZIP choices.
+
 ## [0.9.0] - 2026-08-01
 
 ### Added
@@ -196,7 +203,9 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/udhawan97/Dusori/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/udhawan97/Dusori/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/udhawan97/Dusori/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/udhawan97/Dusori/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/udhawan97/Dusori/compare/v0.7.0...v0.7.1

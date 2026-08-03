@@ -25,6 +25,7 @@ export default defineConfig({
           items: [
             { label: 'Documentation', slug: 'docs' },
             { label: 'Getting started', slug: 'docs/getting-started' },
+            { label: 'v0.9.1 release', slug: 'docs/releases/v0-9-1' },
             { label: 'v0.9.0 release', slug: 'docs/releases/v0-9-0' },
             { label: 'v0.8.1 release', slug: 'docs/releases/v0-8-1' },
             { label: 'v0.8.0 release', slug: 'docs/releases/v0-8-0' },

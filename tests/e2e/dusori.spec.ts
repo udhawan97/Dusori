@@ -476,7 +476,8 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expect(
     page.getByRole('heading', { name: 'Your notes stay on speaking terms.' }),
   ).toBeVisible();
-  await expect(page.getByText('The npm companion currently remains at v0.4.0')).toBeVisible();
+  await expect(page.getByText(`The npm companion now matches v${releaseVersion}.`)).toBeVisible();
+  await expect(page.locator('#run-locally code')).toHaveText('npx @udhawan97/dusori@latest');
 
   for (const imageName of [
     'Dusori Today view showing Continue learning and Needs attention from local workspace evidence',

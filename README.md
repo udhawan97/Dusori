@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
-  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.9.0 source ZIP" width="226"></a>
+  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.1.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.9.1 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
 </p>
 
@@ -41,11 +41,12 @@ You do not need to understand the technology before using Dusori.
 | -------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                              | It opens in your browser. No account or terminal.                                              |
 | Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
-| Run the current release yourself | **[Download v0.9.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
+| Run the current release locally  | **[Use the npm companion](#fastest-local-start)**                                       | With Node.js 24 installed, `npx` downloads and opens Dusori without a global install.          |
+| Run the current release yourself | **[Download v0.9.1](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.1.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
 | Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                    | You get the full monorepo and contributor workflow.                                            |
 
 > [!IMPORTANT]
-> The current app release is **v0.9.0**. The public npm companion is still **v0.4.0** as of August 2, 2026, so it is not the current-app download path. Use the browser app or the v0.9.0 source ZIP above.
+> The app and [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori/v/0.9.1) are aligned at **v0.9.1**. Dusori requires Node.js 24 LTS when you run it locally.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori Today showing Continue learning and Needs attention from a local workspace" width="920">
@@ -180,10 +181,22 @@ flowchart LR
 
 You need [Node.js 24 LTS](https://nodejs.org/en/download). Dusori runs on macOS, Windows, and Linux.
 
+### Fastest local start
+
+```bash
+npx @udhawan97/dusori@latest
+```
+
+This downloads the current companion and opens Dusori without a global install. To approve one existing workspace folder for that session:
+
+```bash
+npx @udhawan97/dusori@latest --root "/path/to/Dusori"
+```
+
 ### From the release ZIP
 
-1. **[Download Dusori v0.9.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip)** and unzip it.
-2. Open a terminal in the unzipped `Dusori-0.9.0` folder.
+1. **[Download Dusori v0.9.1](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.1.zip)** and unzip it.
+2. Open a terminal in the unzipped `Dusori-0.9.1` folder.
 3. Run:
 
 ```bash
@@ -290,9 +303,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Current release
 
-**v0.9.0** can turn a supported AWS Certification exam-guide PDF into a reviewable topic roadmap. The file is read on your device, the original outline remains editable, and nothing is written until you preview and confirm it.
+**v0.9.1** is the current patch release. It carries the on-device exam-guide PDF workflow from v0.9.0 and adds a release-integrity guard so npm provenance must match the exact tagged source.
 
-[Read the v0.9.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.9.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.9.1 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.9.1) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing and license
 

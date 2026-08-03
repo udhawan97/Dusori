@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.9.0';
+const releaseVersion = '0.9.1';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const gettingStartedHref = `${docsHref}getting-started/`;
@@ -226,7 +226,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             <svg class="option-icon" aria-hidden="true"><use href="#icon-terminal"></use></svg>
             <div>
               <h3>Run it locally</h3>
-              <p>Clone or unzip the source, then use one cross-platform start command.</p>
+              <p>With Node.js 24, one command downloads and opens the current release.</p>
             </div>
             <a class="option-link" href="#run-locally">
               See setup <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
@@ -235,9 +235,9 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         </div>
 
         <p class="package-note">
-          The npm companion currently remains at v0.4.0 and trails the app. Use the browser or v{
-            releaseVersion
-          } source for current features.
+          The npm companion now matches v{releaseVersion}. Run <code
+            >npx @udhawan97/dusori@latest</code
+          > to open the same current app without a global install.
         </p>
       </section>
 
@@ -450,12 +450,12 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <div class="run-command">
           <p>
             <svg aria-hidden="true"><use href="#icon-terminal"></use></svg>
-            After cloning or unzipping
+            With Node.js 24 LTS
           </p>
-          <pre><code>npm start</code></pre>
+          <pre><code>npx @udhawan97/dusori@latest</code></pre>
           <span
-            >Installs the pinned tools, builds, and opens Dusori. Nothing stays running after you
-            close the terminal.</span
+            >Downloads and opens the current release. Nothing stays running after you close the
+            terminal.</span
           >
           <a class="text-link" href={gettingStartedHref}>Full setup guide →</a>
         </div>
