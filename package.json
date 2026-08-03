@@ -25,7 +25,7 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.9",
+    "@astrojs/check": "0.9.10",
     "@axe-core/playwright": "4.12.1",
     "@dusori/core": "workspace:*",
     "@eslint/js": "10.0.1",
