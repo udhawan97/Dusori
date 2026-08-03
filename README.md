@@ -41,11 +41,12 @@ You do not need to understand the technology before using Dusori.
 | -------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                | It opens in your browser. No account or terminal.                                              |
 | Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                  | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
+| Run the current release locally  | **[Use the npm companion](#fastest-local-start)**                                         | With Node.js 24 installed, `npx` downloads and opens Dusori without a global install.          |
 | Run the current release yourself | **[Download v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
 | Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                      | You get the full monorepo and contributor workflow.                                            |
 
 > [!IMPORTANT]
-> The current app release is **v0.10.0**. The public npm companion is still **v0.4.0** as of August 2, 2026, so it is not the current-app download path. Use the browser app or the v0.10.0 source ZIP above.
+> The app and the [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori) are released together at **v0.10.0**; `npx @udhawan97/dusori@latest` always fetches the current published companion. Dusori requires Node.js 24 LTS when you run it locally.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori Today showing Continue learning and Needs attention from a local workspace" width="920">
@@ -189,6 +190,18 @@ flowchart LR
 
 You need [Node.js 24 LTS](https://nodejs.org/en/download). Dusori runs on macOS, Windows, and Linux.
 
+### Fastest local start
+
+```bash
+npx @udhawan97/dusori@latest
+```
+
+This downloads the current companion and opens Dusori without a global install. To approve one existing workspace folder for that session:
+
+```bash
+npx @udhawan97/dusori@latest --root "/path/to/Dusori"
+```
+
 ### From the release ZIP
 
 1. **[Download Dusori v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** and unzip it.
@@ -300,6 +313,8 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 ## Current release
 
 **v0.10.0** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every line cites the source it came from. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
+
+It keeps the v0.9.1 release-integrity guard, so npm provenance must match the exact tagged source.
 
 [Read the v0.10.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.10.0) · [Review the changelog](CHANGELOG.md)
 

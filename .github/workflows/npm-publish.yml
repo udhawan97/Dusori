@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing verified release tag to publish (for example v0.4.0)
+        description: Existing verified release tag to publish (for example v0.9.1)
         required: true
         type: string
 
@@ -24,6 +24,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_TAG }}
+      - name: Verify release tag matches the workflow subject
+        shell: bash
+        run: |
+          checked_out_sha=$(git rev-parse HEAD)
+          tagged_sha=$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")
+          test "${checked_out_sha}" = "${tagged_sha}"
+          test "${checked_out_sha}" = "${GITHUB_SHA}"
       - uses: pnpm/action-setup@v6
         with:
           version: 11.9.0
