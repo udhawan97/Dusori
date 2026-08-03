@@ -1,0 +1,237 @@
+- generic [active] [ref=f3e1]:
+  - link "Skip to content" [ref=f3e2] [cursor=pointer]:
+    - /url: "#_top"
+  - generic [ref=f3e3]:
+    - banner [ref=f3e4]:
+      - generic [ref=f3e5]:
+        - link "Dusori" [ref=f3e7] [cursor=pointer]:
+          - /url: /Dusori/
+        - button "Search" [ref=f3e11] [cursor=pointer]:
+          - generic [ref=f3e15]:
+            - generic [ref=f3e16]: ⌘
+            - generic [ref=f3e17]: K
+        - generic [ref=f3e18]:
+          - link "GitHub" [ref=f3e20] [cursor=pointer]:
+            - /url: https://github.com/udhawan97/Dusori
+          - generic [ref=f3e25]:
+            - generic [ref=f3e26]: Select theme
+            - combobox "Select theme" [ref=f3e27] [cursor=pointer]:
+              - option "Dark"
+              - option "Light"
+              - option "Auto" [selected]
+    - navigation "Main":
+      - list [ref=f3e31]:
+        - listitem [ref=f3e32]:
+          - group [ref=f3e33]:
+            - generic "Start" [ref=f3e34] [cursor=pointer]
+            - list [ref=f3e38]:
+              - listitem [ref=f3e39]:
+                - link "Documentation" [ref=f3e40] [cursor=pointer]:
+                  - /url: /Dusori/docs/
+              - listitem [ref=f3e41]:
+                - link "Getting started" [ref=f3e42] [cursor=pointer]:
+                  - /url: /Dusori/docs/getting-started/
+              - listitem [ref=f3e43]:
+                - link "v0.10.0 release" [ref=f3e44] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-10-0/
+              - listitem [ref=f3e45]:
+                - link "v0.9.0 release" [ref=f3e46] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-9-0/
+              - listitem [ref=f3e47]:
+                - link "v0.8.1 release" [ref=f3e48] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-8-1/
+              - listitem [ref=f3e49]:
+                - link "v0.8.0 release" [ref=f3e50] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-8-0/
+              - listitem [ref=f3e51]:
+                - link "v0.7.1 release" [ref=f3e52] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-7-1/
+              - listitem [ref=f3e53]:
+                - link "v0.7.0 release" [ref=f3e54] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-7-0/
+              - listitem [ref=f3e55]:
+                - link "v0.6.0 release" [ref=f3e56] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-6-0/
+              - listitem [ref=f3e57]:
+                - link "v0.5.0 release" [ref=f3e58] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-5-0/
+              - listitem [ref=f3e59]:
+                - link "v0.4.0 release" [ref=f3e60] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-4-0/
+              - listitem [ref=f3e61]:
+                - link "v0.3.0 release" [ref=f3e62] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-3-0/
+              - listitem [ref=f3e63]:
+                - link "v0.2.0 release" [ref=f3e64] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-2-0/
+              - listitem [ref=f3e65]:
+                - link "v0.1.0 release" [ref=f3e66] [cursor=pointer]:
+                  - /url: /Dusori/docs/releases/v0-1-0/
+        - listitem [ref=f3e67]:
+          - group [ref=f3e68]:
+            - generic "Use Dusori" [ref=f3e69] [cursor=pointer]
+            - list [ref=f3e73]:
+              - listitem [ref=f3e74]:
+                - link "Workspaces and folders" [ref=f3e75] [cursor=pointer]:
+                  - /url: /Dusori/docs/workspaces/
+              - listitem [ref=f3e76]:
+                - link "Sources" [ref=f3e77] [cursor=pointer]:
+                  - /url: /Dusori/docs/sources/
+              - listitem [ref=f3e78]:
+                - link "Curriculum import" [ref=f3e79] [cursor=pointer]:
+                  - /url: /Dusori/docs/curricula/
+              - listitem [ref=f3e80]:
+                - link "Learning loop" [ref=f3e81] [cursor=pointer]:
+                  - /url: /Dusori/docs/learning-loop/
+              - listitem [ref=f3e82]:
+                - link "Knowledge graph" [ref=f3e83] [cursor=pointer]:
+                  - /url: /Dusori/docs/knowledge-graph/
+              - listitem [ref=f3e84]:
+                - link "Local insights" [ref=f3e85] [cursor=pointer]:
+                  - /url: /Dusori/docs/insights/
+              - listitem [ref=f3e86]:
+                - link "Conflict safety" [ref=f3e87] [cursor=pointer]:
+                  - /url: /Dusori/docs/conflict-safety/
+              - listitem [ref=f3e88]:
+                - link "Browser support" [ref=f3e89] [cursor=pointer]:
+                  - /url: /Dusori/docs/browser-support/
+        - listitem [ref=f3e90]:
+          - link "Roadmap" [ref=f3e91] [cursor=pointer]:
+            - /url: /Dusori/docs/roadmap/
+    - generic [ref=f3e93]:
+      - complementary [ref=f3e94]:
+        - navigation [ref=f3e99]:
+          - heading "On this page" [level=2] [ref=f3e100]
+          - list [ref=f3e101]:
+            - listitem [ref=f3e102]:
+              - link "Overview" [ref=f3e103] [cursor=pointer]:
+                - /url: "#_top"
+            - listitem [ref=f3e104]:
+              - link "Research missions on Today" [ref=f3e105] [cursor=pointer]:
+                - /url: "#research-missions-on-today"
+            - listitem [ref=f3e106]:
+              - link "A research trail that survives reload" [ref=f3e107] [cursor=pointer]:
+                - /url: "#a-research-trail-that-survives-reload"
+            - listitem [ref=f3e108]:
+              - link "Research angles" [ref=f3e109] [cursor=pointer]:
+                - /url: "#research-angles"
+            - listitem [ref=f3e110]:
+              - link "Reading sources into quoted passages" [ref=f3e111] [cursor=pointer]:
+                - /url: "#reading-sources-into-quoted-passages"
+            - listitem [ref=f3e112]:
+              - link "A synthesis that cites everything" [ref=f3e113] [cursor=pointer]:
+                - /url: "#a-synthesis-that-cites-everything"
+            - listitem [ref=f3e114]:
+              - link "A learning page you can keep" [ref=f3e115] [cursor=pointer]:
+                - /url: "#a-learning-page-you-can-keep"
+            - listitem [ref=f3e116]:
+              - link "Also in this release" [ref=f3e117] [cursor=pointer]:
+                - /url: "#also-in-this-release"
+            - listitem [ref=f3e118]:
+              - link "Limitations" [ref=f3e119] [cursor=pointer]:
+                - /url: "#limitations"
+      - main [ref=f3e121]:
+        - heading "v0.10.0 release" [level=1] [ref=f3e124]
+        - generic [ref=f3e126]:
+          - generic [ref=f3e127]:
+            - paragraph [ref=f3e128]: Dusori becomes research-first. You name a topic you want to understand, and the research Dusori does is visible, inspectable, and traceable back to the evidence.
+            - generic [ref=f3e129]:
+              - heading "Research missions on Today" [level=2] [ref=f3e130]
+              - link "Section titled “Research missions on Today”" [ref=f3e131] [cursor=pointer]:
+                - /url: "#research-missions-on-today"
+            - paragraph [ref=f3e136]:
+              - strong [ref=f3e137]: Today
+              - text: "now opens with what Dusori has looked for, what it found, and what it has actually read: candidates discovered, sources saved, sources read, quoted passages held, when the topic was last refreshed, and which kinds of source it has nothing from yet. Every number is derived from files in your workspace, so a mission cannot report progress the files do not show."
+            - paragraph [ref=f3e138]: If a provider failed on the most recent scan, the mission says so. Incomplete coverage never reads as an empty field.
+            - generic [ref=f3e139]:
+              - heading "A research trail that survives reload" [level=2] [ref=f3e140]
+              - link "Section titled “A research trail that survives reload”" [ref=f3e141] [cursor=pointer]:
+                - /url: "#a-research-trail-that-survives-reload"
+            - paragraph [ref=f3e146]:
+              - text: Every scan is recorded in the topic’s
+              - code [ref=f3e147]: research.json
+              - text: ": when it ran, the exact text providers received, which angle asked the question, how many results were new, and one line per provider saying whether it found results, completed with nothing, or failed — carrying the failure’s own message."
+            - paragraph [ref=f3e148]: A scan in which every provider failed is recorded like any other. Before this release, a failed run left nothing on disk, so an outage became indistinguishable from “nothing found” the moment you reloaded the page.
+            - generic [ref=f3e149]:
+              - heading "Research angles" [level=2] [ref=f3e150]
+              - link "Section titled “Research angles”" [ref=f3e151] [cursor=pointer]:
+                - /url: "#research-angles"
+            - paragraph [ref=f3e156]: "A topic can now be researched from five prepared questions rather than only through a roadmap objective:"
+            - list [ref=f3e157]:
+              - listitem [ref=f3e158]: Definition and scope
+              - listitem [ref=f3e159]: How it works
+              - listitem [ref=f3e160]: Debates and criticism
+              - listitem [ref=f3e161]: Practice and tools
+              - listitem [ref=f3e162]: Recent developments
+            - paragraph [ref=f3e163]:
+              - text: Each angle sends the topic’s own name plus that angle’s words. Previously a new topic searched using its scaffold objective — creating “Spaced repetition learning” and scanning sent
+              - emphasis [ref=f3e164]: “Spaced repetition learning Establish the terms and boundaries.”
+              - text: to providers, which surfaced
+              - emphasis [ref=f3e165]: Go (game)
+              - text: and
+              - emphasis [ref=f3e166]: Glossary of computer science
+              - text: while missing the topic’s own article. The same scan now returns
+              - emphasis [ref=f3e167]: Spaced repetition
+              - text: ","
+              - emphasis [ref=f3e168]: Spaced learning
+              - text: ","
+              - emphasis [ref=f3e169]: Rote learning
+              - text: ","
+              - emphasis [ref=f3e170]: Flashcard
+              - text: ", and"
+              - emphasis [ref=f3e171]: Forgetting curve
+              - text: .
+            - paragraph [ref=f3e172]: A roadmap objective remains selectable for curriculum topics.
+            - generic [ref=f3e173]:
+              - heading "Reading sources into quoted passages" [level=2] [ref=f3e174]
+              - link "Section titled “Reading sources into quoted passages”" [ref=f3e175] [cursor=pointer]:
+                - /url: "#reading-sources-into-quoted-passages"
+            - paragraph [ref=f3e180]:
+              - strong [ref=f3e181]: Read saved sources
+              - text: reads the text you already approved and stores up to twelve verbatim excerpts per source, each tagged with the heading it sat under. Nothing is paraphrased and no model takes part — a passage Dusori cannot quote back to you is not stored.
+            - paragraph [ref=f3e182]: A source holding only an unfetched reference is reported as such, with the route to its text, instead of being silently skipped.
+            - generic [ref=f3e183]:
+              - heading "A synthesis that cites everything" [level=2] [ref=f3e184]
+              - link "Section titled “A synthesis that cites everything”" [ref=f3e185] [cursor=pointer]:
+                - /url: "#a-synthesis-that-cites-everything"
+            - paragraph [ref=f3e190]:
+              - strong [ref=f3e191]: Build synthesis
+              - text: writes
+              - code [ref=f3e192]: Synthesis.md
+              - text: into the topic. It groups quoted passages by what they are about, names which ideas more than one source supports, marks single-source ideas as thin evidence rather than stating them plainly, builds a timeline once at least three sources carry dates, and lists the questions the evidence itself raises. Lenses with nothing saved are named as a gap in coverage, not as an absence of material.
+            - paragraph [ref=f3e193]: Every line is a quotation with a link back to its source file. Rebuilding over a synthesis you have edited writes a proposal for review instead of overwriting your work, exactly like a roadmap conflict.
+            - paragraph [ref=f3e194]: With the companion and a configured AI provider, a model may write the overview prose only. It is labeled with its model name; the quotations, citations, and evidence accounting stay deterministic, and an AI failure keeps the deterministic document.
+            - generic [ref=f3e195]:
+              - heading "A learning page you can keep" [level=2] [ref=f3e196]
+              - link "Section titled “A learning page you can keep”" [ref=f3e197] [cursor=pointer]:
+                - /url: "#a-learning-page-you-can-keep"
+            - paragraph [ref=f3e202]:
+              - strong [ref=f3e203]: Create learning page
+              - text: writes
+              - code [ref=f3e204]: Learning/learn.html
+              - text: ": concepts with the passages that support them, an optional timeline, and reveal-style check-yourself prompts that keep no score and store nothing."
+            - paragraph [ref=f3e205]: The page inlines its own styles and script and makes no network request of any kind. It works offline, opens in any browser without Dusori, and travels in your ZIP export. A page edited outside Dusori is preserved; the rebuild is written beside it.
+            - generic [ref=f3e206]:
+              - heading "Also in this release" [level=2] [ref=f3e207]
+              - link "Section titled “Also in this release”" [ref=f3e208] [cursor=pointer]:
+                - /url: "#also-in-this-release"
+            - list [ref=f3e213]:
+              - listitem [ref=f3e214]: Saved research sources keep why they were chosen. The ranking reasons, the publisher, the author where a provider reports one, and any publication date are stored on the source record instead of being shown once and discarded.
+              - listitem [ref=f3e215]:
+                - strong [ref=f3e216]: Today
+                - text: ’s lanes stack based on the width they actually have rather than the width of the window. With the inspector open on a 1200px screen, the two lanes were squeezed until each item’s actions overlapped its own text.
+            - generic [ref=f3e217]:
+              - heading "Limitations" [level=2] [ref=f3e218]
+              - link "Section titled “Limitations”" [ref=f3e219] [cursor=pointer]:
+                - /url: "#limitations"
+            - list [ref=f3e224]:
+              - listitem [ref=f3e225]: Reading arbitrary web pages still needs the local companion. Without it, the six browser-reachable providers that return text — Wikipedia, OpenAlex, GitHub, Stack Exchange, Hacker News, and npm — are what can be read.
+              - listitem [ref=f3e226]: A mission never refreshes itself. Every scan is something you ask for; Dusori still creates no background work.
+              - listitem [ref=f3e227]: The public npm companion remains at v0.4.0. Use the browser app or the v0.10.0 source ZIP.
+          - generic [ref=f3e229]:
+            - link [ref=f3e230] [cursor=pointer]:
+              - /url: /Dusori/docs/getting-started/
+              - generic [ref=f3e233]: PreviousGetting started
+            - link [ref=f3e234] [cursor=pointer]:
+              - /url: /Dusori/docs/releases/v0-9-0/
+              - generic [ref=f3e237]: Nextv0.9.0 release

@@ -20,7 +20,7 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 
 ### Changed
 
-- Research now asks about the topic by default rather than about a scaffold objective. Creating "Spaced repetition learning" and scanning previously sent "Spaced repetition learning Establish the terms and boundaries." to providers, which surfaced *Go (game)* and *Glossary of computer science* while missing the topic's own article; it now surfaces *Spaced repetition*, *Spaced learning*, *Rote learning*, *Flashcard*, and *Forgetting curve*.
+- Research now asks about the topic by default rather than about a scaffold objective. Creating "Spaced repetition learning" and scanning previously sent "Spaced repetition learning Establish the terms and boundaries." to providers, which surfaced _Go (game)_ and _Glossary of computer science_ while missing the topic's own article; it now surfaces _Spaced repetition_, _Spaced learning_, _Rote learning_, _Flashcard_, and _Forgetting curve_.
 
 ### Fixed
 

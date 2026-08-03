@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
-  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.9.0 source ZIP" width="226"></a>
+  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.10.0 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
 </p>
 
@@ -37,15 +37,15 @@
 
 You do not need to understand the technology before using Dusori.
 
-| If you want to…                  | Choose                                                                                  | What happens                                                                                   |
-| -------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                              | It opens in your browser. No account or terminal.                                              |
-| Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
-| Run the current release yourself | **[Download v0.9.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
-| Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                    | You get the full monorepo and contributor workflow.                                            |
+| If you want to…                  | Choose                                                                                    | What happens                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Try it now                       | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                | It opens in your browser. No account or terminal.                                              |
+| Keep it like an app              | **[Install from your browser](https://udhawan97.github.io/Dusori/app/)**                  | Where supported, use **Install**, **Add to Dock**, or **Add to Home Screen** after opening it. |
+| Run the current release yourself | **[Download v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** | Unzip it, install Node.js 24 LTS, then run `npm start`.                                        |
+| Inspect or contribute            | **[Clone the source](#run-dusori-on-your-computer)**                                      | You get the full monorepo and contributor workflow.                                            |
 
 > [!IMPORTANT]
-> The current app release is **v0.9.0**. The public npm companion is still **v0.4.0** as of August 2, 2026, so it is not the current-app download path. Use the browser app or the v0.9.0 source ZIP above.
+> The current app release is **v0.10.0**. The public npm companion is still **v0.4.0** as of August 2, 2026, so it is not the current-app download path. Use the browser app or the v0.10.0 source ZIP above.
 
 <p align="center">
   <img src="apps/site/public/app-workspace.png" alt="Dusori Today showing Continue learning and Needs attention from a local workspace" width="920">
@@ -59,19 +59,21 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 | Part of Dusori         | In plain English                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Today**              | Shows the next evidence-backed action and real workspace problems worth fixing.                                       |
+| **Today**              | Opens with your research missions, the next evidence-backed action, and real workspace problems worth fixing.         |
+| **Research**           | Searches the providers you allow, shows why each result surfaced, and keeps a durable trail of every run.             |
+| **Synthesis**          | Turns approved sources into quoted passages and a cited synthesis that marks what only one source claims.             |
+| **Learn**              | Builds an optional self-contained learning page from those passages. It works offline and opens without Dusori.       |
 | **Curriculum**         | Turns a study guide—or a supported AWS exam-guide PDF—into a roadmap you review before saving.                        |
-| **Research**           | Finds candidate sources only from providers you allow, then lets you accept what belongs in your workspace.           |
 | **Notes and sources**  | Keeps Markdown, text—including text extracted locally from PDFs—saved pages, provenance, and links together by topic. |
 | **Review**             | Builds recall prompts from your own sources. Only your explicit answer changes the review schedule.                   |
 | **Graph and Insights** | Shows connections, backlinks, unresolved links, tags, activity, and topic depth derived from your files.              |
 
-### A learning loop with a beginning and an end
+### A research loop with a beginning and an end
 
-1. **Bring a topic.** Start from a study guide, your own outline, or a blank roadmap.
-2. **Choose the evidence.** Review sources before accepting them. Network providers are off until you allow them.
-3. **Make something durable.** Write a note, connect ideas, or finish a roadmap objective.
-4. **Return honestly.** Mark a topic reviewed only when you mean it; Dusori never claims mastery for you.
+1. **Name what you want to understand.** Dusori opens Research and prepares a scan for that topic.
+2. **Choose the evidence.** Providers are off until you allow them, each one naming exactly what it sends. Results stay suggestions until you accept them, and the trail records what every provider returned — or failed to return.
+3. **Read what you kept.** Dusori quotes your approved sources verbatim, then builds a synthesis where every line cites where it came from and single-source claims are marked as thin evidence.
+4. **Learn from it, and keep it.** Turn a well-supported topic into an offline learning page, or return to the open questions the evidence itself raised.
 
 <p align="center">
   <img src="apps/site/public/app-curriculum.png" alt="Dusori Curriculum showing a reviewable Microsoft Learn study-guide outline" width="360">
@@ -86,7 +88,12 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 | You do this                   | Dusori gives you                                                                                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Open Today                    | Continuation and attention lanes backed by workspace evidence, without changing progress.                          |
+| Open Today                    | Research missions plus continuation and attention lanes, all backed by workspace evidence.                         |
+| Scan a topic                  | Five prepared research angles, or your current roadmap objective, sent only to providers you allowed.              |
+| Look at past runs             | A durable trail naming every provider's result, including the ones that failed rather than found nothing.          |
+| Read saved sources            | Up to twelve verbatim quoted passages per source, each tagged with the heading it came from.                       |
+| Build a synthesis             | A cited `Synthesis.md` marking agreement, thin evidence, timeline, and the open questions left.                    |
+| Create a learning page        | A self-contained interactive HTML file with no network requests, openable outside Dusori.                          |
 | Check roadmap objectives      | Portable Markdown progress, explicit topic state, and a seven-day file-derived recap.                              |
 | Mark a topic reviewed         | An optional spaced schedule—1, 3, 7, 14, 30, then 60 days—that rests the topic until it is due.                    |
 | Start a review                | Active-recall prompts from that topic’s sources, an answer box, and answers saved as a note.                       |
@@ -104,7 +111,7 @@ Dusori keeps the learning process visible. It does not quietly invent progress, 
 
 General web search is optional companion configuration. Brave and Tavily use your keys; SearXNG offers a keyless, open-source route. Ollama, Anthropic, or OpenAI can optionally advise ranking, write a clearly labeled brief from accepted sources, or reword review prompts under separate consent. Deterministic ranking, briefs, and prompts remain the baseline.
 
-Unattended research is not implemented. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
+Unattended research is not implemented: every scan is one you ask for, and a mission never refreshes itself. Reading arbitrary web pages needs the local companion; without it, the providers that reach real text are Wikipedia, OpenAlex, GitHub, Stack Exchange, Hacker News, and npm. Dusori creates no calendar, notification, or background work. A review session stores nothing and never claims mastery until you explicitly choose **Got it** or **Needs work**.
 
 </details>
 
@@ -131,11 +138,13 @@ The durable interface is deliberately ordinary: folders, Markdown, text, JSON, a
 └── Topics/<topic-slug>/
     ├── Overview.md
     ├── roadmap.md
+    ├── Synthesis.md
     ├── TUTOR.md
     ├── state.json
     ├── research.json
     ├── review.json
     ├── proposals.json
+    ├── Learning/learn.html
     ├── Notes/
     ├── Updates/YYYY/MM/YYYY-MM-DD.md
     ├── Sources/
@@ -182,8 +191,8 @@ You need [Node.js 24 LTS](https://nodejs.org/en/download). Dusori runs on macOS,
 
 ### From the release ZIP
 
-1. **[Download Dusori v0.9.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip)** and unzip it.
-2. Open a terminal in the unzipped `Dusori-0.9.0` folder.
+1. **[Download Dusori v0.10.0](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.10.0.zip)** and unzip it.
+2. Open a terminal in the unzipped `Dusori-0.10.0` folder.
 3. Run:
 
 ```bash
@@ -290,9 +299,9 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Current release
 
-**v0.9.0** can turn a supported AWS Certification exam-guide PDF into a reviewable topic roadmap. The file is read on your device, the original outline remains editable, and nothing is written until you preview and confirm it.
+**v0.10.0** makes Dusori research-first. Name a topic you want to understand, and Dusori searches the providers you allow, keeps a durable trail of what each one returned or failed to return, reads what you approve into verbatim quoted passages, and builds a synthesis where every line cites the source it came from. A well-supported topic can become a self-contained interactive learning page that works offline and opens without Dusori.
 
-[Read the v0.9.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.9.0) · [Review the changelog](CHANGELOG.md)
+[Read the v0.10.0 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.10.0) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing and license
 
