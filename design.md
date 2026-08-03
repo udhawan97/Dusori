@@ -8,7 +8,7 @@ Atmospheric editorial: a nocturnal learning desk with Japanese spatial restraint
 
 ## Macrostructure family
 
-- Marketing pages: Marquee Hero with one real product artifact and a ruled proof sequence.
+- Marketing pages: Workbench-led Split Studio with one dominant real product capture, an icon-led download shelf, and a ruled proof sequence.
 - App pages: Workbench with compact rail, primary canvas, optional inspector, and constellation-desk graph variation.
 - Content pages: Long Document with a narrow reading measure and ruled navigation.
 

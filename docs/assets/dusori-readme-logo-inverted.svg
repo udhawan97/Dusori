@@ -2,9 +2,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" role="img" aria-labelledby="title description">
   <!-- Hallmark · component: README identity · genre: atmospheric editorial · theme: custom supplied identity · motion: finite chakra revolution + blade strike · critique: P5 H5 E5 S5 R5 V5 -->
   <title id="title">Dusori</title>
-  <desc id="description">The reversed monochrome Dusori ens&#x14D;, rangoli, and katana mark revolves, then the katana crosses its center and settles beside the Dusori wordmark on black.</desc>
+  <desc id="description">The Dusori ens&#x14D;, marigold rangoli, and vermilion katana mark settles beside the Dusori wordmark on a dark learning desk.</desc>
   <style>
     :root {
+      --readme-night: #14100d;
+      --readme-paper: #f7f1e8;
+      --readme-marigold: #c9862e;
+      --readme-vermilion: #cb4832;
       --readme-dur-revolve: 1.65s;
       --readme-dur-strike: 0.62s;
       --readme-dur-wordmark: 0.7s;
@@ -31,6 +35,18 @@
     .readme-wordmark {
       animation: wordmark-reveal var(--readme-dur-wordmark) var(--readme-ease-out)
         var(--readme-delay-wordmark) both;
+    }
+
+    .readme-chakra [stroke] {
+      stroke: var(--readme-marigold);
+    }
+
+    .readme-chakra [fill] {
+      fill: var(--readme-marigold);
+    }
+
+    .readme-blade path[d^='M17.2 30.95'] {
+      fill: var(--readme-vermilion);
     }
 
     @keyframes chakra-revolve {
@@ -79,8 +95,8 @@
       }
     }
   </style>
-  <rect width="720" height="280" rx="24" fill="#14100d"/>
-  <!-- Exact reversed-monochrome mark from the supplied Dusori identity set. -->
+  <rect width="720" height="280" rx="16" fill="#14100d"/>
+  <!-- Exact mark geometry from the supplied Dusori identity set, in the app palette. -->
   <g transform="translate(54 40) scale(3.125)">
         <path d="M55.77 26.51 C57.03 31.96 58.05 38.06 55.43 43.43 C52.81 48.8 48.57 53.28 43.11 55.83 C37.65 58.38 31.48 59.05 25.62 57.59 C19.76 56.13 14.65 52.61 11.03 47.8 C7.41 42.99 5.8 37.05 6.01 31.09 C6.22 25.13 8.71 19.57 12.58 15.12 C16.45 10.67 21.8 7.86 27.56 6.84 C33.32 5.82 38.85 8.28 43.67 10.95 C44.92 11.64 43.88 13.51 42.63 12.82 C38.24 10.38 33.06 11.05 28.45 11.86 C23.84 12.67 19.75 15.2 16.7 18.7 C13.65 22.2 12.18 26.72 12.02 31.3 C11.86 35.88 13.52 40.27 16.24 43.88 C18.96 47.49 22.89 49.95 27.25 51.04 C31.61 52.13 36.24 51.77 40.33 49.86 C44.42 47.95 47.92 44.84 49.92 40.74 C51.92 36.64 54.16 31.96 53.05 27.14 C52.63 25.33 55.35 24.7 55.77 26.51Z" fill="#f7f1e8"/>
         <g class="readme-chakra">
@@ -127,5 +143,6 @@
         </g>
         </g>
   </g>
-  <text class="readme-wordmark" x="300" y="168" fill="#f7f1e8" font-family="'Shippori Mincho', Georgia, 'Times New Roman', serif" font-size="86" font-weight="600" letter-spacing="-2">Dusori</text>
+  <text class="readme-wordmark" x="300" y="156" fill="#f7f1e8" font-family="'Shippori Mincho', Georgia, 'Times New Roman', serif" font-size="86" font-weight="600" letter-spacing="-2">Dusori</text>
+  <text class="readme-wordmark" x="304" y="196" fill="#c9bfb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="13" font-weight="500" letter-spacing="2.2">PRIVATE LEARNING · ORDINARY FILES</text>
 </svg>

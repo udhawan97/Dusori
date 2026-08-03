@@ -9,7 +9,7 @@ Each topic has a local source library. Open **Research**, use the **Approved evi
 
 - **Pasted text:** stored as a readable `.txt` file.
 - **Local file:** `.md`, `.markdown`, `.txt`, and `.pdf` files up to 2 MiB. Markdown stays Markdown; line endings are normalized for portability.
-- **PDF:** read on your device — the file is never uploaded, and the reader is fetched only the first time you import one. The extracted text becomes an ordinary local source. A scanned PDF has no text layer to read, and Dusori says so instead of saving an empty source; there is no OCR.
+- **PDF:** read on your device by the reader bundled with Dusori and loaded only when you import one. The file is never uploaded or copied into the workspace; its extracted text becomes an ordinary local source. A scanned PDF has no text layer to read, and Dusori says so instead of saving an empty source; there is no OCR.
 - **URL reference:** stores the complete `http://` or `https://` address in a small Markdown reference file. Dusori does not fetch or copy the page.
 - **Accepted research:** stores a previewed result from an allowed research provider only after explicit acceptance.
 
@@ -53,7 +53,7 @@ Dusori never ships a default instance and your browser never contacts YouTube, G
 
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
-Run the published companion with `npx @udhawan97/dusori@latest`, or approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`. To run from a clone, follow [Getting started](../getting-started/). Omit `--root` to keep folder access off.
+The current v0.9.0 companion runs from the [v0.9.0 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.9.0.zip) or a clone using `npm start`. Approve one existing folder with `npm start -- --root "/path/to/Dusori"`; omit `--root` to keep folder access off. The public npm companion remains at v0.4.0 and is not the current-app route. Follow [Getting started](../getting-started/) for the complete setup.
 
 ## Topic file contract
 

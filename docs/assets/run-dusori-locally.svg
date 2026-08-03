@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" role="img" aria-labelledby="title desc">
+  <!-- Hallmark · component: icon-led README action · genre: atmospheric editorial · theme: Dusori app tokens -->
+  <title id="title">Run Dusori locally</title>
+  <desc id="desc">A terminal icon beside the words Run locally and Node 24, one start command.</desc>
+  <rect x="1" y="1" width="358" height="82" rx="10" fill="#14100d" stroke="#3e3732" stroke-width="2"/>
+  <rect x="20" y="20" width="44" height="44" rx="7" fill="#6e6a5e"/>
+  <g fill="none" stroke="#fffaf3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="29" y="29" width="26" height="26" rx="3"/>
+    <path d="M34 37l5 5-5 5M43 48h7"/>
+  </g>
+  <text x="82" y="39" fill="#f7f1e8" font-family="'Zen Kaku Gothic New', Arial, sans-serif" font-size="20" font-weight="700">Run locally</text>
+  <text x="82" y="59" fill="#c9bfb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11" letter-spacing=".8">NODE 24 · ONE START COMMAND</text>
+  <path d="M327 35l7 7-7 7M318 42h16" fill="none" stroke="#c9862e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

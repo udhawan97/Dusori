@@ -1,5 +1,5 @@
 @import '../../../../config/fonts.css';
-@import '../../../app/src/styles/tokens.css';
+@import '../../../../tokens.css';
 
 :root {
   --sl-color-bg: var(--color-paper);

@@ -1,0 +1,22 @@
+/* Dusori public-surface token export · source system: apps/app/src/styles/tokens.css */
+@import './apps/app/src/styles/tokens.css';
+
+:root {
+  --color-panel: light-dark(oklch(94% 0.015 80), oklch(18% 0.014 60));
+  --color-panel-raised: light-dark(oklch(91% 0.018 80), oklch(22% 0.016 60));
+  --color-night-fixed: oklch(15% 0.012 55);
+  --color-night-raised-fixed: oklch(19% 0.014 60);
+  --color-paper-fixed: oklch(96% 0.014 80);
+  --color-paper-muted-fixed: oklch(76% 0.012 75);
+  --color-rule-fixed: oklch(32% 0.014 70);
+  --color-vermilion-fixed: oklch(67% 0.14 32);
+  --color-marigold-fixed: oklch(69% 0.13 72);
+  --color-vermilion-wash: light-dark(oklch(58% 0.17 32 / 0.08), oklch(67% 0.14 32 / 0.11));
+  --color-marigold-wash: light-dark(oklch(67% 0.14 72 / 0.08), oklch(69% 0.13 72 / 0.1));
+  --color-scrim: light-dark(oklch(15% 0.012 55 / 0.08), oklch(8% 0.01 55 / 0.34));
+  --color-nav: light-dark(oklch(96% 0.014 80 / 0.94), oklch(15% 0.012 55 / 0.94));
+  --color-selection: light-dark(oklch(58% 0.17 32 / 0.2), oklch(67% 0.14 32 / 0.24));
+  --layout-max: 88rem;
+  --layout-copy: 64ch;
+  --layout-gutter: clamp(1rem, 4vw, 4rem);
+}

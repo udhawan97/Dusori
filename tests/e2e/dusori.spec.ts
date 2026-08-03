@@ -306,14 +306,21 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     'href',
     '/Dusori/app/',
   );
-  await expect(page.getByRole('link', { name: /read the docs/iu })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Docs', exact: true })).toHaveAttribute(
     'href',
     '/Dusori/docs/',
   );
-  await expect(page.getByText(`v${releaseVersion} · available now`, { exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: /release notes/iu })).toHaveAttribute(
+  await expect(page.getByText(`v${releaseVersion} available now`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: `v${releaseVersion} available now` }),
+  ).toHaveAttribute('href', `https://github.com/udhawan97/Dusori/releases/tag/v${releaseVersion}`);
+  await expect(page.getByRole('link', { name: /download zip/iu }).first()).toHaveAttribute(
     'href',
-    `https://github.com/udhawan97/Dusori/releases/tag/v${releaseVersion}`,
+    `https://github.com/udhawan97/Dusori/archive/refs/tags/v${releaseVersion}.zip`,
+  );
+  await expect(page.getByRole('link', { name: 'See setup' })).toHaveAttribute(
+    'href',
+    '#run-locally',
   );
   await expectNoSeriousA11yViolations(page);
 
@@ -443,6 +450,12 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   page,
 }) => {
   await page.goto('/Dusori/');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    'content',
+    'https://udhawan97.github.io/Dusori/og-dusori.png',
+  );
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
   const identity = page.getByRole('img', { name: 'Dusori ensō, rangoli, and katana mark' });
   await expect(identity).toBeVisible();
   await expect(identity).toHaveAttribute('src', '/Dusori/brand/dusori-mark-animated.svg');
@@ -458,18 +471,32 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
     'srcset',
     '/Dusori/brand/dusori-mark-animated-reversed.svg',
   );
-  expect((await identity.boundingBox())?.width).toBeGreaterThan(360);
+  expect((await identity.boundingBox())?.width).toBeGreaterThanOrEqual(64);
+  await expect(page.getByRole('heading', { name: 'Start where you are.' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Your notes, finally on speaking terms.' }),
+    page.getByRole('heading', { name: 'Your notes stay on speaking terms.' }),
   ).toBeVisible();
-  await expect(page.getByText('Japanese restraint · Indian geometry')).toBeVisible();
+  await expect(page.getByText('The npm companion currently remains at v0.4.0')).toBeVisible();
 
-  const sceneStage = page.locator('.scene-stage');
-  await expect(sceneStage).toHaveAttribute('data-scene', 'wheel');
-  await page
-    .locator('.chapter[data-chapter="blade"]')
-    .evaluate((chapter) => chapter.scrollIntoView({ block: 'center', behavior: 'instant' }));
-  await expect(sceneStage).toHaveAttribute('data-scene', 'blade');
+  for (const imageName of [
+    'Dusori Today view showing Continue learning and Needs attention from local workspace evidence',
+    'Dusori curriculum preview showing Microsoft Learn roadmap items before the user applies them',
+    'Dusori knowledge constellation built from portable local artifacts',
+  ]) {
+    const capture = page.getByRole('img', { name: imageName });
+    await capture.scrollIntoViewIfNeeded();
+    await expect(capture).toBeVisible();
+    await expect
+      .poll(() => capture.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(1);
+  }
+
+  for (const width of [320, 375, 414, 768, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: width < 768 ? 812 : 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
 
   await page.goto('/Dusori/brand/dusori-mark-animated.svg');
   const chakra = page.locator('.chakra-motion');
@@ -2145,6 +2172,11 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
       path: `test-results/screenshots/curriculum-${width}.png`,
       fullPage: true,
     });
+    if (width === 1280) {
+      await page.locator('.curriculum-importer').screenshot({
+        path: 'test-results/screenshots/curriculum-panel-1280.png',
+      });
+    }
 
     await runConflictProof(page);
     await expect(page.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
