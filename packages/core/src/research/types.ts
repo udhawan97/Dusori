@@ -5,6 +5,8 @@ export interface ResearchQuery {
   searchText: string;
   /** Objective terms followed by the topic terms it does not already carry. */
   terms: string[];
+  /** Which research angle seeded this query, recorded on the run so a trail stays readable. */
+  angleId?: string;
 }
 
 /**

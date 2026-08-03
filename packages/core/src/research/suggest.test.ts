@@ -238,7 +238,7 @@ describe('research run memory', () => {
     const file = await recordResearchRun(
       storage,
       'azure-administration',
-      [{ key: 'wikipedia:1' }],
+      { candidates: [{ key: 'wikipedia:1' }], providers: [], searchText: 'query' },
       later,
     );
 
@@ -253,10 +253,14 @@ describe('research run memory', () => {
     const file = await recordResearchRun(
       storage,
       'azure-administration',
-      [
-        { key: 'wikipedia:1', url: 'https://en.wikipedia.org/wiki/Identity_management' },
-        { key: 'mslearn:2' },
-      ],
+      {
+        candidates: [
+          { key: 'wikipedia:1', url: 'https://en.wikipedia.org/wiki/Identity_management' },
+          { key: 'mslearn:2' },
+        ],
+        providers: [],
+        searchText: 'query',
+      },
       now,
     );
 
@@ -276,12 +280,21 @@ describe('research run memory', () => {
 
   it('keeps the original timestamp of an already-seen key while adding new ones', async () => {
     const storage = await topicStorage();
-    await recordResearchRun(storage, 'azure-administration', [{ key: 'wikipedia:1' }], now);
+    await recordResearchRun(
+      storage,
+      'azure-administration',
+      { candidates: [{ key: 'wikipedia:1' }], providers: [], searchText: 'query' },
+      now,
+    );
 
     const file = await recordResearchRun(
       storage,
       'azure-administration',
-      [{ key: 'wikipedia:1' }, { key: 'wikipedia:2' }],
+      {
+        candidates: [{ key: 'wikipedia:1' }, { key: 'wikipedia:2' }],
+        providers: [],
+        searchText: 'query',
+      },
       later,
     );
 
@@ -307,7 +320,11 @@ describe('research run memory', () => {
     const file = await recordResearchRun(
       storage,
       'azure-administration',
-      [{ key: 'new:1' }, { key: 'new:2' }, { key: 'new:3' }],
+      {
+        candidates: [{ key: 'new:1' }, { key: 'new:2' }, { key: 'new:3' }],
+        providers: [],
+        searchText: 'query',
+      },
       later,
     );
 
@@ -326,7 +343,12 @@ describe('research run memory', () => {
       now,
     );
 
-    await recordResearchRun(storage, 'azure-administration', [{ key: 'wikipedia:1' }], later);
+    await recordResearchRun(
+      storage,
+      'azure-administration',
+      { candidates: [{ key: 'wikipedia:1' }], providers: [], searchText: 'query' },
+      later,
+    );
 
     expect(await readDismissed(storage, 'azure-administration', later)).toEqual([
       { at: now.toISOString(), key: 'wikipedia:2', title: 'Dismissed article' },
@@ -358,7 +380,12 @@ describe('research run memory', () => {
       return originalWrite(writePath, content, options);
     });
 
-    await recordResearchRun(storage, 'azure-administration', [{ key: 'wikipedia:42' }], later);
+    await recordResearchRun(
+      storage,
+      'azure-administration',
+      { candidates: [{ key: 'wikipedia:42' }], providers: [], searchText: 'query' },
+      later,
+    );
 
     expect(await readSeenKeys(storage, 'azure-administration', later)).toEqual(
       new Set(['mslearn:concurrent', 'wikipedia:42']),
@@ -377,7 +404,12 @@ describe('research run memory', () => {
     });
 
     await expect(
-      recordResearchRun(storage, 'azure-administration', [{ key: 'wikipedia:42' }], later),
+      recordResearchRun(
+        storage,
+        'azure-administration',
+        { candidates: [{ key: 'wikipedia:42' }], providers: [], searchText: 'query' },
+        later,
+      ),
     ).rejects.toThrow('Research run history changed repeatedly. Try running research again.');
     expect(attempts).toBe(3);
   });

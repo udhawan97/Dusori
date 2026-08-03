@@ -9,6 +9,7 @@ build/
 .svelte-kit/
 .astro/
 .playwright-cli/
+.playwright-mcp/
 playwright-report/
 test-results/
 output/playwright/

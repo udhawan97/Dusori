@@ -4,6 +4,28 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-02
+
+Dusori becomes research-first: you name a topic you want to understand, and the research it does is visible, inspectable, and traceable back to the evidence.
+
+### Added
+
+- **Research missions on Today.** The workspace opens with what Dusori has looked for, what it found, and what it has actually read — sources discovered, saved, read, and quoted, when the topic was last refreshed, and which kinds of source it has nothing from yet. Every number is derived from files in your workspace, so a mission cannot claim progress the files do not show.
+- **A durable research trail.** Every scan is recorded in the topic's `research.json`: when it ran, the exact text providers received, which angle asked the question, how many results were new, and one line per provider saying whether it found results, completed with nothing, or failed — with the failure's own message. The trail survives reload, so a provider outage is still reported as an outage tomorrow instead of decaying into "nothing found".
+- **Research angles.** A topic can be researched from five prepared questions — definition and scope, how it works, debates and criticism, practice and tools, recent developments — instead of only through a roadmap objective. Each angle sends the topic's own name plus that angle's words.
+- **Reading saved sources into quoted passages.** One action reads the text you already approved and stores up to twelve verbatim excerpts per source, each tagged with the heading it sat under. Nothing is paraphrased and no model is involved; a source that holds only an unfetched reference says so and names how to get its text.
+- **A cited synthesis.** `Synthesis.md` groups those quotations by what they are about, shows which ideas more than one source supports, marks single-source ideas as thin evidence, builds a timeline once three sources carry dates, and lists the questions the evidence itself raises. Every line is a quotation with a link back to its source file. Regenerating it over a synthesis you have edited writes a proposal instead of overwriting your work.
+- **A learning page you can keep.** `Learning/learn.html` is a self-contained interactive page — concepts with their supporting quotations, an optional timeline, and reveal-style check-yourself prompts that score nothing and store nothing. It has no external requests of any kind, works offline, opens outside Dusori, and travels in your ZIP export.
+- Saved research sources now keep why they were chosen. The ranker's reasons, the publisher, the author where a provider reports one, and the publication date are stored on the source record instead of being shown once and discarded.
+
+### Changed
+
+- Research now asks about the topic by default rather than about a scaffold objective. Creating "Spaced repetition learning" and scanning previously sent "Spaced repetition learning Establish the terms and boundaries." to providers, which surfaced _Go (game)_ and _Glossary of computer science_ while missing the topic's own article; it now surfaces _Spaced repetition_, _Spaced learning_, _Rote learning_, _Flashcard_, and _Forgetting curve_.
+
+### Fixed
+
+- **Today**'s lanes now stack based on the width they actually have rather than the width of the window. With the inspector open on a 1200px screen the two lanes were squeezed until each item's actions overlapped its own text.
+
 ## [0.9.1] - 2026-08-02
 
 ### Fixed

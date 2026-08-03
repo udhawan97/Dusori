@@ -1,6 +1,11 @@
 import type { StorageAdapter } from '../adapters.js';
 import { rankCandidates, selectDiverse, type RankedCandidate } from './rank.js';
-import { readResearchFile, recordResearchRun } from './research-file.js';
+import {
+  readResearchFile,
+  recordResearchRun,
+  type ResearchRunRecord,
+  type RunProviderOutcome,
+} from './research-file.js';
 import { filterResearchSuggestions } from './suggest.js';
 import type { ResearchCandidate, ResearchProvider, ResearchQuery } from './types.js';
 
@@ -14,6 +19,8 @@ export interface ResearchRunResult {
   shortlist: RankedCandidate[];
   overflow: RankedCandidate[];
   skipped: SkippedProvider[];
+  /** The run as it was persisted, or null if only the persistence step failed. */
+  run: ResearchRunRecord | null;
 }
 
 export interface RunResearchAgentInput {
@@ -78,32 +85,45 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
 
   const found: ResearchCandidate[] = [];
   const skipped: SkippedProvider[] = [];
+  const outcomes: RunProviderOutcome[] = [];
   settled.forEach((result, index) => {
     const provider = input.providers[index];
     if (!provider) return;
     if (result.status === 'fulfilled') {
       found.push(...result.value);
+      outcomes.push({
+        count: result.value.length,
+        id: provider.id,
+        label: provider.label,
+        outcome: result.value.length > 0 ? 'found' : 'empty',
+      });
       return;
     }
-    skipped.push({
-      id: provider.id,
-      label: provider.label,
-      message: skipMessage(result.reason, provider.label),
-    });
+    const message = skipMessage(result.reason, provider.label);
+    skipped.push({ id: provider.id, label: provider.label, message });
+    outcomes.push({ count: 0, id: provider.id, label: provider.label, message, outcome: 'failed' });
   });
 
   const fresh = await filterResearchSuggestions(input.storage, input.topicSlug, found, now);
   const ranked = rankCandidates(input.query, fresh, { now, seen });
   const { overflow, shortlist } = selectDiverse(ranked, input.limit);
 
-  if (ranked.length > 0) {
-    await recordResearchRun(
-      input.storage,
-      input.topicSlug,
-      ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
-      now,
-    );
-  }
+  // The run itself is evidence: a failure trail must survive reload exactly like a success,
+  // or "no research found" and "research broke" become indistinguishable after a reload.
+  // A trail that cannot be written must not cost the user the results themselves.
+  const run = await recordResearchRun(
+    input.storage,
+    input.topicSlug,
+    {
+      angleId: input.query.angleId,
+      candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      providers: outcomes,
+      searchText: input.query.searchText,
+    },
+    now,
+  )
+    .then((file): ResearchRunRecord | null => file.runs?.at(-1) ?? null)
+    .catch((): null => null);
 
-  return { overflow, shortlist, skipped };
+  return { overflow, run, shortlist, skipped };
 }

@@ -1,5 +1,15 @@
 <script lang="ts">
-  import { AlertTriangle, BookMarked, Check, Eye, Search, Sparkles, X } from '@lucide/svelte';
+  import {
+    AlertTriangle,
+    BookMarked,
+    BookOpenCheck,
+    Check,
+    Eye,
+    GraduationCap,
+    Search,
+    Sparkles,
+    X,
+  } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
 
   import {
@@ -7,14 +17,20 @@
     applyAiRerank,
     briefNoteTitle,
     buildAiBrief,
+    buildAngleQuery,
     buildDeterministicBrief,
     buildResearchQuery,
     buildUpgradedContent,
     createNote,
     createResearchProviders,
     dismissSuggestion,
+    readResearchFile,
+    readSourcesIntoClaims,
     readTopicProgress,
+    researchAngles,
     runResearchAgent,
+    writeLearnPage,
+    writeTopicSynthesis,
     type AiCapability,
     type BriefSource,
     type CompanionAiClient,
@@ -22,6 +38,8 @@
     type RankedCandidate,
     type ResearchCapture,
     type ResearchProvider,
+    type ResearchQuery,
+    type ResearchRunRecord,
     type ResearchRunResult,
     type RoadmapObjective,
     type StorageAdapter,
@@ -30,6 +48,7 @@
   import { modal } from '$lib/actions/modal';
   import { grantConsent, hasConsent as deviceHasConsent } from '$lib/consent';
   import MarkdownView from './MarkdownView.svelte';
+  import ResearchTrail from './ResearchTrail.svelte';
   import VideoThumbnail from './VideoThumbnail.svelte';
 
   export let storage: StorageAdapter;
@@ -102,6 +121,20 @@
   let briefPath = '';
   let briefError = '';
   let autoStarted = false;
+  let trailRuns: ResearchRunRecord[] = [];
+  let angleId = 'overview';
+  let readingSources = false;
+  let deepResult: { read: number; claims: number; unreadable: string[] } | null = null;
+  let deepError = '';
+  let buildingSynthesis = false;
+  let synthesisNotice = '';
+  let synthesisError = '';
+  let buildingLearnPage = false;
+  let learnNotice = '';
+  let learnError = '';
+
+  const objectiveAngleId = 'roadmap-objective';
+  $: angle = researchAngles.find((item) => item.id === angleId) ?? researchAngles[0]!;
 
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
   $: consented = readConsented(providers, consentTick);
@@ -134,8 +167,18 @@
     } finally {
       loadingObjectives = false;
     }
+    await loadTrail();
     await tick();
     await maybeAutoRun(nextObjective);
+  }
+
+  async function loadTrail(): Promise<void> {
+    try {
+      const file = await readResearchFile(storage, topicSlug);
+      trailRuns = [...(file?.runs ?? [])].reverse();
+    } catch {
+      trailRuns = [];
+    }
   }
 
   // Keyed by consentScope so a variant that widens egress (companion-ranked search, AI) asks
@@ -183,11 +226,23 @@
     consentInvoker = null;
   }
 
-  async function runWith(
-    objective: RoadmapObjective | null,
-    providerList: ResearchProvider[],
-  ): Promise<void> {
-    if (!objective || providerList.length === 0) return;
+  /**
+   * The question this scan asks. An angle asks about the topic itself; picking a roadmap
+   * objective asks about that objective instead. Angles are the default because a scaffold
+   * objective ("Establish the terms and boundaries") names no subject, and sending its words
+   * to a search engine returns pages about anything at all.
+   */
+  function currentQuery(objective: RoadmapObjective | null): ResearchQuery {
+    if (angleId === objectiveAngleId) {
+      return objective
+        ? buildResearchQuery(topicTitle, objective)
+        : buildResearchQuery(topicTitle, { title: '' });
+    }
+    return buildAngleQuery(topicTitle, angle);
+  }
+
+  async function runWith(query: ResearchQuery, providerList: ResearchProvider[]): Promise<void> {
+    if (providerList.length === 0) return;
     running = true;
     runError = '';
     notices = [];
@@ -195,7 +250,6 @@
     actionError = null;
     attemptedProviderCount = providerList.length;
     try {
-      const query = buildResearchQuery(topicTitle, objective);
       const result = await runResearchAgent({
         fetchImpl: fetch,
         providers: providerList,
@@ -204,6 +258,7 @@
         topicSlug,
       });
       runResult = await withAiRanking(query, result);
+      if (result.run) trailRuns = [result.run, ...trailRuns];
     } catch {
       runError = networkAlternative;
       runResult = null;
@@ -213,16 +268,21 @@
   }
 
   async function run(): Promise<void> {
-    await runWith(selectedObjective, enabledProviders);
+    await runWith(currentQuery(selectedObjective), enabledProviders);
+  }
+
+  async function selectAngle(next: string): Promise<void> {
+    angleId = next;
+    if (enabledProviders.length > 0) await run();
   }
 
   async function maybeAutoRun(objective: RoadmapObjective | null): Promise<void> {
     const allowedProviders = providers.filter(hasConsent);
-    if (!autoStart || autoStarted || !objective || allowedProviders.length === 0 || running) return;
+    if (!autoStart || autoStarted || allowedProviders.length === 0 || running) return;
     autoStarted = true;
     onAutoStartHandled();
     await tick();
-    await runWith(objective, allowedProviders);
+    await runWith(currentQuery(objective), allowedProviders);
   }
 
   // Advisory only: the AI reorders and annotates what the deterministic ranker found; a
@@ -342,6 +402,16 @@
           capturedVia,
           provider: provider.id,
         },
+        // Why this surfaced, and what the provider said about the artifact itself. Computed
+        // at rank time and previously discarded on save, which left an accepted source with
+        // no record of the judgement that put it in front of the learner.
+        provenance: {
+          author: candidate.meta.author ?? candidate.meta.channel ?? candidate.meta.byline,
+          publishedAt: candidate.publishedAt,
+          publisher: provider.label,
+          readState: capturedVia === 'search-reference' ? 'reference' : 'readable',
+          whySelected: candidate.reasons.slice(0, 8),
+        },
         title: capture.title,
         topicSlug,
         url: capture.url,
@@ -432,6 +502,65 @@
     }
   }
 
+  /** Reads every saved source's local text into verbatim claims. No network, no model. */
+  async function readSources(): Promise<void> {
+    readingSources = true;
+    deepError = '';
+    deepResult = null;
+    try {
+      const result = await readSourcesIntoClaims(storage, topicSlug);
+      deepResult = {
+        claims: result.read.reduce((total, entry) => total + entry.claims, 0),
+        read: result.read.length,
+        unreadable: result.unreadable.map((entry) => `${entry.title} — ${entry.reason}`),
+      };
+      onSourceSaved();
+    } catch (caught) {
+      deepError =
+        caught instanceof Error ? caught.message : 'Dusori could not read the saved sources.';
+    } finally {
+      readingSources = false;
+    }
+  }
+
+  async function buildSynthesis(): Promise<void> {
+    buildingSynthesis = true;
+    synthesisError = '';
+    synthesisNotice = '';
+    try {
+      const result = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+      synthesisNotice =
+        result.status === 'written'
+          ? `Synthesis written from ${result.synthesis.claimCount} quoted passages across ${result.synthesis.readCount} sources.`
+          : 'Your edited synthesis was kept. The rebuilt version is waiting as a proposal in Needs attention.';
+      onSourceSaved();
+    } catch (caught) {
+      synthesisError =
+        caught instanceof Error ? caught.message : 'Dusori could not write the synthesis.';
+    } finally {
+      buildingSynthesis = false;
+    }
+  }
+
+  async function buildLearnPage(): Promise<void> {
+    buildingLearnPage = true;
+    learnError = '';
+    learnNotice = '';
+    try {
+      const result = await writeLearnPage(storage, topicSlug, topicTitle);
+      learnNotice =
+        result.status === 'written'
+          ? `Learning page built at ${result.path}. It works offline and needs no network.`
+          : `Your edited page was kept. The rebuilt page is at ${result.proposalPath}.`;
+      onSourceSaved();
+    } catch (caught) {
+      learnError =
+        caught instanceof Error ? caught.message : 'Dusori could not build the learning page.';
+    } finally {
+      buildingLearnPage = false;
+    }
+  }
+
   function handleEscape(): void {
     if (preview) void closePreview();
     else if (consentProvider) void declineProvider();
@@ -451,20 +580,37 @@
 
   {#if loadingObjectives}
     <p class="research-empty">Reading the topic roadmap…</p>
-  {:else if objectives.length === 0}
-    <div class="research-empty">
-      <p>No roadmap objectives yet.</p>
-      <span>Import a curriculum or add a Markdown task before searching.</span>
-    </div>
   {:else}
-    <label for="research-objective">Research objective</label>
-    <select id="research-objective" bind:value={objectiveIndex} disabled={running}>
-      {#each objectives as objective (objective.index)}
-        <option value={objective.index}>
-          {objective.completed ? 'Complete · ' : ''}{objective.title}
-        </option>
-      {/each}
-    </select>
+    <div class="query-fields">
+      <div>
+        <label for="research-angle">What to ask</label>
+        <select
+          id="research-angle"
+          value={angleId}
+          disabled={running}
+          onchange={(event) => void selectAngle(event.currentTarget.value)}
+        >
+          {#each researchAngles as item (item.id)}
+            <option value={item.id}>{item.title}</option>
+          {/each}
+          {#if objectives.length > 0}
+            <option value={objectiveAngleId}>Your roadmap objective</option>
+          {/if}
+        </select>
+      </div>
+      {#if objectives.length > 0}
+        <div>
+          <label for="research-objective">Research objective</label>
+          <select id="research-objective" bind:value={objectiveIndex} disabled={running}>
+            {#each objectives as objective (objective.index)}
+              <option value={objective.index}>
+                {objective.completed ? 'Complete · ' : ''}{objective.title}
+              </option>
+            {/each}
+          </select>
+        </div>
+      {/if}
+    </div>
 
     <div class="provider-consents" aria-label="Research providers">
       <p class="field-label">
@@ -548,6 +694,49 @@
         {/each}
       </ul>
     {/if}
+
+    <section class="understand-bay" aria-labelledby="understand-title">
+      <h3 id="understand-title">Understand this topic</h3>
+      <p class="understand-explainer">
+        Read what you saved into quoted passages, then build a synthesis and an optional learning
+        page from those quotes. Nothing here contacts the network.
+      </p>
+      <div class="understand-actions">
+        <button disabled={readingSources} onclick={() => void readSources()}>
+          <BookOpenCheck aria-hidden="true" size={16} />
+          {readingSources ? 'Reading saved sources…' : 'Read saved sources'}
+        </button>
+        <button disabled={buildingSynthesis} onclick={() => void buildSynthesis()}>
+          <Sparkles aria-hidden="true" size={16} />
+          {buildingSynthesis ? 'Building synthesis…' : 'Build synthesis'}
+        </button>
+        <button disabled={buildingLearnPage} onclick={() => void buildLearnPage()}>
+          <GraduationCap aria-hidden="true" size={16} />
+          {buildingLearnPage ? 'Building learning page…' : 'Create learning page'}
+        </button>
+      </div>
+      {#if deepResult}
+        <p class="notice" role="status">
+          Read {deepResult.read}
+          {deepResult.read === 1 ? 'source' : 'sources'} into {deepResult.claims} quoted
+          {deepResult.claims === 1 ? 'passage' : 'passages'}.
+        </p>
+        {#if deepResult.unreadable.length > 0}
+          <ul class="unreadable-list" aria-label="Sources with no readable text">
+            {#each deepResult.unreadable as entry (entry)}
+              <li>{entry}</li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+      {#if deepError}<p class="action-error" role="alert">{deepError}</p>{/if}
+      {#if synthesisNotice}<p class="notice" role="status">{synthesisNotice}</p>{/if}
+      {#if synthesisError}<p class="action-error" role="alert">{synthesisError}</p>{/if}
+      {#if learnNotice}<p class="notice" role="status">{learnNotice}</p>{/if}
+      {#if learnError}<p class="action-error" role="alert">{learnError}</p>{/if}
+    </section>
+
+    <ResearchTrail runs={trailRuns} />
 
     {#if shortlist.length > 0}
       <ol class="result-list" aria-label="Research shortlist">
@@ -774,6 +963,7 @@
 <style>
   .research-panel {
     display: grid;
+    container-type: inline-size;
     gap: var(--space-lg);
   }
 
@@ -831,6 +1021,61 @@
     color: var(--color-muted);
     font-size: var(--text-xs);
     font-weight: 400;
+  }
+
+  /* The two selects always share one row, so asking which question to research costs no
+     vertical space and the first provider control stays above the fold at every size. */
+  .query-fields {
+    display: grid;
+    gap: var(--space-xs);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .query-fields label {
+    display: block;
+    margin-block-end: var(--space-2xs);
+  }
+
+  .understand-bay {
+    margin-block-start: var(--space-lg);
+    padding-block-start: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .understand-bay h3 {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+  }
+
+  .understand-explainer {
+    margin-block: var(--space-2xs) var(--space-sm);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .understand-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+  }
+
+  .understand-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+    padding-inline: var(--space-sm);
+    background: var(--color-paper);
+    color: var(--color-accent-text);
+    font-size: var(--text-xs);
+  }
+
+  .unreadable-list {
+    margin: var(--space-xs) 0 0;
+    padding-inline-start: var(--space-md);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
   }
 
   select,

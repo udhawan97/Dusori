@@ -40,6 +40,25 @@ The first stored research state creates `Topics/<topic-slug>/research.json`:
       "url": "https://en.wikipedia.org/...",
       "at": "ISO-8601 datetime"
     }
+  ],
+  "runs": [
+    {
+      "at": "ISO-8601 datetime",
+      "searchText": "Spaced repetition learning how it works",
+      "angleId": "mechanism",
+      "newKeys": 3,
+      "providers": [
+        { "id": "wikipedia", "label": "Wikipedia", "outcome": "found", "count": 8 },
+        { "id": "github", "label": "GitHub", "outcome": "empty", "count": 0 },
+        {
+          "id": "openalex",
+          "label": "OpenAlex",
+          "outcome": "failed",
+          "count": 0,
+          "message": "OpenAlex took too long to answer and was skipped."
+        }
+      ]
+    }
   ]
 }
 ```
@@ -65,3 +84,9 @@ Upgrading a URL source's stub content to the fetched page's full text uses the s
 **2026-07 (v0.3.0):** `SourceRecord.origin.provider` and `origin.capturedVia` widened from closed enums to validated non-empty strings (known values: `mslearn`, `wikipedia`, `companion` / `catalog-reference`, `api-extract`, `page-extract`). A v0.2.0 reader that encounters `provider: 'companion'` fails its schema check and renames the manifest to `Sources/manifest.json.invalid-<timestamp>`. Nothing restores it: once that has happened, even an updated app reports the manifest as missing, and the topic's source library and ZIP export stay broken until the user renames the file back by hand. Source content files are never touched, so no material is lost. Avoid pointing a v0.2.0 build at a workspace an upgraded source has been written into — including a stale `npx dusori` companion serving its own bundled app copy. The widening makes this the last provenance value that can break a reader.
 
 **2026-07 (current main):** research provider values now include `hackernews`, `github`, `stackexchange`, `arxiv`, and `websearch`; their capture methods remain non-empty strings under the same schema. `research.json` adds optional `lastRunAt` and bounded `seen[]` fields. Older readers ignore these additive research-state fields.
+
+**2026-08 (v0.10.0):** `research.json` adds an optional `runs[]` trail, bounded to the most recent 50 runs, oldest dropped first. Each entry records when the run happened, the exact `searchText` providers received, which research angle seeded it, how many candidates were new, and one entry per provider carrying `outcome` (`found` | `empty` | `failed`), a `count`, and the failure `message` where there was one. A run in which every provider failed is recorded like any other, because a trail that omits failures makes "the providers broke" indistinguishable from "the providers found nothing" the moment the page reloads.
+
+`SourceRecord` gains optional research provenance: `publishedAt` (a provider-reported date, stored as a tolerant string because providers report date-only values), `publisher`, `author`, `whySelected[]` (the ranker's own reasons, kept verbatim at accept time), `readState` (`reference` | `readable` | `read`), and `claims[]` — at most twelve verbatim excerpts of the source's own local text, each with the heading it sat under and when it was read. Claims are quotations, never paraphrase and never model-written. Every field is optional, so older readers ignore them and older workspaces open unchanged; as with `origin`, an older build that rewrites a manifest drops the metadata while leaving source content untouched.
+
+Two generated artifacts join the topic tree. `Topics/<slug>/Synthesis.md` is user-visible Markdown carrying `generated: synthesis` frontmatter; it is created on first build and thereafter regenerated through the ordinary propose-and-accept protocol, so a synthesis the learner has edited is never overwritten. `Topics/<slug>/Learning/learn.html` is a machine-owned, fully self-contained page — inline CSS and JS, no external requests — tracked in `state.json.fileIndex`; when its hash no longer matches what Dusori last wrote, a rebuild is written beside it as `learn.proposed-<timestamp>.html` rather than replacing the edited file.

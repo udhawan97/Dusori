@@ -121,6 +121,27 @@ const wikipediaSearch = {
   },
 };
 
+// A page extract with real prose under headings, so the deep pass has something to quote.
+const wikipediaExtract = {
+  query: {
+    pages: {
+      '44779164': {
+        extract: `Microsoft Entra Connect is the Microsoft tool designed to meet and accomplish hybrid identity goals across directories.
+
+== Synchronization ==
+
+Synchronization is responsible for creating users, groups, and other objects, and for making sure identity information for on-premises users matches the cloud.
+
+== Federation ==
+
+Federation is an optional part of Microsoft Entra Connect that can be used to configure a hybrid environment using an on-premises infrastructure.`,
+        pageid: 44779164,
+        title: 'Microsoft Entra Connect',
+      },
+    },
+  },
+};
+
 const reviewSourceText = `# Attention notes
 
 ## Attention weights
@@ -1256,6 +1277,99 @@ test('dismissed research suggestions stay gone after reload', async ({ page }) =
   await page.getByRole('button', { name: 'Scan for strong sources' }).click();
   await expect(page.getByText('No new suggestions matched this objective.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
+});
+
+test('a research run leaves a durable trail and a Today mission', async ({ page }) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
+  await page
+    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
+    .getByRole('button', { name: 'Allow search' })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
+
+  const trail = page.getByRole('list', { name: 'Research trail runs' });
+  await expect(trail).toContainText('Wikipedia');
+  await expect(trail).toContainText('found 1');
+
+  // The trail is workspace evidence, not screen state: it must survive a reload.
+  await page.reload();
+  await expect(page.getByRole('list', { name: 'Research trail runs' })).toContainText('found 1');
+  await expectNoSeriousA11yViolations(page);
+
+  await page.getByRole('button', { name: 'Today' }).click();
+  const missions = page.getByRole('list', { name: 'Research missions' });
+  await expect(missions).toContainText('1 discovered');
+  await expect(missions).toContainText('Refreshed today');
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('reading a saved source produces quoted passages, a synthesis, and a learning page', async ({
+  page,
+}) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('prop') === 'extracts') {
+      await route.fulfill({ contentType: 'application/json', json: wikipediaExtract });
+      return;
+    }
+    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+  });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
+  await page
+    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
+    .getByRole('button', { name: 'Allow search' })
+    .click();
+  const result = page
+    .getByRole('list', { name: 'Research shortlist' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Microsoft Entra Connect' });
+  await result.getByRole('button', { name: 'Preview' }).click();
+  await page
+    .getByRole('dialog', { name: 'Preview research source' })
+    .getByRole('button', { name: 'Add to sources' })
+    .click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    'Microsoft Entra Connect',
+  );
+
+  await page.getByRole('button', { name: 'Read saved sources' }).click();
+  await expect(page.getByText('Read 1 source into')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Build synthesis' }).click();
+  await expect(page.getByText('Synthesis written from')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Create learning page' }).click();
+  await expect(page.getByText('Learning page built at')).toBeVisible();
+
+  // Both artifacts are ordinary files in the portable tree, and the page needs no network.
+  const files = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const read = async (path: string): Promise<string> => {
+      const parts = path.split('/');
+      let dir = root;
+      for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+      return (await (await dir.getFileHandle(parts.at(-1)!)).getFile()).text();
+    };
+    const base = 'Dusori/Topics/ai-fundamentals/';
+    return {
+      learn: await read(`${base}Learning/learn.html`),
+      synthesis: await read(`${base}Synthesis.md`),
+    };
+  });
+  expect(files.synthesis).toContain('generated: synthesis');
+  expect(files.synthesis).toContain('Every line below is quoted from a source you approved.');
+  expect(files.learn.startsWith('<!doctype html>')).toBe(true);
+  expect(files.learn).not.toMatch(/<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)=/iu);
+  await expectNoSeriousA11yViolations(page);
 });
 
 test('an all-provider failure stays distinct from a completed search with no matches', async ({

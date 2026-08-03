@@ -79,7 +79,7 @@ export interface RecallAiRequest {
   objective: string;
 }
 
-interface Section {
+export interface Section {
   body: string;
   heading: string;
 }
@@ -124,7 +124,7 @@ function bound(value: string, limit: number): string {
 }
 
 /** Heading-led sections of a source file, keeping only those with real prose under them. */
-function readableSections(content: string, fallbackHeading: string): Section[] {
+export function readableSections(content: string, fallbackHeading: string): Section[] {
   const collected: { heading: string; parts: string[] }[] = [];
   let current = { heading: fallbackHeading, parts: [] as string[] };
 
