@@ -15,6 +15,7 @@
     buildTodayFocus,
     buildTodaySummary,
     buildWorkspaceRecap,
+    deriveMissionOverview,
     lineDiff,
     markTopicReviewed,
     nextScheduledReview,
@@ -24,6 +25,7 @@
     type CompanionAiClient,
     type ContinueLearningItem,
     type MarkdownConflict,
+    type MissionOverview,
     type NeedsAttentionItem,
     type NextScheduledReview,
     type ProposalAttentionItem,
@@ -36,6 +38,7 @@
     type WorkspaceRecap,
   } from '@dusori/core';
 
+  import MissionStrip from './MissionStrip.svelte';
   import ReviewSession from './ReviewSession.svelte';
 
   export let storage: StorageAdapter;
@@ -54,6 +57,7 @@
   export let onStatus: (message: string) => void = () => undefined;
 
   let summaries: TodayTopicSummary[] = [];
+  let missions: Array<MissionOverview & { title: string }> = [];
   let focus: TodayFocus = { continueLearning: [], needsAttention: [] };
   let nextReview: NextScheduledReview | null = null;
   let recap: WorkspaceRecap | null = null;
@@ -99,6 +103,15 @@
       focus = await buildTodayFocus(storage, workspace, nextSummaries);
       nextReview = nextScheduledReview(nextSummaries);
       recap = nextRecap;
+      // Derived per topic from its own files; a complete topic has no mission left to run.
+      missions = await Promise.all(
+        nextSummaries
+          .filter((summary) => summary.status !== 'complete')
+          .map(async (summary) => ({
+            ...(await deriveMissionOverview(storage, summary.slug)),
+            title: summary.title,
+          })),
+      );
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not read learning progress.';
     } finally {
@@ -351,6 +364,8 @@
         <p>Create a topic to start a durable learning loop.</p>
       </div>
     {:else}
+      <MissionStrip {missions} onOpenResearch={(slug) => onOpenResearch(slug)} />
+
       <div class="today-lanes">
         <section class="focus-lane continue-lane" aria-labelledby="continue-learning-title">
           <div class="focus-heading">
@@ -689,6 +704,9 @@
    */
   .learning-loop {
     width: min(100%, 58rem);
+    /* The lanes below stack on this element's own width, not the viewport's: the inspector
+       drawer overlays the main column, so a wide window can still leave a narrow column. */
+    container-type: inline-size;
     margin-inline: auto;
     padding: var(--space-2xl) var(--page-gutter) var(--space-3xl);
   }
@@ -1305,7 +1323,7 @@
     }
   }
 
-  @media (max-width: 50rem) {
+  @container (max-width: 50rem) {
     .today-lanes {
       background: var(--color-paper-2);
       grid-template-columns: minmax(0, 1fr);
