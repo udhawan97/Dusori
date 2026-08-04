@@ -293,16 +293,16 @@
       <div class="section-heading">
         <BookOpen aria-hidden="true" size={22} strokeWidth={1.5} />
         <div>
-          <h2 id="learning-title">Learning</h2>
+          <h2 id="learning-title">Optional learning tools</h2>
         </div>
       </div>
       <p>
-        Objectives, quizzes, roadmaps, insights, and review turn saved evidence into a study path.
-        Learning is also available from the main navigation.
+        If you want them, objectives, reviews, roadmaps, insights, and certification outline import
+        can turn saved evidence into a study path. None of this is required to research a topic.
       </p>
       {#if hasTopic}
         <div class="actions">
-          <button onclick={onOpenLegacyLearning}>Open learning workspace</button>
+          <button onclick={onOpenLegacyLearning}>Open optional learning tools</button>
         </div>
       {/if}
     </section>

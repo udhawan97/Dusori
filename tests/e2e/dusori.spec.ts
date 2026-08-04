@@ -148,6 +148,7 @@ async function createTopic(
   const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   await expect(providerChoices).toBeVisible();
   await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+  await expect(providerChoices).toBeHidden();
   if (options.remainInResearch) return;
   await openTodayView(page);
 }
@@ -242,7 +243,7 @@ async function noteNames(page: Page): Promise<string[]> {
   });
 }
 
-/** Reaches the first-class learning view from any width. */
+/** Reaches the optional learning tools from any width. */
 async function openTodayView(page: Page): Promise<void> {
   const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   if (await providerChoices.isVisible()) {
@@ -265,7 +266,10 @@ async function openTodayView(page: Page): Promise<void> {
   if (!(await workspaceNavigation.isVisible())) {
     await navigationButton.click();
   }
-  await workspaceNavigation.getByRole('button', { name: 'Learn', exact: true }).click();
+  await workspaceNavigation.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page
+    .getByRole('button', { name: /Open (?:optional learning tools|learning workspace)/u })
+    .click();
   await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
 }
 
@@ -415,20 +419,21 @@ test('first-run certification setup preserves the exact code and stays offline b
   ).toBeVisible();
 });
 
-test('the five-destination studio keeps research, learning, and update truth obvious', async ({
-  page,
-}) => {
+test('the four-destination studio keeps research and update truth obvious', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
 
   const studio = page.getByRole('navigation', { name: 'Dusori Research Desk' });
-  for (const destination of ['Research', 'Sources', 'Learn', 'Map', 'Settings']) {
+  for (const destination of ['Research', 'Sources', 'Map', 'Settings']) {
     await expect(
       studio.getByRole('button', { name: new RegExp(`^${destination}`, 'u') }),
     ).toBeVisible();
   }
+  await expect(studio.getByRole('button', { name: 'Learn', exact: true })).toHaveCount(0);
   await studio.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optional learning tools' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open optional learning tools' })).toBeVisible();
   await expect(
     page.getByText('The hosted app updates when this website is refreshed.'),
   ).toBeVisible();
@@ -539,7 +544,7 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
   await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
   await expect(
-    page.getByRole('heading', { name: 'Ask a hard question. Follow the evidence.' }),
+    page.getByRole('heading', { name: 'From a question to evidence you can inspect.' }),
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Zoom out without losing the path.' }),
@@ -2316,7 +2321,6 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
     'true',
   );
   await expect(sitePage.getByRole('group', { name: 'Workspace knowledge graph' })).toBeHidden();
-  await expect(sitePage.getByRole('complementary', { name: 'Map outline' })).toBeVisible();
   await sitePage.screenshot({ path: 'test-results/screenshots/app-map.png' });
   await siteContext.close();
 });

@@ -45,19 +45,18 @@ Dusori is organized around the question—not around objectives or setup machine
   <br><sub><em>One question starts the search, source capture, reading, and synthesis flow.</em></sub>
 </p>
 
-## Five places, each with one job
+## Four places, each with one job
 
 | Place        | What it is for                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------ |
 | **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                                   |
 | **Sources**  | Read local evidence, open blocked pages in the browser, add your own material, remove, or restore.     |
-| **Learn**    | Follow the study path, review saved evidence, and import an official certification outline.            |
 | **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or optional visual constellation. |
 | **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                          |
 
 The Research Desk adds the ranked shortlist to Sources automatically. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
 
-**Learn** gives objectives, review, roadmaps, evidence insights, and certification outline import a first-class home. These tools turn saved evidence into a study path without gating the question-to-brief workflow.
+Objectives, review, roadmaps, and certification outline import remain available as optional learning tools under **Settings**. They never gate the question-to-brief workflow.
 
 <p align="center">
   <img src="apps/site/public/app-reader.png" alt="Dusori Reading room showing a saved local source and its evidence context" width="920">
