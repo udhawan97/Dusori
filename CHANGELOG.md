@@ -4,6 +4,27 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-08-04
+
+### Research Desk
+
+- Rebuilt the primary workflow around four direct destinations: Research, Sources, Map, and Settings. Optional learning tools remain under Settings without gating the question-to-brief research path.
+- Added one-action research that searches allowed providers, preserves per-provider outcomes, saves a varied top-five shelf, reads available provider text, and writes a cited brief without requiring a roadmap first.
+- Added visible provider readiness for built-in catalogs and companion-backed arXiv, Reddit, web-search, and YouTube paths. Every provider starts unchecked and explains what may be sent and saved before consent.
+- Persisted certification intent across relaunches, routed Microsoft certification codes such as AI-103 and AI-901 to Microsoft Learn, and kept the official-outline setup available until an outline is applied.
+- Made source state explicit: read evidence, readable evidence, URL reference, or needs browser, with provider origin, quoted-passage count, and ranking reasons kept beside the source.
+- Added four reading appearances, an Outline-first knowledge map with an optional galaxy, reversible source removal, and durable provider run history.
+- Preserved the latest query across reloads and kept an older synthesis from appearing as the answer to a new zero-result run.
+
+### Integrity and desktop
+
+- Marked synthesis stale whenever sources or quoted passages change; edited briefs remain active and refreshed output becomes a reviewable proposal.
+- Upgraded a previously saved URL reference when a later provider run returns readable text, without creating a duplicate source.
+- Reported post-commit activity-log failures as warnings instead of pretending a successful source save failed or claiming the log was updated.
+- Added an HTTP(S)-only desktop system-browser handoff, matched the desktop PDF-worker CSP to the browser build, and cancelled rejected or redirected fetch bodies.
+- Kept the v0.12.2 base-route launch repair, canonical README-derived native icons, Apple-silicon-only Mac target, branded drag-to-Applications DMG, Windows x64 build, and signed GitHub check/download/install/relaunch updater path.
+- Replaced retired candidate-preview end-to-end cases with current Research Desk, consent, certification, provider-state, source-removal, and metadata-only YouTube coverage.
+
 ## [0.12.2] - 2026-08-04
 
 ### Fixed
@@ -311,7 +332,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.3...HEAD
+[0.12.3]: https://github.com/udhawan97/Dusori/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/udhawan97/Dusori/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/udhawan97/Dusori/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/udhawan97/Dusori/compare/v0.11.3...v0.12.0

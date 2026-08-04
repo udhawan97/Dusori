@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { Download, HardDrive, RefreshCw, ShieldCheck, Upload } from '@lucide/svelte';
+  import {
+    BookOpen,
+    Download,
+    HardDrive,
+    Palette,
+    RefreshCw,
+    ShieldCheck,
+    Upload,
+  } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
   import {
@@ -9,6 +17,8 @@
     type AvailableUpdate,
     type UpdatePlatform,
   } from '$lib/app-updates';
+  import { readAppearance, setAppearance, type Appearance } from '$lib/appearance';
+  import { listConsentDecisions, resetConsent, type StoredConsentDecision } from '$lib/consent';
 
   export let storageKind: string;
   export let storageLabel: string;
@@ -20,6 +30,7 @@
   export let onExportWorkspace: () => void;
   export let onExportTopic: () => void;
   export let onImportWorkspace: (event: Event) => void;
+  export let onOpenLegacyLearning: () => void = () => undefined;
 
   let updateStatus = 'Checking update support…';
   let updatePlatform: UpdatePlatform | null = null;
@@ -27,8 +38,13 @@
   let updateBusy = false;
   let updateDownloaded = false;
   let automaticUpdates = false;
+  let appearance: Appearance = 'system';
+  let consentDecisions: StoredConsentDecision[] = [];
+  let appearanceStatus = '';
 
   onMount(() => {
+    appearance = readAppearance();
+    consentDecisions = listConsentDecisions();
     automaticUpdates = localStorage.getItem(automaticUpdatePreferenceKey) === 'true';
     const automaticallyDownloaded = readAutomaticDownloadedUpdate(sessionStorage);
     if (automaticallyDownloaded) {
@@ -38,6 +54,34 @@
     }
     void prepareUpdates();
   });
+
+  const consentLabels: Record<string, string> = {
+    arxiv: 'arXiv',
+    'companion-ai': 'AI ranking and synthesis',
+    github: 'GitHub',
+    hackernews: 'Hacker News',
+    mslearn: 'Microsoft Learn catalog',
+    'mslearn-ranked': 'Microsoft Learn ranked search',
+    npm: 'npm registry',
+    openalex: 'OpenAlex',
+    reddit: 'Reddit',
+    stackexchange: 'Stack Exchange',
+    websearch: 'Configured web search',
+    wikipedia: 'Wikipedia',
+    youtube: 'YouTube metadata',
+  };
+
+  function chooseAppearance(next: Appearance): void {
+    appearance = next;
+    appearanceStatus = setAppearance(next)
+      ? `${next[0]?.toUpperCase()}${next.slice(1)} appearance is active on this device.`
+      : 'The appearance changed for this session, but this device could not remember it.';
+  }
+
+  function clearProviderDecision(scope: string): void {
+    if (!resetConsent(scope)) return;
+    consentDecisions = listConsentDecisions();
+  }
 
   async function prepareUpdates(): Promise<void> {
     try {
@@ -139,6 +183,31 @@
   </header>
 
   <div class="settings-grid">
+    <section aria-labelledby="appearance-title">
+      <div class="section-heading">
+        <Palette aria-hidden="true" size={22} strokeWidth={1.5} />
+        <div>
+          <h2 id="appearance-title">Appearance</h2>
+          <p class="detail">One palette, four reading moods. This choice stays on this device.</p>
+        </div>
+      </div>
+      <div class="appearance-options">
+        {#each [{ id: 'system', label: 'System', copy: 'Follow the Mac or browser.' }, { id: 'paper', label: 'Paper', copy: 'Warm daylight archive.' }, { id: 'ink', label: 'Ink', copy: 'Quiet, high-contrast black desk.' }, { id: 'night', label: 'Night', copy: 'Dusori’s original nocturnal brown.' }] as option (option.id)}
+          <label class:active={appearance === option.id}>
+            <input
+              type="radio"
+              name="appearance"
+              value={option.id}
+              checked={appearance === option.id}
+              onchange={() => chooseAppearance(option.id as Appearance)}
+            />
+            <span><strong>{option.label}</strong><small>{option.copy}</small></span>
+          </label>
+        {/each}
+      </div>
+      {#if appearanceStatus}<p class="status" aria-live="polite">{appearanceStatus}</p>{/if}
+    </section>
+
     <section aria-labelledby="storage-title">
       <div class="section-heading">
         <HardDrive aria-hidden="true" size={22} strokeWidth={1.5} />
@@ -200,8 +269,42 @@
         </div>
       </dl>
       <p class="detail">
-        Source providers ask before the first request. Local search never sends your question away.
+        Source providers ask together before the first request, but every decision is stored and
+        reset separately. Local search never sends your question away.
       </p>
+      {#if consentDecisions.length > 0}
+        <ul class="consent-decisions" aria-label="Saved provider decisions">
+          {#each consentDecisions as item (item.scope)}
+            <li>
+              <span>
+                <strong>{consentLabels[item.scope] ?? item.scope}</strong>
+                <small>{item.decision === 'allowed' ? 'Allowed' : 'Denied'}</small>
+              </span>
+              <button onclick={() => clearProviderDecision(item.scope)}>Reset choice</button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="detail">No provider decision is stored yet.</p>
+      {/if}
+    </section>
+
+    <section aria-labelledby="learning-title">
+      <div class="section-heading">
+        <BookOpen aria-hidden="true" size={22} strokeWidth={1.5} />
+        <div>
+          <h2 id="learning-title">Optional learning tools</h2>
+        </div>
+      </div>
+      <p>
+        If you want them, objectives, reviews, roadmaps, insights, and certification outline import
+        can turn saved evidence into a study path. None of this is required to research a topic.
+      </p>
+      {#if hasTopic}
+        <div class="actions">
+          <button onclick={onOpenLegacyLearning}>Open optional learning tools</button>
+        </div>
+      {/if}
     </section>
 
     <section aria-labelledby="updates-title">
@@ -419,6 +522,80 @@
     margin: 0;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+  }
+
+  .appearance-options {
+    display: grid;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-md);
+  }
+
+  .appearance-options label {
+    display: grid;
+    min-height: 3.25rem;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .appearance-options label.active {
+    border-color: var(--color-accent-text);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+  }
+
+  .appearance-options input {
+    inline-size: 1.2rem;
+    block-size: 1.2rem;
+    accent-color: var(--color-accent);
+  }
+
+  .appearance-options span,
+  .appearance-options small {
+    display: block;
+  }
+
+  .appearance-options small {
+    color: var(--color-muted);
+  }
+
+  .consent-decisions {
+    display: grid;
+    gap: 0;
+    margin: var(--space-md) 0 0;
+    padding: 0;
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    list-style: none;
+  }
+
+  .consent-decisions li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    padding-block: var(--space-xs);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .consent-decisions span,
+  .consent-decisions small {
+    display: block;
+  }
+
+  .consent-decisions small {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    text-transform: capitalize;
+  }
+
+  button:focus-visible,
+  .appearance-options input:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   @media (min-width: 52rem) {

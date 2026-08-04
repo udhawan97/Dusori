@@ -236,7 +236,7 @@ export interface RenderSynthesisOptions {
 }
 
 /**
- * The honest synthesis: every statement is a quote from an approved source with a link back
+ * The honest synthesis: every statement is a quote from a saved source with a link back
  * to it, and the document says outright which ideas only one source supports.
  */
 export function renderSynthesisMarkdown(
@@ -256,7 +256,7 @@ export function renderSynthesisMarkdown(
     '',
     options.aiModel
       ? `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). The overview below was written by ${options.aiModel}; every quoted passage and its citation is taken from your sources, not from the model.`
-      : `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). Every line below is quoted from a source you approved.`,
+      : `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). Every line below is quoted from saved source text.`,
     '',
   ];
 
@@ -326,7 +326,7 @@ export function renderSynthesisMarkdown(
   lines.push(
     '## What this synthesis is',
     '',
-    'Every passage above is quoted verbatim from a source you approved, with a link back to it. Dusori grouped and counted them; it did not judge whether they are true. Read the sources before relying on any of this.',
+    'Every passage above is quoted verbatim from saved source text, with a link back to it. Dusori grouped and counted the passages; it did not judge whether they are true. Read the sources before relying on any of this.',
     '',
   );
 

@@ -61,6 +61,11 @@ export function startDesktopSession(): Promise<DesktopSession> {
   return desktopInvoke<DesktopSession>('desktop_session');
 }
 
+/** Opens one validated HTTP(S) URL in the user's system browser. */
+export function openExternalUrl(url: string): Promise<void> {
+  return desktopInvoke<void>('open_external_url', { url });
+}
+
 export function checkForDesktopUpdate(): Promise<DesktopUpdate> {
   return desktopInvoke<DesktopUpdate>('check_for_update');
 }

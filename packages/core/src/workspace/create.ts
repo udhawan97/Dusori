@@ -63,10 +63,15 @@ export interface CreatedTopic {
   workspaceHomeConflict: boolean;
 }
 
+export interface CreateTopicOptions {
+  kind?: 'certification' | 'general';
+}
+
 export async function createTopic(
   storage: StorageAdapter,
   title: string,
   now = new Date(),
+  options: CreateTopicOptions = {},
 ): Promise<CreatedTopic> {
   const workspace = await readMachineFile(storage, 'dusori.json', WorkspaceSchema, now);
   const slug = slugify(title);
@@ -82,6 +87,7 @@ export async function createTopic(
   );
 
   const input = { createdAt: now.toISOString(), slug, title: title.trim() };
+  const kind = options.kind ?? 'general';
   const updatePath = updateLogPath(slug, now);
   await storage.ensureDirectory(updatePath.slice(0, updatePath.lastIndexOf('/')));
 
@@ -106,6 +112,7 @@ export async function createTopic(
   const state = TopicStateSchema.parse({
     schemaVersion,
     topicSlug: slug,
+    kind,
     status: 'active',
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
@@ -115,7 +122,7 @@ export async function createTopic(
 
   const nextTopics = [
     ...workspace.topics,
-    { createdAt: now.toISOString(), slug, title: title.trim() },
+    { createdAt: now.toISOString(), kind, slug, title: title.trim() },
   ];
   const currentHome = await storage.read('Home.md');
   const expectedHome = workspace.fileIndex['Home.md'];

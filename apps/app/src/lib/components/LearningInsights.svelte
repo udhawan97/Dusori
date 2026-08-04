@@ -387,7 +387,7 @@
 
   .insights {
     --insight-blue: light-dark(oklch(51% 0.14 250), oklch(72% 0.11 245));
-    --insight-mint: light-dark(oklch(53% 0.11 166), oklch(75% 0.1 166));
+    --insight-mint: light-dark(oklch(40% 0.1 166), oklch(75% 0.1 166));
     --orbit-foundation: var(--color-rule);
     --orbit-note: var(--insight-blue);
     --orbit-source: var(--color-marigold);

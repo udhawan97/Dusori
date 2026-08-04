@@ -22,7 +22,7 @@ The app needs JavaScript, IndexedDB, Web Crypto, and service workers for the hos
 
 ## Desktop targets
 
-v0.12.2 produces separate artifacts for:
+v0.12.3 produces separate artifacts for:
 
 - macOS 12 or newer on Apple silicon (`aarch64`);
 - 64-bit Windows (`x86_64`, current-user NSIS installer).

@@ -71,6 +71,24 @@ struct DesktopUpdate {
     version: Option<String>,
 }
 
+fn validated_external_url(input: &str) -> Result<reqwest::Url, String> {
+    let url = reqwest::Url::parse(input)
+        .map_err(|_| "Dusori can open only a complete http:// or https:// URL.".to_string())?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err("Dusori can open only http:// or https:// URLs.".into());
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("Remove the username or password before opening this URL.".into());
+    }
+    Ok(url)
+}
+
+#[tauri::command]
+fn open_external_url(url: String) -> Result<(), String> {
+    let url = validated_external_url(&url)?;
+    open::that(url.as_str()).map_err(|error| format!("The system browser could not open: {error}"))
+}
+
 fn sha256(content: &[u8]) -> String {
     hex::encode(Sha256::digest(content))
 }
@@ -652,6 +670,7 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
         .manage(PendingUpdate::default())
         .invoke_handler(tauri::generate_handler![
             desktop_session,
+            open_external_url,
             workspace_ensure_directory,
             workspace_list,
             workspace_move,
@@ -707,8 +726,8 @@ pub fn run() {
 mod tests {
     use super::{
         DESKTOP_APP_PATH, append_bounded_update_chunk, checked_path, normalized_segments,
-        validate_downloaded_version, validate_update_content_length, verify_update_signature,
-        write_workspace_file,
+        validate_downloaded_version, validate_update_content_length, validated_external_url,
+        verify_update_signature, write_workspace_file,
     };
 
     #[test]
@@ -733,6 +752,15 @@ mod tests {
         assert!(normalized_segments("Topics/con/note.md", false).is_err());
         assert!(normalized_segments("Topics/ai\\note.md", false).is_err());
         assert!(normalized_segments("", false).is_err());
+    }
+
+    #[test]
+    fn external_browser_handoff_accepts_only_credential_free_web_urls() {
+        assert!(validated_external_url("https://example.org/research?q=dusori").is_ok());
+        assert!(validated_external_url("http://example.org/").is_ok());
+        assert!(validated_external_url("file:///tmp/private.txt").is_err());
+        assert!(validated_external_url("https://user:secret@example.org/").is_err());
+        assert!(validated_external_url("not a url").is_err());
     }
 
     #[test]

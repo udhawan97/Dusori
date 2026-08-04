@@ -131,6 +131,7 @@ describe('GitHub research provider', () => {
 
     expect(requested).toBe('https://api.github.com/repos/contoso/azure-admin-kit/readme');
     expect(capture).toEqual({
+      capturedVia: 'readme-extract',
       content: `# contoso/azure-admin-kit\n\nOriginal URL: <https://github.com/contoso/azure-admin-kit>\n\n${readme}\n`,
       title: 'contoso/azure-admin-kit',
       url: 'https://github.com/contoso/azure-admin-kit',
@@ -156,6 +157,7 @@ describe('GitHub research provider', () => {
     expect(capture.content).toContain(
       'This is a GitHub reference captured on 2026-07-21, not a snapshot of the repository.',
     );
+    expect(capture.capturedVia).toBe('search-reference');
     vi.useRealTimers();
   });
 });

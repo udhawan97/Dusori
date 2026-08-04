@@ -61,7 +61,7 @@ export function buildResearchQuery(
   const topicTerms = deriveTerms(topic).filter((term) => !objectiveTerms.includes(term));
   return {
     objectiveTitle,
-    searchText: [topic, objectiveTitle].filter(Boolean).join(' '),
+    searchText: [topic, objectiveTitle === topic ? '' : objectiveTitle].filter(Boolean).join(' '),
     terms: [...objectiveTerms, ...topicTerms],
     topicTitle: topic,
   };

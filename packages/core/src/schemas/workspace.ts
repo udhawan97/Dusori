@@ -12,6 +12,7 @@ export const FileVersionSchema = z
 export const TopicIndexSchema = z
   .object({
     createdAt: z.string().datetime(),
+    kind: z.enum(['certification', 'general']).optional(),
     slug: z.string().min(1).max(80),
     title: z.string().min(1).max(160),
   })
@@ -32,6 +33,7 @@ export const TopicStateSchema = z
   .object({
     schemaVersion: z.literal(schemaVersion),
     topicSlug: z.string().min(1).max(80),
+    kind: z.enum(['certification', 'general']).optional(),
     status: z.enum(['active', 'paused', 'complete']),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -84,6 +86,18 @@ export const SourceRecordSchema = z
     whySelected: z.array(z.string().min(1).max(160)).max(8).optional(),
     readState: z.enum(['read', 'readable', 'reference']).optional(),
     claims: z.array(SourceClaimSchema).max(12).optional(),
+    /** The last explicit full-page attempt. Reference failures stay visible after relaunch. */
+    fetchState: z.enum(['blocked', 'failed']).optional(),
+    fetchMessage: z.string().min(1).max(500).optional(),
+    fetchStatus: z.number().int().min(100).max(599).optional(),
+    fetchCheckedAt: z.string().datetime().optional(),
+  })
+  .passthrough();
+
+export const RemovedSourceSchema = z
+  .object({
+    removedAt: z.string().datetime(),
+    record: SourceRecordSchema,
   })
   .passthrough();
 
@@ -91,6 +105,10 @@ export const SourceManifestSchema = z
   .object({
     schemaVersion: z.literal(schemaVersion),
     sources: z.array(SourceRecordSchema),
+    /** Reversible removal: the local item stays in place until a future explicit cleanup. */
+    removedSources: z.array(RemovedSourceSchema).optional(),
+    synthesisStaleAt: z.string().datetime().optional(),
+    synthesisStaleReason: z.string().min(1).max(240).optional(),
   })
   .passthrough();
 
@@ -99,4 +117,5 @@ export type TopicState = z.infer<typeof TopicStateSchema>;
 export type SourceOrigin = z.infer<typeof SourceOriginSchema>;
 export type SourceClaim = z.infer<typeof SourceClaimSchema>;
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
+export type RemovedSource = z.infer<typeof RemovedSourceSchema>;
 export type SourceManifest = z.infer<typeof SourceManifestSchema>;

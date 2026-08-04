@@ -1,25 +1,28 @@
 <script lang="ts">
-  import { AlertTriangle, Check, FilePlus2 } from '@lucide/svelte';
-  import { tick } from 'svelte';
-
+  import { AlertTriangle, Check, FilePlus2, RotateCcw, Trash2 } from '@lucide/svelte';
   import {
-    StorageConflictError,
     addSource,
-    buildUpgradedContent,
     maxSourceBytes,
     readSourceManifest,
+    readSourcesIntoClaims,
+    recordSourceFetchFailure,
+    removeSourceFromResearch,
+    restoreSourceToResearch,
     upgradeSource,
+    writeTopicSynthesis,
+    type CompanionFetchError,
     type CompanionResearchClient,
-    type FetchedPage,
+    type RemovedSource,
     type SourceRecord,
     type StorageAdapter,
   } from '@dusori/core';
 
-  import { modal } from '$lib/actions/modal';
   import { createLatestRequestGate } from '$lib/latest-request';
+  import { handleExternalLink } from '$lib/open-external';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
+  export let topicTitle = topicSlug;
   export let companion: CompanionResearchClient | null = null;
   export let revision = 0;
   export let onSourceSaved: () => void = () => undefined;
@@ -32,24 +35,16 @@
   let url = '';
   let selectedFile: File | null = null;
   let sources: SourceRecord[] = [];
+  let removedSources: RemovedSource[] = [];
   let loading = true;
   let saving = false;
   let error = '';
   let success = '';
 
-  let confirming: SourceRecord | null = null;
-  let confirmFetchButton: HTMLButtonElement;
-  let confirmInvoker: HTMLButtonElement | null = null;
   let fetchingSha = '';
-  let upgradePreview: {
-    content: string;
-    expectedContentHash: string;
-    page: FetchedPage;
-    record: SourceRecord;
-  } | null = null;
-  let upgradeCloseButton: HTMLButtonElement;
-  let replacing = false;
   let upgradeError = '';
+  let removingSha = '';
+  let restoringSha = '';
   const refreshGate = createLatestRequestGate();
 
   function hostOf(record: SourceRecord): string {
@@ -66,98 +61,157 @@
     upgradeError = '';
   }
 
-  async function openConfirm(record: SourceRecord, invoker: HTMLButtonElement): Promise<void> {
-    confirming = record;
-    confirmInvoker = invoker;
-    upgradeError = '';
-    await tick();
-    confirmFetchButton?.focus();
+  async function openExternal(event: MouseEvent, externalUrl: string): Promise<void> {
+    try {
+      await handleExternalLink(event, externalUrl);
+    } catch (caught) {
+      upgradeError =
+        caught instanceof Error ? caught.message : 'The system browser could not open this URL.';
+    }
   }
 
-  async function cancelConfirm(): Promise<void> {
-    confirming = null;
-    await tick();
-    confirmInvoker?.focus();
-    confirmInvoker = null;
-  }
-
-  async function confirmFetch(): Promise<void> {
-    if (!confirming || !companion || fetchingSha) return;
-    const record = confirming;
-    confirming = null;
+  async function fetchSource(record: SourceRecord): Promise<void> {
+    if (!companion || fetchingSha || !record.url) return;
     fetchingSha = record.sha256;
     clearFeedback();
     try {
-      const page = await companion.fetchPage(record.url ?? '');
-      // upgradeSource guards against external edits with the hash we read here.
+      let page;
+      try {
+        page = await companion.fetchPage(record.url);
+      } catch (caught) {
+        const typed = caught as CompanionFetchError;
+        const message =
+          caught instanceof Error
+            ? caught.message
+            : 'The page could not be read. Dusori kept the reference.';
+        try {
+          await recordSourceFetchFailure(storage, {
+            message,
+            sha256: record.sha256,
+            state: ['access-denied', 'blocked-host', 'redirect-host'].includes(typed.reason)
+              ? 'blocked'
+              : 'failed',
+            ...(typed.status === undefined ? {} : { status: typed.status }),
+            topicSlug,
+          });
+          await refresh();
+        } catch {
+          // The original page failure is still the most useful message.
+        }
+        upgradeError = message;
+        return;
+      }
+
       const itemFile = record.path ? await storage.read(record.path) : null;
-      if (!itemFile) throw new Error('This source file is missing. Reload and try again.');
-      upgradePreview = {
-        content: buildUpgradedContent(record, page),
-        expectedContentHash: itemFile.hash,
-        page,
-        record,
-      };
-      await tick();
-      upgradeCloseButton?.focus();
-    } catch (caught) {
-      upgradeError =
-        caught instanceof Error ? caught.message : 'The companion could not fetch this page.';
-      await tick();
-      confirmInvoker?.focus();
-      confirmInvoker = null;
+      if (!itemFile) {
+        upgradeError = 'The page was read, but this source file is missing. Reload and try again.';
+        return;
+      }
+      let upgradeWarning = '';
+      try {
+        const upgraded = await upgradeSource(storage, {
+          expectedContentHash: itemFile.hash,
+          page,
+          sha256: record.sha256,
+          topicSlug,
+        });
+        upgradeWarning = upgraded.warning ?? '';
+        if (!upgraded.indexed) {
+          await refresh().catch(() => undefined);
+          success =
+            upgraded.warning ??
+            'Readable text was saved locally, but the source index could not be updated.';
+          onSourceSaved();
+          if (record.path) onOpenSource(record.path);
+          return;
+        }
+      } catch (caught) {
+        upgradeError =
+          caught instanceof Error
+            ? `The page was read, but its text could not be saved: ${caught.message}`
+            : 'The page was read, but its text could not be saved.';
+        return;
+      }
+
+      await refresh().catch(() => undefined);
+      success = `Readable text saved from ${hostOf(record)}.${upgradeWarning ? ` ${upgradeWarning}` : ''}`;
+      onSourceSaved();
+      if (record.path) onOpenSource(record.path);
+
+      try {
+        const read = await readSourcesIntoClaims(storage, topicSlug);
+        const claims = read.read.reduce((total, entry) => total + entry.claims, 0);
+        if (claims > 0) {
+          const synthesis = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+          success =
+            synthesis.status === 'written'
+              ? `Readable text saved from ${hostOf(record)}. The research brief is current.${upgradeWarning ? ` ${upgradeWarning}` : ''}`
+              : `Readable text saved from ${hostOf(record)}. Your edited brief was kept; a refreshed proposal is waiting in Needs attention.${upgradeWarning ? ` ${upgradeWarning}` : ''}`;
+        }
+      } catch (caught) {
+        upgradeError =
+          caught instanceof Error
+            ? `Readable text was saved, but the brief could not refresh yet: ${caught.message}`
+            : 'Readable text was saved, but the brief could not refresh yet.';
+      }
     } finally {
       fetchingSha = '';
     }
   }
 
-  async function closeUpgradePreview(): Promise<void> {
-    upgradePreview = null;
-    await tick();
-    confirmInvoker?.focus();
-    confirmInvoker = null;
-  }
-
-  async function replaceContent(): Promise<void> {
-    if (!upgradePreview) return;
-    replacing = true;
+  async function removeFromResearch(record: SourceRecord): Promise<void> {
+    if (removingSha) return;
+    removingSha = record.sha256;
     clearFeedback();
     try {
-      await upgradeSource(storage, {
-        expectedContentHash: upgradePreview.expectedContentHash,
-        page: upgradePreview.page,
-        sha256: upgradePreview.record.sha256,
+      const result = await removeSourceFromResearch(storage, {
+        sha256: record.sha256,
         topicSlug,
       });
-      upgradePreview = null;
-      await refresh();
-      // The write above already succeeded, so it must be reported as a success
-      // even if this read-back failed and left `error` set (feedback renders
-      // upgradeError, then error, then success).
-      error = '';
-      success = 'Source upgraded to full page content and recorded in the update log.';
+      await refresh().catch(() => undefined);
+      success = `${record.title} was removed from active research. Its local item is retained for Restore.${result.warning ? ` ${result.warning}` : ''}`;
       onSourceSaved();
-      await tick();
-      confirmInvoker?.focus();
-      confirmInvoker = null;
+      try {
+        const read = await readSourcesIntoClaims(storage, topicSlug);
+        if (read.read.length > 0) await writeTopicSynthesis(storage, topicSlug, topicTitle);
+      } catch (caught) {
+        upgradeError =
+          caught instanceof Error
+            ? `The source was removed, but the brief could not refresh yet: ${caught.message}`
+            : 'The source was removed, but the brief could not refresh yet.';
+      }
     } catch (caught) {
-      upgradeError =
-        caught instanceof StorageConflictError
-          ? 'This source changed outside Dusori. Review the file, then try again.'
-          : caught instanceof Error
-            ? caught.message
-            : 'Dusori could not upgrade this source.';
+      error = caught instanceof Error ? caught.message : 'This source could not be removed.';
     } finally {
-      replacing = false;
+      removingSha = '';
     }
   }
 
-  function handleEscape(): void {
-    if (upgradePreview) {
-      if (replacing) return;
-      void closeUpgradePreview();
-    } else if (confirming) {
-      void cancelConfirm();
+  async function restoreRemoved(entry: RemovedSource): Promise<void> {
+    if (restoringSha) return;
+    restoringSha = entry.record.sha256;
+    clearFeedback();
+    try {
+      const result = await restoreSourceToResearch(storage, {
+        sha256: entry.record.sha256,
+        topicSlug,
+      });
+      await refresh().catch(() => undefined);
+      success = `${entry.record.title} was restored to active research.${result.warning ? ` ${result.warning}` : ''}`;
+      onSourceSaved();
+      try {
+        await readSourcesIntoClaims(storage, topicSlug);
+        await writeTopicSynthesis(storage, topicSlug, topicTitle);
+      } catch (caught) {
+        upgradeError =
+          caught instanceof Error
+            ? `The source was restored, but the brief could not refresh yet: ${caught.message}`
+            : 'The source was restored, but the brief could not refresh yet.';
+      }
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'This source could not be restored.';
+    } finally {
+      restoringSha = '';
     }
   }
 
@@ -179,10 +233,12 @@
     const request = refreshGate.begin();
     loading = true;
     try {
-      const nextSources = (await readSourceManifest(currentStorage, currentTopicSlug)).sources;
+      const manifest = await readSourceManifest(currentStorage, currentTopicSlug);
+      const nextSources = manifest.sources;
       if (!refreshGate.isCurrent(request)) return;
       error = '';
       sources = nextSources;
+      removedSources = manifest.removedSources ?? [];
     } catch (caught) {
       if (!refreshGate.isCurrent(request)) return;
       error = caught instanceof Error ? caught.message : 'Dusori could not read these sources.';
@@ -266,9 +322,11 @@
       // avoid reporting a completed add as a failure.
       error = '';
       success = result.deduplicated
-        ? 'That source is already in this topic.'
-        : 'Source added to this topic and its update log.';
-      if (!result.deduplicated) {
+        ? result.upgraded
+          ? `Readable text was added to the saved source.${result.warning ? ` ${result.warning}` : ''}`
+          : 'That source is already in this topic.'
+        : `Source added to this topic.${result.warning ? ` ${result.warning}` : ' The activity log was updated.'}`;
+      if (!result.deduplicated || result.restored || result.upgraded) {
         title = '';
         pastedText = '';
         url = '';
@@ -290,7 +348,19 @@
 
   function sourceDetail(source: SourceRecord): string {
     const size = source.size === undefined ? '' : ` · ${formatBytes(source.size)}`;
-    return `${methodLabel(source)}${size}`;
+    const evidence =
+      source.method !== 'url'
+        ? methodLabel(source)
+        : source.readState === 'read'
+          ? 'Read evidence'
+          : source.readState === 'readable'
+            ? 'Readable evidence'
+            : 'URL reference';
+    const origin = source.publisher ?? source.origin?.provider;
+    const claims = source.claims?.length
+      ? ` · ${source.claims.length} quoted ${source.claims.length === 1 ? 'passage' : 'passages'}`
+      : '';
+    return `${evidence}${origin ? ` · ${origin}` : ''}${claims}${size}`;
   }
 
   function formatBytes(bytes: number): string {
@@ -298,8 +368,6 @@
     return `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
   }
 </script>
-
-<svelte:window onkeydown={(event) => event.key === 'Escape' && handleEscape()} />
 
 <section
   class="source-library"
@@ -309,90 +377,95 @@
   <div class="source-heading">
     <div>
       <h2 id="source-library-title">Saved sources</h2>
-      <p>Keep the material beside your notes. URL contents are never fetched automatically.</p>
+      <p>
+        Keep the material beside your notes. Manual URLs stay as references until you choose Read;
+        consented providers may return readable abstracts, READMEs, or extracts that Dusori saves
+        locally. Dusori never fetches arbitrary result pages automatically.
+      </p>
     </div>
     <span class="source-count" aria-label={`${sources.length} saved sources`}>{sources.length}</span
     >
   </div>
 
-  <form
-    onsubmit={(event) => {
-      event.preventDefault();
-      void submit();
-    }}
-  >
-    <label for="source-method">Source type</label>
-    <select id="source-method" bind:value={method} disabled={saving} onchange={changeMethod}>
-      <option value="paste">Pasted text</option>
-      <option value="file">Local file</option>
-      <option value="url">URL reference</option>
-    </select>
+  <details class="add-source-details">
+    <summary>Add your own source</summary>
+    <form
+      onsubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
+      <label for="source-method">Source type</label>
+      <select id="source-method" bind:value={method} disabled={saving} onchange={changeMethod}>
+        <option value="paste">Pasted text</option>
+        <option value="file">Local file</option>
+        <option value="url">URL reference</option>
+      </select>
 
-    <label for="source-title">Source title</label>
-    <input
-      id="source-title"
-      bind:value={title}
-      required
-      maxlength="160"
-      disabled={saving}
-      aria-invalid={error && !title.trim() ? 'true' : undefined}
-    />
-
-    {#if method === 'paste'}
-      <label for="source-text">Source text</label>
-      <textarea
-        id="source-text"
-        bind:value={pastedText}
-        required
-        maxlength={maxSourceBytes}
-        disabled={saving}
-        aria-describedby="source-limit"
-        aria-invalid={error && !pastedText.trim() ? 'true' : undefined}></textarea>
-      <p class="field-help" id="source-limit">Plain text · up to 2 MiB</p>
-    {:else if method === 'url'}
-      <label for="source-url">Web address</label>
+      <label for="source-title">Source title</label>
       <input
-        id="source-url"
-        type="url"
-        bind:value={url}
+        id="source-title"
+        bind:value={title}
         required
-        inputmode="url"
-        placeholder="https://example.org/article"
+        maxlength="160"
         disabled={saving}
-        aria-describedby="url-help"
-        aria-invalid={error && !url.trim() ? 'true' : undefined}
+        aria-invalid={error && !title.trim() ? 'true' : undefined}
       />
-      <p class="field-help" id="url-help">Saved as a reference; opened only when you choose.</p>
-    {:else}
-      <span class="field-label">Markdown, text, or PDF file</span>
-      <label class="file-picker" class:has-file={selectedFile}>
-        <FilePlus2 aria-hidden="true" size={18} />
-        <span>{selectedFile?.name ?? 'Choose a local file'}</span>
-        <input
-          type="file"
-          accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
-          disabled={saving}
-          onchange={chooseFile}
-        />
-      </label>
-      <p class="field-help">
-        .md, .markdown, .txt, or .pdf · up to 2 MiB. A PDF is read on this device; a scanned PDF
-        with no text layer cannot be read, as Dusori ships no OCR.
-      </p>
-      {#if extracting}
-        <p class="field-help" aria-live="polite">Reading the PDF on this device…</p>
-      {/if}
-    {/if}
 
-    <button class="add-source" disabled={saving || loading}>
-      {saving ? 'Saving source…' : 'Save source'}
-    </button>
-  </form>
+      {#if method === 'paste'}
+        <label for="source-text">Source text</label>
+        <textarea
+          id="source-text"
+          bind:value={pastedText}
+          required
+          maxlength={maxSourceBytes}
+          disabled={saving}
+          aria-describedby="source-limit"
+          aria-invalid={error && !pastedText.trim() ? 'true' : undefined}></textarea>
+        <p class="field-help" id="source-limit">Plain text · up to 2 MiB</p>
+      {:else if method === 'url'}
+        <label for="source-url">Web address</label>
+        <input
+          id="source-url"
+          type="url"
+          bind:value={url}
+          required
+          inputmode="url"
+          placeholder="https://example.org/article"
+          disabled={saving}
+          aria-describedby="url-help"
+          aria-invalid={error && !url.trim() ? 'true' : undefined}
+        />
+        <p class="field-help" id="url-help">Saved as a reference; opened only when you choose.</p>
+      {:else}
+        <span class="field-label">Markdown, text, or PDF file</span>
+        <label class="file-picker" class:has-file={selectedFile}>
+          <FilePlus2 aria-hidden="true" size={18} />
+          <span>{selectedFile?.name ?? 'Choose a local file'}</span>
+          <input
+            type="file"
+            accept=".md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf"
+            disabled={saving}
+            onchange={chooseFile}
+          />
+        </label>
+        <p class="field-help">
+          .md, .markdown, .txt, or .pdf · up to 2 MiB. A PDF is read on this device; a scanned PDF
+          with no text layer cannot be read, as Dusori ships no OCR.
+        </p>
+        {#if extracting}
+          <p class="field-help" aria-live="polite">Reading the PDF on this device…</p>
+        {/if}
+      {/if}
+
+      <button class="add-source" disabled={saving || loading}>
+        {saving ? 'Saving source…' : 'Save source'}
+      </button>
+    </form>
+  </details>
 
   <div class="source-feedback" aria-live="polite">
-    <!-- The preview dialog renders upgradeError itself while it is open; showing it
-         here too would announce the same failure twice. -->
-    {#if upgradeError && !upgradePreview}
+    {#if upgradeError}
       <p class="source-message error" role="alert">
         <AlertTriangle aria-hidden="true" size={17} />
         <span>{upgradeError}</span>
@@ -429,21 +502,38 @@
             <strong>{source.title}</strong>
           {/if}
           <span>{sourceDetail(source)}</span>
+          {#if source.whySelected?.length}
+            <p class="source-reason">Saved because {source.whySelected.join(' · ')}</p>
+          {/if}
+          {#if source.fetchMessage}
+            <p class="source-row-error" role="status">{source.fetchMessage}</p>
+          {/if}
           {#if source.url}
-            <a class="original-link" href={source.url} target="_blank" rel="noreferrer"
-              >Open original</a
+            <a
+              class="original-link"
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+              onclick={(event) => void openExternal(event, source.url!)}>Open original</a
             >
           {/if}
           {#if source.method === 'url' && companion}
             <button
               class="upgrade-source"
               disabled={Boolean(fetchingSha) || saving}
-              onclick={(event) =>
-                void openConfirm(source, event.currentTarget as HTMLButtonElement)}
+              onclick={() => void fetchSource(source)}
             >
-              {fetchingSha === source.sha256 ? 'Fetching…' : 'Fetch full content'}
+              {fetchingSha === source.sha256 ? 'Reading…' : `Read from ${hostOf(source)}`}
             </button>
           {/if}
+          <button
+            class="remove-source"
+            disabled={Boolean(removingSha) || saving}
+            onclick={() => void removeFromResearch(source)}
+          >
+            <Trash2 aria-hidden="true" size={15} />
+            {removingSha === source.sha256 ? 'Removing…' : 'Remove from research'}
+          </button>
         </li>
       {/each}
     </ul>
@@ -453,77 +543,32 @@
       </p>
     {/if}
   {/if}
-</section>
 
-{#if confirming}
-  <dialog
-    use:modal
-    class="upgrade-dialog"
-    aria-labelledby="upgrade-confirm-title"
-    oncancel={(event) => {
-      event.preventDefault();
-      void cancelConfirm();
-    }}
-  >
-    <h3 id="upgrade-confirm-title">Fetch full page content?</h3>
-    <p>
-      Sends this address to {hostOf(confirming)} from your machine via the local companion. The page's
-      readable text will replace this source's stub content.
-    </p>
-    <p class="upgrade-url"><code>{confirming.url}</code></p>
-    <div class="upgrade-actions">
-      <button
-        bind:this={confirmFetchButton}
-        class="primary-action"
-        onclick={() => void confirmFetch()}
+  {#if removedSources.length > 0}
+    <details class="removed-sources">
+      <summary
+        >{removedSources.length} removed {removedSources.length === 1
+          ? 'source'
+          : 'sources'}</summary
       >
-        Fetch page
-      </button>
-      <button onclick={() => void cancelConfirm()}>Keep reference only</button>
-    </div>
-  </dialog>
-{/if}
-
-{#if upgradePreview}
-  <dialog
-    use:modal
-    class="upgrade-dialog"
-    aria-labelledby="upgrade-preview-title"
-    oncancel={(event) => {
-      event.preventDefault();
-      if (!replacing) void closeUpgradePreview();
-    }}
-  >
-    <h3 id="upgrade-preview-title">Preview fetched content</h3>
-    {#if upgradePreview.page.truncated}
-      <p>This page was longer than the 2 MiB source limit and was truncated.</p>
-    {/if}
-    <p id="upgrade-preview-markdown">Source markdown</p>
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable region needs keyboard access) -->
-    <pre
-      role="region"
-      aria-labelledby="upgrade-preview-markdown"
-      tabindex="0">{upgradePreview.content}</pre>
-    {#if upgradeError}
-      <p class="source-message error" role="alert">
-        <AlertTriangle aria-hidden="true" size={17} />
-        <span>{upgradeError}</span>
+      <p class="field-help">
+        Removed items do not count toward research, claims, synthesis, or Map. Their local source
+        files stay in this workspace so Restore still works after a relaunch.
       </p>
-    {/if}
-    <div class="upgrade-actions">
-      <button class="primary-action" disabled={replacing} onclick={() => void replaceContent()}>
-        {replacing ? 'Replacing…' : 'Replace content'}
-      </button>
-      <button
-        bind:this={upgradeCloseButton}
-        disabled={replacing}
-        onclick={() => void closeUpgradePreview()}
-      >
-        Keep the stub
-      </button>
-    </div>
-  </dialog>
-{/if}
+      <ul>
+        {#each removedSources as entry (entry.record.sha256)}
+          <li>
+            <span>{entry.record.title}</span>
+            <button disabled={Boolean(restoringSha)} onclick={() => void restoreRemoved(entry)}>
+              <RotateCcw aria-hidden="true" size={15} />
+              {restoringSha === entry.record.sha256 ? 'Restoring…' : 'Restore'}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
+</section>
 
 <style>
   /* Hallmark · component: source library · genre: editorial utility · theme: custom
@@ -533,6 +578,23 @@
   .source-library {
     display: grid;
     gap: var(--space-lg);
+  }
+
+  .source-heading {
+    order: 0;
+  }
+  .add-source-details {
+    order: 1;
+  }
+  .source-feedback {
+    order: 2;
+  }
+  .source-list,
+  .source-empty {
+    order: 3;
+  }
+  .removed-sources {
+    order: 4;
   }
 
   .source-heading {
@@ -571,6 +633,21 @@
   form {
     display: grid;
     gap: var(--space-xs);
+    margin-block-start: var(--space-md);
+  }
+
+  .add-source-details,
+  .removed-sources {
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    padding-block-start: var(--space-sm);
+  }
+
+  .add-source-details summary,
+  .removed-sources summary {
+    min-height: 2.75rem;
+    color: var(--color-accent-text);
+    cursor: pointer;
+    font-weight: 700;
   }
 
   label,
@@ -625,7 +702,6 @@
   textarea:disabled,
   .add-source:disabled,
   .upgrade-source:disabled,
-  .upgrade-actions button:disabled,
   .file-picker:has(input:disabled) {
     cursor: not-allowed;
     opacity: 0.55;
@@ -746,6 +822,56 @@
     border-block-end: var(--rule-hair) solid var(--color-rule);
   }
 
+  .source-reason {
+    max-width: 68ch;
+    margin: var(--space-2xs) 0;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  .upgrade-source,
+  .remove-source,
+  .removed-sources button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2xs);
+    width: fit-content;
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .remove-source {
+    color: var(--color-error);
+  }
+
+  .removed-sources ul {
+    display: grid;
+    gap: var(--space-xs);
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .removed-sources li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    padding-block: var(--space-xs);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
   .source-list strong,
   .source-list .source-title,
   .source-list a {
@@ -757,6 +883,13 @@
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .source-row-error {
+    margin: 0;
+    color: var(--color-error);
+    font-size: var(--text-xs);
+    line-height: 1.45;
   }
 
   .source-title {
@@ -796,67 +929,6 @@
     font: inherit;
   }
 
-  .upgrade-dialog {
-    width: min(38rem, calc(100% - 2 * var(--page-gutter)));
-    max-height: calc(100dvh - 2 * var(--page-gutter));
-    margin: auto;
-    padding: var(--space-lg);
-    overflow: auto;
-    border: var(--rule-hair) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-paper);
-    color: var(--color-ink);
-  }
-
-  .upgrade-dialog::backdrop {
-    background: color-mix(in srgb, var(--color-ink) 72%, transparent);
-  }
-
-  .upgrade-dialog pre {
-    max-height: 45vh;
-    overflow: auto;
-    padding: var(--space-sm);
-    border: var(--rule-hair) solid var(--color-rule);
-    font-size: var(--text-xs);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  .upgrade-dialog pre:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 1px;
-  }
-
-  .upgrade-url code {
-    overflow-wrap: anywhere;
-  }
-
-  .upgrade-dialog .source-message {
-    margin-block-start: var(--space-sm);
-  }
-
-  .upgrade-actions {
-    display: flex;
-    gap: var(--space-sm);
-    margin-block-start: var(--space-md);
-    flex-wrap: wrap;
-  }
-
-  .upgrade-actions button {
-    min-height: 2.75rem;
-    padding: var(--space-xs) var(--space-md);
-    border: var(--rule-hair) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font: inherit;
-  }
-
-  .upgrade-actions .primary-action {
-    background: var(--color-ink);
-    color: var(--color-paper);
-  }
-
   @media (hover: hover) and (pointer: fine) {
     input:hover,
     select:hover,
@@ -869,13 +941,8 @@
       background: var(--color-accent-text);
     }
 
-    .upgrade-source:hover:not(:disabled),
-    .upgrade-actions button:hover:not(:disabled) {
+    .upgrade-source:hover:not(:disabled) {
       background: var(--color-paper-2);
-    }
-
-    .upgrade-actions .primary-action:hover:not(:disabled) {
-      background: var(--color-accent-text);
     }
   }
 

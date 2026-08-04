@@ -1,4 +1,4 @@
-/* Hallmark · macrostructure: Workbench + constellation desk · nav: N9 edge-aligned minimal · footer: Ft4 colophon
+/* Hallmark · macrostructure: Research Desk · nav: N13 visible research field · footer: compact workspace colophon
  * theme: custom supplied identity · vibe: "nocturnal editorial utility" · paper: light + dark · accent: vermilion + marigold
  * display: Shippori Mincho · body: Zen Kaku Gothic New · axes: dual / roman-serif / chromatic-vermilion
  * enrichment: real app capture · studied: no · context: explicit · contrast: pass (40-41)
@@ -20,7 +20,7 @@
   --focus-light: oklch(55% 0.2 32);
   --error-light: oklch(45% 0.16 25);
   --success-light: oklch(39% 0.09 145);
-  --marigold-light: #c9862e;
+  --marigold-light: oklch(67% 0.14 72);
 
   --paper-dark: oklch(15% 0.012 55);
   --paper-2-dark: oklch(19% 0.014 60);
@@ -33,7 +33,7 @@
   --focus-dark: oklch(70% 0.16 32);
   --error-dark: oklch(68% 0.13 25);
   --success-dark: oklch(68% 0.08 145);
-  --marigold-dark: #c9862e;
+  --marigold-dark: oklch(72% 0.13 72);
 
   --paper: light-dark(var(--paper-light), var(--paper-dark));
   --paper-2: light-dark(var(--paper-2-light), var(--paper-2-dark));
@@ -112,5 +112,27 @@
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Ink keeps the supplied nocturnal palette but removes the softer brown lift for a quieter,
+ * higher-contrast reading desk. Appearance choices are local UI state, never workspace data. */
+:root[data-appearance='ink'] {
+  --paper-dark: oklch(11% 0.008 55);
+  --paper-2-dark: oklch(16% 0.01 60);
+  --ink-dark: oklch(98% 0.008 80);
+  --muted-dark: oklch(78% 0.008 70);
+  --rule-dark: oklch(36% 0.01 70);
+  --border-dark: oklch(56% 0.01 70);
+  --accent-dark: oklch(70% 0.14 32);
+  --accent-text-dark: oklch(78% 0.12 32);
+  --focus-dark: oklch(76% 0.15 32);
+}
+
+:root[data-appearance='paper'] {
+  color-scheme: light;
+}
+
+:root[data-appearance='night'] {
   color-scheme: dark;
 }

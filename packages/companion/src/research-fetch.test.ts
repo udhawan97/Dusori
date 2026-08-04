@@ -85,7 +85,7 @@ describe('fetchReadablePage', () => {
     expect(fetched).toBe(0);
   });
 
-  it('re-validates every redirect hop and blocks redirects into private space', async () => {
+  it('rejects a redirect to a different host before contacting it', async () => {
     const fetchImpl = (async (input: string | URL | Request) => {
       const url = String(input);
       if (url === 'https://example.org/start') {
@@ -102,7 +102,73 @@ describe('fetchReadablePage', () => {
         : [{ address: '93.184.215.14', family: 4 }];
     expect(
       await reason(fetchReadablePage('https://example.org/start', { fetchImpl, lookupImpl })),
+    ).toBe('redirect-host');
+  });
+
+  it('re-validates a same-host redirect and blocks a private second DNS answer', async () => {
+    const fetchImpl = (async () =>
+      new Response(null, {
+        headers: { location: '/next' },
+        status: 302,
+      })) as unknown as typeof fetch;
+    let calls = 0;
+    const lookupImpl: LookupImpl = async () => {
+      calls += 1;
+      return [
+        calls === 1 ? { address: '93.184.215.14', family: 4 } : { address: '127.0.0.1', family: 4 },
+      ];
+    };
+    expect(
+      await reason(fetchReadablePage('https://example.org/start', { fetchImpl, lookupImpl })),
     ).toBe('blocked-host');
+    expect(calls).toBe(2);
+  });
+
+  it('allows a same-origin redirect but rejects a redirect to an unapproved origin', async () => {
+    const sameOrigin = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === 'https://example.org/start') {
+        return new Response(null, { headers: { location: '/final.txt' }, status: 302 });
+      }
+      return new Response('same host text', { headers: { 'content-type': 'text/plain' } });
+    }) as unknown as typeof fetch;
+    const page = await fetchReadablePage('https://example.org/start', {
+      fetchImpl: sameOrigin,
+      lookupImpl: publicLookup,
+    });
+    expect(page.finalUrl).toBe('https://example.org/final.txt');
+
+    const crossOrigin = (async () =>
+      new Response(null, {
+        headers: { location: 'https://login.example.net/article' },
+        status: 302,
+      })) as unknown as typeof fetch;
+    await expect(
+      fetchReadablePage('https://example.org/start', {
+        fetchImpl: crossOrigin,
+        lookupImpl: publicLookup,
+      }),
+    ).rejects.toMatchObject({ reason: 'redirect-host' });
+  });
+
+  it('pins the production request to the address that passed validation', async () => {
+    let dnsAnswer = '93.184.215.14';
+    const lookupImpl: LookupImpl = async () => [{ address: dnsAnswer, family: 4 }];
+    const seen: string[] = [];
+    const page = await fetchReadablePage('https://rebind.example/article.txt', {
+      lookupImpl,
+      pinnedFetchImpl: async (_url, address) => {
+        seen.push(address);
+        // A rebinding resolver would now answer private space, but the request already carries
+        // the validated address and never asks DNS again.
+        dnsAnswer = '127.0.0.1';
+        return new Response('pinned public response', {
+          headers: { 'content-type': 'text/plain' },
+        });
+      },
+    });
+    expect(seen).toEqual(['93.184.215.14']);
+    expect(page.text).toBe('pinned public response');
   });
 
   it('gives up after three redirects', async () => {
@@ -163,6 +229,46 @@ describe('fetchReadablePage', () => {
         }),
       ),
     ).toBe('extraction-failed');
+  });
+
+  it('reports authentication and rate-limit responses as browser handoffs', async () => {
+    for (const status of [401, 403, 429]) {
+      await expect(
+        fetchReadablePage(`https://example.org/status-${status}`, {
+          fetchImpl: async () => new Response('blocked', { status }),
+          lookupImpl: publicLookup,
+        }),
+      ).rejects.toMatchObject({ reason: 'access-denied', status });
+    }
+  });
+
+  it('cancels rejected and redirected bodies before handing off or following', async () => {
+    let cancelled = 0;
+    const body = () =>
+      new ReadableStream<Uint8Array>({
+        cancel() {
+          cancelled += 1;
+        },
+      });
+    await reason(
+      fetchReadablePage('https://example.org/blocked', {
+        fetchImpl: async () => new Response(body(), { status: 401 }),
+        lookupImpl: publicLookup,
+      }),
+    );
+    expect(cancelled).toBe(1);
+
+    let calls = 0;
+    await fetchReadablePage('https://example.org/start', {
+      fetchImpl: async () => {
+        calls += 1;
+        return calls === 1
+          ? new Response(body(), { headers: { location: '/final.txt' }, status: 302 })
+          : new Response('readable text', { headers: { 'content-type': 'text/plain' } });
+      },
+      lookupImpl: publicLookup,
+    });
+    expect(cancelled).toBe(2);
   });
 
   it('converts a stalled body stream into a timeout failure, not a raw DOMException', async () => {

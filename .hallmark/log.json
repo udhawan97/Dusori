@@ -1,6 +1,18 @@
 [
   {
     "date": "2026-08-04",
+    "macrostructure": "Research Desk with evidence shelf",
+    "theme": "custom supplied identity",
+    "theme_axes": "paper-or-nocturne / roman-serif / vermilion-action + marigold-knowledge",
+    "vibe": "quiet librarian desk with visible source truth",
+    "enrichment": "automatic question-to-brief flow, durable provider outcomes, outline-first research map, four appearance modes",
+    "brief": "Replace the objective-heavy learning shell with a direct research, reading, synthesis, and browser-handoff workflow",
+    "nav": "N13 visible research field",
+    "footer": "Ft2 compact workspace colophon",
+    "scope": "app"
+  },
+  {
+    "date": "2026-08-04",
     "macrostructure": "Learning path with evidence plates",
     "theme": "custom supplied identity",
     "theme_axes": "dark-first / roman-serif / vermilion-action + marigold-knowledge",

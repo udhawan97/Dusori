@@ -24,6 +24,7 @@ const VideoQuery = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{11}$/u) });
 const badRequestReasons = new Set([
   'blocked-host',
   'invalid-url',
+  'redirect-host',
   'too-large',
   'too-many-redirects',
   'unsupported-type',
@@ -79,7 +80,7 @@ export async function researchRoutes(
       if (error instanceof FetchPageError) {
         return reply
           .code(badRequestReasons.has(error.reason) ? 400 : 502)
-          .send({ error: error.message, reason: error.reason });
+          .send({ error: error.message, reason: error.reason, status: error.status });
       }
       return reply.code(500).send({
         error: 'The research service failed unexpectedly. Paste the text instead.',

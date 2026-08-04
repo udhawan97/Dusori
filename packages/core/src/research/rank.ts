@@ -6,6 +6,8 @@ export interface RankedCandidate extends ResearchCandidate {
   rankScore: number;
   reasons: string[];
   isNew: boolean;
+  /** Distinct query terms present in the title or summary. Zero means off-topic for selection. */
+  relevanceMatches?: number;
   /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
   aiScore?: number;
   aiNote?: string;
@@ -91,10 +93,19 @@ export function rankCandidates(
   candidates: ResearchCandidate[],
   options: RankOptions,
 ): RankedCandidate[] {
-  const scored = candidates.map((candidate) => ({
-    candidate,
-    termScore: scoreCandidate(query, { summary: candidate.snippet, title: candidate.title }),
-  }));
+  const scored = candidates
+    .filter((candidate) => {
+      if (!candidate.title.trim()) return false;
+      try {
+        return ['http:', 'https:'].includes(new URL(candidate.url).protocol);
+      } catch {
+        return false;
+      }
+    })
+    .map((candidate) => ({
+      candidate,
+      termScore: scoreCandidate(query, { summary: candidate.snippet, title: candidate.title }),
+    }));
   const topRelevance = Math.max(0, ...scored.map((item) => item.termScore));
   const ceilings = communityCeilings(candidates);
 
@@ -105,7 +116,7 @@ export function rankCandidates(
       const relevance = topRelevance > 0 ? termScore / topRelevance : 0;
       if (relevance > 0) {
         const terms = matchedTermCount(query, candidate);
-        reasons.push(`matches ${terms} objective ${terms === 1 ? 'term' : 'terms'}`);
+        reasons.push(`matches ${terms} question ${terms === 1 ? 'term' : 'terms'}`);
       }
 
       const ceiling = ceilings.get(candidate.provider) ?? 0;
@@ -128,6 +139,7 @@ export function rankCandidates(
       return {
         ...candidate,
         isNew: options.seen ? !options.seen.has(candidate.key) : false,
+        relevanceMatches: matchedTermCount(query, candidate),
         rankScore:
           WEIGHTS.relevance * relevance +
           WEIGHTS.community * community +
@@ -145,25 +157,54 @@ export function rankCandidates(
 }
 
 /**
- * Picks the best candidate of each kind before filling the rest by score, so one provider's
- * ten repositories cannot own the whole shortlist. Candidates with no kind share one bucket.
+ * Builds a genuinely varied first shelf: novel kind + provider + hostname first, then novel
+ * provider + hostname, then novel hostname, before score-only fill. A single publication or
+ * provider cannot own the first five when comparable alternatives exist.
  */
 export function selectDiverse(
   ranked: RankedCandidate[],
   limit = 5,
 ): { shortlist: RankedCandidate[]; overflow: RankedCandidate[] } {
+  // Diversity is a tie-breaker among relevant material, never a reason to promote an unrelated
+  // page. Off-topic candidates remain visible in overflow for transparency and manual inspection.
+  const eligibleRanked = ranked.filter((candidate) => (candidate.relevanceMatches ?? 0) > 0);
   const picked = new Set<string>();
   const kinds = new Set<string>();
-  for (const candidate of ranked) {
-    if (picked.size >= limit) break;
-    const kind = candidate.kind ?? '';
-    if (kinds.has(kind)) continue;
-    kinds.add(kind);
+  const providers = new Set<string>();
+  const hosts = new Set<string>();
+  const hostFor = (candidate: RankedCandidate): string => {
+    try {
+      return new URL(candidate.url).hostname.replace(/^www\./u, '').toLowerCase();
+    } catch {
+      return '';
+    }
+  };
+  const take = (candidate: RankedCandidate): void => {
     picked.add(candidate.key);
-  }
-  for (const candidate of ranked) {
-    if (picked.size >= limit) break;
-    picked.add(candidate.key);
+    kinds.add(candidate.kind ?? '');
+    providers.add(candidate.provider);
+    hosts.add(hostFor(candidate));
+  };
+  const passes = [
+    (candidate: RankedCandidate) =>
+      !kinds.has(candidate.kind ?? '') &&
+      !providers.has(candidate.provider) &&
+      !hosts.has(hostFor(candidate)),
+    (candidate: RankedCandidate) =>
+      !providers.has(candidate.provider) && !hosts.has(hostFor(candidate)),
+    (candidate: RankedCandidate) =>
+      !kinds.has(candidate.kind ?? '') && !hosts.has(hostFor(candidate)),
+    (candidate: RankedCandidate) => !kinds.has(candidate.kind ?? ''),
+    (candidate: RankedCandidate) => !providers.has(candidate.provider),
+    (candidate: RankedCandidate) => !hosts.has(hostFor(candidate)),
+    () => true,
+  ];
+  for (const eligible of passes) {
+    for (const candidate of eligibleRanked) {
+      if (picked.size >= limit) break;
+      if (picked.has(candidate.key) || !eligible(candidate)) continue;
+      take(candidate);
+    }
   }
   return {
     overflow: ranked.filter((candidate) => !picked.has(candidate.key)),

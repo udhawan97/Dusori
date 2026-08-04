@@ -93,7 +93,8 @@ export const stackExchangeProvider: ResearchProvider = {
   disclosure: STACK_EXCHANGE_DISCLOSURE,
   origins: ['https://api.stackexchange.com'],
 
-  capturedVia: () => 'search-reference',
+  // Stack Exchange's API returns the question body itself; answers remain outside this capture.
+  capturedVia: () => 'api-extract',
 
   describeMeta: (candidate: ResearchCandidate): string =>
     [

@@ -10,38 +10,38 @@ sidebar:
 | Build               | Use it when                                                     | Start                                                                                                                                           |
 | ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Browser             | You want the fastest, accountless start                         | [Open Dusori](https://udhawan97.github.io/Dusori/app/)                                                                                          |
-| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_aarch64-aarch64-apple-darwin.dmg)   |
-| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_x64-setup-x86_64-pc-windows-msvc.exe) |
+| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_aarch64-aarch64-apple-darwin.dmg)   |
+| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_x64-setup-x86_64-pc-windows-msvc.exe) |
 | Node companion      | You want browser UI plus local capture and configured providers | `npx @udhawan97/dusori@latest`                                                                                                                  |
 
-The v0.12.2 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
+The v0.12.3 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
 
-If you installed a v0.12.0 or v0.12.1 desktop build, install v0.12.2 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates resume from v0.12.2 onward.
+If you installed a v0.12.0 or v0.12.1 desktop build, install v0.12.3 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates work from v0.12.2 onward.
 
 ## Create the first topic
 
 1. Choose **Create workspace**.
 2. Enter a certification such as `Azure AI-102` or a general subject such as `AI fundamentals`.
-3. Choose **Create topic**. The new topic opens in **Learn**.
-4. Choose **Find sources** when the next step needs evidence.
-5. Turn on one provider after reading its disclosure. No request is sent before consent.
-6. Choose **Preview** on a candidate. The Sources count must not change.
-7. Choose **Save source** to add it to the shelf, or **Save & read** to add it and open the Reading room.
+3. Choose **Create topic**. The new topic opens at the **Research Desk**.
+4. Enter the question you want answered.
+5. Select one or more providers after reading their disclosures. No request is sent before consent.
+6. Choose **Research topic**. Dusori searches, ranks, saves up to five varied sources, reads available text, and builds a quoted brief automatically.
+7. Open **Sources** to read a local copy, retry a blocked page, open the original in your browser, remove a source, or restore one later.
 
 The primary navigation always means the same thing:
 
-- **Learn** gives you the next action and the topic’s learning tools.
-- **Sources** is the saved evidence shelf.
-- **Map** shows the galaxy and accessible Outline.
-- **Settings** holds storage, privacy, export/import, companion status, and updates.
+- **Research** turns a plain-language question into a durable source trail and brief.
+- **Sources** is the saved evidence shelf, including readable and browser-only references.
+- **Map** opens as a readable research Outline; the visual constellation is optional.
+- **Settings** holds appearance, storage, privacy, export/import, companion status, updates, and optional learning tools.
 
-## Continue the topic
+## Follow the research
 
-Learn orders due reviews first, then unfinished active topics, then paused topics. The route depends on current files: it may open a due review, a ready source, the next roadmap objective, or Find sources. Routing changes nothing by itself.
+Every run keeps the exact query and one outcome per provider: `found`, `empty`, or `failed`. Those outcomes survive reload. A failed provider is not shown as an empty result, and a zero-result query does not reuse an older brief as its answer.
 
-Use **Learning path** to inspect the roadmap. An objective becomes complete only when you explicitly mark that checkbox; reopening it follows the same guarded write path. Topic-level **Active**, **Paused**, and **Complete** are separate from objective progress.
+Readable captures contribute quoted passages to `Synthesis.md`. A URL-only reference remains useful as an **Open original** browser link but cannot support a claim until the companion reads it or you add permitted text. HTTP 401, 403, and 429 failures remain visible after reload.
 
-Use **Learning evidence** to inspect file-derived activity, progress, source provenance, links, and review pressure. These are signals, not a score or mastery claim.
+Roadmaps, objectives, review prompts, and learning pages remain optional under **Settings → Optional learning tools**. A certification topic preserves that intent across relaunches and offers the exact official-outline importer until an outline is applied.
 
 ## Make a portable backup
 
@@ -82,9 +82,9 @@ You may opt in to automatic checks and downloads. That option never authorizes i
 
 ## If something goes wrong
 
-- A failed provider is named in the Research trail. Retry it or allow another provider.
+- A failed provider is named in the latest Research lookup. Retry it, allow another provider, or use the browser-search fallback.
 - A scanned PDF with no text layer is reported; Dusori includes no OCR.
-- A saved URL reference remains a reference until you explicitly fetch it through the companion or replace it with pasted/local text.
+- A manual URL reference remains a reference until you choose **Read from _host_** through the companion or add pasted/local text.
 - If an external editor changes tracked Markdown, Dusori preserves it and writes a proposal for review.
 - If an update fails, keep using the installed version and follow [Updates and recovery](../updates/).
 - If browser data may be at risk, export the workspace before troubleshooting.

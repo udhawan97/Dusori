@@ -132,6 +132,7 @@ export const openAlexProvider: ResearchProvider = {
       abstract ||
       'OpenAlex has no abstract for this work. The record above is a citation; read the publisher page for the full text.';
     return {
+      capturedVia: abstract ? 'api-abstract' : 'search-reference',
       content: cappedMarkdown(`# ${candidate.title}\n\nOriginal URL: <${candidate.url}>\n\n`, body),
       title: candidate.title,
       url: candidate.url,

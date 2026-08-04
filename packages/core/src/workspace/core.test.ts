@@ -56,6 +56,18 @@ describe('workspace vertical slice', () => {
     );
   });
 
+  it('persists certification intent in the workspace index and topic state', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    const created = await createTopic(storage, 'AI-103', now, { kind: 'certification' });
+
+    expect(created.workspace.topics[0]?.kind).toBe('certification');
+    expect(created.state.kind).toBe('certification');
+    expect(JSON.parse((await storage.read('dusori.json'))!.content).topics[0].kind).toBe(
+      'certification',
+    );
+  });
+
   it('preserves an external edit and writes a proposed file plus update entry', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);

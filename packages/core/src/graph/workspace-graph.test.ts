@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
+import { addSource, removeSourceFromResearch, restoreSourceToResearch } from '../sources/import.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { buildWorkspaceGraph, resolveWikilink } from './workspace-graph.js';
 
@@ -83,6 +84,42 @@ describe('portable workspace graph', () => {
 
     expect(tagged?.tags).toEqual(['azure', 'networking', 'cloud/design']);
     expect(plain?.tags).toBeUndefined();
+  });
+
+  it('hides tombstoned source items and brings them back after restore', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'AI Fundamentals', now);
+    const source = await addSource(
+      storage,
+      {
+        content: '# Evidence\n\nA quoted source.\n',
+        method: 'url',
+        provenance: { readState: 'readable' },
+        title: 'Source to remove',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://example.org/removal',
+      },
+      now,
+    );
+
+    await removeSourceFromResearch(
+      storage,
+      { sha256: source.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    expect(
+      (await buildWorkspaceGraph(storage)).nodes.some((node) => node.path === source.path),
+    ).toBe(false);
+
+    await restoreSourceToResearch(
+      storage,
+      { sha256: source.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    expect(
+      (await buildWorkspaceGraph(storage)).nodes.some((node) => node.path === source.path),
+    ).toBe(true);
   });
 });
 

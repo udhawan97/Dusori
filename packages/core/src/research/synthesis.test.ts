@@ -99,7 +99,7 @@ describe('topic synthesis', () => {
     expect(markdown).toContain(
       '“Reviews at increasing intervals counter forgetting.” — [[abc123456789-spaced-repetition|Spaced repetition]]',
     );
-    expect(markdown).toContain('Every line below is quoted from a source you approved.');
+    expect(markdown).toContain('Every line below is quoted from saved source text.');
     // Nothing may appear that is not traceable: each bullet under What matters carries a citation.
     for (const line of markdown.split('\n').filter((entry) => entry.startsWith('- “'))) {
       expect(line).toMatch(/—\s+(?:\[\[|\[)/u);

@@ -43,7 +43,7 @@ function memoryStorage(initial: Record<string, string> = {}): {
 
 const DEFAULT_SETTINGS = {
   colorMode: 'kind',
-  hiddenKinds: [],
+  hiddenKinds: ['roadmap', 'tutor'],
   hideOrphans: false,
   linkDistance: GRAPH_VIEW_LIMITS.linkDistance.fallback,
   repelStrength: GRAPH_VIEW_LIMITS.repelStrength.fallback,

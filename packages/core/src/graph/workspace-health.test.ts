@@ -5,6 +5,7 @@ import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { proposeMarkdownUpdate } from '../conflict/write-protocol.js';
 import { updateRoadmapObjective } from '../learning/loop.js';
+import { addSource, removeSourceFromResearch, restoreSourceToResearch } from '../sources/import.js';
 import { backlinksFor, buildWorkspaceGraph } from './workspace-graph.js';
 import { inspectWorkspaceHealth } from './workspace-health.js';
 
@@ -90,6 +91,84 @@ describe('workspace backlinks and health', () => {
     expect((await storage.list('', true)).some((entry) => entry.path.includes('.invalid-'))).toBe(
       false,
     );
+  });
+
+  it('does not report a retained tombstone as an untracked source file', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'AI Fundamentals', now);
+    const source = await addSource(
+      storage,
+      {
+        content: '# Retained evidence\n\nLocal text stays available for restore.\n',
+        method: 'url',
+        provenance: { readState: 'readable' },
+        title: 'Retained source',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://example.org/retained',
+      },
+      now,
+    );
+    await removeSourceFromResearch(
+      storage,
+      { sha256: source.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+
+    const health = await inspectWorkspaceHealth(storage);
+    expect(health.issues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'untracked-source-file', path: source.path }),
+      ]),
+    );
+  });
+
+  it('keeps links to removed sources quiet until the source is restored', async () => {
+    const storage = new MemoryStorageAdapter();
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'AI Fundamentals', now);
+    const source = await addSource(
+      storage,
+      {
+        content: '# Retained evidence\n\nLocal text stays available for restore.\n',
+        method: 'paste',
+        title: 'Retained source',
+        topicSlug: 'ai-fundamentals',
+      },
+      now,
+    );
+    const notePath = 'Topics/ai-fundamentals/Notes/evidence-map.md';
+    await storage.write(notePath, `# Evidence map\n\nSee [[${source.path}]].\n`);
+
+    await removeSourceFromResearch(
+      storage,
+      { sha256: source.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+
+    const removedHealth = await inspectWorkspaceHealth(storage);
+    expect(removedHealth.graph.nodes.some((node) => node.path === source.path)).toBe(false);
+    expect(removedHealth.graph.unresolvedLinks).toEqual([]);
+    expect(removedHealth.issues).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'unresolved-link' })]),
+    );
+
+    // Re-read through the storage boundary before restore to cover the durable tombstone shape.
+    expect((await storage.read(source.path))?.content).toContain('Local text stays available');
+    await restoreSourceToResearch(
+      storage,
+      { sha256: source.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+
+    const restoredGraph = await buildWorkspaceGraph(storage);
+    expect(restoredGraph.nodes.some((node) => node.path === source.path)).toBe(true);
+    expect(restoredGraph.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'links', source: notePath, target: source.path }),
+      ]),
+    );
+    expect(restoredGraph.unresolvedLinks).toEqual([]);
   });
 
   it('reports an invalid proposal ledger and a missing pending proposal file', async () => {

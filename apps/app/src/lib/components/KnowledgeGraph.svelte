@@ -13,6 +13,8 @@
 
   import {
     buildWorkspaceGraph,
+    readResearchFile,
+    readSourceManifest,
     type StorageAdapter,
     type WorkspaceGraph,
     type WorkspaceGraphNode,
@@ -64,7 +66,16 @@
   let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
   /** Lower-cased so a chip matches a tag however its author capitalised it. Empty means no filter. */
   let artifactTag = '';
-  let mapMode: 'galaxy' | 'outline' = 'galaxy';
+  let mapMode: 'galaxy' | 'outline' = 'outline';
+  let topicEvidence: {
+    slug: string;
+    label: string;
+    discovered: number;
+    saved: number;
+    read: number;
+    claims: number;
+    freshness: string;
+  }[] = [];
   let settings: GraphViewSettings = {
     colorMode: 'kind',
     hiddenKinds: [],
@@ -391,6 +402,57 @@
     try {
       graph = await buildWorkspaceGraph(storage);
       startSimulation(graph);
+      const topics = [
+        ...new Map(
+          graph.nodes
+            .filter((node) => node.topicSlug)
+            .map(
+              (node) =>
+                [
+                  node.topicSlug!,
+                  graph!.nodes.find(
+                    (candidate) =>
+                      candidate.topicSlug === node.topicSlug && candidate.kind === 'overview',
+                  )?.label ?? node.topicSlug!,
+                ] as const,
+            ),
+        ).entries(),
+      ];
+      topicEvidence = await Promise.all(
+        topics.map(async ([slug, label]) => {
+          try {
+            const [manifest, research] = await Promise.all([
+              readSourceManifest(storage, slug),
+              readResearchFile(storage, slug),
+            ]);
+            const latest = research?.runs?.at(-1);
+            return {
+              claims: manifest.sources.reduce(
+                (total, source) => total + (source.claims?.length ?? 0),
+                0,
+              ),
+              discovered: research?.seen?.length ?? 0,
+              freshness: latest?.at
+                ? `Last researched ${latest.at.slice(0, 10)}`
+                : 'Not researched yet',
+              label,
+              read: manifest.sources.filter((source) => (source.claims?.length ?? 0) > 0).length,
+              saved: manifest.sources.length,
+              slug,
+            };
+          } catch {
+            return {
+              claims: 0,
+              discovered: 0,
+              freshness: 'Research state unavailable',
+              label,
+              read: 0,
+              saved: 0,
+              slug,
+            };
+          }
+        }),
+      );
     } catch (cause) {
       error = cause instanceof Error ? cause.message : 'The graph could not be built.';
     } finally {
@@ -451,6 +513,9 @@
   $: noteCount = graph?.nodes.filter((node) => node.kind === 'note').length ?? 0;
   $: sourceCount = graph?.nodes.filter((node) => node.kind === 'source').length ?? 0;
   $: wikilinkCount = graph?.edges.filter((edge) => edge.kind === 'links').length ?? 0;
+  $: visibleEdgeCount =
+    graph?.edges.filter((edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target))
+      .length ?? 0;
 </script>
 
 <svelte:window
@@ -462,21 +527,25 @@
 <section class="knowledge-graph" aria-labelledby="graph-title">
   <header>
     <div>
-      <p class="kicker">Portable graph · no database</p>
-      <h1 id="graph-title">Knowledge constellation</h1>
+      <p class="kicker">Research trail · built from local artifacts</p>
+      <h1 id="graph-title">Research map</h1>
       {#if graph}
-        <p>{graph.nodes.length} artifacts · {graph.edges.length} connections</p>
+        <p>
+          {shownNodes.length} research artifacts · {visibleEdgeCount} connections · no inferred mastery
+        </p>
       {:else}
-        <p>Your Markdown relationships, drawn locally.</p>
+        <p>Your topics, sources, quotes, and notes, drawn locally.</p>
       {/if}
     </div>
     <Orbit aria-hidden="true" size={36} strokeWidth={1.25} />
   </header>
 
   <div class="mode-switch" role="group" aria-label="Map view">
-    <button aria-pressed={mapMode === 'galaxy'} onclick={() => (mapMode = 'galaxy')}>Galaxy</button>
     <button aria-pressed={mapMode === 'outline'} onclick={() => (mapMode = 'outline')}
       >Outline</button
+    >
+    <button aria-pressed={mapMode === 'galaxy'} onclick={() => (mapMode = 'galaxy')}
+      >Visual map</button
     >
   </div>
 
@@ -511,6 +580,29 @@
         <dd>{graph.unresolvedLinks.length}</dd>
       </div>
     </dl>
+    {#if topicEvidence.length > 0}
+      <section class="research-journey" aria-labelledby="journey-title">
+        <div>
+          <h2 id="journey-title">What this workspace has actually researched</h2>
+          <p>
+            Counts come from saved runs and quotable local text—not quizzes, objectives, or guessed
+            completion.
+          </p>
+        </div>
+        <ul>
+          {#each topicEvidence as topic (topic.slug)}
+            <li>
+              <strong>{topic.label}</strong>
+              <span
+                >{topic.discovered} discovered · {topic.saved} saved · {topic.read} read · {topic.claims}
+                quotes</span
+              >
+              <small>{topic.freshness}</small>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
     {#if selectedNode}
       <div class="selection-action">
         <button type="button" onclick={() => onOpen(selectedNode.path)}>
@@ -883,6 +975,55 @@
     line-height: 1;
   }
 
+  .research-journey {
+    display: grid;
+    width: min(100%, 76rem);
+    gap: var(--space-md);
+    margin: 0 auto var(--space-xl);
+    padding-block: var(--space-md);
+    border-block: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .research-journey h2,
+  .research-journey p {
+    margin: 0;
+  }
+
+  .research-journey h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+  }
+
+  .research-journey p,
+  .research-journey small,
+  .research-journey span {
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .research-journey ul {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .research-journey li {
+    display: grid;
+    min-width: 0;
+    gap: var(--space-2xs);
+    padding-block: var(--space-sm);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .research-journey strong,
+  .research-journey span,
+  .research-journey small {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .graph-stage {
     display: grid;
     width: min(100%, 76rem);
@@ -912,9 +1053,9 @@
   .selection-action button {
     min-height: 2.75rem;
     padding-inline: var(--space-md);
-    border: var(--rule-hair) solid var(--color-accent);
+    border: var(--rule-hair) solid var(--color-ink);
     border-radius: var(--radius-sm);
-    background: var(--color-accent);
+    background: var(--color-ink);
     color: var(--color-paper);
     font: 700 var(--text-sm) / 1 var(--font-body);
     cursor: pointer;

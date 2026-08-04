@@ -109,6 +109,23 @@ export async function readSourcesIntoClaims(
     let changed = false;
 
     for (const record of manifest.sources) {
+      // A provider reference may contain ranking metadata or a search snippet, but it is not the
+      // source's readable text. Never turn that metadata into evidence. Older workspaces that did
+      // attach claims to a reference are repaired in place.
+      if (record.readState === 'reference') {
+        result.unreadable.push({
+          reason:
+            record.fetchMessage ?? 'Only a reference is stored. Open or read the original page.',
+          title: record.title,
+        });
+        if ((record.claims?.length ?? 0) > 0) {
+          const { claims: _claims, ...withoutClaims } = record;
+          void _claims;
+          next.push(withoutClaims);
+          changed = true;
+        } else next.push(record);
+        continue;
+      }
       if (!record.path) {
         next.push(record);
         continue;
@@ -158,7 +175,13 @@ export async function readSourcesIntoClaims(
 
     if (!changed) return result;
 
-    const nextManifest = SourceManifestSchema.parse({ ...manifest, schemaVersion, sources: next });
+    const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
+      schemaVersion,
+      sources: next,
+      synthesisStaleAt: now.toISOString(),
+      synthesisStaleReason: 'Quoted passages changed after reading saved source text.',
+    });
     try {
       await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
         expectedHash: manifestFile.hash,

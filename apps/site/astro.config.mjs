@@ -25,7 +25,7 @@ export default defineConfig({
           items: [
             { label: 'Documentation', slug: 'docs' },
             { label: 'Getting started', slug: 'docs/getting-started' },
-            { label: 'v0.12.2 release', slug: 'docs/releases/v0-12-2' },
+            { label: 'v0.12.3 release', slug: 'docs/releases/v0-12-3' },
           ],
         },
         {
@@ -47,6 +47,7 @@ export default defineConfig({
           label: 'Release history',
           collapsed: true,
           items: [
+            { label: 'v0.12.2', slug: 'docs/releases/v0-12-2' },
             { label: 'v0.12.1', slug: 'docs/releases/v0-12-1' },
             { label: 'v0.12.0', slug: 'docs/releases/v0-12-0' },
             { label: 'v0.11.3', slug: 'docs/releases/v0-11-3' },

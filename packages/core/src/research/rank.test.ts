@@ -136,7 +136,7 @@ describe('rankCandidates', () => {
     );
 
     expect(pick(ranked, 'matched').reasons).toEqual([
-      'matches 3 objective terms',
+      'matches 3 question terms',
       '90 community points',
       'published 2026',
       'official documentation',
@@ -146,7 +146,7 @@ describe('rankCandidates', () => {
 
   it('uses a singular reason phrase for a single term match', () => {
     const ranked = rankCandidates(query, [candidate({ key: 'one', title: 'Entra' })], { now });
-    expect(pick(ranked, 'one').reasons).toEqual(['matches 1 objective term']);
+    expect(pick(ranked, 'one').reasons).toEqual(['matches 1 question term']);
   });
 
   it('marks nothing as new on a first run and only unseen keys afterwards', () => {
@@ -204,10 +204,10 @@ describe('selectDiverse', () => {
     expect(ranked.map((item) => item.key)).toEqual(['r1', 'r2', 'r3', 'r4', 'r5', 'd1']);
   });
 
-  it('gives a lone minority kind a shortlist slot', () => {
+  it('does not promote an unrelated page merely to add another kind', () => {
     const { shortlist, overflow } = selectDiverse(ranked);
-    expect(shortlist.map((item) => item.key)).toEqual(['r1', 'r2', 'r3', 'r4', 'd1']);
-    expect(overflow.map((item) => item.key)).toEqual(['r5']);
+    expect(shortlist.map((item) => item.key)).toEqual(['r1', 'r2', 'r3', 'r4', 'r5']);
+    expect(overflow.map((item) => item.key)).toEqual(['d1']);
   });
 
   it('treats candidates without a kind as their own bucket', () => {
@@ -228,5 +228,57 @@ describe('selectDiverse', () => {
     const { shortlist, overflow } = selectDiverse(ranked, 2);
     expect(shortlist).toHaveLength(2);
     expect(overflow).toHaveLength(4);
+  });
+
+  it('prefers distinct hosts and providers when comparable results exist', () => {
+    const varied = rankCandidates(
+      query,
+      [
+        candidate({
+          key: 'a1',
+          kind: 'docs',
+          provider: 'alpha',
+          title: 'Configure Microsoft Entra ID',
+          url: 'https://alpha.example/one',
+        }),
+        candidate({
+          key: 'a2',
+          kind: 'docs',
+          provider: 'alpha',
+          title: 'Configure Microsoft Entra',
+          url: 'https://alpha.example/two',
+        }),
+        candidate({
+          key: 'b1',
+          kind: 'paper',
+          provider: 'beta',
+          title: 'Configure Microsoft',
+          url: 'https://beta.example/paper',
+        }),
+        candidate({
+          key: 'c1',
+          kind: 'qa',
+          provider: 'gamma',
+          title: 'Configure',
+          url: 'https://gamma.example/question',
+        }),
+      ],
+      { now },
+    );
+
+    expect(selectDiverse(varied, 3).shortlist.map((item) => item.key)).toEqual(['a1', 'b1', 'c1']);
+  });
+
+  it('drops invalid and non-web candidates before ranking', () => {
+    const ranked = rankCandidates(
+      query,
+      [
+        candidate({ key: 'valid', title: 'Configure', url: 'https://example.org/' }),
+        candidate({ key: 'file', title: 'Configure', url: 'file:///tmp/source' }),
+        candidate({ key: 'blank', title: '   ', url: 'https://example.org/blank' }),
+      ],
+      { now },
+    );
+    expect(ranked.map((item) => item.key)).toEqual(['valid']);
   });
 });

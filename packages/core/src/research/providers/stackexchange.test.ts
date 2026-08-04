@@ -194,6 +194,6 @@ describe('Stack Exchange research provider', () => {
       '412 votes · 7 answers · accepted · typescript, generics',
     );
     expect(stackExchangeProvider.describeMeta(results[2]!)).toBe('4 votes · 0 answers');
-    expect(stackExchangeProvider.capturedVia(results[0]!)).toBe('search-reference');
+    expect(stackExchangeProvider.capturedVia(results[0]!)).toBe('api-extract');
   });
 });

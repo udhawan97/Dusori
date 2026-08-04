@@ -127,7 +127,10 @@ export async function inspectWorkspaceHealth(storage: StorageAdapter): Promise<W
     }
 
     const trackedPaths = new Set(
-      manifest.data.sources
+      [
+        ...manifest.data.sources,
+        ...(manifest.data.removedSources ?? []).map((entry) => entry.record),
+      ]
         .map((source) => source.path)
         .filter((path): path is string => Boolean(path)),
     );

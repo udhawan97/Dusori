@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.12.2';
+const releaseVersion = '0.12.3';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
@@ -18,7 +18,7 @@ const releaseAssetHref = `${githubHref}/releases/download/v${releaseVersion}`;
 const macArmInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`;
 const windowsInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`;
 const sourceHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
-const learnShot = `${projectBasePath}/app-learn.png`;
+const researchShot = `${projectBasePath}/app-research.png`;
 const readerShot = `${projectBasePath}/app-reader.png`;
 const mapShot = `${projectBasePath}/app-map.png`;
 const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
@@ -39,13 +39,16 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <link rel="canonical" href={hostedProjectUrl} />
     <meta
       name="description"
-      content="Dusori is a private learning studio that finds permitted sources, keeps what you save, guides the next step, and maps your local notes."
+      content="Dusori is a private research desk that searches permitted sources, saves a durable evidence trail, and builds an honest local brief."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Dusori — one calm place to learn a hard topic" />
+    <meta
+      property="og:title"
+      content="Dusori — ask a hard question, get an honest research brief"
+    />
     <meta
       property="og:description"
-      content="Continue, read, annotate, explicitly mark learned or review, then see the map. No account, no telemetry, ordinary local files."
+      content="Ask, search, read, synthesize, and inspect the source trail. No account, no telemetry, ordinary local files."
     />
     <meta property="og:url" content={hostedProjectUrl} />
     <meta property="og:image" content={socialImageHref} />
@@ -53,7 +56,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Dusori private learning studio" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Dusori — one calm place to learn a hard topic</title>
+    <title>Dusori — a calm, honest research desk</title>
   </head>
   <body>
     <svg class="icon-defs" aria-hidden="true" focusable="false">
@@ -114,11 +117,11 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span>v{releaseVersion}</span> Private learning studio</p>
-          <h1 id="hero-title">A calm place for a difficult subject.</h1>
+          <p class="eyebrow"><span>v{releaseVersion}</span> Private research desk</p>
+          <h1 id="hero-title">Ask a hard question. Follow the evidence.</h1>
           <p class="lede">
-            Dusori finds sources you permit, keeps only what you deliberately save, and gives you
-            one clear next step. Your reading, notes, progress, and map stay on your device.
+            Dusori searches sources you permit, saves a varied evidence shelf, reads what it
+            legitimately can, and builds one cited brief. Your sources, notes, and map stay local.
           </p>
           <div class="actions">
             <a class="button button--primary" href={appHref}
@@ -134,14 +137,14 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         </div>
         <figure class="hero-figure">
           <img
-            src={learnShot}
-            alt="Dusori Learn view with one focused next step and four predictable destinations"
+            src={researchShot}
+            alt="Dusori Research Desk with a question, provider outcomes, and saved evidence"
             width="1440"
             height="960"
             fetchpriority="high"
           />
           <figcaption>
-            <span>Learn</span><span>One next step, derived from your files</span>
+            <span>Research</span><span>One question to a durable source-backed brief</span>
           </figcaption>
         </figure>
       </section>
@@ -149,52 +152,52 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
       <section class="promise" aria-label="Dusori places">
         <p>Four places. No mystery drawers.</p>
         <dl>
-          <div><dt>Learn</dt><dd>Continue the topic.</dd></div>
-          <div><dt>Sources</dt><dd>Keep and read evidence.</dd></div>
-          <div><dt>Map</dt><dd>See galaxy or Outline.</dd></div>
-          <div><dt>Settings</dt><dd>Control files, privacy, updates.</dd></div>
+          <div><dt>Research</dt><dd>Ask, search, rank, synthesize.</dd></div>
+          <div><dt>Sources</dt><dd>Read, open, remove, restore.</dd></div>
+          <div><dt>Map</dt><dd>Follow Outline or constellation.</dd></div>
+          <div><dt>Settings</dt><dd>Choose appearance, privacy, files.</dd></div>
         </dl>
       </section>
 
       <section class="loop" id="how" aria-labelledby="loop-title">
         <header class="section-heading">
-          <p class="eyebrow">The daily loop</p>
-          <h2 id="loop-title">From “I should study” to one honest action.</h2>
-          <p>Dusori can route the next step. It cannot claim you learned it.</p>
+          <p class="eyebrow">The research loop</p>
+          <h2 id="loop-title">From a question to evidence you can inspect.</h2>
+          <p>Dusori can organize the research. It cannot make weak evidence strong.</p>
         </header>
         <ol class="loop-steps">
           <li>
             <span>01</span><div>
-              <h3>Continue</h3><p>
-                Resume the next unfinished objective, a ready source, or a due review.
+              <h3>Ask</h3><p>
+                Write the question in your own words—no roadmap or objective required.
               </p>
             </div>
           </li>
           <li>
             <span>02</span><div>
-              <h3>Read</h3><p>
-                Open a source you deliberately saved. Previewing a result never adds it.
+              <h3>Search and save</h3><p>
+                Dusori runs the providers you allowed and keeps a varied first shelf automatically.
               </p>
             </div>
           </li>
           <li>
             <span>03</span><div>
-              <h3>Annotate</h3><p>
-                Write beside the evidence in Markdown that remains useful outside Dusori.
+              <h3>Read or hand off</h3><p>
+                Read available text locally; blocked pages keep an ordinary browser link.
               </p>
             </div>
           </li>
           <li>
             <span>04</span><div>
-              <h3>Mark learned or review</h3><p>
-                Only your click changes the roadmap or review schedule.
+              <h3>Synthesize</h3><p>
+                Quotable passages become a cited brief; references alone make no claims.
               </p>
             </div>
           </li>
           <li>
             <span>05</span><div>
-              <h3>See what changed</h3><p>
-                The Map and Outline reflect the same files, links, sources, and tags.
+              <h3>See the trail</h3><p>
+                Outline and constellation reflect the same local sources, notes, and links.
               </p>
             </div>
           </li>
@@ -216,10 +219,9 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <p class="eyebrow">The evidence shelf</p>
           <h2 id="reader-title">You always know what was saved.</h2>
           <p>
-            Search results are candidates. <strong>Preview</strong> lets you inspect one;
-            <strong>Save source</strong> puts it on the shelf; <strong>Save & read</strong> opens its
-            local reading copy. The Sources count comes from the portable manifest—not from a transient
-            result list.
+            Research saves up to five ranked results to a varied first shelf. Readable captures are
+            labeled separately from browser-only references. You can remove any source from active
+            research and restore it later without losing the local copy.
           </p>
           <ul>
             <li>
@@ -246,9 +248,9 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <p class="eyebrow">Galaxy + Outline</p>
           <h2 id="map-title">Zoom out without losing the path.</h2>
           <p>
-            Explore an Obsidian-like constellation, then switch to the accessible linear Outline.
-            Both are derived from your folders, notes, sources, tags, and <code>[[wikilinks]]</code
-            >. No graph database sits between you and your files.
+            Start with the accessible linear Outline, then switch to an Obsidian-like constellation
+            when spatial exploration helps. Both are derived from your folders, notes, sources,
+            tags, and <code>[[wikilinks]]</code>. No graph database sits between you and your files.
           </p>
           <a class="text-link" href={`${docsHref}knowledge-graph/`}
             >Read the graph contract <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
@@ -257,7 +259,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <figure>
           <img
             src={mapShot}
-            alt="Dusori Map with a galaxy view and matching linear outline"
+            alt="Dusori Map with a readable research outline and optional visual constellation"
             width="1440"
             height="960"
             loading="lazy"
@@ -373,9 +375,9 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             unsaved work blocks it.
           </p>
           <p>
-            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.2 install. Both affected
+            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.3 install. Both affected
             versions open to a launch-time 404, so Settings is inaccessible. Normal in-app updates
-            resume from v0.12.2 onward.
+            work from v0.12.2 onward.
           </p>
           <a class="text-link" href={`${docsHref}updates/`}
             >Update and recovery guide <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a

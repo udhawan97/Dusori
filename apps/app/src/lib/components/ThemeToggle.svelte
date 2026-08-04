@@ -2,35 +2,38 @@
   import { Moon, Sun } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
-  type Theme = 'dark' | 'light';
+  import { readAppearance, setAppearance, type Appearance } from '$lib/appearance';
+
   type State = 'idle' | 'loading' | 'error' | 'success';
 
   export let disabled = false;
   export let state: State = 'idle';
 
-  let theme: Theme = 'dark';
+  let appearance: Appearance = 'system';
+  let isLight = false;
 
   onMount(() => {
-    theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    appearance = readAppearance();
+    isLight = document.documentElement.dataset.theme === 'light';
   });
 
   function switchTheme(): void {
-    theme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem('dusori-theme', theme);
+    appearance = document.documentElement.dataset.theme === 'light' ? 'night' : 'paper';
+    setAppearance(appearance);
+    isLight = appearance === 'paper';
   }
 </script>
 
 <button
   class="theme-toggle"
-  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-  aria-pressed={theme === 'light'}
+  aria-label={isLight ? 'Switch to Night appearance' : 'Switch to Paper appearance'}
+  aria-pressed={appearance === 'paper'}
   aria-busy={state === 'loading'}
   data-state={state}
   disabled={disabled || state === 'loading'}
   onclick={switchTheme}
 >
-  {#if theme === 'dark'}
+  {#if appearance !== 'paper'}
     <Sun aria-hidden="true" size={18} strokeWidth={1.5} />
   {:else}
     <Moon aria-hidden="true" size={18} strokeWidth={1.5} />

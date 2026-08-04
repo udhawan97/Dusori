@@ -13,6 +13,7 @@ import {
   discardDesktopUpdate,
   downloadDesktopUpdate,
   installDesktopUpdate,
+  openExternalUrl,
   restartDesktopApp,
   startDesktopSession,
 } from './index.js';
@@ -30,6 +31,14 @@ describe('Tauri frontend contract', () => {
       token: 'session-token',
     });
     expect(invoke).toHaveBeenCalledWith('desktop_session', undefined);
+  });
+
+  it('hands external research links to the validated native command', async () => {
+    invoke.mockResolvedValue(undefined);
+    await openExternalUrl('https://example.org/research');
+    expect(invoke).toHaveBeenCalledWith('open_external_url', {
+      url: 'https://example.org/research',
+    });
   });
 
   it('keeps check, install, and restart as separate explicit commands', async () => {

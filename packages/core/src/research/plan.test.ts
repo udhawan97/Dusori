@@ -50,4 +50,13 @@ describe('research query planning', () => {
     expect(query.searchText).toBe('Describe neural networks');
     expect(query.terms).toEqual(['describe', 'neural', 'networks']);
   });
+
+  it('does not send the same topic twice when the question has not been expanded yet', () => {
+    const query = buildResearchQuery('History of the printing press', {
+      title: 'History of the printing press',
+    });
+
+    expect(query.searchText).toBe('History of the printing press');
+    expect(query.terms).toEqual(['history', 'printing', 'press']);
+  });
 });

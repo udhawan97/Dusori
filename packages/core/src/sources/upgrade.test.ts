@@ -35,6 +35,28 @@ class FlakyOnceStorage extends MemoryStorageAdapter {
   }
 }
 
+class AlwaysManifestConflictStorage extends MemoryStorageAdapter {
+  armed = false;
+  writeAttempts = 0;
+
+  constructor(private readonly failPath: string) {
+    super();
+  }
+
+  override async write(
+    path: string,
+    content: string,
+    options?: WriteOptions,
+  ): Promise<FileSnapshot> {
+    if (this.armed && path === this.failPath) {
+      this.writeAttempts += 1;
+      const current = await this.read(path);
+      throw new StorageConflictError(path, options?.expectedHash ?? null, current?.hash ?? null);
+    }
+    return super.write(path, content, options);
+  }
+}
+
 const now = new Date('2026-07-21T15:30:00.000Z');
 
 const page: FetchedPage = {
@@ -173,6 +195,7 @@ describe('upgradeSource', () => {
 
     const item = await storage.read(upgraded.path);
     expect(item?.content).toContain('weigh the other tokens');
+    expect(upgraded.indexed).toBe(true);
 
     const manifest = await readSourceManifest(storage, 'transformers', now);
     const record = manifest.sources.find((source) => source.sha256 === added.record.sha256);
@@ -215,6 +238,45 @@ describe('upgradeSource', () => {
     const item = await storage.read(upgraded.path);
     expect(item?.content).toContain('weigh the other tokens');
     expect(upgraded.record.sha256).toBe(added.record.sha256);
+  });
+
+  it('reports a truthful partial result when readable text saves but the manifest keeps conflicting', async () => {
+    const manifestPath = `${topicRoot('transformers')}/Sources/manifest.json`;
+    const storage = new AlwaysManifestConflictStorage(manifestPath);
+    await createWorkspace(storage, 'Dusori', now);
+    await createTopic(storage, 'Transformers', now);
+    const added = await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Attention paper',
+        topicSlug: 'transformers',
+        url: 'https://example.org/attention',
+      },
+      now,
+    );
+    const stub = await storage.read(added.path);
+
+    storage.armed = true;
+    const upgraded = await upgradeSource(
+      storage,
+      {
+        expectedContentHash: stub!.hash,
+        page,
+        sha256: added.record.sha256,
+        topicSlug: 'transformers',
+      },
+      now,
+    );
+
+    expect(storage.writeAttempts).toBe(3);
+    expect(upgraded.indexed).toBe(false);
+    expect(upgraded.warning).toContain('source index could not be updated');
+    expect((await storage.read(added.path))?.content).toContain('weigh the other tokens');
+    const manifest = await readSourceManifest(storage, 'transformers', now);
+    expect(
+      manifest.sources.find((source) => source.sha256 === added.record.sha256)?.readState,
+    ).not.toBe('readable');
   });
 
   it('retries once after a manifest write conflict, without double-writing the item file or the update log', async () => {

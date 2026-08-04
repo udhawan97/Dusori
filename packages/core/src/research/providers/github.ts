@@ -86,8 +86,8 @@ export const githubProvider: ResearchProvider = {
   label: 'GitHub',
   origins: ['https://api.github.com'],
 
-  // The README fetch is the only capture path; when it comes back empty the content
-  // itself says so, so the provenance line stays true either way.
+  // The capture reports the exact path after the request. A missing README remains a
+  // browser-ready reference and must never be promoted into quoted evidence.
   capturedVia: () => 'readme-extract',
 
   describeMeta: (candidate: ResearchCandidate): string =>
@@ -135,6 +135,7 @@ export const githubProvider: ResearchProvider = {
   async capture(candidate: ResearchCandidate, fetchImpl: typeof fetch): Promise<ResearchCapture> {
     const readme = await readReadme(fullName(candidate), fetchImpl);
     return {
+      capturedVia: readme === null ? 'search-reference' : 'readme-extract',
       content:
         readme === null
           ? referenceStub(candidate)

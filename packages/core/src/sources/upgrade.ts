@@ -45,9 +45,13 @@ export function buildUpgradedContent(
 }
 
 export interface UpgradedSource {
+  /** True only when the manifest points at the newly saved readable text. */
+  indexed: boolean;
   path: string;
   record: SourceRecord;
   updatePath?: string;
+  /** The readable source commit succeeded, but the secondary activity log did not. */
+  warning?: string;
 }
 
 export async function upgradeSource(
@@ -107,12 +111,19 @@ export async function upgradeSource(
         capturedVia: 'page-extract',
         provider: 'companion',
       },
+      fetchCheckedAt: undefined,
+      fetchMessage: undefined,
+      fetchState: undefined,
+      fetchStatus: undefined,
+      readState: 'readable',
       size: new TextEncoder().encode(content).byteLength,
     });
     const nextManifest = SourceManifestSchema.parse({
       ...manifest,
       schemaVersion,
       sources: manifest.sources.map((source) => (source === record ? nextRecord : source)),
+      synthesisStaleAt: now.toISOString(),
+      synthesisStaleReason: `Readable text was added for source: ${record.title}`,
     });
     try {
       await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
@@ -120,17 +131,29 @@ export async function upgradeSource(
       });
     } catch (error) {
       if (error instanceof StorageConflictError && attempt < 2) continue;
-      throw error;
+      return {
+        indexed: false,
+        path: record.path,
+        record: nextRecord,
+        warning:
+          'Readable text was saved locally, but the source index could not be updated. Retry Read to finish indexing.',
+      };
     }
 
     const relativePath = record.path.slice(`${root}/`.length).replace(/\.md$/u, '');
-    const updatePath = await appendTopicUpdate(
-      storage,
-      input.topicSlug,
-      `- Upgraded url source [[../../../${relativePath}|${record.title}]] to full page content.`,
-      now,
-    );
-    return { path: record.path, record: nextRecord, updatePath };
+    let updatePath: string | undefined;
+    let warning: string | undefined;
+    try {
+      updatePath = await appendTopicUpdate(
+        storage,
+        input.topicSlug,
+        `- Upgraded url source [[../../../${relativePath}|${record.title}]] to full page content.`,
+        now,
+      );
+    } catch {
+      warning = 'The readable source was saved, but the activity log could not be updated.';
+    }
+    return { indexed: true, path: record.path, record: nextRecord, updatePath, warning };
   }
 
   throw new Error('The source manifest changed repeatedly. Try upgrading the source again.');

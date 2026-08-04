@@ -1,15 +1,18 @@
 ---
 title: Product roadmap
-description: What v0.12.2 ships and what remains explicitly unbuilt.
+description: What v0.12.3 ships and what remains explicitly unbuilt.
 ---
 
-The product roadmap is not a progress score for the learner. Inside the app, **Learning path** shows the learner’s own objectives and **Map/Outline** shows what their files contain. This page is the project roadmap.
+The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
-## Shipped in v0.12.2
+## Shipped in v0.12.3
 
-- Learn, Sources, Map, and Settings as the four predictable destinations
-- File-derived Continue routing, explicit roadmap completion, source-grounded reviews, and evidence signals
-- Candidate Preview separated from Save source and Save & read
+- Research, Sources, Map, and Settings as four predictable destinations
+- One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
+- Certification intent that survives relaunch, routes Microsoft exam codes to Microsoft Learn, and offers official-outline import
+- Visible provider readiness for built-in, web, social, video, and academic research paths
+- Optional file-derived learning, explicit roadmap completion, source-grounded reviews, and evidence signals under Settings
+- Separate Read, Readable evidence, URL reference, and blocked-page states with durable provenance
 - Local Reading room and topic-local question search
 - Galaxy plus accessible linear Outline
 - Consent-gated research with a durable per-provider outcome trail
@@ -28,7 +31,7 @@ The product roadmap is not a progress score for the learner. Inside the app, **L
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.2 installers
+- Apple notarization or Microsoft Authenticode signing for v0.12.3 installers
 
 ## Candidates for later releases
 

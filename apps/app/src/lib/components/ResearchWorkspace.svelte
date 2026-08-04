@@ -1,16 +1,15 @@
 <script lang="ts">
   import { Compass, ShieldCheck } from '@lucide/svelte';
 
-  import type { CompanionAiClient, CompanionResearchClient, StorageAdapter } from '@dusori/core';
+  import type { CompanionResearchClient, StorageAdapter } from '@dusori/core';
 
-  import ResearchPanel from './ResearchPanel.svelte';
+  import ResearchDeskPanel from './ResearchDeskPanel.svelte';
   import SourceLibrary from './SourceLibrary.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let topicTitle: string;
   export let companion: CompanionResearchClient | null = null;
-  export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
   export let onAutoStartHandled: () => void = () => undefined;
   export let onArtifactSaved: () => void = () => undefined;
@@ -28,11 +27,11 @@
 <section class="research-workspace" aria-labelledby="research-workspace-title">
   <header class="research-hero">
     <div>
-      <p class="kicker">Source finder · {topicTitle}</p>
-      <h1 id="research-workspace-title">Find the next source worth reading.</h1>
+      <p class="kicker">Research Desk · {topicTitle}</p>
+      <h1 id="research-workspace-title">Ask once. See what the evidence supports.</h1>
       <p class="hero-copy">
-        Search the providers you allow, compare why each result surfaced, then preview before
-        anything joins your source shelf.
+        Dusori searches the providers you chose, keeps a varied first shelf, reads the text it can
+        quote, and opens one honest brief. Blocked pages stay useful as browser-ready references.
       </p>
     </div>
   </header>
@@ -43,15 +42,13 @@
         <Compass aria-hidden="true" size={18} />
         <span>Provider search</span>
       </div>
-      <ResearchPanel
+      <ResearchDeskPanel
         {storage}
         {topicSlug}
         {topicTitle}
         {companion}
-        {ai}
         {autoStart}
         {onAutoStartHandled}
-        {sourceRevision}
         onSourceSaved={handleSourceSaved}
       />
     </section>
@@ -64,6 +61,7 @@
       <SourceLibrary
         {storage}
         {topicSlug}
+        {topicTitle}
         {companion}
         revision={sourceRevision}
         onSourceSaved={handleSourceSaved}
@@ -73,8 +71,8 @@
   </div>
 
   <p class="trust-line">
-    Discovery can start automatically after provider consent. No result is added to your topic until
-    you approve it.
+    A research action saves up to five ranked references. Arbitrary discovered pages are never
+    fetched in the background; full-page reading always names the host first.
   </p>
 </section>
 

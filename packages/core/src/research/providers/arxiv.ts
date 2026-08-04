@@ -23,7 +23,9 @@ export function createArxivProvider(options: { search: ArxivSearch }): ResearchP
     // Every request goes through the companion, so the page never calls arxiv.org itself.
     origins: [],
 
-    capturedVia: () => 'search-reference',
+    // The arXiv API returns the paper's own abstract. It is quotable abstract text, not the
+    // paper's full body, so provenance names the narrower capture precisely.
+    capturedVia: () => 'api-abstract',
 
     describeMeta: (candidate: ResearchCandidate): string =>
       candidate.meta.published ? `published ${candidate.meta.published}` : '',

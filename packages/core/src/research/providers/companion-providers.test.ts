@@ -46,7 +46,7 @@ describe('arXiv provider', () => {
 
     expect(provider.describeMeta(candidate())).toBe('published 2017-06-12');
     expect(provider.describeMeta(candidate({ meta: {} }))).toBe('');
-    expect(provider.capturedVia(candidate())).toBe('search-reference');
+    expect(provider.capturedVia(candidate())).toBe('api-abstract');
   });
 
   it('lets a proxy failure surface rather than pretending there were no papers', async () => {

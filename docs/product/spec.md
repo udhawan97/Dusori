@@ -1,15 +1,15 @@
 # Dusori product specification
 
-**Status:** v0.12.2 release contract · **Date:** 2026-08-04
+**Status:** v0.12.3 release contract · **Date:** 2026-08-04
 
 ## Product promise
 
-Dusori is a free, open-source, local-first learning studio for certifications and general topics. It helps a learner find permitted sources, deliberately keep evidence, read and annotate it, record progress explicitly, review from saved material, and inspect the resulting knowledge map.
+Dusori is a free, open-source, local-first research desk for certifications and general topics. It helps a researcher ask a question, find permitted sources, keep and read evidence, build a cited brief, and inspect the resulting knowledge map. Optional study tools remain available without defining the primary workflow.
 
-The governing sequence is:
+The governing research sequence is:
 
 ```text
-Continue → Read → Annotate → explicitly Mark learned or review → Map/Outline
+Ask → Search allowed providers → Save shortlist → Read available evidence → Brief → Map/Outline
 ```
 
 Dusori has no hosted account, workspace database, analytics, telemetry, or paid core dependency. Its deterministic baseline works without AI.
@@ -18,18 +18,18 @@ Dusori has no hosted account, workspace database, analytics, telemetry, or paid 
 
 The app has four stable primary destinations:
 
-1. **Learn** — one file-derived next step plus contextual tools for research, learning path, review, and evidence.
-2. **Sources** — the current topic’s saved evidence shelf and Reading room.
+1. **Research** — one plain-language question to provider outcomes, a saved shortlist, and a cited brief.
+2. **Sources** — the current topic’s evidence shelf and Reading room, with provenance and readable/reference states.
 3. **Map** — an explorable galaxy and accessible linear Outline derived from the same files.
-4. **Settings** — storage, privacy, companion status, export/import, and desktop updates.
+4. **Settings** — appearance, storage, privacy, companion status, export/import, desktop updates, and optional learning tools.
 
-Research, roadmap, insights, and review are not parallel global destinations. They belong to the topic and are reached from Learn or the relevant evidence context.
+The topic-aware destinations never claim that the researcher has made progress. Objectives, reviews, roadmaps, insights, and official-outline import live under **Settings → Optional learning tools** and never gate research.
 
 ## Non-negotiable state semantics
 
-- A candidate preview changes no workspace file and cannot change the Sources count.
-- **Save source** adds a candidate to the manifest-backed shelf.
-- **Save & read** adds the same source, then opens its local reading copy.
+- A research run saves up to five ranked results to the manifest-backed shelf automatically.
+- Provider-returned abstracts, extracts, and READMEs may be saved after provider consent; arbitrary result pages are never fetched automatically.
+- A URL reference cannot support a claim until readable text exists.
 - Opening a topic, source, map, or review does not change learning progress.
 - A roadmap objective changes only through an explicit checkbox action.
 - Topic **Active**, **Paused**, and **Complete** state is separate from roadmap completion.
@@ -125,7 +125,7 @@ The updater has four explicit operations:
 
 Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies both platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
-v0.12.2 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
+v0.12.3 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 
 ## Explicitly not built
 
@@ -136,7 +136,7 @@ v0.12.2 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Social-feed scraping, access-control bypass, or YouTube media/caption download
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.2
+- Apple notarization or Microsoft Authenticode signing for v0.12.3
 
 ## Trust model
 

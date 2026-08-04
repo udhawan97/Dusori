@@ -91,57 +91,6 @@ Domain 4: Design Cost-Optimized Architectures
 Task Statement 4.1: Design cost-optimized storage solutions.
 `;
 
-const microsoftLearnCatalog = {
-  modules: [
-    {
-      duration_in_minutes: 18,
-      levels: ['beginner'],
-      popularity: 0.92,
-      products: ['azure-active-directory'],
-      summary: `Learn the terms and boundaries of Microsoft Entra identity management.\n${overflowingLines}`,
-      title: 'Establish identity terms with Microsoft Entra',
-      uid: 'learn.identity-terms',
-      url: 'https://learn.microsoft.com/en-us/training/modules/identity-terms/',
-    },
-  ],
-};
-
-const wikipediaSearch = {
-  query: {
-    search: [
-      {
-        pageid: 44779164,
-        size: 8948,
-        snippet:
-          '<span class="searchmatch">Microsoft Entra</span> Connect links local identity infrastructure.',
-        title: 'Microsoft Entra Connect',
-        wordcount: 746,
-      },
-    ],
-  },
-};
-
-// A page extract with real prose under headings, so the deep pass has something to quote.
-const wikipediaExtract = {
-  query: {
-    pages: {
-      '44779164': {
-        extract: `Microsoft Entra Connect is the Microsoft tool designed to meet and accomplish hybrid identity goals across directories.
-
-== Synchronization ==
-
-Synchronization is responsible for creating users, groups, and other objects, and for making sure identity information for on-premises users matches the cloud.
-
-== Federation ==
-
-Federation is an optional part of Microsoft Entra Connect that can be used to configure a hybrid environment using an on-premises infrastructure.`,
-        pageid: 44779164,
-        title: 'Microsoft Entra Connect',
-      },
-    },
-  },
-};
-
 const reviewSourceText = `# Attention notes
 
 ## Attention weights
@@ -195,22 +144,13 @@ async function createTopic(
 ): Promise<void> {
   await page.getByLabel('Topic name').fill('AI Fundamentals');
   await page.getByRole('button', { name: 'Create topic' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Find the next source worth reading.' }),
-  ).toBeVisible();
-  await expect(page.getByText(/Allow at least one provider to scan/u)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await expect(providerChoices).toBeVisible();
+  await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+  await expect(providerChoices).toBeHidden();
   if (options.remainInResearch) return;
-
-  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori learning studio' });
-  if (!(await workspaceNavigation.isVisible())) {
-    await page.getByRole('button', { name: 'Open workspace navigation' }).click();
-  }
-  await workspaceNavigation.getByRole('button', { name: 'AI Fundamentals' }).click();
-  await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
-  await expect(page.getByTitle('Learning flow diagram')).toBeVisible();
-  await expect(
-    page.frameLocator('iframe[title="Learning flow diagram"]').locator('svg'),
-  ).toBeVisible();
+  await openTodayView(page);
 }
 
 async function runConflictProof(page: Page): Promise<void> {
@@ -232,21 +172,57 @@ async function openInspector(page: Page): Promise<void> {
 }
 
 async function openResearch(page: Page): Promise<void> {
-  if (await page.getByRole('heading', { name: 'Research', exact: true }).isVisible()) return;
-  await openTodayView(page);
-  await page.getByRole('button', { name: 'Find sources' }).click();
-  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
+  if (await page.getByRole('heading', { name: 'Research this topic' }).isVisible()) return;
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
+  await workspaceNavigation.getByRole('button', { name: 'Research', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+}
+
+async function openSources(page: Page): Promise<void> {
+  const heading = page.getByRole('heading', { name: 'Sources', exact: true });
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  if (!(await heading.isVisible())) {
+    await expect
+      .poll(
+        async () => (await workspaceNavigation.isVisible()) || (await navigationButton.isVisible()),
+      )
+      .toBe(true);
+    if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
+    await workspaceNavigation.getByRole('button', { name: /^Sources/u }).click();
+  }
+  await expect(heading).toBeVisible();
+  const addDetails = page.locator('details.add-source-details');
+  if ((await addDetails.getAttribute('open')) === null) {
+    await addDetails.getByText('Add your own source', { exact: true }).click();
+  }
+}
+
+async function openGalaxy(page: Page): Promise<void> {
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  await expect
+    .poll(
+      async () => (await workspaceNavigation.isVisible()) || (await navigationButton.isVisible()),
+    )
+    .toBe(true);
+  if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
+  await workspaceNavigation.getByRole('button', { name: 'Map', exact: true }).click();
+  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
 }
 
 async function addPastedSource(page: Page): Promise<void> {
-  await openResearch(page);
+  await openSources(page);
   await page.getByLabel('Source title').fill('Transformer notes');
   await page
     .getByLabel('Source text')
     .fill('Attention lets each token weigh the other tokens in its context.');
   await page.getByRole('button', { name: 'Save source' }).click();
   await expect(
-    page.getByText('Source added to this topic and its update log.').first(),
+    page.getByText('Source added to this topic. The activity log was updated.').first(),
   ).toBeVisible();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
@@ -267,13 +243,17 @@ async function noteNames(page: Page): Promise<string[]> {
   });
 }
 
-/** Reaches Today from any width: the workspace navigation collapses on narrow viewports. */
+/** Reaches the optional learning tools from any width. */
 async function openTodayView(page: Page): Promise<void> {
+  const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  if (await providerChoices.isVisible()) {
+    await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+  }
   const inspector = page.getByRole('complementary', { name: 'Workspace details' });
   if (await inspector.isVisible()) {
     await inspector.getByRole('button', { name: 'Close workspace details' }).click();
   }
-  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori learning studio' });
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
   // A reload briefly renders the workspace-restoring screen. Wait for the responsive shell to
   // choose either its wide navigation or its narrow drawer trigger before deciding which path to
@@ -286,7 +266,10 @@ async function openTodayView(page: Page): Promise<void> {
   if (!(await workspaceNavigation.isVisible())) {
     await navigationButton.click();
   }
-  await workspaceNavigation.getByRole('button', { name: 'Learn', exact: true }).click();
+  await workspaceNavigation.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page
+    .getByRole('button', { name: /Open (?:optional learning tools|learning workspace)/u })
+    .click();
   await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
 }
 
@@ -298,7 +281,7 @@ async function openLearningPath(page: Page): Promise<void> {
 
 /** Two headed sections, so a review session has more than one place to draw a prompt from. */
 async function addReviewSource(page: Page): Promise<void> {
-  await openResearch(page);
+  await openSources(page);
   await page.getByLabel('Source title').fill('Attention notes');
   await page.getByLabel('Source text').fill(reviewSourceText);
   await page.getByRole('button', { name: 'Save source' }).click();
@@ -346,7 +329,7 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
   });
   await page.goto('/Dusori/');
   await expect(
-    page.getByRole('heading', { name: 'A calm place for a difficult subject.' }),
+    page.getByRole('heading', { name: 'Ask a hard question. Follow the evidence.' }),
   ).toBeVisible();
   expect(cspViolations).toEqual([]);
   await expect(page.getByRole('link', { name: /open dusori/iu })).toHaveAttribute(
@@ -382,7 +365,7 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
 
   await page.goto('/Dusori/app/');
   await expect(
-    page.getByRole('heading', { name: 'Make a learning space you can keep.' }),
+    page.getByRole('heading', { name: 'Make a research desk you can keep.' }),
   ).toBeVisible();
   await expectNoSeriousA11yViolations(page);
 
@@ -413,6 +396,7 @@ test('first-run certification setup preserves the exact code and stays offline b
   });
 
   await createBrowserWorkspace(page);
+  await page.getByRole('button', { name: 'New topic' }).click();
   await page.getByRole('radio', { name: /Certification/u }).check();
   await page.getByLabel('Topic name').fill('AI-103');
   await page.getByRole('button', { name: 'Create topic' }).click();
@@ -425,21 +409,31 @@ test('first-run certification setup preserves the exact code and stays offline b
   await expect(page.getByLabel('Outline text')).toBeVisible();
   await expect(page.getByText(/silently substitute another exam/u)).toBeVisible();
   expect(externalRequests).toEqual([]);
+
+  expect(await readWorkspaceFile(page, 'dusori.json')).toContain('"kind": "certification"');
+  await page.getByRole('button', { name: 'Not now' }).click();
+  await expect(page.getByRole('heading', { name: 'Add the exact official outline.' })).toBeHidden();
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Add the exact official outline.' }),
+  ).toBeVisible();
 });
 
-test('the four-destination studio keeps sources and update truth obvious', async ({ page }) => {
+test('the four-destination studio keeps research and update truth obvious', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  const studio = page.getByRole('navigation', { name: 'Dusori learning studio' });
-  for (const destination of ['Learn', 'Sources', 'Map', 'Settings']) {
+  const studio = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  for (const destination of ['Research', 'Sources', 'Map', 'Settings']) {
     await expect(
       studio.getByRole('button', { name: new RegExp(`^${destination}`, 'u') }),
     ).toBeVisible();
   }
-
+  await expect(studio.getByRole('button', { name: 'Learn', exact: true })).toHaveCount(0);
   await studio.getByRole('button', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optional learning tools' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open optional learning tools' })).toBeVisible();
   await expect(
     page.getByText('The hosted app updates when this website is refreshed.'),
   ).toBeVisible();
@@ -550,21 +544,21 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200');
   await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630');
   await expect(
-    page.getByRole('heading', { name: 'A calm place for a difficult subject.' }),
+    page.getByRole('heading', { name: 'From a question to evidence you can inspect.' }),
   ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Zoom out without losing the path.' }),
   ).toBeVisible();
-  await expect(page.getByText('Explore an Obsidian-like constellation')).toBeVisible();
+  await expect(page.getByText('Start with the accessible linear Outline')).toBeVisible();
   await expect(page.getByText('npx @udhawan97/dusori@latest')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Browser, Mac, Windows, or source.' }),
   ).toBeVisible();
 
   for (const imageName of [
-    'Dusori Learn view with one focused next step and four predictable destinations',
+    'Dusori Research Desk with a question, provider outcomes, and saved evidence',
     'Dusori Reading room with a saved local source',
-    'Dusori Map with a galaxy view and matching linear outline',
+    'Dusori Map with a readable research outline and optional visual constellation',
   ]) {
     const capture = page.getByRole('img', { name: imageName });
     await capture.scrollIntoViewIfNeeded();
@@ -589,30 +583,52 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   await expectNoSeriousA11yViolations(page);
 });
 
-test('app starts dark and persists an explicit theme choice', async ({ page }) => {
+test('app follows the system and persists an explicit appearance choice', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/Dusori/app/');
 
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'system');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Switch to Paper appearance' })).toBeVisible();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(
     'dark',
   );
 
-  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await page.getByRole('button', { name: 'Switch to Paper appearance' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'paper');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  expect(await page.evaluate(() => localStorage.getItem('dusori-theme'))).toBe('light');
+  expect(await page.evaluate(() => localStorage.getItem('dusori-appearance'))).toBe('paper');
 
   await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'paper');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Switch to Night appearance' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await page.getByRole('button', { name: 'Switch to Night appearance' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'night');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  expect(await page.evaluate(() => localStorage.getItem('dusori-theme'))).toBe('dark');
+  expect(await page.evaluate(() => localStorage.getItem('dusori-appearance'))).toBe('night');
   await page.getByRole('button', { name: 'Create workspace' }).evaluate(async (button) => {
     await Promise.all(button.getAnimations().map((animation) => animation.finished));
   });
   await expectNoSeriousA11yViolations(page);
+});
+
+test('Settings exposes and persists all four appearance modes', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+
+  for (const appearance of ['paper', 'ink', 'night', 'system'] as const) {
+    const label = `${appearance[0]?.toUpperCase()}${appearance.slice(1)}`;
+    await page.getByRole('radio', { name: new RegExp(`^${label}`, 'u') }).check();
+    await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
+    expect(await page.evaluate(() => localStorage.getItem('dusori-appearance'))).toBe(appearance);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-appearance', appearance);
+    await expect(page.getByRole('radio', { name: new RegExp(`^${label}`, 'u') })).toBeChecked();
+  }
 });
 
 test('Obsidian setup explains least-privilege folder access and the portable fallback', async ({
@@ -683,30 +699,27 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await page.getByRole('button', { name: 'Map' }).click();
-  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
   // Canvas-heavy views close the inspector so the constellation gets the full workspace.
   await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
   const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
-  await expect(graph).toBeVisible();
-  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
-  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('First look');
-  await page.getByRole('button', { name: 'Outline', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Outline', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await expect(graph).toBeHidden();
+  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
+  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('First look');
-  await page.getByRole('button', { name: 'Galaxy', exact: true }).click();
+  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
   await expect(graph).toBeVisible();
   await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('First look');
   await expect(page.getByRole('list', { name: 'Map documents' }).getByRole('listitem')).toHaveCount(
     1,
   );
   await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('');
-  await expect(page.getByText(/6 artifacts · \d+ connections/u)).toBeVisible();
+  await expect(page.getByText(/\d+ research artifacts · \d+ connections/u)).toBeVisible();
 
   const hub = graph.getByRole('button', { name: /AI Fundamentals, overview, \d+ wikilinks, hub/u });
   await expect(hub).toHaveClass(/hub/u);
@@ -734,7 +747,7 @@ test('a wikilink in a rendered document opens what it names', async ({ page }) =
 
   const sheet = page.locator('.note-sheet');
   const openOverview = async (): Promise<void> => {
-    await page.getByRole('button', { name: 'Map' }).click();
+    await page.getByRole('button', { name: 'Map', exact: true }).click();
     await page
       .getByRole('list', { name: 'Map documents' })
       .getByRole('button', { name: 'AI Fundamentals overview', exact: true })
@@ -757,7 +770,7 @@ test('graph view zooms, adjusts forces, and remembers the sliders', async ({ pag
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await page.getByRole('button', { name: 'Map' }).click();
+  await openGalaxy(page);
   const svg = page.locator('svg.constellation');
   await expect(svg).toBeVisible();
   await expect(svg).toHaveAttribute('viewBox', /.+/u);
@@ -773,7 +786,7 @@ test('graph view zooms, adjusts forces, and remembers the sliders', async ({ pag
   await expectNoSeriousA11yViolations(page);
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  await openGalaxy(page);
   await page.getByRole('button', { name: 'View controls' }).click();
   await expect(page.getByLabel('Link length')).toHaveValue('220');
   await expect(page.getByLabel('Spacing')).toHaveValue('0.9');
@@ -818,7 +831,7 @@ test('graph nodes pin where dropped, filter by kind, and color by topic', async 
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await page.getByRole('button', { name: 'Map' }).click();
+  await openGalaxy(page);
   const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
   await expect(graph).toBeVisible();
   await page.getByRole('button', { name: 'View controls' }).click();
@@ -865,6 +878,7 @@ test('graph nodes pin where dropped, filter by kind, and color by topic', async 
   await expectNoSeriousA11yViolations(page);
 
   await page.reload();
+  await openGalaxy(page);
   await page.getByRole('button', { name: 'View controls' }).click();
   await expect(page.getByLabel('Color by')).toHaveValue('topic');
 });
@@ -877,8 +891,12 @@ test('a workspace can grow past its first topic', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Open another line of inquiry.' })).toBeVisible();
   await page.getByLabel('Topic name').fill('Distributed Systems Consensus Protocols in Practice');
   await page.getByRole('button', { name: 'Create topic' }).click();
+  const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  if (await providerChoices.isVisible()) {
+    await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+  }
 
-  const rail = page.getByRole('navigation', { name: 'Dusori learning studio' });
+  const rail = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   await expect(rail.getByRole('button', { name: 'AI Fundamentals' })).toBeVisible();
   await expect(
     rail.getByRole('button', { name: 'Distributed Systems Consensus Protocols in Practice' }),
@@ -891,8 +909,7 @@ test('a workspace can grow past its first topic', async ({ page }) => {
     .boundingBox())!;
   expect(longTopic.x + longTopic.width).toBeLessThanOrEqual(railBox.x + railBox.width + 1);
 
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
+  await openTodayView(page);
   await expect(page.locator('.today-ledger')).toContainText('2');
   await expectNoSeriousA11yViolations(page);
 });
@@ -913,19 +930,22 @@ test('closing the inspector keeps unsaved drafts and the open view survives relo
     .getByRole('complementary', { name: 'Workspace details' })
     .getByRole('button', { name: 'Close workspace details' })
     .click();
-  await page.getByRole('button', { name: 'Map' }).click();
+  await page
+    .getByRole('navigation', { name: 'Dusori Research Desk' })
+    .getByRole('button', { name: 'Map', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Open inspector' }).click();
   await expect(page.getByLabel('Outline text')).toHaveValue(/Skills measured/u);
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('graph');
 });
 
 test('the conflict proof brings its proposal on screen', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
+  await openTodayView(page);
   await runConflictProof(page);
 
   // Run from Today, the proof still lands on the note it protected, with the decision in view.
@@ -1004,7 +1024,7 @@ test('searches local workspace prose and opens the matching document', async ({ 
 test('filters workspace search by a tag written in the source itself', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
-  await openResearch(page);
+  await openSources(page);
   await page.getByLabel('Source title').fill('Tagged attention notes');
   await page
     .getByLabel('Source text')
@@ -1039,15 +1059,6 @@ async function readWorkspaceFile(page: Page, path: string): Promise<string> {
     for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
     return (await (await directory.getFileHandle(name)).getFile()).text();
   }, path);
-}
-
-async function workspaceFileExists(page: Page, path: string): Promise<boolean> {
-  try {
-    await readWorkspaceFile(page, path);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /** PDF strings are parenthesised, so a literal parenthesis or backslash must be escaped. */
@@ -1092,7 +1103,7 @@ test('imports a PDF by reading its text on this device', async ({ page }) => {
   const sentence = 'Positional encoding restores order before the first attention block.';
   await createBrowserWorkspace(page);
   await createTopic(page);
-  await openResearch(page);
+  await openSources(page);
 
   await page.getByLabel('Source type').selectOption('file');
   await page.getByLabel('Source title').fill('Encoding handout');
@@ -1119,7 +1130,7 @@ test('imports a PDF by reading its text on this device', async ({ page }) => {
 test('a PDF with no text layer says so instead of saving an empty source', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
-  await openResearch(page);
+  await openSources(page);
 
   await page.getByLabel('Source type').selectOption('file');
   await page.getByLabel('Source title').fill('Scanned pages');
@@ -1192,8 +1203,14 @@ test('shows unresolved links and backlinks from the same local graph', async ({ 
     .getByRole('complementary', { name: 'Workspace details' })
     .getByRole('button', { name: 'Close workspace details' })
     .click();
-  await page.getByRole('button', { name: 'AI Fundamentals' }).click();
+  const navigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  await navigation.getByRole('button', { name: 'Map', exact: true }).click();
+  await page
+    .getByRole('list', { name: 'Map documents' })
+    .getByRole('button', { name: 'First look note', exact: true })
+    .click();
   await openInspector(page);
+  await page.getByRole('button', { name: 'Refresh workspace health' }).click();
   const backlinks = page.getByRole('list', { name: 'Backlinks to current document' });
   await expect(backlinks).toContainText('Link map');
   await backlinks.getByRole('button', { name: /Link map/u }).click();
@@ -1262,362 +1279,116 @@ test('source library stores pasted text and URL references without remote fetchi
   await expectNoSeriousA11yViolations(page);
 });
 
-test('research requires disclosure, previews exact capture, and adds a graph source', async ({
-  page,
-}) => {
-  let catalogRequests = 0;
-  await page.route('https://learn.microsoft.com/api/catalog/**', async (route) => {
-    catalogRequests += 1;
-    await route.fulfill({ contentType: 'application/json', json: microsoftLearnCatalog });
-  });
-  await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
-
-  await expect(
-    page.getByRole('heading', { name: 'Find the next source worth reading.' }),
-  ).toBeVisible();
-  await expect(page.getByLabel('Research objective')).toHaveValue('0');
-  const runResearch = page.getByRole('button', { name: 'Scan for strong sources' });
-  await expect(runResearch).toBeDisabled();
-
-  const allowMicrosoftLearn = page.getByRole('button', { name: 'Allow Microsoft Learn' });
-  await allowMicrosoftLearn.click();
-  let disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
-  await expect(disclosure).toContainText(
-    'Searching downloads the public Microsoft Learn module catalog (learn.microsoft.com) over HTTPS and ranks it on this device. Nothing from your workspace is sent. Allow on this device?',
-  );
-  await disclosure.getByRole('button', { name: 'Keep search off' }).click();
-  await expect(allowMicrosoftLearn).toBeFocused();
-  expect(catalogRequests).toBe(0);
-
-  await allowMicrosoftLearn.click();
-  disclosure = page.getByRole('dialog', { name: 'Allow Microsoft Learn search?' });
-  await disclosure.getByRole('button', { name: 'Allow search' }).click();
-  // Topic creation arms one automatic run; granting the first provider consent starts it.
-  await expect(page.getByText('Establish identity terms with Microsoft Entra')).toBeVisible();
-  expect(catalogRequests).toBe(1);
-
-  const result = page
-    .getByRole('list', { name: 'Research shortlist' })
-    .getByRole('listitem')
-    .filter({ hasText: 'Establish identity terms with Microsoft Entra' });
-  const sourcesDestination = page
-    .getByRole('navigation', { name: 'Dusori learning studio' })
-    .getByRole('button', { name: /Sources/u });
-  await expect(sourcesDestination.getByLabel('0 saved sources')).toBeVisible();
-  await result.getByRole('button', { name: 'Preview' }).click();
-  let preview = page.getByRole('dialog', { name: 'Preview research source' });
-  await expect(preview.getByText('Source markdown')).toBeVisible();
-  // The raw capture sits in a collapsed <details>; expand it so the scrollable
-  // <pre> is actually rendered when axe runs.
-  await preview.getByText('Source markdown').click();
-  await expect(preview.locator('pre')).toBeVisible();
-  await expect(preview.locator('pre')).toContainText(
-    '# Establish identity terms with Microsoft Entra',
-  );
-  await expect(preview.locator('pre')).toContainText('Filler line 60');
-  await expectNoSeriousA11yViolations(page);
-  await preview.getByRole('button', { name: 'Close preview', exact: true }).first().click();
-  await expect(result.getByRole('button', { name: 'Preview' })).toBeFocused();
-  await expect(sourcesDestination.getByLabel('0 saved sources')).toBeVisible();
-
-  await result.getByRole('button', { name: 'Preview' }).click();
-  preview = page.getByRole('dialog', { name: 'Preview research source' });
-  await preview.getByRole('button', { name: 'Save source' }).evaluate((button) => {
-    (button as HTMLButtonElement).click();
-    (button as HTMLButtonElement).click();
-  });
-
-  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
-  await expect(sourcesDestination.getByLabel('1 saved sources')).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
-    'Establish identity terms with Microsoft Entra',
-  );
-  await expect(page.getByRole('list', { name: 'Saved sources' }).getByRole('listitem')).toHaveCount(
-    1,
-  );
-  await page
-    .getByRole('list', { name: 'Saved sources' })
-    .getByRole('button', { name: 'Establish identity terms with Microsoft Entra' })
-    .click();
-  await expect(
-    page.getByRole('heading', { name: 'Establish identity terms with Microsoft Entra' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Annotate in a study note' }).click();
-  const annotation = page.getByLabel('Markdown note');
-  await expect(annotation).toHaveValue(/\[\[\.\.\/Sources\/items\//u);
-  await expect(annotation).toHaveValue(/## Annotation/u);
-  await annotation.fill(`${await annotation.inputValue()}The identity boundary is the key idea.`);
-  await page.getByRole('button', { name: 'Save note' }).click();
-  await expect(page.getByText('Note saved locally and recorded in the update log.')).toBeVisible();
-  expect(
-    await page.evaluate(() => localStorage.getItem('dusori-research-consent:v2:mslearn')),
-  ).toBe('allowed');
-  await expectNoSeriousA11yViolations(page);
-
-  await page.getByRole('button', { name: 'Map' }).click();
-  await expect(page.getByRole('list', { name: 'Map documents' })).toContainText(
-    'Establish identity terms with Microsoft Entra',
-  );
-  await expect(page.getByRole('list', { name: 'Map documents' })).toContainText(
-    'Notes on Establish identity terms with Microsoft Entra',
-  );
-});
-
-test('dismissed research suggestions stay gone after reload', async ({ page }) => {
-  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
-    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
-  });
-  await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
-
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  const disclosure = page.getByRole('dialog', { name: 'Allow Wikipedia search?' });
-  await disclosure.getByRole('button', { name: 'Allow search' }).click();
-  const result = page
-    .getByRole('list', { name: 'Research shortlist' })
-    .getByRole('listitem')
-    .filter({ hasText: 'Microsoft Entra Connect' });
-  await result.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
-
-  await page.reload();
-  await page.getByRole('button', { name: 'Scan for strong sources' }).click();
-  await expect(page.getByText('No new suggestions matched this objective.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeHidden();
-});
-
-test('a research run leaves a durable trail and a Today mission', async ({ page }) => {
-  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
-    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
-  });
-  await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
-
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  await page
-    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
-    .getByRole('button', { name: 'Allow search' })
-    .click();
-  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
-
-  const trail = page.getByRole('list', { name: 'Research trail runs' });
-  await expect(trail).toContainText('Wikipedia');
-  await expect(trail).toContainText('found 1');
-
-  // The trail is workspace evidence, not screen state: it must survive a reload.
-  await page.reload();
-  await expect(page.getByRole('list', { name: 'Research trail runs' })).toContainText('found 1');
-  await expectNoSeriousA11yViolations(page);
-
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
-  const missions = page.getByRole('list', { name: 'Research missions' });
-  await expect(missions).toContainText('1 discovered');
-  await expect(missions).toContainText('Refreshed today');
-  await expectNoSeriousA11yViolations(page);
-});
-
-test('reading a saved source produces quoted passages, a synthesis, and a learning page', async ({
+test('Research Desk groups provider consent and builds a durable source-backed brief', async ({
   page,
 }) => {
   await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
     const url = new URL(route.request().url());
-    if (url.searchParams.get('prop') === 'extracts') {
-      await route.fulfill({ contentType: 'application/json', json: wikipediaExtract });
-      return;
-    }
-    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
+    await route.fulfill({
+      contentType: 'application/json',
+      json:
+        url.searchParams.get('list') === 'search'
+          ? {
+              query: {
+                search: [
+                  {
+                    pageid: 1,
+                    size: 5200,
+                    snippet: 'An overview of artificial intelligence concepts and capabilities.',
+                    title: 'AI fundamentals',
+                    wordcount: 620,
+                  },
+                ],
+              },
+            }
+          : {
+              query: {
+                pages: {
+                  '1': {
+                    extract:
+                      'Artificial intelligence systems perform tasks associated with human intelligence.\n\n== Machine learning ==\n\nMachine learning uses data to fit models that can make predictions on new examples.\n\n== Responsible AI ==\n\nResponsible AI practices address fairness, reliability, privacy, transparency, and accountability.',
+                    pageid: 1,
+                    title: 'AI fundamentals',
+                  },
+                },
+              },
+            },
+    });
   });
+
   await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
 
-  const readSavedSources = page.getByRole('button', { name: 'Read saved sources' });
-  const buildSynthesis = page.getByRole('button', { name: 'Build synthesis' });
-  const createLearningPage = page.getByRole('button', { name: 'Create learning page' });
-  await expect(readSavedSources).toBeDisabled();
-  await expect(buildSynthesis).toBeDisabled();
-  await expect(createLearningPage).toBeDisabled();
-  await buildSynthesis.evaluate((button) => {
-    (button as HTMLButtonElement).disabled = false;
-    (button as HTMLButtonElement).click();
-  });
-  await createLearningPage.evaluate((button) => {
-    (button as HTMLButtonElement).disabled = false;
-    (button as HTMLButtonElement).click();
-  });
-  await expect(
-    page
-      .getByText(
-        'Read at least one saved source into quoted passages before building from evidence.',
-      )
-      .first(),
-  ).toBeVisible();
-  expect(await workspaceFileExists(page, 'Topics/ai-fundamentals/Synthesis.md')).toBe(false);
-  expect(await workspaceFileExists(page, 'Topics/ai-fundamentals/Learning/learn.html')).toBe(false);
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure).toContainText('Each choice is stored separately on this device.');
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  await page
-    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
-    .getByRole('button', { name: 'Allow search' })
-    .click();
-  const result = page
-    .getByRole('list', { name: 'Research shortlist' })
-    .getByRole('listitem')
-    .filter({ hasText: 'Microsoft Entra Connect' });
-  await result.getByRole('button', { name: 'Preview' }).click();
-  await page
-    .getByRole('dialog', { name: 'Preview research source' })
-    .getByRole('button', { name: 'Save & read' })
-    .click();
-  await expect(
-    page.getByRole('article', { name: 'Reading room' }).getByRole('heading', {
-      name: 'Microsoft Entra Connect',
-    }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Synthesis — AI Fundamentals' })).toBeVisible();
+  await openSources(page);
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('AI fundamentals');
+  const artifacts = await Promise.all([
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json'),
+  ]);
+  expect(artifacts[0]).toContain('Wikipedia');
+  expect(artifacts[1]).toContain('AI fundamentals');
+  expect(artifacts[2]).toContain('api-extract');
+
+  await page.reload();
   await openResearch(page);
-  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
-    'Microsoft Entra Connect',
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia found.',
   );
-
-  await expect(readSavedSources).toBeEnabled();
-  await expect(buildSynthesis).toBeDisabled();
-  await expect(createLearningPage).toBeDisabled();
-
-  await readSavedSources.evaluate((button) => {
-    (button as HTMLButtonElement).click();
-    (button as HTMLButtonElement).click();
-  });
-  await expect(page.getByText('Read 1 source into')).toBeVisible();
-
-  await expect(buildSynthesis).toBeEnabled();
-  await expect(createLearningPage).toBeEnabled();
-
-  await buildSynthesis.click();
-  await expect(page.getByText('Synthesis written from')).toBeVisible();
-
-  await createLearningPage.click();
-  await expect(page.getByText('Learning page built at')).toBeVisible();
-
-  // Both artifacts are ordinary files in the portable tree, and the page needs no network.
-  const files = await page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    const read = async (path: string): Promise<string> => {
-      const parts = path.split('/');
-      let dir = root;
-      for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
-      return (await (await dir.getFileHandle(parts.at(-1)!)).getFile()).text();
-    };
-    const base = 'Dusori/Topics/ai-fundamentals/';
-    return {
-      learn: await read(`${base}Learning/learn.html`),
-      synthesis: await read(`${base}Synthesis.md`),
-    };
-  });
-  expect(files.synthesis).toContain('generated: synthesis');
-  expect(files.synthesis).toContain('Every line below is quoted from a source you approved.');
-  expect(files.learn.startsWith('<!doctype html>')).toBe(true);
-  expect(files.learn).not.toMatch(/<(?:script|link|img|iframe)\b[^>]*\b(?:src|href)=/iu);
-  // The stored file stays theme-neutral so it follows the reader's own preference elsewhere.
-  expect(files.learn).toContain('<html lang="en">');
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'AI Fundamentals',
+  );
   await expectNoSeriousA11yViolations(page);
-
-  // The page is viewable inside Dusori, but only from a sandbox that cannot reach the app.
-  await page.getByRole('button', { name: 'Open learning page' }).click();
-  const frameElement = page.locator('iframe[title^="Learning page"]');
-  await expect(frameElement).toHaveAttribute('sandbox', 'allow-scripts');
-  const sandbox = await frameElement.getAttribute('sandbox');
-  expect(sandbox).not.toContain('allow-same-origin');
-
-  // Its content really renders, and its check-yourself prompts really work.
-  const learnFrame = page.frameLocator('iframe[title^="Learning page"]');
-  await expect(
-    learnFrame.getByRole('heading', { name: 'AI Fundamentals', level: 1 }),
-  ).toBeVisible();
-  await expect(
-    learnFrame.getByText('Every passage links back to where it came from.'),
-  ).toBeVisible();
-  const firstCheck = learnFrame.locator('details.check').first();
-  await expect(firstCheck).toHaveJSProperty('open', false);
-  await learnFrame.getByRole('button', { name: 'Reveal every answer' }).click();
-  await expect(firstCheck).toHaveJSProperty('open', true);
 });
 
-test('an armed topic refreshes itself on open only once it is stale', async ({ page }) => {
-  let searches = 0;
-  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
-    searches += 1;
-    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
-  });
-  await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
-
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  await page
-    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
-    .getByRole('button', { name: 'Allow search' })
-    .click();
-  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
-  expect(searches).toBe(1);
-
-  // Reloading a fresh topic must not re-scan, armed or not. The checkbox surviving the
-  // reload is also what proves the standing permission reached the workspace file.
-  const keepFresh = page.getByRole('checkbox', { name: /Keep this topic fresh/u });
-  await keepFresh.check();
-  // The control re-enables only once the workspace file holds the answer.
-  await expect(keepFresh).toBeEnabled();
-  await page.reload();
-  await expect(page.getByRole('list', { name: 'Research trail runs' })).toBeVisible();
-  await expect(keepFresh).toBeChecked();
-  expect(searches).toBe(1);
-
-  // Age the recorded run past the window; opening the topic then refreshes it exactly once.
-  await page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    const dusori = await root.getDirectoryHandle('Dusori');
-    const topics = await dusori.getDirectoryHandle('Topics');
-    const topic = await topics.getDirectoryHandle('ai-fundamentals');
-    const handle = await topic.getFileHandle('research.json');
-    const parsed = JSON.parse(await (await handle.getFile()).text());
-    const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    parsed.lastRunAt = old;
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(parsed, null, 2));
-    await writable.close();
-  });
-
-  await page.reload();
-  await expect(page.getByText(/Refreshed on open because this topic/u)).toBeVisible();
-  expect(searches).toBe(2);
-});
-
-test('an all-provider failure stays distinct from a completed search with no matches', async ({
+test('Research Desk keeps empty and failed provider outcomes distinct after reload', async ({
   page,
 }) => {
-  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
-    await route.abort('internetdisconnected');
+  const wikipedia = 'https://en.wikipedia.org/w/api.php**';
+  await page.route(wikipedia, async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { query: { search: [] } } });
   });
   await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
 
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  await page
-    .getByRole('dialog', { name: 'Allow Wikipedia search?' })
-    .getByRole('button', { name: 'Allow search' })
-    .click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia empty.',
+  );
+  await expect(page.getByText(/(?:No relevant sources|found no sources)/u)).toBeVisible();
 
-  await expect(page.getByText('The allowed providers could not complete this scan.')).toBeVisible();
-  await expect(page.getByText('No new suggestions matched this objective.')).toBeHidden();
-  const retry = page.getByRole('button', { name: 'Retry scan' });
-  await expect(retry).toBeVisible();
-  await expect(page.getByText('No suggestions were returned or saved.')).toBeVisible();
+  await page.reload();
+  await openResearch(page);
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia empty.',
+  );
 
-  await page.unroute('https://en.wikipedia.org/w/api.php**');
-  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
-    await route.fulfill({ contentType: 'application/json', json: wikipediaSearch });
-  });
-  await retry.click();
-  await expect(page.getByRole('heading', { name: 'Microsoft Entra Connect' })).toBeVisible();
-  await expect(page.getByText('The allowed providers could not complete this scan.')).toBeHidden();
+  await page.unroute(wikipedia);
+  await page.route(wikipedia, async (route) => route.abort('internetdisconnected'));
+  await page.getByLabel('Question or topic').fill('Why do AI systems fail?');
+  await page.getByRole('button', { name: 'Research topic' }).click();
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia failed.',
+  );
+  await expect(page.getByText(/Every provider failed/u)).toBeVisible();
+
+  await page.reload();
+  await openResearch(page);
+  const latest = page.getByRole('region', { name: 'Latest lookup' });
+  await expect(latest).toContainText('Why do AI systems fail?');
+  await expect(latest).toContainText('Wikipedia failed.');
+  await expect(page.getByText(/No older brief is being presented/u)).toBeVisible();
 });
 
 // The unit test reads the policy out of `app.html`; this one proves the browser agrees on the
@@ -1673,7 +1444,7 @@ test('curriculum import previews official objectives, applies explicitly, and ne
   await expect(page.locator('.learning-loop')).toContainText(
     'Describe responsible AI considerations',
   );
-  await openResearch(page);
+  await openSources(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'AI-901 official study guide',
   );
@@ -1845,7 +1616,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
 
   page.once('dialog', (dialog) => {
     expect(dialog.message()).toContain(
-      'Replace this browser workspace with “My learning workspace”?',
+      'Replace this browser workspace with “My research workspace”?',
     );
     expect(dialog.message()).toContain('1 topic');
     expect(dialog.message()).toMatch(/\d+ files/u);
@@ -1853,8 +1624,8 @@ test('export and replacement import preserve the rendered workspace', async ({ p
     dialog.accept();
   });
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
-  await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
-  await openResearch(page);
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await openSources(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
   );
@@ -1884,7 +1655,7 @@ test('learning loop persists roadmap progress, topic status, and Today activity'
     'true',
   );
 
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
+  await openTodayView(page);
   await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
   await expect(
     page
@@ -1936,7 +1707,7 @@ test('a topic is paused and resumed from its Today card', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
+  await openTodayView(page);
   await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
 
   // Each card names its own topic, so three identical labels never collide.
@@ -2221,7 +1992,7 @@ test('Today routes a URL-only objective back to Research without fetching it', a
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await openResearch(page);
+  await openSources(page);
   await page.getByLabel('Source type').selectOption('url');
   await page.getByLabel('Source title').fill('Transformers paper');
   await page.getByLabel('Web address').fill('https://arxiv.org/abs/1706.03762');
@@ -2237,7 +2008,7 @@ test('Today routes a URL-only objective back to Research without fetching it', a
   const research = page.getByRole('button', { name: 'Find sources' });
   await expect(research).toBeVisible();
   await research.click();
-  await expect(page.getByRole('heading', { name: 'Research', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'AI Fundamentals' })).toBeHidden();
   expect(remoteRequests).toEqual([]);
   await expectNoSeriousA11yViolations(page);
@@ -2364,7 +2135,7 @@ test('Today and Roadmap remain usable without overflow at supported narrow width
     await createBrowserWorkspace(page);
     await createTopic(page);
     await page.getByRole('button', { name: 'Open workspace navigation' }).click();
-    await page.getByRole('button', { name: 'Learn', exact: true }).click();
+    await openTodayView(page);
     await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
     let dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -2397,8 +2168,8 @@ test('the installed shell reloads and remains usable offline', async ({ page, co
   await expect(
     page.getByRole('heading', { name: 'What do you want to understand?' }),
   ).toBeVisible();
-  await createTopic(page);
-  await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
+  await createTopic(page, { remainInResearch: true });
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
 });
 
 // Reloading the bare app URL only ever exercised the one navigation key the shell happens to be
@@ -2416,10 +2187,8 @@ test('the installed shell reopens offline at the view it remembered', async ({ p
 
   await context.setOffline(true);
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Find the next source worth reading.' }),
-  ).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Dusori learning studio' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Dusori Research Desk' })).toBeVisible();
 });
 
 test('manifest and service-worker paths honor the single project base', async ({ request }) => {
@@ -2443,12 +2212,12 @@ test('mobile workspace drawers are fully keyboard operable', async ({ page }) =>
 
   await page.getByRole('button', { name: 'Open workspace navigation' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('navigation', { name: 'Dusori learning studio' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Dusori Research Desk' })).toBeVisible();
 
   // Being visible is not the same as being reachable. The drawer covers the canvas, so focus has
   // to move into it and stay there; otherwise Tab walks through the controls hidden behind it.
   // Scoped to the drawer: the dismiss backdrop carries the same accessible name.
-  const drawer = page.getByRole('navigation', { name: 'Dusori learning studio' });
+  const drawer = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   await expect(drawer.getByRole('button', { name: 'Close workspace navigation' })).toBeFocused();
   for (let press = 0; press < 6; press += 1) {
     await page.keyboard.press('Tab');
@@ -2459,7 +2228,7 @@ test('mobile workspace drawers are fully keyboard operable', async ({ page }) =>
   }
 
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('navigation', { name: 'Dusori learning studio' })).toBeHidden();
+  await expect(page.getByRole('navigation', { name: 'Dusori Research Desk' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Open workspace navigation' })).toBeFocused();
 
   await page.getByRole('button', { name: 'Open inspector' }).focus();
@@ -2530,12 +2299,15 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   const closeInspector = sitePage.getByRole('button', { name: 'Close workspace details' }).first();
   if (await closeInspector.isVisible()) await closeInspector.click();
   await sitePage.getByLabel('Describe generative AI concepts').check();
-  await sitePage.getByRole('button', { name: 'Learn', exact: true }).click();
+  await openTodayView(sitePage);
   await expect(sitePage.locator('.mobile-status')).toBeHidden({ timeout: 5_000 });
   await sitePage.screenshot({ path: 'test-results/screenshots/site-workspace-1440.png' });
-  await sitePage.screenshot({ path: 'test-results/screenshots/app-learn.png' });
 
-  const studioNavigation = sitePage.getByRole('navigation', { name: 'Dusori learning studio' });
+  const studioNavigation = sitePage.getByRole('navigation', { name: 'Dusori Research Desk' });
+  await studioNavigation.getByRole('button', { name: 'Research', exact: true }).click();
+  await expect(sitePage.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await sitePage.screenshot({ path: 'test-results/screenshots/app-research.png' });
+
   await studioNavigation.getByRole('button', { name: /^Sources/u }).click();
   await expect(sitePage.getByRole('heading', { name: 'Sources', exact: true })).toBeVisible();
   await sitePage.getByRole('button', { name: 'Transformer notes' }).click();
@@ -2543,8 +2315,12 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await sitePage.screenshot({ path: 'test-results/screenshots/app-reader.png' });
 
   await studioNavigation.getByRole('button', { name: 'Map', exact: true }).click();
-  await expect(sitePage.getByRole('heading', { name: 'Knowledge constellation' })).toBeVisible();
-  await expect(sitePage.getByRole('group', { name: 'Workspace knowledge graph' })).toBeVisible();
+  await expect(sitePage.getByRole('heading', { name: 'Research map' })).toBeVisible();
+  await expect(sitePage.getByRole('button', { name: 'Outline', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(sitePage.getByRole('group', { name: 'Workspace knowledge graph' })).toBeHidden();
   await sitePage.screenshot({ path: 'test-results/screenshots/app-map.png' });
   await siteContext.close();
 });
@@ -2557,23 +2333,10 @@ async function captureAtTop(page: Page, options: Parameters<Page['screenshot']>[
 const attentionFetchedPage = {
   fetchedAt: '2026-07-21T00:00:00.000Z',
   finalUrl: 'https://example.org/attention',
-  text: `Attention lets each token weigh the other tokens in its context.\n${overflowingLines}`,
+  text: `Attention lets each token weigh the other tokens in its context. The attention mechanism allows every token to weigh the other tokens in context before producing the next representation.\n${overflowingLines}`,
   title: 'Attention in transformers',
   truncated: false,
 };
-
-async function routeCompanionFetch(page: Page): Promise<void> {
-  await page.route('**/api/health', async (route) => {
-    if (route.request().headers()['authorization'] === 'Bearer e2e-companion-token') {
-      await route.fulfill({ json: companionHealth });
-    } else {
-      await route.fulfill({ status: 401, json: { error: 'unauthorized' } });
-    }
-  });
-  await page.route('**/api/research/fetch', async (route) => {
-    await route.fulfill({ json: attentionFetchedPage });
-  });
-}
 
 // Adds a URL source, then reloads with a companion token the way a browser
 // pointed at `npx @udhawan97/dusori`'s printed URL would. The reload relies on the same
@@ -2589,22 +2352,25 @@ async function addUrlSourceAndConnectCompanion(
 ): Promise<void> {
   await createBrowserWorkspace(page);
   await createTopic(page);
-  await openResearch(page);
+  await openSources(page);
   await page.getByLabel('Source type').selectOption('url');
   await page.getByLabel('Source title').fill(title);
   await page.getByLabel('Web address').fill(url);
   await page.getByRole('button', { name: 'Save source' }).click();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(title);
 
-  await page.goto('/Dusori/app/?token=e2e-companion-token');
+  await page.route('**/api/health', async (route) => {
+    await route.fulfill({ json: companionHealth });
+  });
+  await page.reload();
   await expectCompanionConnected(page);
-  await openResearch(page);
+  await openSources(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(title);
 }
 
 async function expectCompanionConnected(page: Page): Promise<void> {
   await openInspector(page);
-  await expect(page.getByText('Connected for this session')).toBeVisible();
+  await expect(page.getByText(/Connected (?:securely )?for this/u)).toBeVisible();
   await page
     .getByRole('complementary', { name: 'Workspace details' })
     .getByRole('button', { name: 'Close workspace details' })
@@ -2637,21 +2403,29 @@ test.describe('companion flows', () => {
       });
     });
     await page.route('**/api/health', async (route) => {
-      await route.fulfill({ json: companionHealth });
+      await route.fulfill({ headers: { 'cache-control': 'no-store' }, json: companionHealth });
     });
 
     await createBrowserWorkspace(page);
-    await createTopic(page);
-    await page.goto('/Dusori/app/?token=e2e-companion-token&topic=ai-fundamentals&view=research');
+    await expectCompanionConnected(page);
+    await createTopic(page, { remainInResearch: true });
 
-    await expect(page.getByText('Web search · Not configured')).toBeVisible();
-    await expect(page.getByText('YouTube · Not configured')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Allow Web search' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Allow arXiv' })).toBeVisible();
-    await expect(page.getByRole('list', { name: 'Skipped providers' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+    await page.getByText('Research providers and setup', { exact: true }).click();
+    const availability = page.getByRole('list', { name: 'Research provider availability' });
+    await expect(
+      availability.getByRole('listitem').filter({ hasText: 'Web search' }),
+    ).toContainText('Not configured in the local companion');
+    await expect(availability.getByRole('listitem').filter({ hasText: 'YouTube' })).toContainText(
+      'Not configured in the local companion',
+    );
+    await expect(page.locator('.provider-summary')).toContainText(
+      /0 allowed · 0 relevant here · \d+\s+undecided/u,
+    );
+    await expect(page.getByRole('list', { name: 'Provider outcomes' })).toHaveCount(0);
   });
 
-  test('companion fetch upgrades a URL source after a per-fetch confirm', async ({ page }) => {
+  test('companion reads a URL source in one action and refreshes the brief', async ({ page }) => {
     const fetchCalls: string[] = [];
     await page.route('**/api/health', async (route) => {
       if (route.request().headers()['authorization'] === 'Bearer e2e-companion-token') {
@@ -2667,7 +2441,7 @@ test.describe('companion flows', () => {
 
     await createBrowserWorkspace(page);
     await createTopic(page);
-    await openResearch(page);
+    await openSources(page);
 
     await page.getByLabel('Source type').selectOption('url');
     await page.getByLabel('Source title').fill('Attention paper');
@@ -2678,173 +2452,148 @@ test.describe('companion flows', () => {
     );
 
     // Without a companion token the upgrade action is absent and the hint shows.
-    await expect(page.getByRole('button', { name: 'Fetch full content' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Read from example.org' })).toHaveCount(0);
     await expect(
       page.getByText('Run the companion (npx @udhawan97/dusori) to fetch full page content.'),
     ).toBeVisible();
 
-    // Reload as if served by the companion.
-    await page.goto('/Dusori/app/?token=e2e-companion-token');
+    // Reload as if served by the same-origin companion session.
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.reload();
     await expectCompanionConnected(page);
-    await openResearch(page);
+    await openSources(page);
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
       'Attention paper',
     );
 
-    const fetchButton = page.getByRole('button', { name: 'Fetch full content' });
-    await fetchButton.click();
-    const confirm = page.getByRole('dialog', { name: 'Fetch full page content?' });
-    await expect(confirm).toContainText('example.org');
-    await expect(confirm).toContainText('https://example.org/attention');
-    await confirm.getByRole('button', { name: 'Keep reference only' }).click();
-    expect(fetchCalls).toHaveLength(0);
-
-    await fetchButton.click();
-    await page
-      .getByRole('dialog', { name: 'Fetch full page content?' })
-      .getByRole('button', { name: 'Fetch page' })
-      .click();
-    const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
-    await expect(preview.locator('pre')).toContainText('weigh the other tokens');
-    await expect(preview.locator('pre')).toContainText('# Attention paper');
-    await expect(preview.locator('pre')).toContainText('Filler line 60');
-    // The overflowing preview is only on screen until the replace lands.
-    await expectNoSeriousA11yViolations(page);
-    await preview.getByRole('button', { name: 'Replace content' }).click();
-
+    await page.getByRole('button', { name: 'Read from example.org' }).click();
     await expect(
-      page.getByText('Source upgraded to full page content and recorded in the update log.'),
+      page
+        .getByRole('article', { name: 'Reading room' })
+        .getByRole('heading', { name: 'Attention paper' }),
     ).toBeVisible();
-    expect(fetchCalls).toEqual(['Bearer e2e-companion-token']);
+    await expect(page.getByRole('article', { name: 'Reading room' })).toContainText(
+      'weigh the other tokens',
+    );
+    expect(fetchCalls).toEqual(['']);
+    const manifest = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json');
+    expect(manifest).toContain('page-extract');
+    const synthesis = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
+    expect(synthesis).toContain('Attention paper');
+    expect(synthesis).toContain('weigh the other tokens');
     await expectNoSeriousA11yViolations(page);
   });
 
-  test('a failed replace stays visible inside the still-open preview dialog', async ({ page }) => {
-    await routeCompanionFetch(page);
+  test('an access-denied page keeps a durable browser fallback', async ({ page }) => {
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    const failure =
+      'This page answered with status 401. Dusori kept the reference; open the original in your browser or paste the text instead.';
+    await page.route('**/api/research/fetch', async (route) => {
+      await route.fulfill({
+        json: { error: failure, reason: 'access-denied', status: 401 },
+        status: 401,
+      });
+    });
     await addUrlSourceAndConnectCompanion(page, 'Attention paper', 'https://example.org/attention');
 
-    await page.getByRole('button', { name: 'Fetch full content' }).click();
-    await page
-      .getByRole('dialog', { name: 'Fetch full page content?' })
-      .getByRole('button', { name: 'Fetch page' })
-      .click();
-    const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
-    await expect(preview.locator('pre')).toContainText('weigh the other tokens');
+    await page.getByRole('button', { name: 'Read from example.org' }).click();
+    await expect(page.getByRole('alert')).toContainText('status 401');
+    const source = page.getByRole('listitem').filter({ hasText: 'Attention paper' });
+    await expect(source).toContainText(failure);
+    await expect(source.getByRole('link', { name: 'Open original' })).toHaveAttribute(
+      'href',
+      'https://example.org/attention',
+    );
 
-    // Simulate an external edit to the source's own file between preview and
-    // replace. SourceLibrary captures the file's hash the moment the preview
-    // opens (its `expectedContentHash`); upgradeSource re-reads the file at
-    // replace time and throws StorageConflictError the instant the hash no
-    // longer matches -- this is the same guard the "learning loop protects an
-    // externally edited roadmap" test exercises for roadmap.md, applied here to
-    // a source item file.
-    await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      const dusori = await root.getDirectoryHandle('Dusori');
-      const topic = await (
-        await dusori.getDirectoryHandle('Topics')
-      ).getDirectoryHandle('ai-fundamentals');
-      const items = await (await topic.getDirectoryHandle('Sources')).getDirectoryHandle('items');
-      const names: string[] = [];
-      for await (const [name] of items.entries()) names.push(name);
-      const handle = await items.getFileHandle(names[0]);
-      const writable = await handle.createWritable();
-      await writable.write('Edited outside Dusori while the preview was open.');
-      await writable.close();
-    });
-
-    await preview.getByRole('button', { name: 'Replace content' }).click();
-
-    // The dialog must stay open, and the conflict sentence must render *inside*
-    // it. Scoping the locator to `preview` (rather than `page`) means this
-    // assertion fails if a regression instead renders the message only in the
-    // page behind the modal backdrop -- the exact "invisible failed replace"
-    // defect this suite exists to catch.
-    await expect(preview).toBeVisible();
-    await expect(
-      preview.getByText('This source changed outside Dusori. Review the file, then try again.'),
-    ).toBeVisible();
-    await expect(
-      page.getByText('Source upgraded to full page content and recorded in the update log.'),
-    ).toHaveCount(0);
+    await page.reload();
+    await openSources(page);
+    await expect(page.getByRole('listitem').filter({ hasText: 'Attention paper' })).toContainText(
+      'status 401',
+    );
   });
 
   test('companion launch credentials are consumed and health proves the service contract', async ({
+    context,
     page,
   }) => {
     await createBrowserWorkspace(page);
     await createTopic(page);
     const appOrigin = new URL(page.url()).origin;
 
-    await page.route('**/api/health', async (route) => {
+    const deniedPage = await context.newPage();
+    await deniedPage.route('**/api/health', async (route) => {
       await route.fulfill({ body: '<html>static fallback</html>', contentType: 'text/html' });
     });
-    await page.goto(
+    await deniedPage.goto(
       `/Dusori/app/?token=visible-secret&companion=${encodeURIComponent(appOrigin)}&topic=ai-fundamentals&view=graph`,
     );
-    await openInspector(page);
-    await expect(page.getByText('Connection was denied. Allow local-network access')).toBeVisible();
-    expect(page.url()).not.toContain('token=');
-    expect(page.url()).not.toContain('companion=');
-    expect(page.url()).toContain('topic=ai-fundamentals');
-    expect(page.url()).toContain('view=graph');
+    await openInspector(deniedPage);
+    expect(deniedPage.url()).not.toContain('token=');
+    expect(deniedPage.url()).not.toContain('companion=');
+    expect(deniedPage.url()).toContain('topic=ai-fundamentals');
+    expect(deniedPage.url()).toContain('view=graph');
+    await deniedPage.close();
 
-    await page.unroute('**/api/health');
-    await page.route('**/api/health', async (route) => {
-      await route.fulfill({ json: companionHealth });
+    let authorization = '';
+    const connectedPage = await context.newPage();
+    await connectedPage.route('**/api/health', async (route) => {
+      authorization = route.request().headers()['authorization'] ?? '';
+      await route.fulfill({ headers: { 'cache-control': 'no-store' }, json: companionHealth });
     });
-    await page.goto(
+    await connectedPage.goto(
       `/Dusori/app/?token=e2e-companion-token&companion=${encodeURIComponent(appOrigin)}`,
     );
-    await expectCompanionConnected(page);
-    expect(page.url()).not.toContain('token=');
-    expect(page.url()).not.toContain('companion=');
+    await expect.poll(() => authorization).toBe('Bearer e2e-companion-token');
+    await expectCompanionConnected(connectedPage);
+    expect(connectedPage.url()).not.toContain('token=');
+    expect(connectedPage.url()).not.toContain('companion=');
+    await connectedPage.close();
   });
 
-  test('source confirm and preview dialogs contain focus and restore it on close', async ({
-    page,
-  }) => {
-    await routeCompanionFetch(page);
-    await addUrlSourceAndConnectCompanion(page, 'Attention paper', 'https://example.org/attention');
+  test('a source can leave active research and be restored after reload', async ({ page }) => {
+    await createBrowserWorkspace(page);
+    await createTopic(page);
+    await addPastedSource(page);
 
-    const fetchButton = page.getByRole('button', { name: 'Fetch full content' });
-    await fetchButton.click();
-    const confirm = page.getByRole('dialog', { name: 'Fetch full page content?' });
-    const confirmFetchPage = confirm.getByRole('button', { name: 'Fetch page' });
-    const confirmKeepReference = confirm.getByRole('button', { name: 'Keep reference only' });
-    await expect(confirmFetchPage).toBeFocused();
+    const source = page.getByRole('listitem').filter({ hasText: 'Transformer notes' });
+    await source.getByRole('button', { name: 'Remove from research' }).click();
+    await expect(
+      page.getByText(/Transformer notes was removed from active research/u),
+    ).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Saved sources' })).toHaveCount(0);
 
-    await page.keyboard.press('Tab');
-    await expect(confirmKeepReference).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(confirmFetchPage).toBeFocused();
+    const navigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+    await navigation.getByRole('button', { name: 'Map', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
+    await expect(page.locator('.graph-ledger > div').filter({ hasText: 'Sources' })).toContainText(
+      '0',
+    );
+    await expect(
+      page.getByRole('region', { name: 'What this workspace has actually researched' }),
+    ).toContainText('0 saved');
 
-    await page.keyboard.press('Escape');
-    await expect(confirm).toBeHidden();
-    await expect(fetchButton).toBeFocused();
-
-    await fetchButton.click();
-    await confirm.getByRole('button', { name: 'Fetch page' }).click();
-    const preview = page.getByRole('dialog', { name: 'Preview fetched content' });
-    const previewKeepStub = preview.getByRole('button', { name: 'Keep the stub' });
-    const previewReplace = preview.getByRole('button', { name: 'Replace content' });
-    await expect(previewKeepStub).toBeFocused();
-
-    // The scrollable capture is a tab stop of its own, so a keyboard user can
-    // reach and scroll it before deciding.
-    await page.keyboard.press('Tab');
-    await expect(preview.getByRole('region', { name: 'Source markdown' })).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(previewReplace).toBeFocused();
-
-    await page.keyboard.press('Escape');
-    await expect(preview).toBeHidden();
-    await expect(fetchButton).toBeFocused();
+    await page.reload();
+    await openSources(page);
+    const removed = page.locator('details.removed-sources');
+    await removed.getByText('1 removed source', { exact: true }).click();
+    await removed.getByRole('button', { name: 'Restore' }).click();
+    await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+      'Transformer notes',
+    );
+    await page
+      .getByRole('navigation', { name: 'Dusori Research Desk' })
+      .getByRole('button', { name: 'Map', exact: true })
+      .click();
+    await expect(page.locator('.graph-ledger > div').filter({ hasText: 'Sources' })).toContainText(
+      '1',
+    );
   });
 
-  test('YouTube stays metadata-only and the browser never contacts Google directly', async ({
-    page,
-  }) => {
+  test('YouTube research saves metadata only and never asks for captions', async ({ page }) => {
     const googleRequests: string[] = [];
     const transcriptRequests: string[] = [];
     page.on('request', (request) => {
@@ -2854,7 +2603,7 @@ test.describe('companion flows', () => {
       }
     });
     await page.route('**/api/health', async (route) => {
-      await route.fulfill({ json: companionHealth });
+      await route.fulfill({ headers: { 'cache-control': 'no-store' }, json: companionHealth });
     });
     await page.route('**/api/research/youtube?**', async (route) => {
       await route.fulfill({
@@ -2878,205 +2627,29 @@ test.describe('companion flows', () => {
       transcriptRequests.push(route.request().url());
       await route.fulfill({ status: 410, json: { reason: 'transcript-requires-user-supplied' } });
     });
-    await page.route('**/api/research/youtube-thumbnail**', async (route) => {
-      await route.fulfill({
-        body: Buffer.from(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-          'base64',
-        ),
-        contentType: 'image/png',
-      });
-    });
 
     await createBrowserWorkspace(page);
-    await createTopic(page);
-    await page.goto('/Dusori/app/?token=e2e-companion-token');
     await expectCompanionConnected(page);
-    await openResearch(page);
+    await createTopic(page, { remainInResearch: true });
+    await page.getByLabel('Question or topic').fill('How attention works');
+    await page.getByRole('button', { name: 'Research topic' }).click();
+    const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+    for (const checkbox of await disclosure.getByRole('checkbox').all()) {
+      const label = await checkbox.evaluate((input) => input.closest('label')?.textContent ?? '');
+      if (label.includes('YouTube')) await checkbox.check();
+    }
+    await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
-    await page.getByRole('button', { name: 'Allow YouTube' }).click();
-    const disclosure = page.getByRole('dialog', { name: 'Allow YouTube search?' });
-    await expect(disclosure).toContainText('official YouTube Data API');
-    await expect(disclosure).toContainText('Invidious instance you configured');
-    await expect(disclosure).toContainText('does not harvest captions or media');
-    await disclosure.getByRole('button', { name: 'Allow search' }).click();
-    await page.getByRole('button', { name: 'Scan for strong sources' }).click();
-
-    const result = page
-      .getByRole('list', { name: 'Research shortlist' })
-      .getByRole('listitem')
-      .filter({ hasText: 'How attention works' });
-    await expect(result).toContainText('Video');
-    await expect(result).toContainText('Computerphile · 1.2M views · 15:34');
-    // Visibility alone would also pass on a broken image showing its alt text.
-    const thumbnail = result.getByRole('img', { name: 'Thumbnail for How attention works' });
-    await expect(thumbnail).toBeVisible();
-    expect(
-      await thumbnail.evaluate((image) => ({
-        decoded: (image as HTMLImageElement).naturalWidth > 0,
-        fromBlob: (image as HTMLImageElement).src.startsWith('blob:'),
-      })),
-    ).toEqual({ decoded: true, fromBlob: true });
-
-    await result.getByRole('button', { name: 'Preview' }).click();
-    const preview = page.getByRole('dialog', { name: 'Preview research source' });
-    await expect(preview).toContainText('A walk through attention.');
-    await expect(preview).toContainText('Dusori does not harvest captions');
-    await expect(preview).toContainText('Paste or File');
-    await preview.getByRole('button', { name: 'Save & read' }).click();
-    await expect(
-      page
-        .getByRole('article', { name: 'Reading room' })
-        .getByRole('heading', { name: 'How attention works' }),
-    ).toBeVisible();
-    await openResearch(page);
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
       'How attention works',
     );
-
-    const captured = await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      const dusori = await root.getDirectoryHandle('Dusori');
-      const sources = await (
-        await (await dusori.getDirectoryHandle('Topics')).getDirectoryHandle('ai-fundamentals')
-      ).getDirectoryHandle('Sources');
-      const manifest = JSON.parse(
-        await (await sources.getFileHandle('manifest.json')).getFile().then((file) => file.text()),
-      ) as { sources: { origin?: { capturedVia: string; provider: string }; path?: string }[] };
-      const record = manifest.sources.at(-1);
-      const items = await sources.getDirectoryHandle('items');
-      let text = '';
-      for await (const [name, handle] of items.entries()) {
-        if (record?.path?.endsWith(name)) {
-          text = await (await (handle as FileSystemFileHandle).getFile()).text();
-        }
-      }
-      return { origin: record?.origin, text };
-    });
-    expect(captured.origin).toMatchObject({
-      capturedVia: 'youtube-reference',
-      provider: 'youtube',
-    });
-    expect(captured.text).not.toContain('## Transcript');
-    expect(captured.text).toContain('Dusori does not harvest captions');
-    expect(captured.text).toContain('Original URL: <https://www.youtube.com/watch?v=dQw4w9WgXcQ>');
+    await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('URL reference');
+    const manifest = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json');
+    expect(manifest).toContain('"provider": "youtube"');
+    expect(manifest).toContain('"capturedVia": "youtube-reference"');
+    expect(manifest).toContain('"readState": "reference"');
     expect(transcriptRequests).toEqual([]);
-    // Search and thumbnails stay behind the local companion; the browser never calls Google.
     expect(googleRequests).toEqual([]);
-    await expectNoSeriousA11yViolations(page);
-  });
-
-  test('synthesis prose is written by the model and the document survives its failure', async ({
-    page,
-  }) => {
-    const synthesisRequests: string[] = [];
-    await page.route('**/api/health', async (route) => {
-      await route.fulfill({ json: companionHealth });
-    });
-    await page.route('**/api/ai/capabilities', async (route) => {
-      await route.fulfill({ json: { providers: [{ id: 'ollama', model: 'gemma3:4b' }] } });
-    });
-    await page.route('**/api/ai/synthesize', async (route) => {
-      synthesisRequests.push(route.request().postData() ?? '');
-      await route.fulfill({
-        json: { overview: 'Attention is the mechanism these passages keep returning to.' },
-      });
-    });
-
-    await createBrowserWorkspace(page);
-    await createTopic(page);
-    await addReviewSource(page);
-    await page.goto('/Dusori/app/?token=e2e-companion-token');
-    await expectCompanionConnected(page);
-    await page.goto('/Dusori/app/?token=e2e-companion-token&topic=ai-fundamentals&view=research');
-
-    await page.getByRole('button', { name: 'Read saved sources' }).click();
-    // A plain string, not a regex: the notice wraps across lines and only string matching
-    // normalizes that whitespace.
-    await expect(page.getByText('Read 1 source into')).toBeVisible();
-
-    // Prose is off until this device allows the AI scope, so the first build stays deterministic.
-    const buildSynthesis = page.getByRole('button', { name: 'Build synthesis' });
-    await expect(buildSynthesis).toBeEnabled();
-    await buildSynthesis.click();
-    await expect(page.getByText('Synthesis written from')).toBeVisible();
-    expect(synthesisRequests).toEqual([]);
-
-    await page.getByRole('button', { name: /Allow AI ranking · gemma3:4b/u }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Allow search' }).click();
-
-    await expect(buildSynthesis).toBeEnabled();
-    await buildSynthesis.click();
-    await expect(page.getByText('Synthesis written from')).toBeVisible();
-    expect(synthesisRequests).toHaveLength(1);
-
-    // Only the topic and the passages already quoted in the workspace are sent.
-    const sent = JSON.parse(synthesisRequests[0] ?? '{}') as Record<string, unknown>;
-    expect(Object.keys(sent).sort()).toEqual(['claims', 'topic']);
-    expect(synthesisRequests[0]).not.toContain('Topics/');
-
-    const withProse = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
-    expect(withProse).toContain('Attention is the mechanism these passages keep returning to.');
-    // The document names its author and still says the evidence is not the model's.
-    expect(withProse).toContain('written by gemma3:4b');
-    expect(withProse).toContain('not from the model');
-
-    // A failing model must cost the prose and nothing else.
-    await page.unroute('**/api/ai/synthesize');
-    await page.route('**/api/ai/synthesize', async (route) => {
-      await route.fulfill({ json: { error: 'no', reason: 'ai-failed' }, status: 502 });
-    });
-    await expect(buildSynthesis).toBeEnabled();
-    await buildSynthesis.click();
-    await expect(page.getByText('AI was unavailable, so the synthesis quotes')).toBeVisible();
-
-    const withoutProse = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
-    expect(withoutProse).not.toContain('Attention is the mechanism these passages keep');
-    expect(withoutProse).not.toContain('written by gemma3:4b');
-    expect(withoutProse).toContain('Every line below is quoted from a source you approved.');
-
-    // The same fallback must respect an external edit. Its completion signal means the
-    // conflict-safe proposal is durable, not that Dusori replaced the learner's file.
-    await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      const dusori = await root.getDirectoryHandle('Dusori');
-      const topics = await dusori.getDirectoryHandle('Topics');
-      const topic = await topics.getDirectoryHandle('ai-fundamentals');
-      const handle = await topic.getFileHandle('Synthesis.md');
-      const current = await (await handle.getFile()).text();
-      const writable = await handle.createWritable();
-      await writable.write(`${current}\n\nExternal synthesis edit.\n`);
-      await writable.close();
-    });
-
-    await expect(buildSynthesis).toBeEnabled();
-    await buildSynthesis.click();
-    await expect(
-      page.getByText(
-        'Your edited synthesis was kept. The rebuilt version is waiting as a proposal in Needs attention.',
-      ),
-    ).toBeVisible();
-
-    const conflict = await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory();
-      const dusori = await root.getDirectoryHandle('Dusori');
-      const topics = await dusori.getDirectoryHandle('Topics');
-      const topic = await topics.getDirectoryHandle('ai-fundamentals');
-      const active = await (await topic.getFileHandle('Synthesis.md')).getFile();
-      const proposals: string[] = [];
-      for await (const [name, handle] of topic.entries()) {
-        if (name.startsWith('Synthesis.proposed-') && name.endsWith('.md')) {
-          proposals.push(await (await (handle as FileSystemFileHandle).getFile()).text());
-        }
-      }
-      return { active: await active.text(), proposals };
-    });
-    expect(conflict.active).toContain('External synthesis edit.');
-    expect(conflict.proposals).toHaveLength(1);
-    expect(conflict.proposals[0]).not.toContain('written by gemma3:4b');
-    expect(conflict.proposals[0]).toContain(
-      'Every line below is quoted from a source you approved.',
-    );
   });
 
   test('sharper review prompts need their own consent and fall back to the templates', async ({
@@ -3108,7 +2681,6 @@ test.describe('companion flows', () => {
     await createBrowserWorkspace(page);
     await createTopic(page);
     await addReviewSource(page);
-    await page.goto('/Dusori/app/?token=e2e-companion-token');
     await expectCompanionConnected(page);
 
     await openTodayView(page);
@@ -3237,15 +2809,15 @@ test('the research view the app opens on shows its first control at desktop and 
     await createBrowserWorkspace(page);
     await createTopic(page, { remainInResearch: true });
 
-    await expectWithinFold(page, page.getByText('Research objective'), 'the research objective');
+    await expectWithinFold(page, page.getByLabel('Question or topic'), 'the research question');
     await expectWithinFold(
       page,
-      page.getByRole('button', { name: 'Allow Wikipedia' }),
-      `the first provider control at ${width}×${height}`,
+      page.getByRole('button', { name: 'Research topic' }),
+      `the research action at ${width}×${height}`,
     );
 
     const dimensions = await page.evaluate(() => {
-      const panel = document.querySelector('.research-panel')?.getBoundingClientRect();
+      const panel = document.querySelector('.research-workspace')?.getBoundingClientRect();
       return {
         bodyWidth: document.body.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
@@ -3260,10 +2832,12 @@ test('the research view the app opens on shows its first control at desktop and 
       `research panel clipping at ${width}px`,
     ).toBeLessThanOrEqual(width);
 
-    // The creation toast lands over that same region now. It announces; it must not absorb a click.
+    // The creation toast lands over that same region. It announces; it must not absorb a click.
     await expect(page.getByText('Topic created.')).toBeVisible();
-    await page.getByRole('button', { name: 'Allow GitHub' }).click();
-    await expect(page.getByRole('dialog', { name: /Allow GitHub/u })).toBeVisible();
+    await page.getByRole('button', { name: 'Research topic' }).click();
+    await expect(
+      page.getByRole('dialog', { name: 'Choose where this question may go.' }),
+    ).toBeVisible();
     await context.close();
   }
 });
@@ -3278,16 +2852,12 @@ test('a user-requested mobile view change resets scroll and focuses its heading'
   ).toBeFocused();
   await createTopic(page, { remainInResearch: true });
   await expect(
-    page.getByRole('heading', { name: 'Find the next source worth reading.' }),
+    page.getByRole('heading', { name: 'Ask once. See what the evidence supports.' }),
   ).toBeFocused();
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Open workspace navigation' }).click();
-  await page
-    .getByRole('navigation', { name: 'Dusori learning studio' })
-    .getByRole('button', { name: 'Learn', exact: true })
-    .click();
+  await openTodayView(page);
 
   const heading = page.getByRole('heading', { name: 'Continue learning' });
   await expect(heading).toBeFocused();
@@ -3314,7 +2884,7 @@ test('the topic form starts empty and waits for a name', async ({ page }) => {
 
 test('the workspace rail reports connectivity as it changes', async ({ page, context }) => {
   await createBrowserWorkspace(page);
-  const rail = page.getByRole('navigation', { name: 'Dusori learning studio' });
+  const rail = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   await expect(rail).toContainText('Online · local data');
 
   await context.setOffline(true);
@@ -3331,8 +2901,12 @@ test('a long topic name truncates its label without crushing its icon', async ({
     .fill('Byzantine Fault Tolerant Consensus Under Partial Synchrony and Adversarial Scheduling');
   await page.getByRole('button', { name: 'Create topic' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Find the next source worth reading.' }),
+    page.getByRole('heading', { name: 'Ask once. See what the evidence supports.' }),
   ).toBeVisible();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  if (await disclosure.isVisible()) {
+    await disclosure.getByRole('button', { name: 'Decide later' }).click();
+  }
 
   const icons = await page.evaluate(() =>
     [...document.querySelectorAll('.studio-header .topic-list .studio-link')].map((link) => {
@@ -3349,22 +2923,20 @@ test('a long topic name truncates its label without crushing its icon', async ({
   for (const icon of icons) expect(icon.iconWidth).toBeGreaterThanOrEqual(16);
 });
 
-test('the disabled research scan names the permission it is waiting for', async ({ page }) => {
+test('postponing the grouped provider disclosure records no decision', async ({ page }) => {
   await createBrowserWorkspace(page);
-  await createTopic(page, { remainInResearch: true });
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
 
-  const scan = page.getByRole('button', { name: 'Scan for strong sources' });
-  await expect(scan).toBeDisabled();
-  const describedBy = await scan.getAttribute('aria-describedby');
-  expect(describedBy, 'the disabled scan has no accessible description').toBeTruthy();
-  await expect(page.locator(`#${describedBy}`)).toContainText(/allow at least one provider/iu);
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure).toContainText('Each choice is stored separately on this device.');
+  expect(await disclosure.getByRole('checkbox').count()).toBeGreaterThan(1);
+  await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
+  await expect(disclosure.getByRole('checkbox').first()).toBeFocused();
+  await disclosure.getByRole('button', { name: 'Decide later' }).click();
 
-  // Allowing a provider goes through its disclosure dialog; the description clears once it lands.
-  await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
-  await page
-    .getByRole('dialog', { name: /Allow Wikipedia/u })
-    .getByRole('button', { name: /^Allow/u })
-    .click();
-  await expect(scan).toBeEnabled();
-  await expect(scan).not.toHaveAttribute('aria-describedby', /./u);
+  await page.getByRole('button', { name: 'Research topic' }).click();
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
 });

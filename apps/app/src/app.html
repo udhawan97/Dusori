@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://learn.microsoft.com https://en.wikipedia.org https://hn.algolia.com https://api.github.com https://api.stackexchange.com https://api.openalex.org https://registry.npmjs.org http://127.0.0.1:* http://localhost:*"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-src 'self' blob:; worker-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://learn.microsoft.com https://en.wikipedia.org https://hn.algolia.com https://api.github.com https://api.stackexchange.com https://api.openalex.org https://registry.npmjs.org http://127.0.0.1:* http://localhost:*"
     />
     <meta name="theme-color" content="#14100d" />
     <link rel="icon" href="%sveltekit.assets%/brand/dusori-favicon.svg" type="image/svg+xml" />
@@ -13,9 +13,27 @@
     <link rel="apple-touch-icon" href="%sveltekit.assets%/icons/apple-touch-icon.png" />
     <script>
       try {
-        const savedTheme = localStorage.getItem('dusori-theme');
-        document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'dark';
+        const savedAppearance = localStorage.getItem('dusori-appearance');
+        const legacyTheme = localStorage.getItem('dusori-theme');
+        const appearance = ['system', 'paper', 'ink', 'night'].includes(savedAppearance)
+          ? savedAppearance
+          : legacyTheme === 'light'
+            ? 'paper'
+            : legacyTheme === 'dark'
+              ? 'night'
+              : 'system';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.appearance = appearance;
+        document.documentElement.dataset.theme =
+          appearance === 'paper'
+            ? 'light'
+            : appearance === 'system'
+              ? prefersDark
+                ? 'dark'
+                : 'light'
+              : 'dark';
       } catch {
+        document.documentElement.dataset.appearance = 'system';
         document.documentElement.dataset.theme = 'dark';
       }
     </script>

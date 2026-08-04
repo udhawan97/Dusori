@@ -1,5 +1,8 @@
 import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { isIP, type LookupFunction } from 'node:net';
+import { Readable } from 'node:stream';
 
 import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom';
@@ -11,6 +14,8 @@ import { isBlockedAddress } from './address-guard.js';
 export type FetchFailureReason =
   | 'invalid-url'
   | 'blocked-host'
+  | 'redirect-host'
+  | 'access-denied'
   | 'too-many-redirects'
   | 'timeout'
   | 'unsupported-type'
@@ -22,6 +27,7 @@ export class FetchPageError extends Error {
   constructor(
     message: string,
     readonly reason: FetchFailureReason,
+    readonly status?: number,
   ) {
     super(message);
     this.name = 'FetchPageError';
@@ -46,9 +52,18 @@ export type LookupImpl = (
 export interface FetchPageOptions {
   fetchImpl?: typeof fetch;
   lookupImpl?: LookupImpl;
+  /** Test seam for proving that production requests receive the validated address. */
+  pinnedFetchImpl?: PinnedFetchImpl;
   timeoutMs?: number;
   now?: () => Date;
 }
+
+export type PinnedFetchImpl = (
+  url: URL,
+  address: string,
+  family: number,
+  signal: AbortSignal,
+) => Promise<Response>;
 
 export const maxFetchBytes = 4 * 1024 * 1024;
 const maxRedirects = 3;
@@ -93,11 +108,14 @@ function parseTarget(rawUrl: string): URL {
   return url;
 }
 
-async function assertPublicHost(url: URL, lookupImpl: LookupImpl): Promise<void> {
+async function resolvePublicHost(
+  url: URL,
+  lookupImpl: LookupImpl,
+): Promise<{ address: string; family: number }> {
   const host = url.hostname.replace(/^\[|\]$/gu, '');
   if (isIP(host)) {
     if (isBlockedAddress(host)) throw new FetchPageError(blockedMessage, 'blocked-host');
-    return;
+    return { address: host, family: isIP(host) };
   }
   let addresses: Array<{ address: string; family: number }>;
   try {
@@ -111,21 +129,72 @@ async function assertPublicHost(url: URL, lookupImpl: LookupImpl): Promise<void>
   if (addresses.length === 0 || addresses.some((entry) => isBlockedAddress(entry.address))) {
     throw new FetchPageError(blockedMessage, 'blocked-host');
   }
+  return addresses[0]!;
+}
+
+/**
+ * Node's normal fetch would resolve the hostname again after the guard, leaving a DNS-rebinding
+ * gap. The production request therefore uses the already-validated address while preserving the
+ * URL hostname for the Host header and TLS certificate check.
+ */
+async function pinnedFetch(
+  url: URL,
+  address: string,
+  family: number,
+  signal: AbortSignal,
+): Promise<Response> {
+  const lookupPinned: LookupFunction = (_hostname, _options, callback) => {
+    callback(null, address, family);
+  };
+  return new Promise<Response>((resolve, reject) => {
+    const request = (url.protocol === 'https:' ? httpsRequest : httpRequest)(
+      url,
+      {
+        headers: {
+          accept: 'text/html, application/xhtml+xml, text/plain;q=0.9',
+          'user-agent': 'Dusori companion readable-page fetch',
+        },
+        lookup: lookupPinned,
+        method: 'GET',
+        signal,
+      },
+      (incoming) => {
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(incoming.headers)) {
+          if (Array.isArray(value)) value.forEach((entry) => headers.append(name, entry));
+          else if (value !== undefined) headers.set(name, value);
+        }
+        resolve(
+          new Response(Readable.toWeb(incoming) as ReadableStream<Uint8Array>, {
+            headers,
+            status: incoming.statusCode ?? 502,
+            statusText: incoming.statusMessage,
+          }),
+        );
+      },
+    );
+    request.on('error', reject);
+    request.end();
+  });
 }
 
 async function guardedResponse(
   initial: URL,
-  fetchImpl: typeof fetch,
+  fetchImpl: typeof fetch | undefined,
+  pinnedFetchImpl: PinnedFetchImpl,
   lookupImpl: LookupImpl,
   signal: AbortSignal,
   timeoutMs: number,
 ): Promise<{ finalUrl: URL; response: Response }> {
   let current = initial;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
-    await assertPublicHost(current, lookupImpl);
+    const resolved = await resolvePublicHost(current, lookupImpl);
     let response: Response;
     try {
-      response = await fetchImpl(current.toString(), { redirect: 'manual', signal });
+      response =
+        fetchImpl === undefined
+          ? await pinnedFetchImpl(current, resolved.address, resolved.family, signal)
+          : await fetchImpl(current.toString(), { redirect: 'manual', signal });
     } catch (error) {
       if (isAbortTimeout(error)) throw timeoutFetchError(timeoutMs);
       throw new FetchPageError(
@@ -136,6 +205,7 @@ async function guardedResponse(
     if (redirectStatuses.includes(response.status)) {
       const location = response.headers.get('location');
       if (!location) {
+        await response.body?.cancel().catch(() => undefined);
         throw new FetchPageError(
           'This page redirected without a destination. Save the URL as a reference instead.',
           'fetch-failed',
@@ -145,18 +215,38 @@ async function guardedResponse(
       try {
         next = new URL(location, current);
       } catch {
+        await response.body?.cancel().catch(() => undefined);
         throw new FetchPageError(
           'This page redirected to an invalid address. Save the URL as a reference instead.',
           'fetch-failed',
         );
       }
       current = parseTarget(next.toString());
+      if (current.origin !== initial.origin) {
+        await response.body?.cancel().catch(() => undefined);
+        throw new FetchPageError(
+          `This page redirected to ${current.host}, which was not the host you approved. Open the original in your browser instead.`,
+          'redirect-host',
+        );
+      }
+      await response.body?.cancel().catch(() => undefined);
       continue;
     }
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
+      if ([401, 403, 429].includes(response.status)) {
+        const description =
+          response.status === 429 ? 'limited automated reading' : 'blocked automated reading';
+        throw new FetchPageError(
+          `This site ${description} (status ${response.status}). Dusori kept the reference; open the original in your browser or paste text you are allowed to use.`,
+          'access-denied',
+          response.status,
+        );
+      }
       throw new FetchPageError(
-        `This page answered with status ${response.status}. Check the URL, or paste the text instead.`,
+        `This page answered with status ${response.status}. Dusori kept the reference; open the original in your browser or paste the text instead.`,
         'fetch-failed',
+        response.status,
       );
     }
     return { finalUrl: current, response };
@@ -182,13 +272,17 @@ async function readBody(
   const type =
     (response.headers.get('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
   if (!allowedTypes.includes(type)) {
+    await response.body?.cancel().catch(() => undefined);
     throw new FetchPageError(
       'Only HTML and plain-text pages can be fetched. Keep the URL as a reference instead.',
       'unsupported-type',
     );
   }
   const declared = Number(response.headers.get('content-length') ?? '0');
-  if (declared > maxFetchBytes) throw tooLarge();
+  if (declared > maxFetchBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw tooLarge();
+  }
   if (!response.body) {
     throw new FetchPageError(
       'This page had no readable content. Paste the text instead.',
@@ -295,14 +389,14 @@ export async function fetchReadablePage(
   rawUrl: string,
   options: FetchPageOptions = {},
 ): Promise<FetchedPageResult> {
-  const fetchImpl = options.fetchImpl ?? fetch;
   const lookupImpl = options.lookupImpl ?? (lookup as unknown as LookupImpl);
   const timeoutMs = options.timeoutMs ?? 15_000;
   const signal = AbortSignal.timeout(timeoutMs);
   const target = parseTarget(rawUrl);
   const { finalUrl, response } = await guardedResponse(
     target,
-    fetchImpl,
+    options.fetchImpl,
+    options.pinnedFetchImpl ?? pinnedFetch,
     lookupImpl,
     signal,
     timeoutMs,

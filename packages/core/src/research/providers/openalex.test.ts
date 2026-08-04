@@ -130,6 +130,7 @@ describe('OpenAlex research provider', () => {
 
     const capture = await openAlexProvider.capture(candidate, fetchImpl);
 
+    expect(capture.capturedVia).toBe('api-abstract');
     expect(capture.content).toContain('Kubernetes orchestrates many containers across hosts.');
     expect(capture.content).toContain('Original URL: <https://doi.org/10.1109/mcc.2014.51>');
   });
@@ -177,6 +178,7 @@ describe('OpenAlex research provider', () => {
       fetchImpl,
     );
 
+    expect(capture.capturedVia).toBe('search-reference');
     expect(capture.content).toContain('OpenAlex has no abstract for this work');
   });
 

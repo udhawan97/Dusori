@@ -1,6 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 
 import { appBasePath } from '../../config/site.mjs';
 
@@ -14,7 +15,7 @@ export default defineConfig({
       manifest: {
         name: 'Dusori',
         short_name: 'Dusori',
-        description: 'Local-first learning notes that work without AI.',
+        description: 'A local-first research desk for source-backed briefs.',
         display: 'standalone',
         background_color: '#14100d',
         theme_color: '#14100d',
@@ -33,4 +34,7 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    fs: { allow: [fileURLToPath(new URL('../..', import.meta.url))] },
+  },
 });

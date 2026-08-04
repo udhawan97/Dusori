@@ -62,7 +62,7 @@ export function readGraphViewSettings(storage: Pick<Storage, 'getItem'>): GraphV
   }
   const record =
     typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : {};
-  const hiddenKinds = Array.isArray(record['hiddenKinds'])
+  const hiddenKinds: FilterableKind[] = Array.isArray(record['hiddenKinds'])
     ? [
         ...new Set(
           record['hiddenKinds'].filter((kind): kind is FilterableKind =>
@@ -70,7 +70,7 @@ export function readGraphViewSettings(storage: Pick<Storage, 'getItem'>): GraphV
           ),
         ),
       ]
-    : [];
+    : ['roadmap', 'tutor'];
   return {
     colorMode: record['colorMode'] === 'topic' ? 'topic' : 'kind',
     hiddenKinds,

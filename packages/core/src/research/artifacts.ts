@@ -7,7 +7,7 @@ import {
 } from '../conflict/write-protocol.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema } from '../schemas/workspace.js';
-import { readSourceManifest } from '../sources/import.js';
+import { clearSynthesisStale, readSourceManifest } from '../sources/import.js';
 import { proposedPath, topicRoot } from '../workspace/paths.js';
 import { renderLearnPage } from './learn-page.js';
 import {
@@ -75,6 +75,7 @@ export async function writeTopicSynthesis(
       }.`,
       now,
     );
+    await clearSynthesisStale(storage, topicSlug, now).catch(() => undefined);
     return { path, status: 'written', synthesis };
   }
 
@@ -89,6 +90,7 @@ export async function writeTopicSynthesis(
       now,
       `- Rebuilt [[../../../Synthesis|the topic synthesis]] from ${synthesis.claimCount} quoted passages.`,
     );
+    await clearSynthesisStale(storage, topicSlug, now).catch(() => undefined);
     return { path, status: 'written', synthesis };
   }
   return { conflict: proposal as MarkdownConflict, status: 'conflict', synthesis };

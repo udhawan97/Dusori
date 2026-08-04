@@ -2,23 +2,23 @@
   <img src="docs/assets/dusori-readme-logo-inverted.svg" alt="Dusori — a private learning studio" width="720">
 </p>
 
-<h1 align="center">One calm place to learn a hard topic.</h1>
+<h1 align="center">Ask a hard question. Get an honest research brief.</h1>
 
 <p align="center">
-  Dusori finds sources you permit, keeps what you deliberately save, gives you a focused next step,<br>
-  and turns your notes into a map you can inspect. No account. No telemetry. Ordinary local files.
+  Dusori searches sources you permit, keeps a durable evidence trail, reads what it legitimately can,<br>
+  and shows what the sources support. No account. No telemetry. Ordinary local files.
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="300"></a>
   &nbsp;
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.2"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.2 for Apple silicon or Windows" width="300"></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.3"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.3 for Apple silicon or Windows" width="300"></a>
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a> ·
-  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-2/"><strong>Release notes</strong></a> ·
-  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.2/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
+  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-3/"><strong>Release notes</strong></a> ·
+  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.3/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
 </p>
 
 <p align="center">
@@ -30,31 +30,33 @@
 
 ---
 
-## The daily loop
+## The research loop
 
-Dusori is organized around what a learner does next—not around internal tools.
+Dusori is organized around the question—not around objectives or setup machinery.
 
-1. **Continue.** Open a certification or general topic and take one evidence-backed next step.
-2. **Read.** Open a deliberately saved source in the Reading room. Previewing a search result never saves it.
-3. **Annotate.** Keep notes in Markdown, next to the source and its provenance.
-4. **Mark learned or review.** Only your explicit action changes roadmap progress or the review schedule.
-5. **See the map.** Switch between an explorable galaxy and a linear Outline of the same files.
+1. **Ask.** Enter the topic or question in plain language.
+2. **Research.** Dusori searches permitted providers, ranks a varied shortlist, and saves up to five sources.
+3. **Read.** Provider extracts and guarded companion fetches become local reading copies; blocked pages stay browser-ready references.
+4. **Synthesize.** Quotable passages become one honest brief with visible gaps and citations.
+5. **See the trail.** Map opens as a readable research Outline; the visual constellation is optional.
 
 <p align="center">
-  <img src="apps/site/public/app-learn.png" alt="Dusori Learn view with a focused next step, saved source count, and topic tools" width="920">
-  <br><sub><em>Learn starts with the next useful action. Sources, Map, and Settings stay predictable.</em></sub>
+  <img src="apps/site/public/app-research.png" alt="Dusori Research Desk with a plain-language question, provider outcomes, and saved evidence" width="920">
+  <br><sub><em>One question starts the search, source capture, reading, and synthesis flow.</em></sub>
 </p>
 
 ## Four places, each with one job
 
-| Place        | What it is for                                                                                                        |
-| ------------ | --------------------------------------------------------------------------------------------------------------------- |
-| **Learn**    | Continue a roadmap objective, begin a due review, find evidence, or inspect a real workspace issue.                   |
-| **Sources**  | See the saved evidence shelf, read a local copy, and deliberately add more. The count comes from the source manifest. |
-| **Map**      | Explore notes, sources, tags, backlinks, and unresolved links as a galaxy or accessible Outline.                      |
-| **Settings** | Storage, privacy, import/export, companion status, and desktop updates.                                               |
+| Place        | What it is for                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                                   |
+| **Sources**  | Read local evidence, open blocked pages in the browser, add your own material, remove, or restore.     |
+| **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or optional visual constellation. |
+| **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                          |
 
-Research is a tool inside a topic, not another place to get lost. A result has a **Preview** action; it reaches Sources only after **Save source** or **Save & read**.
+The Research Desk adds the ranked shortlist to Sources automatically. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
+
+Objectives, review, roadmaps, and certification outline import remain available as optional learning tools under **Settings**. They never gate the question-to-brief workflow.
 
 <p align="center">
   <img src="apps/site/public/app-reader.png" alt="Dusori Reading room showing a saved local source and its evidence context" width="920">
@@ -66,14 +68,14 @@ Research is a tool inside a topic, not another place to get lost. A result has a
 | Choice                    | Best for                                                             | Start                                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                                                                          |
-| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_aarch64-aarch64-apple-darwin.dmg)**   |
-| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_x64-setup-x86_64-pc-windows-msvc.exe)** |
+| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_aarch64-aarch64-apple-darwin.dmg)**   |
+| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_x64-setup-x86_64-pc-windows-msvc.exe)** |
 | **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                                                                                      |
-| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.2.zip)**                                                                 |
+| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.3.zip)**                                                                 |
 
-The v0.12.2 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
+The v0.12.3 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
 
-Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.12.2 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates resume from v0.12.2 onward.
+Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.12.3 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates work from v0.12.2 onward.
 
 ### Local companion
 
@@ -120,7 +122,7 @@ Every provider begins off. The first request asks permission and says what leave
 
 Dusori does not scrape social sites behind a login, bypass access controls, download YouTube media, or promise that a third-party free tier will remain available. Provider availability and usage terms belong to each provider. See the [provider and legal matrix](https://udhawan97.github.io/Dusori/docs/research-providers/).
 
-AI is optional. Deterministic ranking, source storage, synthesis structure, roadmaps, graph construction, and review scheduling remain available without it. Any AI feature has its own disclosure and labels its model output.
+AI is optional. Deterministic ranking, source storage, quoted synthesis structure, and graph construction work without it. Any AI feature has its own disclosure and labels its model output.
 
 ## The files remain the product
 
@@ -148,8 +150,8 @@ AI is optional. Deterministic ranking, source storage, synthesis structure, road
 Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If another editor changes Markdown before Dusori writes, Dusori keeps that version active and creates a reviewable proposal instead of overwriting it. Unknown compatible data from newer workspaces is preserved during supported edits.
 
 <p align="center">
-  <img src="apps/site/public/app-map.png" alt="Dusori Map view with a galaxy and a linear outline derived from local files" width="920">
-  <br><sub><em>The galaxy and Outline are two views of the same portable notes, sources, and wikilinks.</em></sub>
+  <img src="apps/site/public/app-map.png" alt="Dusori Map with a readable research outline and optional visual constellation" width="920">
+  <br><sub><em>Outline opens first; the optional constellation shows the same portable notes, sources, and wikilinks.</em></sub>
 </p>
 
 ## Build from source
@@ -174,8 +176,8 @@ Architecture decisions live in [`docs/adr`](docs/adr/README.md). Security bounda
 - No Dusori account, analytics, telemetry, hosted profile, or hosted workspace database.
 - Local search, graph, progress, and insights are derived from workspace files.
 - Network providers are consented separately; failure is shown as failure.
-- A preview is not a saved source, a saved source is not a learned objective, and opening a review does not schedule anything.
-- No background learning, notification, scan, installation, or restart while Dusori is closed.
+- A reference is not evidence, and removed sources stop contributing to Map, counts, and synthesis until restored.
+- No background research, notification, installation, or restart while Dusori is closed.
 - Export the workspace ZIP regularly, especially when using browser-private storage.
 
 Dusori is open source and built entirely on free/open-source dependencies. Optional hosted providers may impose their own quotas, credentials, or terms.

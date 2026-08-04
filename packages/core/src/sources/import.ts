@@ -53,7 +53,21 @@ export interface AddedSource {
   deduplicated: boolean;
   path: string;
   record: SourceRecord;
+  restored?: boolean;
+  /** A URL reference already existed and now has readable provider text. */
+  upgraded?: boolean;
   updatePath?: string;
+  /** The source commit succeeded, but a secondary activity-log write did not. */
+  warning?: string;
+}
+
+export interface RemovedSourceResult {
+  record: SourceRecord;
+  /** The source item is deliberately retained so Restore works after a relaunch. */
+  retainedPath?: string;
+  updatePath?: string;
+  /** The removal commit succeeded, but a secondary activity-log write did not. */
+  warning?: string;
 }
 
 function cleanTitle(input: string): string {
@@ -66,6 +80,17 @@ function cleanTitle(input: string): string {
     throw new Error('Use a one-line source title between 1 and 160 characters.');
   }
   return title;
+}
+
+/** A new readable capture invalidates passages and clears any previous fetch failure. */
+function withoutDerivedEvidence(record: SourceRecord): SourceRecord {
+  const next = { ...record };
+  delete next.claims;
+  delete next.fetchCheckedAt;
+  delete next.fetchMessage;
+  delete next.fetchState;
+  delete next.fetchStatus;
+  return next;
 }
 
 function portableStem(title: string): string {
@@ -162,7 +187,139 @@ export async function addSource(
       (source) => source.method === input.method && source.sha256 === contentHash,
     );
     if (duplicate) {
+      if (input.method === 'url' && input.content !== undefined && duplicate.path) {
+        const itemFile = await storage.read(duplicate.path);
+        if (!itemFile) {
+          throw new Error(
+            'This saved URL is missing its local source file. Restore it, then retry.',
+          );
+        }
+        if (itemFile.content !== sourceContent) {
+          await storage.write(duplicate.path, sourceContent, { expectedHash: itemFile.hash });
+        }
+        const preserved = withoutDerivedEvidence(duplicate);
+        const provenance = input.provenance;
+        const upgradedRecord = SourceRecordSchema.parse({
+          ...preserved,
+          author: provenance?.author ?? duplicate.author,
+          fetchedAt: now.toISOString(),
+          mediaType: 'text/markdown',
+          origin: input.origin ?? duplicate.origin,
+          publishedAt: provenance?.publishedAt ?? duplicate.publishedAt,
+          publisher: provenance?.publisher ?? duplicate.publisher,
+          readState: provenance?.readState ?? 'readable',
+          size,
+          title,
+          url,
+          whySelected: provenance?.whySelected ?? duplicate.whySelected,
+        });
+        const nextManifest = SourceManifestSchema.parse({
+          ...manifest,
+          schemaVersion,
+          sources: manifest.sources.map((source) =>
+            source === duplicate ? upgradedRecord : source,
+          ),
+          synthesisStaleAt: now.toISOString(),
+          synthesisStaleReason: `Readable text was added for source: ${title}`,
+        });
+        try {
+          await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+            expectedHash: manifestFile.hash,
+          });
+        } catch (error) {
+          if (error instanceof StorageConflictError) continue;
+          throw error;
+        }
+        let updatePath: string | undefined;
+        let warning: string | undefined;
+        try {
+          updatePath = await appendTopicUpdate(
+            storage,
+            input.topicSlug,
+            `- Added readable text to saved source **${title}**.`,
+            now,
+          );
+        } catch {
+          warning = 'The readable source was saved, but the activity log could not be updated.';
+        }
+        return {
+          deduplicated: true,
+          path: duplicate.path,
+          record: upgradedRecord,
+          updatePath,
+          upgraded: true,
+          warning,
+        };
+      }
       return { deduplicated: true, path: duplicate.path ?? path, record: duplicate };
+    }
+
+    const removed = (manifest.removedSources ?? []).find(
+      (entry) => entry.record.method === input.method && entry.record.sha256 === contentHash,
+    );
+    if (removed) {
+      const restoredPath = removed.record.path ?? path;
+      let restoredRecord = removed.record;
+      if (input.method === 'url' && input.content !== undefined) {
+        const retained = await storage.read(restoredPath);
+        await storage.write(restoredPath, sourceContent, {
+          expectedHash: retained?.hash ?? null,
+        });
+        const preserved = withoutDerivedEvidence(removed.record);
+        const provenance = input.provenance;
+        restoredRecord = SourceRecordSchema.parse({
+          ...preserved,
+          author: provenance?.author,
+          fetchedAt: now.toISOString(),
+          mediaType: 'text/markdown',
+          origin: input.origin,
+          path: restoredPath,
+          publishedAt: provenance?.publishedAt,
+          publisher: provenance?.publisher,
+          readState: provenance?.readState,
+          size,
+          title,
+          url,
+          whySelected: provenance?.whySelected,
+        });
+      }
+      const nextManifest = SourceManifestSchema.parse({
+        ...manifest,
+        schemaVersion,
+        removedSources: (manifest.removedSources ?? []).filter((entry) => entry !== removed),
+        sources: [...manifest.sources, restoredRecord],
+        synthesisStaleAt: now.toISOString(),
+        synthesisStaleReason: 'A source was restored to this research.',
+      });
+      try {
+        await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+          expectedHash: manifestFile.hash,
+        });
+      } catch (error) {
+        if (error instanceof StorageConflictError) continue;
+        throw error;
+      }
+      const relativePath = restoredPath.slice(`${root}/`.length).replace(/\.md$/u, '');
+      let updatePath: string | undefined;
+      let warning: string | undefined;
+      try {
+        updatePath = await appendTopicUpdate(
+          storage,
+          input.topicSlug,
+          `- Restored source [[../../../${relativePath}|${title}]] to this research.`,
+          now,
+        );
+      } catch {
+        warning = 'The source was restored, but the activity log could not be updated.';
+      }
+      return {
+        deduplicated: true,
+        path: restoredPath,
+        record: restoredRecord,
+        restored: true,
+        updatePath,
+        warning,
+      };
     }
 
     await storage.ensureDirectory(`${root}/Sources/items`);
@@ -196,6 +353,8 @@ export async function addSource(
       ...manifest,
       schemaVersion,
       sources: [...manifest.sources, record],
+      synthesisStaleAt: now.toISOString(),
+      synthesisStaleReason: `Source added to research: ${title}`,
     });
     try {
       await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
@@ -206,19 +365,218 @@ export async function addSource(
       continue;
     }
 
-    // The manifest write is definitively committed at this point, so a
-    // log-append conflict below must propagate as its own error rather than
-    // re-entering the loop above (that would re-read the manifest we just
-    // wrote and report the source as deduplicated, hiding the failed append).
+    // The source is committed once the manifest write succeeds. Activity-log failure is returned
+    // as a warning so the UI never misreports a completed add as a failed one.
     const relativePath = path.slice(`${root}/`.length).replace(/\.md$/u, '');
-    const updatePath = await appendTopicUpdate(
-      storage,
-      input.topicSlug,
-      `- Added ${input.method} source [[../../../${relativePath}|${title}]].`,
-      now,
-    );
-    return { deduplicated: false, path, record, updatePath };
+    let updatePath: string | undefined;
+    let warning: string | undefined;
+    try {
+      updatePath = await appendTopicUpdate(
+        storage,
+        input.topicSlug,
+        `- Added ${input.method} source [[../../../${relativePath}|${title}]].`,
+        now,
+      );
+    } catch {
+      warning = 'The source was saved, but the activity log could not be updated.';
+    }
+    return { deduplicated: false, path, record, updatePath, warning };
   }
 
   throw new Error('The source manifest changed repeatedly. Try adding the source again.');
+}
+
+/**
+ * Removes a source from active research without deleting its local item. The tombstone lives in
+ * the same CAS-protected manifest, so navigation/relaunch can offer Restore without a second file
+ * getting out of sync. Notes are never touched.
+ */
+export async function removeSourceFromResearch(
+  storage: StorageAdapter,
+  input: { topicSlug: string; sha256: string },
+  now = new Date(),
+): Promise<RemovedSourceResult> {
+  const root = topicRoot(input.topicSlug);
+  const manifestPath = `${root}/Sources/manifest.json`;
+  await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const manifestFile = await storage.read(manifestPath);
+    if (!manifestFile) throw new Error(`Missing source manifest: ${manifestPath}`);
+    const manifest = parseManifest(manifestFile.content);
+    const record = manifest.sources.find((source) => source.sha256 === input.sha256);
+    if (!record) throw new Error('This source is no longer in the active research library.');
+    const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
+      removedSources: [
+        ...(manifest.removedSources ?? []).filter((entry) => entry.record.sha256 !== record.sha256),
+        { record, removedAt: now.toISOString() },
+      ],
+      schemaVersion,
+      sources: manifest.sources.filter((source) => source.sha256 !== record.sha256),
+      synthesisStaleAt: now.toISOString(),
+      synthesisStaleReason: `Source removed from research: ${record.title}`,
+    });
+    try {
+      await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+        expectedHash: manifestFile.hash,
+      });
+    } catch (error) {
+      if (error instanceof StorageConflictError) continue;
+      throw error;
+    }
+    let updatePath: string | undefined;
+    let warning: string | undefined;
+    try {
+      updatePath = await appendTopicUpdate(
+        storage,
+        input.topicSlug,
+        `- Removed source **${record.title}** from active research. Its local item was retained for Restore.`,
+        now,
+      );
+    } catch {
+      warning = 'The source was removed, but the activity log could not be updated.';
+    }
+    return { record, retainedPath: record.path, updatePath, warning };
+  }
+  throw new Error('The source manifest changed repeatedly. Try removing the source again.');
+}
+
+export async function restoreSourceToResearch(
+  storage: StorageAdapter,
+  input: { topicSlug: string; sha256: string },
+  now = new Date(),
+): Promise<AddedSource> {
+  const root = topicRoot(input.topicSlug);
+  const manifestPath = `${root}/Sources/manifest.json`;
+  await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const manifestFile = await storage.read(manifestPath);
+    if (!manifestFile) throw new Error(`Missing source manifest: ${manifestPath}`);
+    const manifest = parseManifest(manifestFile.content);
+    const removed = (manifest.removedSources ?? []).find(
+      (entry) => entry.record.sha256 === input.sha256,
+    );
+    if (!removed) throw new Error('This source is no longer available to restore.');
+    if (removed.record.path && !(await storage.read(removed.record.path))) {
+      throw new Error('The retained source item is missing. Add the source again instead.');
+    }
+    const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
+      removedSources: (manifest.removedSources ?? []).filter((entry) => entry !== removed),
+      schemaVersion,
+      sources: [...manifest.sources, removed.record],
+      synthesisStaleAt: now.toISOString(),
+      synthesisStaleReason: `Source restored to research: ${removed.record.title}`,
+    });
+    try {
+      await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+        expectedHash: manifestFile.hash,
+      });
+    } catch (error) {
+      if (error instanceof StorageConflictError) continue;
+      throw error;
+    }
+    let updatePath: string | undefined;
+    let warning: string | undefined;
+    try {
+      updatePath = await appendTopicUpdate(
+        storage,
+        input.topicSlug,
+        `- Restored source **${removed.record.title}** to active research.`,
+        now,
+      );
+    } catch {
+      warning = 'The source was restored, but the activity log could not be updated.';
+    }
+    return {
+      deduplicated: true,
+      path: removed.record.path ?? '',
+      record: removed.record,
+      restored: true,
+      updatePath,
+      warning,
+    };
+  }
+  throw new Error('The source manifest changed repeatedly. Try restoring the source again.');
+}
+
+export async function recordSourceFetchFailure(
+  storage: StorageAdapter,
+  input: {
+    topicSlug: string;
+    sha256: string;
+    message: string;
+    state: 'blocked' | 'failed';
+    status?: number;
+  },
+  now = new Date(),
+): Promise<SourceRecord> {
+  const root = topicRoot(input.topicSlug);
+  const manifestPath = `${root}/Sources/manifest.json`;
+  await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const manifestFile = await storage.read(manifestPath);
+    if (!manifestFile) throw new Error(`Missing source manifest: ${manifestPath}`);
+    const manifest = parseManifest(manifestFile.content);
+    const record = manifest.sources.find((source) => source.sha256 === input.sha256);
+    if (!record) throw new Error('This URL reference is no longer in the source library.');
+    const nextRecord = SourceRecordSchema.parse({
+      ...record,
+      fetchCheckedAt: now.toISOString(),
+      fetchMessage: input.message,
+      fetchState: input.state,
+      fetchStatus: input.status,
+      readState: record.readState === 'read' ? 'read' : 'reference',
+    });
+    const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
+      schemaVersion,
+      sources: manifest.sources.map((source) =>
+        source.sha256 === record.sha256 ? nextRecord : source,
+      ),
+    });
+    try {
+      await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+        expectedHash: manifestFile.hash,
+      });
+      return nextRecord;
+    } catch (error) {
+      if (error instanceof StorageConflictError) continue;
+      throw error;
+    }
+  }
+  throw new Error('The source manifest changed repeatedly. Try fetching the source again.');
+}
+
+export async function clearSynthesisStale(
+  storage: StorageAdapter,
+  topicSlug: string,
+  now = new Date(),
+): Promise<void> {
+  void now;
+  const root = topicRoot(topicSlug);
+  const manifestPath = `${root}/Sources/manifest.json`;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const manifestFile = await storage.read(manifestPath);
+    if (!manifestFile) return;
+    const manifest = parseManifest(manifestFile.content);
+    if (!manifest.synthesisStaleAt && !manifest.synthesisStaleReason) return;
+    const { synthesisStaleAt: _at, synthesisStaleReason: _reason, ...rest } = manifest;
+    void _at;
+    void _reason;
+    try {
+      await storage.write(
+        manifestPath,
+        `${JSON.stringify(SourceManifestSchema.parse({ ...rest, schemaVersion }), null, 2)}\n`,
+        { expectedHash: manifestFile.hash },
+      );
+      return;
+    } catch (error) {
+      if (error instanceof StorageConflictError) continue;
+      throw error;
+    }
+  }
+  throw new Error('The source manifest changed repeatedly while recording fresh synthesis.');
 }

@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../adapters.js';
+import { SourceManifestSchema } from '../schemas/workspace.js';
 import { extractTags } from '../tags/tags.js';
 
 export type WorkspaceGraphNodeKind =
@@ -123,10 +124,25 @@ export function resolveWikilink(
 
 export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<WorkspaceGraph> {
   const entries = await storage.list('', true);
-  const paths = entries
+  const removedSourcePaths = new Set<string>();
+  for (const entry of entries) {
+    if (entry.kind !== 'file' || !/\/Sources\/manifest\.json$/u.test(entry.path)) continue;
+    const snapshot = await storage.read(entry.path);
+    if (!snapshot) continue;
+    try {
+      const manifest = SourceManifestSchema.parse(JSON.parse(snapshot.content));
+      for (const removed of manifest.removedSources ?? []) {
+        if (removed.record.path) removedSourcePaths.add(removed.record.path);
+      }
+    } catch {
+      // Workspace health reports an invalid manifest. The graph must not guess at tombstones in it.
+    }
+  }
+  const allDocumentPaths = entries
     .filter((entry) => entry.kind === 'file' && /\.(?:md|txt)$/iu.test(entry.path))
     .map((entry) => entry.path)
     .sort((left, right) => left.localeCompare(right));
+  const paths = allDocumentPaths.filter((path) => !removedSourcePaths.has(path));
   const contentByPath = new Map<string, string>();
   const nodes: WorkspaceGraphNode[] = [];
 
@@ -144,7 +160,10 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     });
   }
 
-  const pathSet = new Set(paths);
+  // Tombstoned source files remain on disk so the user can restore them. Resolve links against
+  // that complete set, then suppress edges to removed sources. Otherwise a deliberate removal
+  // would be misreported as a broken wikilink even though the retained target still exists.
+  const resolvablePathSet = new Set(allDocumentPaths);
   const edges: WorkspaceGraphEdge[] = [];
   const unresolvedLinks: UnresolvedWorkspaceLink[] = [];
   const edgeIds = new Set<string>();
@@ -167,9 +186,10 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     const content = contentByPath.get(source.path) ?? '';
     for (const match of content.matchAll(/\[\[([^\]]+)\]\]/gu)) {
       const rawTarget = match[1]!.split('|', 1)[0]!.split('#', 1)[0]!.trim();
-      const resolved = resolveWikilink(source.path, rawTarget, pathSet);
-      if (resolved) addEdge(source.id, resolved, 'links');
-      else if (rawTarget) unresolvedLinks.push({ source: source.id, target: rawTarget });
+      const resolved = resolveWikilink(source.path, rawTarget, resolvablePathSet);
+      if (resolved && !removedSourcePaths.has(resolved)) addEdge(source.id, resolved, 'links');
+      else if (!resolved && rawTarget)
+        unresolvedLinks.push({ source: source.id, target: rawTarget });
     }
   }
 

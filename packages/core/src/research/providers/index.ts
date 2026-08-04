@@ -1,5 +1,5 @@
 import type { CompanionResearchClient } from '../companion.js';
-import type { ResearchProvider } from '../types.js';
+import type { ResearchProvider, ResearchQuery } from '../types.js';
 import { createArxivProvider } from './arxiv.js';
 import { githubProvider } from './github.js';
 import { hackerNewsProvider } from './hackernews.js';
@@ -37,6 +37,86 @@ export const researchProviders = [
 
 export interface ResearchProviderOptions {
   companion?: CompanionResearchClient | null;
+}
+
+const generalResearchProviders = new Set([
+  'arxiv',
+  'openalex',
+  'reddit',
+  'websearch',
+  'wikipedia',
+  'youtube',
+]);
+
+const developerTerms = new Set([
+  'api',
+  'app',
+  'azure',
+  'code',
+  'coding',
+  'container',
+  'css',
+  'database',
+  'developer',
+  'docker',
+  'framework',
+  'git',
+  'github',
+  'html',
+  'javascript',
+  'kubernetes',
+  'library',
+  'linux',
+  'node',
+  'npm',
+  'package',
+  'programming',
+  'python',
+  'react',
+  'repository',
+  'rust',
+  'software',
+  'svelte',
+  'typescript',
+  'web',
+]);
+
+const microsoftTerms = new Set([
+  'azure',
+  'entra',
+  'excel',
+  'microsoft',
+  'office',
+  'powerbi',
+  'sharepoint',
+  'teams',
+  'windows',
+]);
+
+/**
+ * Keeps specialist catalogs out of broad questions. A package registry is valuable for a
+ * programming question and actively misleading for “history of the printing press”, even when a
+ * package happens to repeat those words in its name.
+ */
+export function selectProvidersForQuery(
+  providers: ResearchProvider[],
+  query: ResearchQuery,
+): ResearchProvider[] {
+  const terms = new Set(query.terms);
+  const searchText = query.searchText;
+  const hasMicrosoftCertificationCode = /\b(?:AI|AZ|DP|MB|MD|MS|PL|SC)-\d{3}\b/iu.test(searchText);
+  const isDeveloperQuestion = [...terms].some((term) => developerTerms.has(term));
+  const isMicrosoftQuestion =
+    hasMicrosoftCertificationCode || [...terms].some((term) => microsoftTerms.has(term));
+  const selected = providers.filter((provider) => {
+    if (generalResearchProviders.has(provider.id)) return true;
+    if (provider.id === 'mslearn') return isMicrosoftQuestion;
+    if (['github', 'hackernews', 'npm', 'stackexchange'].includes(provider.id)) {
+      return isDeveloperQuestion;
+    }
+    return true;
+  });
+  return selected.length > 0 ? selected : providers;
 }
 
 /**

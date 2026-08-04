@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { dev } from '$app/environment';
+  import { pushState, replaceState } from '$app/navigation';
   import { base } from '$app/paths';
   import {
-    BookOpen,
     Download,
     FileText,
     FolderOpen,
@@ -21,7 +22,7 @@
     X,
   } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
-  import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
 
   import {
     WorkspaceSchema,
@@ -116,14 +117,19 @@
   let creatingTopic = false;
   let previousSlug = '';
   let conflictPanel: HTMLElement | undefined;
+  let conflictAcceptButton: HTMLButtonElement | undefined;
   let workspaceHealthPanel: HTMLElement | undefined;
   let workspaceHealthComponent: WorkspaceHealth | undefined;
   let canvasElement: HTMLElement | undefined;
   let certificationSetupSlug = '';
+  const dismissedCertificationSetups = new SvelteSet<string>();
   let savedSourceCount = 0;
   let sourceCountRequest = 0;
 
   const unlockHint = 'Select or create a topic to open these views.';
+  // Workspace restoration can normalize the visible URL as soon as the component mounts. Keep
+  // the launch query long enough to consume a one-time companion credential before that happens.
+  const launchSearch = typeof window === 'undefined' ? '' : window.location.search;
 
   $: diff = conflict
     ? lineDiff(conflict.currentContent, conflict.proposalContent).filter(
@@ -202,16 +208,15 @@
     const parameters = new SvelteURLSearchParams(location.search);
     if (selectedSlug) parameters.set('topic', selectedSlug);
     else parameters.delete('topic');
-    if (workspaceView === 'today') parameters.delete('view');
-    else parameters.set('view', workspaceView);
+    parameters.set('view', workspaceView);
     if (workspaceView === 'note' && notePath) parameters.set('path', notePath);
     else parameters.delete('path');
 
     const query = parameters.toString();
     const next = `${location.pathname}${query ? `?${query}` : ''}`;
     if (next === `${location.pathname}${location.search}`) return;
-    if (replace) history.replaceState(null, '', next);
-    else history.pushState(null, '', next);
+    if (replace) replaceState(next, {});
+    else pushState(next, {});
   }
 
   /** Applies the view described by the current URL. Never writes history back. */
@@ -226,11 +231,14 @@
     if (view === 'graph') openGraph(false);
     else if (view === 'insights') openInsights(false);
     else if (view === 'research') openResearch(slug, false);
-    else if (view === 'roadmap') await openRoadmap(slug, false);
+    else if (view === 'today') {
+      await prepareCertificationSetup(slug);
+      openToday(slug, false);
+    } else if (view === 'roadmap') await openRoadmap(slug, false);
     else if (view === 'settings') openSettings(false);
     else if (view === 'sources') openSources(slug, false);
     else if (view === 'note' && path) await openGraphDocument(path, false);
-    else openToday(slug, false);
+    else openResearch(slug, false);
   }
 
   async function refreshSavedSourceCount(
@@ -283,11 +291,13 @@
       }
       return;
     }
-    const parameters = new URLSearchParams(location.search);
+    const parameters = new URLSearchParams(launchSearch);
     const token = parameters.get('token');
     if (!token) {
+      if (dev || location.hostname === 'udhawan97.github.io') return;
       try {
         const response = await fetch(`${location.origin}/api/health`, {
+          cache: 'no-store',
           credentials: 'same-origin',
         });
         if (!response.ok) return;
@@ -302,7 +312,9 @@
       return;
     }
     const requested = parameters.get('companion') ?? location.origin;
-    const cleanQuery = stripCompanionCredentials(location.search);
+    const cleanQuery = stripCompanionCredentials(launchSearch);
+    // This runs during first mount, before SvelteKit's client router is guaranteed to be attached.
+    // Native history replacement removes the launch secret without initiating app navigation.
     history.replaceState(
       history.state,
       '',
@@ -318,6 +330,7 @@
     }
     try {
       const response = await fetch(`${companion}/api/health`, {
+        cache: 'no-store',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error(`Companion returned ${response.status}.`);
@@ -339,7 +352,7 @@
       const native = await resolveDesktopStorage();
       if (native) {
         if (!(await native.read('dusori.json'))) {
-          await createWorkspace(native, 'My learning workspace');
+          await createWorkspace(native, 'My research workspace');
         }
         await activateStorage(native, 'Desktop workspace · on this device', true);
         return;
@@ -382,7 +395,8 @@
       if (!restoreView) await orientView();
       return;
     }
-    openToday(first.slug, false);
+    await prepareCertificationSetup(first.slug);
+    openResearch(first.slug, false);
     if (restoreView) await applyLocationView();
     else {
       syncLocation(true);
@@ -393,7 +407,7 @@
   async function createBrowserWorkspace(): Promise<void> {
     await perform(async () => {
       const adapter = await createOpfsStorage();
-      await createWorkspace(adapter, 'My learning workspace');
+      await createWorkspace(adapter, 'My research workspace');
       await activateStorage(adapter, 'Browser workspace · private');
       status = 'Browser workspace created. Nothing was uploaded.';
     });
@@ -403,7 +417,7 @@
     await perform(async () => {
       const adapter = await pickDirectory();
       if (!(await adapter.read('dusori.json')))
-        await createWorkspace(adapter, 'My learning workspace');
+        await createWorkspace(adapter, 'My research workspace');
       await activateStorage(adapter, `Folder · ${adapter.root.name}`);
       status = 'Folder connected. Dusori writes only inside this selected root.';
     });
@@ -422,12 +436,16 @@
   async function addTopic(): Promise<void> {
     if (!storage || !topicTitle.trim()) return;
     await perform(async () => {
-      const created = await createTopic(storage!, topicTitle.trim());
+      const creatingKind = topicKind;
+      const created = await createTopic(storage!, topicTitle.trim(), new Date(), {
+        kind: creatingKind,
+      });
       workspace = created.workspace;
       creatingTopic = false;
       previousSlug = '';
       topicTitle = '';
-      if (topicKind === 'certification') {
+      if (creatingKind === 'certification') {
+        dismissedCertificationSetups.delete(created.topicSlug);
         certificationSetupSlug = created.topicSlug;
         researchAutoStartSlug = '';
         openToday(created.topicSlug);
@@ -463,7 +481,7 @@
     creatingTopic = false;
     const slug = previousSlug;
     previousSlug = '';
-    if (slug) openToday(slug);
+    if (slug) void openTopic(slug);
   }
 
   async function openTopic(slug: string): Promise<void> {
@@ -471,9 +489,11 @@
     stopEditingNote();
     creatingTopic = false;
     selectedSlug = slug;
-    await openDocument('Notes/001-first-look.md');
-    conflict = null;
-    mobileNavOpen = false;
+    await prepareCertificationSetup(slug);
+    const synthesis = await storage.read(`Topics/${slug}/Synthesis.md`);
+    const manifest = await readSourceManifest(storage, slug).catch(() => null);
+    if (synthesis && !manifest?.synthesisStaleAt) await openDocument('Synthesis.md');
+    else openResearch(slug);
   }
 
   async function openDocument(relativePath: string): Promise<void> {
@@ -520,6 +540,22 @@
       syncLocation();
       void orientView();
     }
+  }
+
+  async function prepareCertificationSetup(slug: string): Promise<void> {
+    const topic = workspace?.topics.find((candidate) => candidate.slug === slug);
+    if (!storage || topic?.kind !== 'certification' || dismissedCertificationSetups.has(slug)) {
+      if (certificationSetupSlug === slug) certificationSetupSlug = '';
+      return;
+    }
+    const roadmap = await storage.read(`Topics/${slug}/roadmap.md`);
+    certificationSetupSlug = roadmap?.content.includes('origin: imported-curriculum') ? '' : slug;
+  }
+
+  async function openLearning(slug = selectedSlug, record = true): Promise<void> {
+    if (!slug) return;
+    await prepareCertificationSetup(slug);
+    openToday(slug, record);
   }
 
   async function openRoadmap(slug = selectedSlug, record = true): Promise<void> {
@@ -693,6 +729,7 @@
         status = 'An external edit stayed active. Review the proposed note before accepting it.';
         await tick();
         conflictPanel?.scrollIntoView({ block: 'start' });
+        conflictAcceptButton?.focus();
         return;
       }
       await acceptMarkdownUpdate(
@@ -778,9 +815,14 @@
       syncLocation();
       status = 'External content stayed in place. Dusori wrote a separate proposal and update log.';
       inspectorOpen = false;
-      await tick();
-      conflictPanel?.scrollIntoView({ block: 'start' });
     });
+    // The accept control is disabled while `perform` is busy, so focus only after the operation
+    // releases it. Focusing a disabled control silently does nothing and leaves the decision below
+    // the viewport when this proof is launched from another view.
+    if (!conflict) return;
+    await tick();
+    conflictAcceptButton?.scrollIntoView({ block: 'center' });
+    conflictAcceptButton?.focus();
   }
 
   /** Brings an existing proposal back on screen from the inspector. */
@@ -791,6 +833,7 @@
     inspectorOpen = false;
     await tick();
     conflictPanel?.scrollIntoView({ block: 'start' });
+    conflictAcceptButton?.focus();
   }
 
   async function openPendingProposal(item: ProposalAttentionItem): Promise<void> {
@@ -822,7 +865,11 @@
       syncLocation();
       await tick();
       conflictPanel?.scrollIntoView({ block: 'start' });
+      conflictAcceptButton?.focus();
     });
+    await tick();
+    conflictAcceptButton?.scrollIntoView({ block: 'nearest' });
+    conflictAcceptButton?.focus();
   }
 
   async function openWorkspaceHealth(): Promise<void> {
@@ -966,6 +1013,10 @@
       if (mobileNavOpen) dismissMobileNav();
       inspectorOpen = false;
     }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && selectedSlug) {
+      event.preventDefault();
+      openResearch();
+    }
     // The drawer covers the canvas without being a dialog, so nothing stops Tab reaching what is
     // behind it. Held at the window: a listener on the <nav> would be an interaction handler on a
     // non-interactive element.
@@ -974,8 +1025,11 @@
 />
 
 <svelte:head>
-  <title>Dusori — local-first learning</title>
-  <meta name="description" content="A free local-first learning workspace that works without AI." />
+  <title>Dusori — local-first research</title>
+  <meta
+    name="description"
+    content="A local-first research desk that finds, saves, and synthesizes source-backed evidence."
+  />
 </svelte:head>
 
 {#if workspaceRestoring}
@@ -996,7 +1050,7 @@
         height="28"
       />
     </span>
-    <p>Opening your learning studio…</p>
+    <p>Opening your Research Desk…</p>
   </main>
 {:else if !workspace}
   <main class="setup-shell">
@@ -1028,11 +1082,12 @@
 
     <section class="setup-intro" aria-labelledby="setup-title">
       <p class="kicker">Local-first · free · no account</p>
-      <h1 id="setup-title">Make a learning space you can keep.</h1>
+      <h1 id="setup-title">Make a research desk you can keep.</h1>
       <p>
         <span class="setup-copy-wide">
           Start privately in this browser, or grant access to one folder. Dusori stores plain
-          Markdown and JSON; it does not upload your notes.
+          Markdown and JSON, then finds sources only through providers you allow. It does not upload
+          your notes.
         </span>
         <span class="setup-copy-compact">
           Start in this browser or connect one folder. Your notes stay on this device.
@@ -1148,7 +1203,7 @@
       class:open={mobileNavOpen}
       class="studio-header"
       id="workspace-navigation"
-      aria-label="Dusori learning studio"
+      aria-label="Dusori Research Desk"
     >
       <div class="studio-brand">
         <span class="brand-symbol" aria-hidden="true">
@@ -1178,16 +1233,16 @@
         </button>
       </div>
       <div class="studio-section">
-        <p>Learning studio</p>
+        <p>Research Desk</p>
         <button
-          class:active={workspaceView === 'today'}
+          class:active={workspaceView === 'research'}
           class="studio-link"
           disabled={!selectedSlug}
           title={selectedSlug ? undefined : unlockHint}
-          onclick={() => openToday()}
+          onclick={() => openResearch()}
         >
-          <BookOpen aria-hidden="true" size={18} />
-          Learn
+          <Search aria-hidden="true" size={18} />
+          Research
         </button>
         <button
           class:active={workspaceView === 'sources'}
@@ -1271,13 +1326,13 @@
         <div>
           <p class="path-label">
             {workspaceView === 'today'
-              ? 'Learn · your next step'
+              ? 'Learn · today'
               : workspaceView === 'sources'
                 ? `Sources · ${savedSourceCount} saved`
                 : workspaceView === 'research'
-                  ? 'Learn · find sources'
+                  ? 'Research · question to brief'
                   : workspaceView === 'graph'
-                    ? 'Map · galaxy and outline'
+                    ? 'Map · research outline'
                     : workspaceView === 'insights'
                       ? 'Learn · evidence and reflection'
                       : workspaceView === 'roadmap'
@@ -1288,6 +1343,13 @@
           </p>
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
+        {#if selectedSlug}
+          <button class="research-pill" onclick={() => openResearch()}>
+            <Search aria-hidden="true" size={16} />
+            <span>Research this topic…</span>
+            <kbd>⌘K</kbd>
+          </button>
+        {/if}
         <div class="canvas-actions">
           {#if editableNote && !editingNote}
             <button class="icon-button" aria-label="Edit note" onclick={beginEditingNote}>
@@ -1310,7 +1372,7 @@
         </div>
       </header>
 
-      {#if selectedSlug && storage && workspaceView !== 'settings'}
+      {#if selectedSlug && storage && workspaceView === 'note'}
         <TopicAsk
           {storage}
           topicSlug={selectedSlug}
@@ -1332,6 +1394,7 @@
           onExportWorkspace={() => void downloadWorkspace()}
           onExportTopic={() => void downloadTopic()}
           onImportWorkspace={(event) => void uploadWorkspace(event)}
+          onOpenLegacyLearning={() => void openLearning()}
         />
       {:else if selectedSlug}
         {#if workspaceView === 'sources' && storage}
@@ -1341,17 +1404,19 @@
                 <p class="kicker">Your evidence shelf · {savedSourceCount} saved</p>
                 <h1 id="sources-view-title">Sources</h1>
                 <p>
-                  Everything you deliberately saved for this topic is here. Previewing a research
-                  result never adds it to this shelf.
+                  Everything saved for this topic is here, including the diverse first shelf from
+                  each research run. References and readable evidence are labeled separately.
                 </p>
               </div>
               <button class="primary-button" onclick={() => openResearch()}>
-                <Search aria-hidden="true" size={18} /> Find sources
+                <Search aria-hidden="true" size={18} /> Research further
               </button>
             </header>
             <SourceLibrary
               {storage}
               topicSlug={selectedSlug}
+              topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+                selectedSlug}
               companion={companionClient}
               revision={artifactRevision}
               onSourceSaved={refreshArtifacts}
@@ -1421,7 +1486,6 @@
               topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
                 selectedSlug}
               companion={companionClient}
-              ai={companionAiClient}
               autoStart={researchAutoStartSlug === selectedSlug}
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
               onArtifactSaved={refreshArtifacts}
@@ -1459,6 +1523,7 @@
               <button
                 class="text-button"
                 onclick={() => {
+                  dismissedCertificationSetups.add(selectedSlug);
                   certificationSetupSlug = '';
                   announceStatus('Official outline setup deferred. Your topic remains unchanged.');
                 }}>Not now</button
@@ -1486,15 +1551,15 @@
         {/if}
       {:else}
         <section class="empty-topic" aria-labelledby="new-topic-title">
-          <p class="kicker">Name it · research follows</p>
+          <p class="kicker">One question · research follows</p>
           <h1 id="new-topic-title">
             {workspace.topics.length
               ? 'Open another line of inquiry.'
               : 'What do you want to understand?'}
           </h1>
           <p>
-            Dusori creates the portable learning structure, then opens automatic research for the
-            providers you approve.
+            Dusori creates a portable topic, searches the providers you choose, saves a varied first
+            shelf, and opens the source-backed brief it can honestly build.
           </p>
           <form
             onsubmit={(event) => {
@@ -1503,19 +1568,19 @@
             }}
           >
             <fieldset class="topic-kind">
-              <legend>What kind of learning is this?</legend>
+              <legend>What kind of research is this?</legend>
               <label>
                 <input type="radio" bind:group={topicKind} value="general" />
                 <span>
                   <strong>General topic</strong>
-                  <small>Build an editable path from sources you choose.</small>
+                  <small>Build a source-backed brief from the providers you choose.</small>
                 </span>
               </label>
               <label>
                 <input type="radio" bind:group={topicKind} value="certification" />
                 <span>
                   <strong>Certification</strong>
-                  <small>Start from the exact official outline—never a guessed replacement.</small>
+                  <small>Start with the exact code and official outline—never a guess.</small>
                 </span>
               </label>
             </fieldset>
@@ -1526,17 +1591,19 @@
                 bind:value={topicTitle}
                 required
                 maxlength="160"
-                placeholder={topicKind === 'certification' ? 'AI-900' : 'AI Fundamentals'}
+                placeholder={topicKind === 'certification'
+                  ? 'AI-103'
+                  : 'History of the printing press'}
                 aria-describedby="topic-help"
               />
               <button class="primary-button" disabled={busy || !topicTitle.trim()}>
-                {busy ? 'Creating…' : 'Create topic'}
+                {busy ? 'Opening desk…' : 'Create topic'}
               </button>
             </div>
             <p id="topic-help">
               {topicKind === 'certification'
-                ? 'Use the exact certification code. Dusori will not search, rename, or substitute it before you approve a provider.'
-                : 'Use a clear topic name. Research starts only after one-time provider consent.'}
+                ? 'Use the exact certification code. Dusori stays offline until you provide the official outline or approve a provider.'
+                : 'Use a clear subject or question. First use shows one grouped provider disclosure; later research is one action.'}
             </p>
             {#if previousSlug}
               <button class="text-button" type="button" disabled={busy} onclick={cancelNewTopic}>
@@ -1580,7 +1647,12 @@
             <button class="secondary-button" disabled={busy} onclick={keepConflict}>
               Keep current document
             </button>
-            <button class="primary-button accept-proposal" disabled={busy} onclick={acceptConflict}>
+            <button
+              bind:this={conflictAcceptButton}
+              class="primary-button accept-proposal"
+              disabled={busy}
+              onclick={acceptConflict}
+            >
               Accept this proposal
             </button>
           </div>
@@ -2249,6 +2321,47 @@
     flex: none;
     align-items: center;
     gap: var(--space-xs);
+  }
+
+  .research-pill {
+    display: none;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--space-xs);
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-paper-2);
+    color: var(--color-muted);
+    cursor: pointer;
+    font: inherit;
+    white-space: nowrap;
+  }
+
+  .research-pill span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .research-pill kbd {
+    padding: var(--space-3xs) var(--space-2xs);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .research-pill:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 48rem) {
+    .research-pill {
+      display: inline-flex;
+      max-width: 19rem;
+    }
   }
 
   .path-label {

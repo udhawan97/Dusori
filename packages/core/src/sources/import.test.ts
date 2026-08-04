@@ -11,7 +11,14 @@ import { SourceRecordSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { updateLogPath } from '../workspace/paths.js';
-import { addSource, maxSourceBytes, readSourceManifest } from './import.js';
+import {
+  addSource,
+  maxSourceBytes,
+  readSourceManifest,
+  recordSourceFetchFailure,
+  removeSourceFromResearch,
+  restoreSourceToResearch,
+} from './import.js';
 
 const now = new Date('2026-07-20T15:30:00.000Z');
 const manifestPath = 'Topics/ai-fundamentals/Sources/manifest.json';
@@ -151,7 +158,7 @@ describe('local source library', () => {
     vi.unstubAllGlobals();
   });
 
-  it('stores captured research content with origin while deduplicating by URL', async () => {
+  it('stores captured research content and upgrades the same URL without duplicating it', async () => {
     const storage = await topicStorage();
     const content =
       '# Microsoft Entra ID\n\nOriginal URL: <https://learn.microsoft.com/training/modules/describe-identity-principles/>\n\nCatalog reference captured on 2026-07-20.\n';
@@ -187,14 +194,19 @@ describe('local source library', () => {
         content: '# A changed capture that must not create a duplicate.\n',
         method: 'url',
         origin,
+        provenance: { readState: 'readable' },
         title: 'Renamed capture',
         topicSlug: 'ai-fundamentals',
         url: 'https://learn.microsoft.com/training/modules/describe-identity-principles/',
       },
       now,
     );
-    expect(duplicate).toMatchObject({ deduplicated: true, path: result.path });
-    expect((await readSourceManifest(storage, 'ai-fundamentals', now)).sources).toHaveLength(1);
+    expect(duplicate).toMatchObject({ deduplicated: true, path: result.path, upgraded: true });
+    const manifest = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(manifest.sources).toHaveLength(1);
+    expect(manifest.sources[0]?.readState).toBe('readable');
+    expect(manifest.synthesisStaleAt).toBe(now.toISOString());
+    expect((await storage.read(result.path))?.content).toContain('changed capture');
   });
 
   it('deduplicates identical sources without adding another update', async () => {
@@ -213,6 +225,98 @@ describe('local source library', () => {
     expect(duplicate.path).toBe(first.path);
     expect((await readSourceManifest(storage, 'ai-fundamentals', now)).sources).toHaveLength(1);
     expect((await storage.read(first.updatePath!))?.content).toBe(updateBefore);
+  });
+
+  it('removes a source from active research without deleting its item and restores after reload', async () => {
+    const storage = await topicStorage();
+    const added = await addSource(
+      storage,
+      {
+        content: '# Evidence\n\nA durable source reports that local files remain available.\n',
+        method: 'url',
+        provenance: { readState: 'readable' },
+        title: 'Durable evidence',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://example.org/evidence',
+      },
+      now,
+    );
+
+    const removed = await removeSourceFromResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    const afterRemove = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(afterRemove.sources).toEqual([]);
+    expect(afterRemove.removedSources?.[0]?.record.sha256).toBe(added.record.sha256);
+    expect(afterRemove.synthesisStaleAt).toBe(now.toISOString());
+    expect(await storage.read(removed.retainedPath!)).not.toBeNull();
+
+    await restoreSourceToResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    const afterRestore = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(afterRestore.sources).toHaveLength(1);
+    expect(afterRestore.removedSources).toEqual([]);
+  });
+
+  it('restores a removed URL with a fresh readable capture and clears its old failure', async () => {
+    const storage = await topicStorage();
+    const input = {
+      content: '# Original capture\n\nThis source contains a durable statement for research.\n',
+      method: 'url' as const,
+      provenance: { readState: 'readable' as const },
+      title: 'Restorable reference',
+      topicSlug: 'ai-fundamentals',
+      url: 'https://example.org/restorable',
+    };
+    const added = await addSource(storage, input, now);
+    await removeSourceFromResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+
+    await restoreSourceToResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    await recordSourceFetchFailure(
+      storage,
+      {
+        message: 'The page answered with 401.',
+        sha256: added.record.sha256,
+        state: 'blocked',
+        status: 401,
+        topicSlug: 'ai-fundamentals',
+      },
+      now,
+    );
+    await removeSourceFromResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+
+    const rediscovered = await addSource(
+      storage,
+      {
+        ...input,
+        content: '# Fresh capture\n\nNew readable evidence replaces the failed reference.\n',
+      },
+      new Date('2026-07-22T09:00:00.000Z'),
+    );
+    expect(rediscovered).toMatchObject({ deduplicated: true, restored: true, path: added.path });
+    const manifest = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(manifest.sources).toHaveLength(1);
+    expect(manifest.sources[0]).not.toHaveProperty('fetchState');
+    expect(manifest.sources[0]?.readState).toBe('readable');
+    expect((await storage.read(added.path))?.content).toContain('Fresh capture');
+    expect(manifest.removedSources).toEqual([]);
   });
 
   it('rejects empty, oversized, credential-bearing, and non-web sources', async () => {
@@ -272,7 +376,7 @@ describe('local source library', () => {
     ).rejects.toThrow('The source manifest changed repeatedly. Try adding the source again.');
   });
 
-  it('does not add a second source record when the update-log append exhausts its own retry', async () => {
+  it('reports a secondary warning without denying the committed source when the update log fails', async () => {
     const storage = await topicStorage();
     const later = new Date('2026-07-21T09:00:00.000Z');
     const logPath = updateLogPath('ai-fundamentals', later);
@@ -281,18 +385,17 @@ describe('local source library', () => {
     // to addSource. The manifest write, one line above it, already succeeded.
     const conflicting = new ConflictNTimesThenCount(storage, logPath, manifestPath, 2);
 
-    await expect(
-      addSource(
-        conflicting,
-        {
-          content: 'A model maps inputs to outputs.\n',
-          method: 'paste',
-          title: 'Model definition',
-          topicSlug: 'ai-fundamentals',
-        },
-        later,
-      ),
-    ).rejects.toThrow(StorageConflictError);
+    const result = await addSource(
+      conflicting,
+      {
+        content: 'A model maps inputs to outputs.\n',
+        method: 'paste',
+        title: 'Model definition',
+        topicSlug: 'ai-fundamentals',
+      },
+      later,
+    );
+    expect(result.warning).toMatch(/activity log/u);
 
     // The manifest must not be rewritten (and the record duplicated) just
     // because the unrelated log append failed after its own retry.

@@ -9,10 +9,10 @@ Atmospheric editorial: a nocturnal learning desk with Japanese spatial restraint
 ## Macrostructure family
 
 - Marketing pages: Workbench-led Split Studio with one dominant real product capture, an icon-led download shelf, and a ruled proof sequence.
-- App pages: Reading Studio with a quiet four-destination header (`Learn`, `Sources`, `Map`, `Settings`), one primary reading canvas, a contextual evidence margin, and a source shelf that is always one action away. Research opens as a task sheet inside the current topic; it is not a destination. The constellation is a secondary representation of the same path and always has an Outline equivalent.
+- App pages: Research Desk with a visible query-first navigation field and four literal destinations (`Research`, `Sources`, `Map`, `Settings`). A submitted question creates or selects the topic, searches only disclosed providers, captures the diverse shortlist, reads quotable local text, and opens the resulting brief. Optional learning tools live under Settings without gating research. The source shelf stays one action away. The constellation is a secondary representation and always has a searchable Outline equivalent.
 - Content pages: Long Document with a narrow reading measure and ruled navigation.
 
-The app must never return to a dashboard rail full of product modules. Its governing sequence is `continue → read → annotate → explicitly mark learned or review → see what changed`. A screen gets one dominant next action. Saved sources, provider state, update controls, and recovery actions use literal labels rather than mystery icons.
+The app must never return to a dashboard rail full of product modules. Its governing sequence is `ask → find → read what is available → synthesize → show gaps → research further`. A screen gets one dominant next action. Saved sources, provider state, update controls, and recovery actions use literal labels rather than mystery icons. Learning objectives, quizzes, and roadmaps are optional legacy tools, not the primary app structure.
 
 ## Theme
 
@@ -28,7 +28,7 @@ The supplied identity fixes the four anchors. Vermilion belongs to the blade/act
 - `--color-marigold` `oklch(67% 0.14 72)`
 - `--color-focus` `oklch(72% 0.13 32)`
 
-Dark is the first-run default. Light is an explicit persisted choice.
+System is the first-run appearance. Paper, Ink, and Night are explicit local choices in the same palette family; the old light/dark preference migrates to Paper/Night.
 
 ## Typography
 
@@ -69,15 +69,18 @@ Use the existing 4-point named scale in `apps/app/src/styles/tokens.css`. Compon
 - App pages use only functional artifacts: file graph, progress wheel, source provenance, and current state.
 - Docs remain typography-led and do not animate content.
 
-## Learning Studio interaction contract
+## Research Desk interaction contract
 
-- `Learn` opens on one evidence-backed Continue recommendation, its reason, **Choose another**, **Not now**, and an honest empty-queue action.
-- `Sources` is the only durable saved-source shelf. Preview never saves. **Save & read** both persists and opens, and the source count includes manifest records only.
-- `Map` renders concept and objective relationships derived from the workspace. It never infers mastery, and its Outline exposes the same nodes and actions without spatial navigation.
-- `Settings` owns provider permissions, local/desktop storage, import/export, updates, and privacy. It does not own learning content.
-- `Ask inside <topic>` is a persistent composer location, not an automatically stored chat. Without AI it searches local notes and sources and returns cited matches. A question or response becomes durable only through an explicit **Save to note** action.
-- **Mark learned** is always labeled as self-declared and maps to the portable `roadmap.md` checkbox. **Reopen** reverses it. Saved and Reviewed remain separate facts.
-- Provider capability (`Ready`, `Setup required`, `Disabled`) stays separate from run outcome (`Found`, `Empty`, `Failed`). Failures remain visible.
+- `Research` begins with one visible question. Returning users can go from query to brief in one action; first use adds one grouped disclosure that still records a separate choice for every provider. AI consent remains separate.
+- Automatic capture is limited to text, abstracts, metadata, or references returned through the provider API named in its disclosure. Dusori never fetches an arbitrary discovered page in the background.
+- The diverse initial shortlist uses relevance, authority, recency where useful, provider, kind, and hostname. Every saved result keeps its ranking reasons. Overflow stays available through **Show more** and refinement.
+- The run visibly moves through searching, evaluating, saving, reading, and writing. A provider or source failure never discards the successful work from the same run.
+- Only quotable captured text contributes claims. Reference-only and blocked pages never appear as read evidence. If nothing is quotable, the persistent result view separates references found from sources read and offers **Read from <host>**, **Open original**, and paste-text continuations instead of producing a false brief.
+- `Sources` is the durable evidence shelf. Full-page reading is one host-named action whose click is the exact-host confirmation. Authentication, rate limits, paywalls, redirects to another origin, offline failures, and unsupported pages keep the reference and an immediate browser fallback.
+- **Remove from research** is reversible and removes the record from counts, claims, synthesis, and Map without deleting unrelated notes. The retained local item and restore behavior are disclosed.
+- `Map` defaults to a searchable Outline and reports discovered, saved, read, quoted, and freshness facts only. It never infers mastery. Galaxy is an optional visual mode with selected-path isolation.
+- `Settings` owns provider decisions and reset controls, appearance, local/desktop storage, import/export, updates, privacy, and the secondary entry to legacy learning tools.
+- Provider capability (`Ready`, `Setup required`, `Disabled`) stays separate from run outcome (`Found`, `Empty`, `Failed`). Both survive navigation and relaunch.
 
 ## What pages MUST share
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { SourceManifestSchema } from '../schemas/workspace.js';
 import { readSourceManifest, addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
@@ -117,5 +118,32 @@ describe('reading sources into claims', () => {
     ]);
     const manifest = await readSourceManifest(storage, slug, now);
     expect(manifest.sources[0]?.readState).toBe('readable');
+  });
+
+  it('never extracts claims from an explicit reference and clears legacy reference claims', async () => {
+    const storage = await topicStorage();
+    await addSource(storage, {
+      content:
+        '# Search result\n\nA provider snippet reports that this sentence is long enough to look like evidence, but it is only metadata.\n',
+      method: 'url',
+      provenance: { readState: 'reference' },
+      title: 'Search result only',
+      topicSlug: slug,
+      url: 'https://example.com/reference',
+    });
+    const path = `Topics/${slug}/Sources/manifest.json`;
+    const snapshot = await storage.read(path);
+    const manifest = SourceManifestSchema.parse(JSON.parse(snapshot!.content));
+    manifest.sources[0]!.claims = [
+      { at, text: 'A legacy claim that must be removed because the source is a reference.' },
+    ];
+    await storage.write(path, `${JSON.stringify(manifest, null, 2)}\n`, {
+      expectedHash: snapshot!.hash,
+    });
+
+    const result = await readSourcesIntoClaims(storage, slug, now);
+    expect(result.read).toEqual([]);
+    expect(result.unreadable[0]?.reason).toContain('Only a reference is stored');
+    expect((await readSourceManifest(storage, slug, now)).sources[0]?.claims).toBeUndefined();
   });
 });

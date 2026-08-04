@@ -71,7 +71,11 @@ const WebSearchResponseSchema = z.object({
   ),
 });
 
-const FailureSchema = z.object({ error: z.string().optional(), reason: z.string().optional() });
+const FailureSchema = z.object({
+  error: z.string().optional(),
+  reason: z.string().optional(),
+  status: z.number().int().optional(),
+});
 
 const ResearchCapabilitiesSchema = z.object({
   providers: z.array(
@@ -90,6 +94,7 @@ export class CompanionFetchError extends Error {
   constructor(
     message: string,
     readonly reason: string,
+    readonly status?: number,
   ) {
     super(message);
     this.name = 'CompanionFetchError';
@@ -138,6 +143,7 @@ export function createCompanionResearchClient(
     return new CompanionFetchError(
       parsed.success && parsed.data.error ? parsed.data.error : fallbackFetchError,
       parsed.success && parsed.data.reason ? parsed.data.reason : 'fetch-failed',
+      parsed.success ? parsed.data.status : undefined,
     );
   }
 

@@ -6,7 +6,7 @@ description: Check, download, verify, install, relaunch, or recover the Dusori d
 The browser build updates when the hosted site refreshes. The desktop app uses a signed update feed published with GitHub Releases.
 
 :::caution[One-time manual desktop repair]
-Every v0.12.0 or v0.12.1 desktop build needs one manual v0.12.2 install. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon feed. Your workspace is stored separately and remains in place; normal in-app updates resume from v0.12.2 onward.
+Every v0.12.0 or v0.12.1 desktop build needs one manual v0.12.3 install. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon feed. Your workspace is stored separately and remains in place; normal in-app updates work from v0.12.2 onward.
 :::
 
 ## Manual update
@@ -22,7 +22,7 @@ Checking, downloading, installing, and relaunching are separate states. A downlo
 
 ## Automatic checks and downloads
 
-Enable **Automatically check and download** to check at application startup and prepare an available update even when you open straight into Learn. This preference is stored locally.
+Enable **Automatically check and download** to check at application startup and prepare an available update even when you open straight into any topic view. This preference is stored locally.
 
 The option does **not** authorize installation or restart. Every update still waits for **Install and restart**.
 
@@ -34,7 +34,7 @@ The option does **not** authorize installation or restart. Every update still wa
 - The app enforces a 512 MiB download limit.
 - If the offered version changes after download, installation is refused and you must check and download again.
 
-The OS installer itself is not Apple-notarized or Microsoft code-signed in v0.12.2. That is why Gatekeeper or SmartScreen may warn on first install even though the in-app updater has its own valid signature.
+The OS installer itself is not Apple-notarized or Microsoft code-signed in v0.12.3. That is why Gatekeeper or SmartScreen may warn on first install even though the in-app updater has its own valid signature.
 
 ## Recovery
 
