@@ -278,7 +278,11 @@ async function openTodayView(page: Page): Promise<void> {
   // A reload briefly renders the workspace-restoring screen. Wait for the responsive shell to
   // choose either its wide navigation or its narrow drawer trigger before deciding which path to
   // use; an immediate visibility probe can mistake that loading frame for the mobile layout.
-  await expect(workspaceNavigation.or(navigationButton)).toBeVisible();
+  await expect
+    .poll(
+      async () => (await workspaceNavigation.isVisible()) || (await navigationButton.isVisible()),
+    )
+    .toBe(true);
   if (!(await workspaceNavigation.isVisible())) {
     await navigationButton.click();
   }
