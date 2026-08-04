@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="226"></a>
-  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.2.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.2 source ZIP" width="226"></a>
+  <a href="https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.3.zip"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.11.3 source ZIP" width="226"></a>
   <a href="#run-dusori-on-your-computer"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24 and one start command" width="226"></a>
 </p>
 
@@ -209,8 +209,8 @@ npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 
 ### From the release ZIP
 
-1. **[Download Dusori v0.11.2](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.2.zip)** and unzip it.
-2. Open a terminal in the unzipped `Dusori-0.11.2` folder.
+1. **[Download Dusori v0.11.3](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.3.zip)** and unzip it.
+2. Open a terminal in the unzipped `Dusori-0.11.3` folder.
 3. Run:
 
 ```bash
@@ -319,11 +319,11 @@ More help: [Getting started](https://udhawan97.github.io/Dusori/docs/getting-sta
 
 ## Current release
 
-**v0.11.2** hardens the research-first flow at its user-facing boundaries. Research controls no longer overflow narrow screens, the first-run action stays reachable at 320×568, and accepting a source moves keyboard focus to the saved confirmation. Dusori now blocks synthesis and learning-page creation until quoted evidence exists, and UTC-keyed activity stays on the same date in every device timezone.
+**v0.11.3** completes the v0.11.2 user-flow hardening. Research controls fit narrow screens, evidence-built artifacts wait for quoted passages, accepted sources receive a clear keyboard-focus handoff, and UTC activity keeps its date across timezones. If optional synthesis AI fails, Dusori now waits until the deterministic replacement—or an edit-safe proposal—is durably ready before announcing that fallback.
 
 It keeps the v0.9.1 release-integrity guard, so npm provenance must match the exact tagged source.
 
-[Read the v0.11.2 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.11.2) · [Review the changelog](CHANGELOG.md)
+[Read the v0.11.3 notes](https://github.com/udhawan97/Dusori/releases/tag/v0.11.3) · [Review the changelog](CHANGELOG.md)
 
 ## Contributing and license
 

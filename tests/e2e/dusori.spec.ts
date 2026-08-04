@@ -2831,14 +2831,17 @@ test.describe('companion flows', () => {
     await expect(page.getByText('Read 1 source into')).toBeVisible();
 
     // Prose is off until this device allows the AI scope, so the first build stays deterministic.
-    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    const buildSynthesis = page.getByRole('button', { name: 'Build synthesis' });
+    await expect(buildSynthesis).toBeEnabled();
+    await buildSynthesis.click();
     await expect(page.getByText('Synthesis written from')).toBeVisible();
     expect(synthesisRequests).toEqual([]);
 
     await page.getByRole('button', { name: /Allow AI ranking · gemma3:4b/u }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Allow search' }).click();
 
-    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    await expect(buildSynthesis).toBeEnabled();
+    await buildSynthesis.click();
     await expect(page.getByText('Synthesis written from')).toBeVisible();
     expect(synthesisRequests).toHaveLength(1);
 
@@ -2858,13 +2861,57 @@ test.describe('companion flows', () => {
     await page.route('**/api/ai/synthesize', async (route) => {
       await route.fulfill({ json: { error: 'no', reason: 'ai-failed' }, status: 502 });
     });
-    await page.getByRole('button', { name: 'Build synthesis' }).click();
+    await expect(buildSynthesis).toBeEnabled();
+    await buildSynthesis.click();
     await expect(page.getByText('AI was unavailable, so the synthesis quotes')).toBeVisible();
 
     const withoutProse = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
     expect(withoutProse).not.toContain('Attention is the mechanism these passages keep');
     expect(withoutProse).not.toContain('written by gemma3:4b');
     expect(withoutProse).toContain('Every line below is quoted from a source you approved.');
+
+    // The same fallback must respect an external edit. Its completion signal means the
+    // conflict-safe proposal is durable, not that Dusori replaced the learner's file.
+    await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dusori = await root.getDirectoryHandle('Dusori');
+      const topics = await dusori.getDirectoryHandle('Topics');
+      const topic = await topics.getDirectoryHandle('ai-fundamentals');
+      const handle = await topic.getFileHandle('Synthesis.md');
+      const current = await (await handle.getFile()).text();
+      const writable = await handle.createWritable();
+      await writable.write(`${current}\n\nExternal synthesis edit.\n`);
+      await writable.close();
+    });
+
+    await expect(buildSynthesis).toBeEnabled();
+    await buildSynthesis.click();
+    await expect(
+      page.getByText(
+        'Your edited synthesis was kept. The rebuilt version is waiting as a proposal in Needs attention.',
+      ),
+    ).toBeVisible();
+
+    const conflict = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const dusori = await root.getDirectoryHandle('Dusori');
+      const topics = await dusori.getDirectoryHandle('Topics');
+      const topic = await topics.getDirectoryHandle('ai-fundamentals');
+      const active = await (await topic.getFileHandle('Synthesis.md')).getFile();
+      const proposals: string[] = [];
+      for await (const [name, handle] of topic.entries()) {
+        if (name.startsWith('Synthesis.proposed-') && name.endsWith('.md')) {
+          proposals.push(await (await (handle as FileSystemFileHandle).getFile()).text());
+        }
+      }
+      return { active: await active.text(), proposals };
+    });
+    expect(conflict.active).toContain('External synthesis edit.');
+    expect(conflict.proposals).toHaveLength(1);
+    expect(conflict.proposals[0]).not.toContain('written by gemma3:4b');
+    expect(conflict.proposals[0]).toContain(
+      'Every line below is quoted from a source you approved.',
+    );
   });
 
   test('sharper review prompts need their own consent and fall back to the templates', async ({

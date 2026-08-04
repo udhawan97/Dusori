@@ -137,6 +137,7 @@
   let deepError = '';
   let buildingSynthesis = false;
   let synthesisNotice = '';
+  let synthesisAiNotice = '';
   let synthesisError = '';
   let buildingLearnPage = false;
   let learnNotice = '';
@@ -674,8 +675,11 @@
    * Advisory in the same way ranking is: the quotations, their citations, and the evidence
    * accounting are deterministic, and any failure simply writes the document without prose.
    */
-  async function synthesisProse(): Promise<RenderSynthesisOptions> {
-    if (!ai || !aiCapability || !hasConsent(aiConsent)) return {};
+  async function synthesisProse(): Promise<{
+    options: RenderSynthesisOptions;
+    notice?: string;
+  }> {
+    if (!ai || !aiCapability || !hasConsent(aiConsent)) return { options: {} };
     try {
       const manifest = await readSourceManifest(storage, topicSlug);
       const claims = manifest.sources.flatMap((record) =>
@@ -685,17 +689,18 @@
           text: claim.text,
         })),
       );
-      if (claims.length === 0) return {};
+      if (claims.length === 0) return { options: {} };
       return {
-        aiModel: aiCapability.model,
-        aiOverview: await ai.writeSynthesis(topicTitle, claims.slice(0, 60)),
+        options: {
+          aiModel: aiCapability.model,
+          aiOverview: await ai.writeSynthesis(topicTitle, claims.slice(0, 60)),
+        },
       };
     } catch {
-      notices = [
-        ...notices,
-        'AI was unavailable, so the synthesis quotes your sources without commentary.',
-      ];
-      return {};
+      return {
+        notice: 'AI was unavailable, so the synthesis quotes your sources without commentary.',
+        options: {},
+      };
     }
   }
 
@@ -704,15 +709,18 @@
     buildingSynthesis = true;
     synthesisError = '';
     synthesisNotice = '';
+    synthesisAiNotice = '';
     try {
       if (!(await requireQuotedEvidence('synthesis'))) return;
+      const prose = await synthesisProse();
       const result = await writeTopicSynthesis(
         storage,
         topicSlug,
         topicTitle,
         new Date(),
-        await synthesisProse(),
+        prose.options,
       );
+      synthesisAiNotice = prose.notice ?? '';
       synthesisNotice =
         result.status === 'written'
           ? `Synthesis written from ${result.synthesis.claimCount} quoted passages across ${result.synthesis.readCount} sources.`
@@ -968,6 +976,7 @@
         {/if}
       {/if}
       {#if deepError}<p class="action-error" role="alert">{deepError}</p>{/if}
+      {#if synthesisAiNotice}<p class="notice" role="status">{synthesisAiNotice}</p>{/if}
       {#if synthesisNotice}<p class="notice" role="status">{synthesisNotice}</p>{/if}
       {#if synthesisError}<p class="action-error" role="alert">{synthesisError}</p>{/if}
       {#if learnNotice}<p class="notice" role="status">{learnNotice}</p>{/if}

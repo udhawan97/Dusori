@@ -4,6 +4,12 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-08-03
+
+### Fixed
+
+- When optional synthesis AI fails, the fallback notice now appears only after the deterministic output has finished writing. Without an edit conflict, `Synthesis.md` has been replaced; with one, the learner's edited file remains active and the fallback is ready as a conflict-safe proposal.
+
 ## [0.11.2] - 2026-08-03
 
 ### Fixed
@@ -261,7 +267,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/udhawan97/Dusori/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/udhawan97/Dusori/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/udhawan97/Dusori/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/udhawan97/Dusori/compare/v0.10.0...v0.11.0
