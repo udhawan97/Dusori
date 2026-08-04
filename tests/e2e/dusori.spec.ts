@@ -1066,6 +1066,21 @@ async function readWorkspaceFile(page: Page, path: string): Promise<string> {
   }, path);
 }
 
+async function waitForWorkspaceFile(page: Page, path: string): Promise<string> {
+  let content: string | undefined;
+  await expect
+    .poll(async () => {
+      try {
+        content = await readWorkspaceFile(page, path);
+        return content.length > 0;
+      } catch {
+        return false;
+      }
+    })
+    .toBe(true);
+  return content ?? '';
+}
+
 /** PDF strings are parenthesised, so a literal parenthesis or backslash must be escaped. */
 function escapePdfText(text: string): string {
   return text.replace(/([\\()])/gu, '\\$1');
@@ -2485,7 +2500,7 @@ test.describe('companion flows', () => {
     expect(fetchCalls).toEqual(['']);
     const manifest = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json');
     expect(manifest).toContain('page-extract');
-    const synthesis = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
+    const synthesis = await waitForWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md');
     expect(synthesis).toContain('Attention paper');
     expect(synthesis).toContain('weigh the other tokens');
     await expectNoSeriousA11yViolations(page);
