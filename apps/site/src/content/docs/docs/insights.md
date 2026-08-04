@@ -3,7 +3,7 @@ title: Local insights
 description: Honest learning analytics derived from your portable workspace files.
 ---
 
-**Insights** reads the workspace you already own. It creates no telemetry stream, hosted profile, analytics database, or hidden index.
+**Learning evidence** reads the workspace you already own. It creates no telemetry stream, hosted profile, analytics database, or hidden index.
 
 ## What it shows
 
@@ -22,6 +22,6 @@ Every number is a direct local count or percentage. A recorded change is an entr
 
 ## Refresh and navigation
 
-Choose **Insights** in the workspace rail. **Refresh** rereads the current files. Select a topic or linked artifact in the panels to return to the underlying learning material.
+From **Learn**, choose **Learning evidence**. **Refresh** rereads the current files. Select a topic or linked artifact in the panels to return to the underlying learning material.
 
 The snapshot is computed in memory and discarded with the page session. Editing the same files in Obsidian changes the next snapshot without requiring a migration or sync.

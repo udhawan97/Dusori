@@ -60,7 +60,6 @@ export function createResearchProviders(options: ResearchProviderOptions = {}): 
     createWebSearchProvider({ search: (query) => companion.searchWeb(query) }),
     createYouTubeProvider({
       search: (query) => companion.searchYouTube(query),
-      transcript: (videoId) => companion.fetchYouTubeTranscript(videoId),
     }),
   ];
 }

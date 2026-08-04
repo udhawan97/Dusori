@@ -37,7 +37,7 @@ On a supported Chromium desktop browser:
 
 Dusori writes only inside that approved root. The resulting Markdown and wikilinks work in Obsidian, but Obsidian is never required and no plugin is installed.
 
-Firefox and Safari use the browser workspace plus ZIP import/export. The optional local companion is the later cross-browser path for direct folder access.
+Firefox and Safari use the browser workspace plus ZIP import/export. The macOS and Windows desktop apps use the native Tauri storage adapter while preserving the same logical tree and guard rules.
 
 Every topic keeps its own source files, manifest, research and review state, and proposal lifecycle, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
 
@@ -47,6 +47,6 @@ The [portable knowledge graph](../knowledge-graph/) reads these same files and d
 
 ## Import and replacement safety
 
-Before replacing a browser workspace from ZIP, Dusori validates the archive in memory: normalized paths, 64 MiB compressed and expanded limits, at most 5,000 files, the workspace schema, every topic schema, and each required topic/source file. The confirmation names the incoming workspace and reports topic and file counts.
+Before replacing a workspace from ZIP, Dusori validates the archive before the first destination write: normalized paths, bounded compressed and expanded sizes, bounded file count and per-file size, the workspace schema, every topic schema, and each required topic/source file. The confirmation names the incoming workspace and reports topic and file counts.
 
-An invalid archive does not touch the current workspace. If a storage write fails after replacement starts, Dusori clears the partial import and restores its previous snapshot before reporting the failure. Keep an independent ZIP backup anyway: rollback protects a failed Dusori write, not browser data clearing or device loss.
+An invalid archive does not touch the current workspace. For a valid replacement, Dusori writes complete staged and backup copies before removing any live file. If a storage write then fails, Dusori clears the partial import and restores the backup before reporting the failure. If persistent device failure prevents that restoration, the untouched copy remains under `.dusori-import-recovery/backup`; Dusori refuses another replacement until it is exported or recovered. Compatible unknown machine-file fields are preserved during supported edits. Keep an independent ZIP backup anyway: this recovery boundary does not protect against browser data clearing or device loss.

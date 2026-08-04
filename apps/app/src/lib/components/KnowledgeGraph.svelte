@@ -64,6 +64,7 @@
   let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
   /** Lower-cased so a chip matches a tag however its author capitalised it. Empty means no filter. */
   let artifactTag = '';
+  let mapMode: 'galaxy' | 'outline' = 'galaxy';
   let settings: GraphViewSettings = {
     colorMode: 'kind',
     hiddenKinds: [],
@@ -472,6 +473,13 @@
     <Orbit aria-hidden="true" size={36} strokeWidth={1.25} />
   </header>
 
+  <div class="mode-switch" role="group" aria-label="Map view">
+    <button aria-pressed={mapMode === 'galaxy'} onclick={() => (mapMode = 'galaxy')}>Galaxy</button>
+    <button aria-pressed={mapMode === 'outline'} onclick={() => (mapMode = 'outline')}
+      >Outline</button
+    >
+  </div>
+
   {#if loading}
     <div class="graph-state" aria-live="polite">
       <span class="spinner"><LoaderCircle aria-hidden="true" size={24} /></span>
@@ -510,207 +518,209 @@
         </button>
       </div>
     {/if}
-    <div class="graph-stage">
-      <div
-        class="constellation-stage"
-        class:panning={pan?.moved}
-        bind:clientWidth={stageWidth}
-        bind:clientHeight={stageHeight}
-      >
-        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <svg
-          class="constellation"
-          class:labels-revealed={showAllLabels}
-          style={`--graph-label-scale: ${labelScale}`}
-          role="group"
-          aria-label="Workspace knowledge graph"
-          {viewBox}
-          preserveAspectRatio="xMidYMid meet"
-          onclick={handleBackgroundClick}
-          onkeydown={(event) => {
-            if (event.key === 'Escape') selectedId = null;
-          }}
-          onwheel={handleWheel}
-          onpointerdown={handlePointerDown}
-          onpointermove={handlePointerMove}
-          onpointerup={handlePointerEnd}
-          onpointercancel={handlePointerEnd}
+    <div class:outline-only={mapMode === 'outline'} class="graph-stage">
+      {#if mapMode === 'galaxy'}
+        <div
+          class="constellation-stage"
+          class:panning={pan?.moved}
+          bind:clientWidth={stageWidth}
+          bind:clientHeight={stageHeight}
         >
-          <defs>
-            <radialGradient id="dusori-glow">
-              <stop offset="0" stop-color="var(--graph-glow)" stop-opacity="0.22" />
-              <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
-            </radialGradient>
-          </defs>
-          {#if homeNode}
-            <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
-          {/if}
-          {#each graph.edges as edge (edge.id)}
-            {@const source = nodesById.get(edge.source)}
-            {@const target = nodesById.get(edge.target)}
-            {#if source && target}
-              <path
-                class:link={edge.kind === 'links'}
-                class:faded={selectedId !== null &&
-                  edge.source !== selectedId &&
-                  edge.target !== selectedId}
-                class:dimmed={hoverNeighbors !== null &&
-                  !(hoverNeighbors.has(edge.source) && hoverNeighbors.has(edge.target))}
-                d={edgePath(source, target)}
-              />
-            {/if}
-          {/each}
-          {#each shownNodes as node (node.id)}
-            <g
-              class:home={node.kind === 'home'}
-              class:overview={node.kind === 'overview'}
-              class:hub={isHub(node)}
-              class:labelled={alwaysLabelled(node)}
-              class:selected={selectedId === node.id}
-              class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
-              class:dimmed={hoverNeighbors !== null && !hoverNeighbors.has(node.id)}
-              class:dragging={nodeDrag?.id === node.id && nodeDrag.moved}
-              class="node"
-              role="button"
-              tabindex="0"
-              aria-label={nodeAriaLabel(node)}
-              aria-pressed={selectedId === node.id}
-              onclick={(event) => handleNodeClick(event, node.id)}
-              onkeydown={(event) => handleNodeKeydown(event, node.id)}
-              onpointerdown={(event) => handleNodePointerDown(event, node.id)}
-              onpointermove={handleNodePointerMove}
-              onpointerup={handleNodePointerEnd}
-              onpointercancel={handleNodePointerEnd}
-              onpointerenter={() => (hoveredId = node.id)}
-              onpointerleave={() => (hoveredId = null)}
-            >
-              <title>{nodeTitle(node)}</title>
-              <circle cx={node.x} cy={node.y} r={nodeRadius(node)} fill={nodeFill(node)} />
-              <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
-              <text x={node.x} y={node.y + nodeRingRadius(node) + 16}
-                >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
-                    · hub</tspan
-                  >{/if}</text
-              >
-            </g>
-          {/each}
-        </svg>
-
-        <div class="graph-controls">
-          <button
-            type="button"
-            class="controls-toggle"
-            aria-label="View controls"
-            aria-expanded={controlsOpen}
-            onclick={() => (controlsOpen = !controlsOpen)}
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <svg
+            class="constellation"
+            class:labels-revealed={showAllLabels}
+            style={`--graph-label-scale: ${labelScale}`}
+            role="group"
+            aria-label="Workspace knowledge graph"
+            {viewBox}
+            preserveAspectRatio="xMidYMid meet"
+            onclick={handleBackgroundClick}
+            onkeydown={(event) => {
+              if (event.key === 'Escape') selectedId = null;
+            }}
+            onwheel={handleWheel}
+            onpointerdown={handlePointerDown}
+            onpointermove={handlePointerMove}
+            onpointerup={handlePointerEnd}
+            onpointercancel={handlePointerEnd}
           >
-            <SlidersHorizontal aria-hidden="true" size={18} />
-          </button>
-          {#if controlsOpen}
-            <div class="controls-panel" role="group" aria-label="Graph view controls">
-              <div class="zoom-row">
-                <button type="button" aria-label="Zoom out" onclick={() => applyZoom(1 / 1.3)}>
-                  <ZoomOut aria-hidden="true" size={16} />
-                </button>
-                <input
-                  type="range"
-                  aria-label="Zoom level"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={zoomSliderValue}
-                  oninput={(event) => handleZoomSlider(Number(event.currentTarget.value))}
+            <defs>
+              <radialGradient id="dusori-glow">
+                <stop offset="0" stop-color="var(--graph-glow)" stop-opacity="0.22" />
+                <stop offset="1" stop-color="var(--graph-glow)" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            {#if homeNode}
+              <circle class="halo" cx={homeNode.x} cy={homeNode.y} r="250" />
+            {/if}
+            {#each graph.edges as edge (edge.id)}
+              {@const source = nodesById.get(edge.source)}
+              {@const target = nodesById.get(edge.target)}
+              {#if source && target}
+                <path
+                  class:link={edge.kind === 'links'}
+                  class:faded={selectedId !== null &&
+                    edge.source !== selectedId &&
+                    edge.target !== selectedId}
+                  class:dimmed={hoverNeighbors !== null &&
+                    !(hoverNeighbors.has(edge.source) && hoverNeighbors.has(edge.target))}
+                  d={edgePath(source, target)}
                 />
-                <button type="button" aria-label="Zoom in" onclick={() => applyZoom(1.3)}>
-                  <ZoomIn aria-hidden="true" size={16} />
-                </button>
-              </div>
-              <label class="control-slider">
-                <span>Link length</span>
-                <input
-                  type="range"
-                  min={GRAPH_VIEW_LIMITS.linkDistance.min}
-                  max={GRAPH_VIEW_LIMITS.linkDistance.max}
-                  step={GRAPH_VIEW_LIMITS.linkDistance.step}
-                  value={settings.linkDistance}
-                  oninput={(event) =>
-                    updateSettings({ linkDistance: Number(event.currentTarget.value) })}
-                />
-              </label>
-              <label class="control-slider">
-                <span>Spacing</span>
-                <input
-                  type="range"
-                  min={GRAPH_VIEW_LIMITS.repelStrength.min}
-                  max={GRAPH_VIEW_LIMITS.repelStrength.max}
-                  step={GRAPH_VIEW_LIMITS.repelStrength.step}
-                  value={settings.repelStrength}
-                  oninput={(event) =>
-                    updateSettings({ repelStrength: Number(event.currentTarget.value) })}
-                />
-              </label>
-              <div class="control-group">
-                <p class="control-heading" id="graph-filter-heading">
-                  Show <span class="count">{indexNodes.length} of {graph.nodes.length}</span>
-                </p>
-                <!-- Named distinctly from the index's "Filter graph artifacts" group: these
+              {/if}
+            {/each}
+            {#each shownNodes as node (node.id)}
+              <g
+                class:home={node.kind === 'home'}
+                class:overview={node.kind === 'overview'}
+                class:hub={isHub(node)}
+                class:labelled={alwaysLabelled(node)}
+                class:selected={selectedId === node.id}
+                class:faded={selectedId !== null && !selectionNeighbors.has(node.id)}
+                class:dimmed={hoverNeighbors !== null && !hoverNeighbors.has(node.id)}
+                class:dragging={nodeDrag?.id === node.id && nodeDrag.moved}
+                class="node"
+                role="button"
+                tabindex="0"
+                aria-label={nodeAriaLabel(node)}
+                aria-pressed={selectedId === node.id}
+                onclick={(event) => handleNodeClick(event, node.id)}
+                onkeydown={(event) => handleNodeKeydown(event, node.id)}
+                onpointerdown={(event) => handleNodePointerDown(event, node.id)}
+                onpointermove={handleNodePointerMove}
+                onpointerup={handleNodePointerEnd}
+                onpointercancel={handleNodePointerEnd}
+                onpointerenter={() => (hoveredId = node.id)}
+                onpointerleave={() => (hoveredId = null)}
+              >
+                <title>{nodeTitle(node)}</title>
+                <circle cx={node.x} cy={node.y} r={nodeRadius(node)} fill={nodeFill(node)} />
+                <circle class="node-ring" cx={node.x} cy={node.y} r={nodeRingRadius(node)} />
+                <text x={node.x} y={node.y + nodeRingRadius(node) + 16}
+                  >{visualLabel(node)}{#if isHub(node)}<tspan class="hub-label">
+                      · hub</tspan
+                    >{/if}</text
+                >
+              </g>
+            {/each}
+          </svg>
+
+          <div class="graph-controls">
+            <button
+              type="button"
+              class="controls-toggle"
+              aria-label="View controls"
+              aria-expanded={controlsOpen}
+              onclick={() => (controlsOpen = !controlsOpen)}
+            >
+              <SlidersHorizontal aria-hidden="true" size={18} />
+            </button>
+            {#if controlsOpen}
+              <div class="controls-panel" role="group" aria-label="Graph view controls">
+                <div class="zoom-row">
+                  <button type="button" aria-label="Zoom out" onclick={() => applyZoom(1 / 1.3)}>
+                    <ZoomOut aria-hidden="true" size={16} />
+                  </button>
+                  <input
+                    type="range"
+                    aria-label="Zoom level"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={zoomSliderValue}
+                    oninput={(event) => handleZoomSlider(Number(event.currentTarget.value))}
+                  />
+                  <button type="button" aria-label="Zoom in" onclick={() => applyZoom(1.3)}>
+                    <ZoomIn aria-hidden="true" size={16} />
+                  </button>
+                </div>
+                <label class="control-slider">
+                  <span>Link length</span>
+                  <input
+                    type="range"
+                    min={GRAPH_VIEW_LIMITS.linkDistance.min}
+                    max={GRAPH_VIEW_LIMITS.linkDistance.max}
+                    step={GRAPH_VIEW_LIMITS.linkDistance.step}
+                    value={settings.linkDistance}
+                    oninput={(event) =>
+                      updateSettings({ linkDistance: Number(event.currentTarget.value) })}
+                  />
+                </label>
+                <label class="control-slider">
+                  <span>Spacing</span>
+                  <input
+                    type="range"
+                    min={GRAPH_VIEW_LIMITS.repelStrength.min}
+                    max={GRAPH_VIEW_LIMITS.repelStrength.max}
+                    step={GRAPH_VIEW_LIMITS.repelStrength.step}
+                    value={settings.repelStrength}
+                    oninput={(event) =>
+                      updateSettings({ repelStrength: Number(event.currentTarget.value) })}
+                  />
+                </label>
+                <div class="control-group">
+                  <p class="control-heading" id="graph-filter-heading">
+                    Show <span class="count">{indexNodes.length} of {graph.nodes.length}</span>
+                  </p>
+                  <!-- Named distinctly from the index's "Filter graph artifacts" group: these
                      chips decide what the stage draws, those narrow the list beside it. -->
-                <div class="chips" role="group" aria-label="Show on the graph">
-                  {#each FILTER_CHIPS as chip (chip.label)}
+                  <div class="chips" role="group" aria-label="Show on the graph">
+                    {#each FILTER_CHIPS as chip (chip.label)}
+                      <button
+                        type="button"
+                        class="chip"
+                        aria-pressed={kindsShown(chip.kinds)}
+                        onclick={() => toggleKinds(chip.kinds)}>{chip.label}</button
+                      >
+                    {/each}
                     <button
                       type="button"
                       class="chip"
-                      aria-pressed={kindsShown(chip.kinds)}
-                      onclick={() => toggleKinds(chip.kinds)}>{chip.label}</button
+                      aria-pressed={settings.hideOrphans}
+                      onclick={() => updateSettings({ hideOrphans: !settings.hideOrphans })}
+                      >Hide orphans</button
                     >
-                  {/each}
-                  <button
-                    type="button"
-                    class="chip"
-                    aria-pressed={settings.hideOrphans}
-                    onclick={() => updateSettings({ hideOrphans: !settings.hideOrphans })}
-                    >Hide orphans</button
+                  </div>
+                </div>
+                <label class="control-select">
+                  <span>Color by</span>
+                  <select
+                    value={settings.colorMode}
+                    onchange={(event) =>
+                      updateSettings({
+                        colorMode: event.currentTarget.value === 'topic' ? 'topic' : 'kind',
+                      })}
+                  >
+                    <option value="kind">Kind</option>
+                    <option value="topic">Topic</option>
+                  </select>
+                </label>
+                {#if settings.colorMode === 'topic' && hues.size > 0}
+                  <ul class="legend" aria-label="Topic colors">
+                    {#each [...hues] as [slug, hue] (slug)}
+                      <li>
+                        <span
+                          class="swatch"
+                          style={`background: ${topicColor(hue)}`}
+                          aria-hidden="true"
+                        ></span>{slug}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+                <div class="panel-actions">
+                  <button type="button" class="fit-view" onclick={fitView}>Fit view</button>
+                  <button type="button" class="fit-view" disabled={!hasPins} onclick={releasePins}
+                    >Release pins</button
                   >
                 </div>
               </div>
-              <label class="control-select">
-                <span>Color by</span>
-                <select
-                  value={settings.colorMode}
-                  onchange={(event) =>
-                    updateSettings({
-                      colorMode: event.currentTarget.value === 'topic' ? 'topic' : 'kind',
-                    })}
-                >
-                  <option value="kind">Kind</option>
-                  <option value="topic">Topic</option>
-                </select>
-              </label>
-              {#if settings.colorMode === 'topic' && hues.size > 0}
-                <ul class="legend" aria-label="Topic colors">
-                  {#each [...hues] as [slug, hue] (slug)}
-                    <li>
-                      <span
-                        class="swatch"
-                        style={`background: ${topicColor(hue)}`}
-                        aria-hidden="true"
-                      ></span>{slug}
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-              <div class="panel-actions">
-                <button type="button" class="fit-view" onclick={fitView}>Fit view</button>
-                <button type="button" class="fit-view" disabled={!hasPins} onclick={releasePins}
-                  >Release pins</button
-                >
-              </div>
-            </div>
-          {/if}
+            {/if}
+          </div>
         </div>
-      </div>
+      {/if}
 
-      <aside class="artifact-index" aria-label="Graph artifact index">
+      <aside class="artifact-index" aria-label="Map outline">
         <div class="artifact-heading">
           <p class="kicker">Artifact finder</p>
           <span>{artifactNodes.length}</span>
@@ -746,7 +756,7 @@
             {/each}
           </div>
         {/if}
-        <ul aria-label="Graph documents">
+        <ul aria-label="Map documents">
           {#each artifactNodes as node (node.id)}
             <li>
               <button onclick={() => onOpen(node.path)}>
@@ -817,6 +827,29 @@
     color: var(--color-marigold);
   }
 
+  .mode-switch {
+    display: flex;
+    width: min(100%, 76rem);
+    gap: var(--space-xs);
+    margin: var(--space-md) auto;
+  }
+
+  .mode-switch button {
+    min-height: 2.75rem;
+    padding-inline: var(--space-md);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+
+  .mode-switch button[aria-pressed='true'] {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
   .graph-ledger {
     display: grid;
     width: min(100%, 76rem);
@@ -855,6 +888,19 @@
     width: min(100%, 76rem);
     margin-inline: auto;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .graph-stage.outline-only {
+    display: block;
+  }
+
+  .graph-stage.outline-only .artifact-index {
+    max-width: 56rem;
+    max-height: none;
+    margin-inline: auto;
+    padding-inline-start: 0;
+    border-inline-start: 0;
+    overflow: visible;
   }
 
   .selection-action {

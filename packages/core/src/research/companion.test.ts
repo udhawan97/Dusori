@@ -27,6 +27,36 @@ function client(fetchImpl: typeof fetch) {
 }
 
 describe('createCompanionResearchClient', () => {
+  it('uses the same-origin HttpOnly session when no bearer token is provided', async () => {
+    let captured: RequestInit | undefined;
+    const sameOrigin = createCompanionResearchClient({
+      baseUrl: 'http://127.0.0.1:8000',
+      fetchImpl: (async (_input: RequestInfo | URL, init?: RequestInit) => {
+        captured = init;
+        return Response.json(page);
+      }) as unknown as typeof fetch,
+    });
+
+    await sameOrigin.fetchPage('https://example.org/attention');
+    expect(captured?.credentials).toBe('same-origin');
+    expect(new Headers(captured?.headers).has('authorization')).toBe(false);
+  });
+
+  it('reports configured and unavailable research providers without credentials', async () => {
+    const capabilities = await client((async () =>
+      Response.json({
+        providers: [
+          { available: true, id: 'youtube', mode: 'metadata-reference-only' },
+          { available: false, id: 'reddit', reason: 'not-configured' },
+        ],
+      })) as unknown as typeof fetch).capabilities();
+
+    expect(capabilities).toEqual([
+      { available: true, id: 'youtube', mode: 'metadata-reference-only' },
+      { available: false, id: 'reddit', reason: 'not-configured' },
+    ]);
+  });
+
   it('POSTs the URL with the bearer token and parses the fetched page', async () => {
     let captured: { init?: RequestInit; input?: string } = {};
     const result = await client((async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -153,26 +183,6 @@ describe('YouTube through the companion', () => {
       snippet: 'A walk through attention.',
       title: 'How attention works',
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    });
-  });
-
-  it('carries the captions back and reports a captionless video', async () => {
-    const captions = await client((async () =>
-      Response.json({
-        label: 'English',
-        text: 'Attention weighs tokens.',
-      })) as unknown as typeof fetch).fetchYouTubeTranscript('dQw4w9WgXcQ');
-    expect(captions).toEqual({ label: 'English', text: 'Attention weighs tokens.' });
-
-    const missing = client((async () =>
-      Response.json(
-        { error: 'This video has no captions to capture.', reason: 'no-captions' },
-        {
-          status: 404,
-        },
-      )) as unknown as typeof fetch);
-    await expect(missing.fetchYouTubeTranscript('dQw4w9WgXcQ')).rejects.toMatchObject({
-      reason: 'no-captions',
     });
   });
 

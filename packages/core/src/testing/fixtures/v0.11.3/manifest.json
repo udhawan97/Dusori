@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "fetchedAt": "2026-07-20T12:00:00.000Z",
+      "mediaType": "text/markdown",
+      "method": "url",
+      "origin": {
+        "provider": "wikipedia",
+        "capturedVia": "api-extract",
+        "capturedAt": "2026-07-20T12:00:00.000Z",
+        "futureOriginField": "keep"
+      },
+      "path": "Topics/legacy-topic/Sources/items/legacy.md",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "size": 104,
+      "title": "Legacy source",
+      "url": "https://example.org/legacy",
+      "claims": [
+        {
+          "text": "A compatibility fixture is useful because it proves that mutation preserves unknown data.",
+          "at": "2026-07-20T12:00:00.000Z",
+          "futureClaimField": "keep"
+        }
+      ],
+      "futureSourceField": { "keep": true }
+    }
+  ],
+  "futureManifestField": { "keep": true }
+}

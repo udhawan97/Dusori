@@ -15,17 +15,19 @@ export type ReviewOutcome = 'good' | 'again';
 
 const utcDate = /^\d{4}-\d{2}-\d{2}$/u;
 
-export const ReviewScheduleSchema = z.object({
-  schemaVersion: z.literal(schemaVersion),
-  topicSlug: z.string().min(1).max(80),
-  repetition: z
-    .number()
-    .int()
-    .min(0)
-    .max(REVIEW_INTERVALS_DAYS.length - 1),
-  lastReviewedOn: z.string().regex(utcDate),
-  dueOn: z.string().regex(utcDate),
-});
+export const ReviewScheduleSchema = z
+  .object({
+    schemaVersion: z.literal(schemaVersion),
+    topicSlug: z.string().min(1).max(80),
+    repetition: z
+      .number()
+      .int()
+      .min(0)
+      .max(REVIEW_INTERVALS_DAYS.length - 1),
+    lastReviewedOn: z.string().regex(utcDate),
+    dueOn: z.string().regex(utcDate),
+  })
+  .passthrough();
 
 export type ReviewSchedule = z.infer<typeof ReviewScheduleSchema>;
 
@@ -59,6 +61,7 @@ export function nextReviewSchedule(
       : Math.min(current.repetition + 1, REVIEW_INTERVALS_DAYS.length - 1);
   const lastReviewedOn = localDateOf(now);
   return ReviewScheduleSchema.parse({
+    ...(current ?? {}),
     schemaVersion,
     topicSlug,
     repetition,

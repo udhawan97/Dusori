@@ -193,6 +193,7 @@ export async function addSource(
       whySelected: provenance?.whySelected,
     });
     const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
       schemaVersion,
       sources: [...manifest.sources, record],
     });

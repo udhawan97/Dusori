@@ -41,6 +41,7 @@
     type CompanionResearchClient,
     type RankedCandidate,
     type ResearchCapture,
+    type ResearchCapability,
     type ResearchProvider,
     type ResearchQuery,
     type RenderSynthesisOptions,
@@ -61,7 +62,7 @@
   export let topicSlug: string;
   export let topicTitle: string;
   export let sourceRevision = 0;
-  export let onSourceSaved: () => void = () => undefined;
+  export let onSourceSaved: (path?: string) => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
@@ -70,6 +71,39 @@
   // A companion upgrades Microsoft Learn to ranked search and unlocks the two providers the
   // browser cannot reach itself, so the list is built rather than declared.
   $: providers = createResearchProviders({ companion });
+  const companionOnlyProviderIds = new Set(['arxiv', 'reddit', 'websearch', 'youtube']);
+  let capabilityLoading = false;
+  let researchCapabilities = new Map<string, ResearchCapability>();
+  let availableProviders: ResearchProvider[] = [];
+  $: void readResearchCapabilities(companion);
+
+  async function readResearchCapabilities(client: CompanionResearchClient | null): Promise<void> {
+    researchCapabilities = new Map();
+    if (!client) return;
+    capabilityLoading = true;
+    try {
+      researchCapabilities = new Map(
+        (await client.capabilities()).map((capability) => [capability.id, capability]),
+      );
+    } catch {
+      researchCapabilities = new Map();
+    } finally {
+      capabilityLoading = false;
+    }
+  }
+
+  function providerAvailable(provider: ResearchProvider): boolean {
+    if (!companion) return true;
+    const capability = researchCapabilities.get(provider.id);
+    if (capability) return capability.available;
+    return !companionOnlyProviderIds.has(provider.id);
+  }
+
+  function providerUnavailableLabel(provider: ResearchProvider): string {
+    if (capabilityLoading) return 'Checking availability';
+    const reason = researchCapabilities.get(provider.id)?.reason;
+    return reason === 'not-configured' || !reason ? 'Not configured' : reason.replaceAll('-', ' ');
+  }
 
   // The AI chip appears only when the companion reports a configured provider; keys stay in
   // the companion's environment and the app only ever learns an id and a model name.
@@ -164,7 +198,12 @@
 
   $: selectedObjective = objectives.find((objective) => objective.index === objectiveIndex) ?? null;
   $: consented = readConsented(providers, consentTick);
-  $: enabledProviders = providers.filter((provider) => consented.has(provider.id));
+  $: {
+    void researchCapabilities;
+    void capabilityLoading;
+    availableProviders = providers.filter(providerAvailable);
+  }
+  $: enabledProviders = availableProviders.filter((provider) => consented.has(provider.id));
   $: aiAllowed = readConsented([aiConsent], consentTick).has(aiConsent.id);
   $: shortlist = runResult?.shortlist ?? [];
   $: overflow = runResult?.overflow ?? [];
@@ -296,7 +335,7 @@
    */
   async function maybeRefreshOnOpen(): Promise<void> {
     if (!staleOnOpen || refreshedThisSession.includes(topicSlug) || running) return;
-    const allowedProviders = providers.filter(hasConsent);
+    const allowedProviders = availableProviders.filter(hasConsent);
     if (allowedProviders.length === 0) return;
     refreshedThisSession.push(topicSlug);
     staleOnOpen = false;
@@ -408,7 +447,7 @@
   }
 
   async function maybeAutoRun(objective: RoadmapObjective | null): Promise<void> {
-    const allowedProviders = providers.filter(hasConsent);
+    const allowedProviders = availableProviders.filter(hasConsent);
     if (!autoStart || autoStarted || allowedProviders.length === 0 || running) return;
     autoStarted = true;
     onAutoStartHandled();
@@ -500,14 +539,15 @@
     previewInvoker = null;
   }
 
-  async function addPreviewToSources(): Promise<void> {
-    if (!preview) return;
+  async function addPreviewToSources(openAfterSave: boolean): Promise<void> {
+    if (!preview || adding) return;
     adding = true;
     previewError = '';
     const { candidate, capture, provider } = preview;
     let content = capture.content;
-    // A capture that could only learn what it got by trying (a video's captions) reports it
-    // itself; everything else keeps the provider's up-front answer.
+    // Providers report the capture method they actually used. Video discovery remains a
+    // metadata-only reference; captions can enter only through the learner-controlled Paste or
+    // File source paths.
     let capturedVia = capture.capturedVia ?? provider.capturedVia(candidate);
     let notice = '';
 
@@ -525,7 +565,7 @@
     }
 
     try {
-      await addSource(storage, {
+      const saved = await addSource(storage, {
         content,
         method: 'url',
         origin: {
@@ -565,8 +605,10 @@
         };
       }
       if (notice) notices = [...notices, notice];
-      acceptedSourceStatus = `${capture.title} was added to saved research evidence.`;
-      onSourceSaved();
+      acceptedSourceStatus = openAfterSave
+        ? `${capture.title} was saved. Opening its local reading copy.`
+        : `${capture.title} was saved to this topic's source shelf.`;
+      onSourceSaved(openAfterSave ? saved.path : undefined);
       await closePreview(false);
       await tick();
       acceptedSourceStatusElement?.focus();
@@ -811,13 +853,17 @@
       <p class="field-label">
         Providers
         <span class="quiet-note">
-          {enabledProviders.length} of {providers.length} allowed
+          {enabledProviders.length} allowed · {availableProviders.length} available
         </span>
       </p>
       <ul class="consent-list">
         {#each providers as provider (provider.id)}
           <li>
-            {#if consented.has(provider.id)}
+            {#if !providerAvailable(provider)}
+              <span class="provider-chip unavailable" aria-disabled="true">
+                {provider.label} · {providerUnavailableLabel(provider)}
+              </span>
+            {:else if consented.has(provider.id)}
               <span class="provider-chip allowed">
                 <Check aria-hidden="true" size={14} />
                 {provider.label}
@@ -1222,8 +1268,11 @@
       <button class="quiet" disabled={adding} onclick={() => void closePreview()}
         >Close preview</button
       >
-      <button class="primary" disabled={adding} onclick={addPreviewToSources}>
-        {adding ? 'Adding source…' : 'Add to sources'}
+      <button disabled={adding} onclick={() => addPreviewToSources(false)}>
+        {adding ? 'Saving source…' : 'Save source'}
+      </button>
+      <button class="primary" disabled={adding} onclick={() => addPreviewToSources(true)}>
+        {adding ? 'Saving source…' : 'Save & read'}
       </button>
     </div>
   </dialog>
@@ -1471,6 +1520,13 @@
     align-items: center;
     gap: var(--space-2xs);
     color: var(--color-muted);
+  }
+
+  span.provider-chip.unavailable {
+    border-style: dashed;
+    color: var(--color-muted);
+    font-weight: 400;
+    opacity: 0.78;
   }
 
   .source-markdown > summary {

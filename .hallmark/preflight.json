@@ -1,12 +1,12 @@
 {
-  "scannedAt": "2026-07-20",
-  "framework": "SvelteKit 5",
+  "scannedAt": "2026-08-04",
+  "framework": "SvelteKit 5, Astro, and Tauri 2",
   "fonts": ["Shippori Mincho", "Zen Kaku Gothic New", "IBM Plex Mono"],
   "palette": "OKLCH custom properties",
-  "motion": "mark reveal and graph settle; no animation library",
+  "motion": "interaction feedback and graph settle; no animation library",
   "spacing": "4-point CSS custom-property scale",
   "preserve": [
-    "atmospheric editorial Workbench macrostructure",
+    "atmospheric editorial Learning Studio macrostructure",
     "supplied enso, rangoli, and katana identity",
     "near-black, warm paper, vermilion, and marigold palette",
     "existing typography",
@@ -16,6 +16,8 @@
     "apps/app/package.json",
     "apps/app/src/styles/tokens.css",
     "apps/app/src/styles/app.css",
+    "apps/site/src/styles/landing.css",
+    "apps/desktop/src-tauri/tauri.conf.json",
     "design.md",
     "/Users/umang/developer/design_docs/dusori_design_assests/README.md"
   ]

@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   YouTubeError,
   fetchYouTubeThumbnail,
-  fetchYouTubeTranscript,
   searchYouTube,
   youtubeConfig,
 } from './research-youtube.js';
 
 const env = { INVIDIOUS_URL: 'https://yewtu.example/' };
+const officialEnv = { YOUTUBE_API_KEY: 'youtube-secret-key' };
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -42,8 +42,16 @@ describe('youtubeConfig', () => {
     expect(youtubeConfig({ INVIDIOUS_URL: '   ' })).toBeNull();
   });
 
+  it('prefers the official API without exposing its key', () => {
+    expect(youtubeConfig({ ...env, ...officialEnv })).toEqual({ kind: 'youtube-data-api' });
+  });
+
   it('reports the host without trailing slashes', () => {
-    expect(youtubeConfig(env)).toEqual({ base: 'https://yewtu.example', host: 'yewtu.example' });
+    expect(youtubeConfig(env)).toEqual({
+      base: 'https://yewtu.example',
+      host: 'yewtu.example',
+      kind: 'invidious',
+    });
   });
 
   it('rejects an instance address that is not http(s)', () => {
@@ -52,6 +60,83 @@ describe('youtubeConfig', () => {
 });
 
 describe('searchYouTube', () => {
+  it('uses the official Data API for bounded metadata and never requests captions or media', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      seen.push(url);
+      if (url.startsWith('https://www.googleapis.com/youtube/v3/search')) {
+        return jsonResponse({
+          items: [
+            {
+              id: { videoId: 'dQw4w9WgXcQ' },
+              snippet: { title: 'Search title that details may refine' },
+            },
+          ],
+        });
+      }
+      return jsonResponse({
+        items: [
+          {
+            contentDetails: { duration: 'PT15M34S' },
+            id: 'dQw4w9WgXcQ',
+            snippet: {
+              channelTitle: 'Computerphile',
+              description: 'How attention works.',
+              publishedAt: '2023-11-14T12:00:00Z',
+              title: 'How attention works',
+            },
+            statistics: { viewCount: '1200000' },
+          },
+        ],
+      });
+    }) as typeof fetch;
+
+    const results = await searchYouTube('attention transformers', {
+      env: officialEnv,
+      fetchImpl,
+    });
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toContain('https://www.googleapis.com/youtube/v3/search');
+    expect(seen[0]).toContain('part=snippet');
+    expect(seen[0]).toContain('type=video');
+    expect(seen[0]).toContain('maxResults=8');
+    expect(seen[1]).toContain('https://www.googleapis.com/youtube/v3/videos');
+    expect(seen[1]).toContain('part=contentDetails%2Csnippet%2Cstatistics');
+    expect(seen.join('\n')).not.toMatch(/caption|transcript|download/iu);
+    expect(results).toEqual([
+      {
+        author: 'Computerphile',
+        id: 'dQw4w9WgXcQ',
+        lengthSeconds: 934,
+        publishedAt: '2023-11-14',
+        summary: 'How attention works.',
+        title: 'How attention works',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        viewCount: 1_200_000,
+      },
+    ]);
+  });
+
+  it('falls back to the configured self-hosted instance when the official API is unavailable', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      seen.push(url);
+      if (url.startsWith('https://www.googleapis.com/')) return new Response(null, { status: 503 });
+      return jsonResponse(searchBody);
+    }) as typeof fetch;
+
+    const results = await searchYouTube('attention', {
+      env: { ...env, ...officialEnv },
+      fetchImpl,
+    });
+
+    expect(seen.at(-1)).toContain('https://yewtu.example/api/v1/search');
+    expect(results[0]?.title).toBe('How attention works');
+  });
+
   it('asks the configured instance for the most viewed videos', async () => {
     const seen: string[] = [];
     const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
@@ -98,66 +183,21 @@ describe('searchYouTube', () => {
   });
 });
 
-describe('fetchYouTubeTranscript', () => {
-  const captions = {
-    captions: [
-      { label: 'German', language_code: 'de', url: '/api/v1/captions/dQw4w9WgXcQ?label=German' },
-      { label: 'English', language_code: 'en', url: '/api/v1/captions/dQw4w9WgXcQ?label=English' },
-    ],
-  };
-  const vtt = `WEBVTT
-Kind: captions
-Language: en
-
-00:00:01.000 --> 00:00:04.000
-Attention lets each token weigh
-
-00:00:04.000 --> 00:00:07.000
-Attention lets each token weigh
-every other token.
-
-00:00:07.500 --> 00:00:09.000
-<c>That weighted sum</c> becomes the next representation.
-`;
-
-  it('prefers an English track and returns readable text', async () => {
-    const seen: string[] = [];
-    const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
-      const url = String(input);
-      seen.push(url);
-      if (url.includes('label=')) return new Response(vtt, { status: 200 });
-      return jsonResponse(captions);
-    }) as typeof fetch;
-
-    const transcript = await fetchYouTubeTranscript('dQw4w9WgXcQ', { env, fetchImpl });
-
-    expect(seen[1]).toBe('https://yewtu.example/api/v1/captions/dQw4w9WgXcQ?label=English');
-    expect(transcript.label).toBe('English');
-    expect(transcript.text).toBe(
-      'Attention lets each token weigh every other token. That weighted sum becomes the next representation.',
-    );
-  });
-
-  it('reports a video that carries no captions', async () => {
-    const fetchImpl = (async () => jsonResponse({ captions: [] })) as typeof fetch;
-
-    await expect(fetchYouTubeTranscript('dQw4w9WgXcQ', { env, fetchImpl })).rejects.toMatchObject({
-      reason: 'no-captions',
-    });
-  });
-
-  it('refuses an id that is not a YouTube video id', async () => {
-    const fetchImpl = (async () => {
-      throw new Error('must not be called');
-    }) as typeof fetch;
-
-    await expect(
-      fetchYouTubeTranscript('../../etc/passwd', { env, fetchImpl }),
-    ).rejects.toMatchObject({ reason: 'invalid-id' });
-  });
-});
-
 describe('fetchYouTubeThumbnail', () => {
+  it('uses the fixed image host when the official API is configured', async () => {
+    let seen = '';
+    const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
+      seen = String(input);
+      return new Response(new Uint8Array([1]), {
+        headers: { 'Content-Type': 'image/jpeg' },
+        status: 200,
+      });
+    }) as typeof fetch;
+
+    await fetchYouTubeThumbnail('dQw4w9WgXcQ', { env: officialEnv, fetchImpl });
+    expect(seen).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg');
+  });
+
   it('returns the image bytes and its type', async () => {
     const seen: string[] = [];
     const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {

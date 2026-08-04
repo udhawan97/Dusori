@@ -4,13 +4,18 @@ import { z } from 'zod';
 import { ArxivProxyError, searchArxiv } from '../research-arxiv.js';
 import { FetchPageError, fetchReadablePage, type LookupImpl } from '../research-fetch.js';
 import { MsLearnProxyError, searchMsLearnRanked } from '../research-mslearn.js';
-import { RedditProxyError, searchReddit } from '../research-reddit.js';
-import { WebSearchError, searchWeb, type WebSearchEnv } from '../research-websearch.js';
+import { RedditProxyError, redditConfig, searchReddit } from '../research-reddit.js';
+import {
+  WebSearchError,
+  searchWeb,
+  webSearchConfig,
+  type WebSearchEnv,
+} from '../research-websearch.js';
 import {
   YouTubeError,
   fetchYouTubeThumbnail,
-  fetchYouTubeTranscript,
   searchYouTube,
+  youtubeConfig,
 } from '../research-youtube.js';
 
 const FetchBody = z.object({ url: z.string().min(1) });
@@ -34,6 +39,35 @@ export async function researchRoutes(
   server: FastifyInstance,
   options: ResearchRoutesOptions,
 ): Promise<void> {
+  server.get('/api/research/capabilities', async () => {
+    const env = options.env ?? process.env;
+    const web = webSearchConfig(env);
+    const youtube = youtubeConfig(env);
+    const reddit = redditConfig(env);
+    return {
+      providers: [
+        { available: true, id: 'arxiv', mode: 'keyless' },
+        { available: true, id: 'mslearn', mode: 'keyless' },
+        {
+          available: Boolean(web),
+          id: 'websearch',
+          ...(web ? { mode: web.kind } : { reason: 'not-configured' }),
+        },
+        {
+          available: Boolean(youtube),
+          id: 'youtube',
+          mode: youtube ? `${youtube.kind}-metadata-reference-only` : 'metadata-reference-only',
+          ...(youtube ? {} : { reason: 'not-configured' }),
+        },
+        {
+          available: Boolean(reddit),
+          id: 'reddit',
+          ...(reddit ? { mode: 'oauth' } : { reason: 'not-configured' }),
+        },
+      ],
+    };
+  });
+
   server.post('/api/research/fetch', async (request, reply) => {
     const body = FetchBody.safeParse(request.body);
     if (!body.success) {
@@ -115,13 +149,12 @@ export async function researchRoutes(
     }
   });
 
-  // One configured Invidious instance answers all three: search, captions, and the thumbnail
-  // the browser would otherwise have to fetch from Google itself.
+  // Metadata uses the official YouTube Data API when configured, with a self-hosted Invidious
+  // fallback. Captions and media are never fetched; thumbnails stay behind the local companion.
   function youtubeFailure(error: unknown): { code: number; reason: string } {
     if (!(error instanceof YouTubeError)) return { code: 500, reason: 'fetch-failed' };
     if (error.reason === 'not-configured') return { code: 503, reason: error.reason };
     if (error.reason === 'invalid-id') return { code: 400, reason: error.reason };
-    if (error.reason === 'no-captions') return { code: 404, reason: error.reason };
     return { code: 502, reason: error.reason };
   }
 
@@ -149,18 +182,11 @@ export async function researchRoutes(
     if (!query.success) {
       return reply.code(400).send({ error: 'A video id is required.', reason: 'invalid-id' });
     }
-    try {
-      return await fetchYouTubeTranscript(query.data.id, options);
-    } catch (error) {
-      const failure = youtubeFailure(error);
-      return reply.code(failure.code).send({
-        error:
-          error instanceof YouTubeError
-            ? error.message
-            : 'The research service failed unexpectedly.',
-        reason: failure.reason,
-      });
-    }
+    return reply.code(403).send({
+      error:
+        'Dusori does not harvest YouTube captions. Add transcript text through Paste or File only when you supplied it, own it, or are authorized to use it.',
+      reason: 'transcript-requires-user-supplied',
+    });
   });
 
   server.get('/api/research/youtube-thumbnail', async (request, reply) => {

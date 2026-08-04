@@ -1,61 +1,51 @@
 ---
 title: Learning loop
-description: Track roadmap progress and recent work without giving up portable files.
+description: How Continue, reading, roadmap progress, review, and evidence-backed attention work.
 ---
 
-Dusori’s learning loop has two views backed by the files already inside each topic:
+Dusori’s loop is `Continue → Read → Annotate → explicitly Mark learned or review → Map/Outline`.
 
-- **Roadmap** reads section headings and `- [ ]` / `- [x]` tasks from `roadmap.md`.
-- **Today** opens with one research mission strip per unfinished topic — sources discovered, sources saved, passages read, when it was last refreshed, and which source lenses are still empty — then workspace-wide continuation and attention lanes, roadmap progress, topic status, review state, workspace health, and recent entries from `Updates/`. See [Sources](../sources/) for how a mission is researched.
+## Continue
 
-There is no hosted task database. A schedule exists only where you created one with an explicit review action — Dusori never generates one on its own. The same progress remains readable in Obsidian or any Markdown editor.
+**Learn** opens with a deterministic next step. It excludes completed topics, puts due reviews first, then active topics before paused topics, with stable file-derived ordering.
 
-## Complete an objective
+The action depends on current evidence:
 
-Open **Roadmap** and check an objective. Dusori changes only that task marker, updates the tracked roadmap hash, and adds a dated entry to the topic’s update log. Reopening an objective follows the same path.
+- a due, source-ready topic starts review;
+- an objective without readable saved evidence opens **Find sources**;
+- a source-ready unfinished objective opens its learning path;
+- a paused topic opens without silently resuming it.
 
-Imported curriculum section headings remain visible but are not counted as tasks. The percentage reflects only checkable Markdown objectives.
+The recommendation changes no progress. **Needs attention** names only proven file conditions such as a pending proposal, invalid source record, or unresolved link. It is not a generic notification feed.
 
-## Set topic status
+## Read and annotate
 
-Choose **Active**, **Paused**, or **Complete** from the roadmap header. Status is explicit and independent from checklist progress: completing every objective does not silently mark the topic complete.
+The **Sources** shelf lists only deliberately saved material. Opening a saved item enters the Reading room. Notes are ordinary Markdown and can point to other notes or sources with `[[wikilinks]]`.
 
-## Continue learning
+If another editor changes a tracked Markdown file before Dusori saves, that content remains active. Dusori writes the attempted version beside it and records a durable proposal that can be accepted or kept later.
 
-Today begins with **Continue learning**, a deterministic workspace-wide lane. It excludes complete topics, puts due spaced reviews first, then orders remaining active topics before paused topics by the oldest `state.json.updatedAt` value, using title and slug as stable tie-breakers.
+## Mark an objective learned
 
-The action comes only from explicit local evidence:
+The learning path reads headings and `- [ ]` / `- [x]` tasks from `roadmap.md`. Marking an objective complete changes only that task marker, updates the tracked hash, and appends a dated update entry. Reopening it uses the same guarded write.
 
-- A due review with at least one approved, locally readable source opens **Start review**.
-- An unfinished objective without readable local source text opens **Research objective**.
-- Another unfinished source-ready objective opens its roadmap and also offers **Start review** as an
-  optional, non-scheduling action.
-- A paused topic opens without silently resuming it.
+Objective progress is separate from topic state. **Active**, **Paused**, and **Complete** live in `state.json`; changing one never checks roadmap tasks.
 
-A URL-only reference does not make an objective source-ready. Dusori claims only that text is available on this device; it does not judge source quality, completeness, or understanding. Opening a continuation item never changes progress.
+Dusori calls this an explicit learning record, not proof of mastery.
 
-## Needs attention
+## Review
 
-The adjacent **Needs attention** lane contains only conditions proven by current workspace evidence. Pending edit proposals and invalid or missing source records are integrity issues; unresolved wikilinks remain secondary hygiene and never displace learning. Related health issues are summarized and route to **Workspace health**, where the existing evidence and repairs remain authoritative.
+A review session builds three to five deterministic prompts from the current objective and readable saved sources. Every prompt names its local source path and hides a bounded excerpt until requested.
 
-Proposal state is portable and durable in `Topics/<slug>/proposals.json`. If Dusori protects an external edit, Today can recover that pending proposal after a reload and reopen the exact diff. Accepting it or keeping the current document resolves the ledger entry while preserving both Markdown versions. Older `.proposed-*` files created before the ledger remain readable history and are never guessed to be pending.
+- Starting, navigating, revealing, or abandoning a session writes nothing.
+- Answers stay in memory unless you explicitly save them as a Markdown note.
+- **Got it** and **Needs work** are the only actions that update `review.json`.
+- The fixed interval ladder is 1, 3, 7, 14, 30, then 60 days.
+- There is no score, streak, calendar event, notification, or closed-app scheduler.
 
-Marking a review with **Got it** or **Needs work** stores the topic's next due date in its `review.json`, using a fixed interval ladder (1, 3, 7, 14, 30, then 60 days). `Got it` advances one rung; `Needs work` resets to the first rung.
+Optional AI may reword prompts under separate consent covering the exact objective and excerpts. It cannot change count, order, evidence, or the review actions, and any failure keeps deterministic wording.
 
-## Start a source-grounded review
+## See what changed
 
-**Start review** on a queue item opens a session built from the topic's current objective and its own approved sources. Dusori composes three to five active-recall prompts from transparent templates over the objective, the source headings, and short excerpts — no model is required.
+The seven-day recap reads dated update files. **Learning evidence** derives activity, objective progress, source provenance, link health, graph hubs, and review pressure from current workspace files. It does not infer study time or mastery.
 
-Each prompt names the source it came from and keeps its excerpt hidden until you choose **Reveal the source**, which then shows the source title, its section, and its path inside your workspace. Only sources with readable text on this device are used: a URL kept as a reference is named and left alone, because Dusori never fetches a page on its own.
-
-Every prompt has an answer box. What you type stays in the session until you choose **Save answers as a note**, which writes one ordinary Markdown note under `Topics/<slug>/Notes/`: your answers verbatim, each prompt quoted and labelled with its generator, and the source path behind it. Closing or rating with unsaved answers asks once instead of dropping them.
-
-Nothing else in a session is stored. Opening it, moving between prompts, and revealing evidence write nothing; only the final **Got it** or **Needs work** changes the schedule. Nothing in a session is a score, a streak, or evidence that you understand the topic.
-
-With the local companion running and an AI provider configured, **Allow sharper prompts** may reword the questions. It is a separate consent from AI ranking, because it sends the objective and up to four short excerpts of 320 characters each — your notes, roadmap, and review history are never sent. The model can only change wording: the prompt count, their order, the evidence, and the rating actions are fixed, generated prompts are labelled with the model that wrote them, and any failure falls back to the deterministic templates.
-
-The **7-day recap** reads at most 12 recent entries from `Updates/YYYY/MM/YYYY-MM-DD.md`, newest date first, including review actions. It writes no summary file. Dusori never generates a calendar entry, notification, or closed-app work.
-
-## External edits
-
-If `roadmap.md` changed since Dusori last wrote it, a checkbox action cannot overwrite the file. Dusori writes a dated `.proposed-…md` sibling and shows the changed lines. Choose **Keep external roadmap** to reload it, or **Use this progress choice** after reviewing the proposal. When the proposal was made from the current external roadmap, its other edits remain in the accepted content.
+**Map** shows the same notes and sources as a galaxy or accessible Outline. Opening either is read-only.

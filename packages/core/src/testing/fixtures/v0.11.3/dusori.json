@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Compatibility workspace",
+  "createdAt": "2026-07-20T12:00:00.000Z",
+  "updatedAt": "2026-07-20T12:00:00.000Z",
+  "topics": [
+    {
+      "createdAt": "2026-07-20T12:00:00.000Z",
+      "slug": "legacy-topic",
+      "title": "Legacy topic",
+      "futureTopicField": { "keep": true }
+    }
+  ],
+  "fileIndex": {
+    "Home.md": {
+      "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "modifiedAt": 1,
+      "futureVersionField": "keep"
+    }
+  },
+  "futureWorkspaceField": { "keep": true }
+}

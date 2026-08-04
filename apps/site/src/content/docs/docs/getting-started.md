@@ -1,100 +1,89 @@
 ---
 title: Getting started
-description: Create a private Dusori workspace and its first topic.
+description: Open Dusori, create a topic, save the first source, and understand the desktop choices.
 sidebar:
   order: 2
 ---
 
-## Browser workspace
+## Choose a build
 
-1. Open the [Dusori app](https://udhawan97.github.io/Dusori/app/).
-2. Choose **Create workspace**.
-3. Enter a topic name and choose **Create topic**.
-4. Dusori creates `Home.md`, `dusori.json`, and the topic’s complete folder tree, then opens **Research**.
-5. Allow at least one provider. The first scan then runs using only the providers you just allowed; preview and approve only the results you want to keep.
-6. Choose **Export workspace** after meaningful work. The ZIP is your portable backup.
+| Build               | Use it when                                                     | Start                                                                                 |
+| ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Browser             | You want the fastest, accountless start                         | [Open Dusori](https://udhawan97.github.io/Dusori/app/)                                |
+| macOS Apple silicon | Your Mac has an M-series processor                              | [v0.12.0 release downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0) |
+| macOS Intel         | About This Mac says Intel                                       | [v0.12.0 release downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0) |
+| Windows x64         | You use 64-bit Windows                                          | [v0.12.0 release downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0) |
+| Node companion      | You want browser UI plus local capture and configured providers | `npx @udhawan97/dusori@latest`                                                        |
 
-Browser workspaces use origin-private storage. They are not uploaded, but clearing site data can remove them. Export regularly.
+The v0.12.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
 
-## Understand what you kept
+## Create the first topic
 
-Approving sources is only the first half. In **Research**, under **Understand this topic**:
+1. Choose **Create workspace**.
+2. Enter a certification such as `Azure AI-102` or a general subject such as `AI fundamentals`.
+3. Choose **Create topic**. The new topic opens in **Learn**.
+4. Choose **Find sources** when the next step needs evidence.
+5. Turn on one provider after reading its disclosure. No request is sent before consent.
+6. Choose **Preview** on a candidate. The Sources count must not change.
+7. Choose **Save source** to add it to the shelf, or **Save & read** to add it and open the Reading room.
 
-1. **Read saved sources** reads the text already on your device into verbatim quoted passages. No model takes part, and nothing contacts the network.
-2. **Build synthesis** writes `Synthesis.md`: those passages grouped by subject, with what more than one source supports, what only one source claims, and the open questions the evidence raises. Every quoted passage cites its source.
-3. **Create learning page** builds an optional `Learning/learn.html` from those same passages, with reveal-style check-yourself prompts. **Open learning page** reads it inside Dusori in a sandbox that cannot reach your workspace; the file also opens on its own in any browser.
+The primary navigation always means the same thing:
 
-Tick **Keep this topic fresh** if you want Dusori to re-scan this topic when you open it after seven days, using only the providers you already allowed.
+- **Learn** gives you the next action and the topic’s learning tools.
+- **Sources** is the saved evidence shelf.
+- **Map** shows the galaxy and accessible Outline.
+- **Settings** holds storage, privacy, export/import, companion status, and updates.
 
-## Continue the learning loop
+## Continue the topic
 
-1. Open **Roadmap** and check an objective when it is genuinely complete.
-2. Set the topic to **Active**, **Paused**, or **Complete**. This state is stored in the topic’s `state.json`.
-3. Open **Today** for two workspace-wide lanes: **Continue learning** routes the next evidence-backed learning action, while **Needs attention** surfaces only proven conflicts or workspace-health conditions.
+Learn orders due reviews first, then unfinished active topics, then paused topics. The route depends on current files: it may open a due review, a ready source, the next roadmap objective, or Find sources. Routing changes nothing by itself.
 
-The Today view is deterministic: **Continue learning** orders due spaced reviews first, then active topics before paused topics, showing the least recently updated next. It opens Research when an objective has no approved readable source, starts a source-grounded review when one is due and source-ready, and otherwise routes to the owning topic or roadmap. A source-ready active topic can also start an optional first review without waiting for a schedule. The seven-day recap reads dated update entries. Marking a review (**Got it** or **Needs work**) is the only way a schedule is created — Dusori never invents one on its own. If another editor changes a tracked Markdown file, Dusori keeps that version active, writes a separate proposal, and keeps the decision visible across reloads.
+Use **Learning path** to inspect the roadmap. An objective becomes complete only when you explicitly mark that checkbox; reopening it follows the same guarded write path. Topic-level **Active**, **Paused**, and **Complete** are separate from objective progress.
 
-Open **Graph** to see the topic’s Markdown artifacts and wikilinks. Its ledger, visual constellation, and searchable keyboard-accessible artifact finder are created locally from the workspace folder. Open **Insights** for file-derived activity, progress, artifact mix, link health, topic depth, hubs, and provenance without telemetry or inferred study time.
+Use **Learning evidence** to inspect file-derived activity, progress, source provenance, links, and review pressure. These are signals, not a score or mastery claim.
 
-## Use an Obsidian vault
+## Make a portable backup
 
-1. Open or create your vault in Obsidian.
-2. Create a folder named `Dusori` inside the vault.
-3. In Chrome or Edge on desktop, choose **Use Dusori with Obsidian** and then select only that `Dusori` folder—not the whole vault.
+Open **Settings → Storage** and choose **Export workspace**. Browser workspaces live in origin-private site storage: they are local, but clearing site data can remove them. Export after meaningful work.
 
-No plugin is required. On browsers without folder access, keep the browser workspace and use ZIP export/import to move the same portable files. See [Workspaces and folders](../workspaces/) for the access boundary.
+Supported Chromium browsers can connect a folder you choose, including a `Dusori` subfolder inside an Obsidian vault. Other browsers use private storage plus ZIP import/export. See [Workspaces and folders](../workspaces/).
 
-## Write and find notes
+## Run the companion
 
-1. In the inspector, enter a title under **Create a study note**.
-2. Write ordinary Markdown and choose **Save note**.
-3. Use **Search workspace** to find words across local Markdown and text files.
-4. Open **Workspace health** to refresh unresolved-link and source-manifest checks, or inspect backlinks for the current document.
-
-Search is read-only and session-only. It creates no index and sends no query to the companion or another service. A note changed by another editor stays active; Dusori shows your draft as a proposal for explicit review.
-
-## Import a curriculum
-
-1. Create or open a topic, then open the workspace inspector.
-2. Under **Curriculum**, choose **Import curriculum**.
-3. Paste an English Microsoft Learn study guide or a structured Markdown syllabus. An official page URL is optional provenance; Dusori does not open it.
-4. Choose **Preview roadmap** and review every extracted item.
-5. Choose **Apply roadmap**. Dusori saves the original outline in `Sources/` and opens the interactive roadmap while preserving its section hierarchy.
-
-If the roadmap changed outside Dusori, the external content remains active and the imported version becomes a proposal until you explicitly accept it. See [Curriculum import](../curricula/) for formats and limits.
-
-## Local companion
-
-The optional companion holds the loopback security boundary. It can fetch a page you explicitly confirm, reach Microsoft Learn's ranked search and arXiv, add Reddit through your own Reddit app and YouTube through your own Invidious instance, and expose one configured Brave, Tavily, or SearXNG general web-search provider. Optional Ollama, Anthropic, or OpenAI configuration can advise ranking, write a model-named brief from approved sources, and add a model-named overview to a synthesis. These capabilities appear only when the app is opened through the companion; deterministic research remains available without them. See [Sources](../sources/) for configuration and consent boundaries.
-
-For the current v0.11.3 app, install [Node.js 24 LTS](https://nodejs.org/en/download), then run:
+Install [Node.js 24 LTS](https://nodejs.org/en/download), then run:
 
 ```sh
 npx @udhawan97/dusori@latest
 ```
 
-This downloads and opens the current release without a global install. To approve one existing workspace folder for the session:
+To approve one existing workspace folder for this process:
 
 ```sh
 npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 ```
 
-If you prefer a source copy, download and unzip the [v0.11.3 source](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.3.zip), open a terminal in its folder, and run `npm start`. Or clone the repository and use the same cross-platform source path on macOS, Windows, or Linux:
+The companion binds to a random `127.0.0.1` port and opens the bundled app. A same-origin, HttpOnly, SameSite session cookie connects that bundled page; the credential is not printed or placed in the URL. API-only desktop sessions receive their credential through the process environment and accept only the exact desktop origin. Closing the terminal stops the ordinary `npx` companion.
+
+From source:
 
 ```sh
 git clone https://github.com/udhawan97/Dusori.git
 cd Dusori
+npm run setup
 npm start
 ```
 
-The [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori/v/0.11.3) and app are aligned at v0.11.3. The first source run downloads the repository-pinned pnpm version, installs dependencies, builds the app and companion, and then opens Dusori. The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.
+## Update the desktop app
+
+Open **Settings → App updates**. **Check now** queries the signed GitHub release feed. If a release is available, choose **Download update**; after signature verification, choose **Install and restart**. Installation is blocked while work is unsaved.
+
+You may opt in to automatic checks and downloads. That option never authorizes installation or restart. See [Updates and recovery](../updates/) for failure recovery.
 
 ## If something goes wrong
 
-- The start command reports the Node.js version it found. Dusori requires Node.js 24 LTS; install it from [nodejs.org](https://nodejs.org/en/download) and run the command again.
-- A provider that fails is reported as a failure in the topic's **Research trail**, never as an empty result. Re-run the scan or allow another provider.
-- A scanned PDF with no text layer is reported rather than saved empty. There is no OCR.
-- If another editor changed a tracked Markdown file, Dusori keeps your version and writes a proposal instead of overwriting. See [Conflict safety](../conflict-safety/).
-- Browser workspaces live in origin-private storage. Clearing site data removes them, so export a ZIP regularly.
-
-Upgrading from a very old build: do not reopen a workspace containing a companion-upgraded source with v0.2.0. That older build can rename `Sources/manifest.json` after seeing the new provenance value. Update to v0.3.0 or later first; source content remains untouched, and a renamed manifest can be restored by renaming the `.invalid-<timestamp>` file back after updating.
+- A failed provider is named in the Research trail. Retry it or allow another provider.
+- A scanned PDF with no text layer is reported; Dusori includes no OCR.
+- A saved URL reference remains a reference until you explicitly fetch it through the companion or replace it with pasted/local text.
+- If an external editor changes tracked Markdown, Dusori preserves it and writes a proposal for review.
+- If an update fails, keep using the installed version and follow [Updates and recovery](../updates/).
+- If browser data may be at risk, export the workspace before troubleshooting.

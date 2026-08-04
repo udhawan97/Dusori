@@ -1,13 +1,13 @@
 <script lang="ts">
   import { base } from '$app/paths';
   import {
-    Activity,
     BookOpen,
     Download,
     FileText,
     FolderOpen,
     HardDrive,
-    ListChecks,
+    Library,
+    Map,
     Menu,
     PanelRightClose,
     PanelRightOpen,
@@ -15,8 +15,8 @@
     Plus,
     Save,
     Search,
+    Settings,
     ShieldCheck,
-    Share2,
     Upload,
     X,
   } from '@lucide/svelte';
@@ -37,6 +37,7 @@
     prepareWorkspaceImport,
     proposeMarkdownUpdate,
     readMachineFile,
+    readSourceManifest,
     replaceWorkspace,
     resolvePendingProposal,
     resolveWikilink,
@@ -56,6 +57,8 @@
     stripCompanionCredentials,
   } from '$lib/companion-origin';
   import { containTab, modal } from '$lib/actions/modal';
+  import { resolveDesktopStorage, startBundledDesktopSession } from '$lib/desktop-platform';
+  import { runAutomaticUpdateCheck } from '$lib/app-updates';
   import { wikilinkTarget } from '$lib/markdown';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
@@ -63,17 +66,23 @@
   import LearningInsights from '$lib/components/LearningInsights.svelte';
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
   import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
+  import AppSettings from '$lib/components/AppSettings.svelte';
+  import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import TopicAsk from '$lib/components/TopicAsk.svelte';
   import TutorPreferences from '$lib/components/TutorPreferences.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
+  let workspaceRestoring = true;
+  let desktopRuntime = false;
   let storageLabel = '';
   // An example belongs in the placeholder. Seeding the value here meant a first Enter created a
   // topic — and a folder — named after the example instead of what the reader came to learn.
   let topicTitle = '';
+  let topicKind: 'certification' | 'general' = 'general';
   let selectedSlug = '';
   let notePath = '';
   let noteContent = '';
@@ -81,7 +90,9 @@
   let editingNote = false;
   let editableNote = false;
   let newNoteTitle = '';
-  let workspaceView: 'graph' | 'insights' | 'note' | 'research' | 'roadmap' | 'today' = 'note';
+  let workspaceView:
+    'graph' | 'insights' | 'note' | 'research' | 'roadmap' | 'settings' | 'sources' | 'today' =
+    'note';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
   let error = '';
@@ -89,8 +100,8 @@
   let inspectorOpen = false;
   let mobileNavOpen = false;
   let online = true;
-  let railElement: HTMLElement | null = null;
-  let railCloseButton: HTMLButtonElement | null = null;
+  let navigationElement: HTMLElement | null = null;
+  let navigationCloseButton: HTMLButtonElement | null = null;
   let mobileMenuButton: HTMLButtonElement | null = null;
   let companionStatus = 'Not connected';
   let companionClient: CompanionResearchClient | null = null;
@@ -108,6 +119,9 @@
   let workspaceHealthPanel: HTMLElement | undefined;
   let workspaceHealthComponent: WorkspaceHealth | undefined;
   let canvasElement: HTMLElement | undefined;
+  let certificationSetupSlug = '';
+  let savedSourceCount = 0;
+  let sourceCountRequest = 0;
 
   const unlockHint = 'Select or create a topic to open these views.';
 
@@ -122,21 +136,31 @@
     notePath.startsWith(`Topics/${selectedSlug}/Notes/`) &&
     notePath.endsWith('.md'),
   );
+  $: void refreshSavedSourceCount(storage, selectedSlug, artifactRevision);
 
   onMount(() => {
+    desktopRuntime = '__TAURI_INTERNALS__' in window;
     const desktop = window.matchMedia('(min-width: 60rem)');
-    const syncInspector = () => (inspectorOpen = desktop.matches);
+    const syncInspector = () => {
+      if (!desktop.matches) inspectorOpen = false;
+    };
     syncInspector();
     desktop.addEventListener('change', syncInspector);
     const restoreView = () => void applyLocationView();
     window.addEventListener('popstate', restoreView);
     // navigator.onLine read straight from the template is a plain property, so nothing invalidates
-    // it; the rail kept reporting whatever was true at first paint. Mirror it into state instead.
+    // it; the header kept reporting whatever was true at first paint. Mirror it into state instead.
     const syncOnline = () => (online = navigator.onLine);
     syncOnline();
     window.addEventListener('online', syncOnline);
     window.addEventListener('offline', syncOnline);
     void restoreWorkspace();
+    // This belongs to the application shell rather than Settings: an opted-in learner who opens
+    // straight into Learn must still receive the automatic signed check and download.
+    void runAutomaticUpdateCheck().catch(() => {
+      // Offline or withdrawn feeds do not interrupt the local learning workspace. Settings keeps
+      // the explicit retry and recovery path available.
+    });
     void registerServiceWorker();
     void connectCompanionFromUrl();
     return () => {
@@ -155,7 +179,7 @@
   async function openMobileNav(): Promise<void> {
     mobileNavOpen = true;
     await tick();
-    railCloseButton?.focus();
+    navigationCloseButton?.focus();
   }
 
   function dismissMobileNav(): void {
@@ -203,8 +227,29 @@
     else if (view === 'insights') openInsights(false);
     else if (view === 'research') openResearch(slug, false);
     else if (view === 'roadmap') await openRoadmap(slug, false);
+    else if (view === 'settings') openSettings(false);
+    else if (view === 'sources') openSources(slug, false);
     else if (view === 'note' && path) await openGraphDocument(path, false);
     else openToday(slug, false);
+  }
+
+  async function refreshSavedSourceCount(
+    currentStorage: StorageAdapter | null,
+    slug: string,
+    revision: number,
+  ): Promise<void> {
+    void revision;
+    const request = ++sourceCountRequest;
+    if (!currentStorage || !slug) {
+      savedSourceCount = 0;
+      return;
+    }
+    try {
+      const manifest = await readSourceManifest(currentStorage, slug);
+      if (request === sourceCountRequest) savedSourceCount = manifest.sources.length;
+    } catch {
+      if (request === sourceCountRequest) savedSourceCount = 0;
+    }
   }
 
   async function registerServiceWorker(): Promise<void> {
@@ -218,9 +263,44 @@
   }
 
   async function connectCompanionFromUrl(): Promise<void> {
+    if (desktopRuntime) {
+      try {
+        const session = await startBundledDesktopSession();
+        if (!session) throw new Error('The bundled desktop session is unavailable.');
+        companionClient = createCompanionResearchClient({
+          baseUrl: session.origin,
+          token: session.token,
+        });
+        companionAiClient = createCompanionAiClient({
+          baseUrl: session.origin,
+          token: session.token,
+        });
+        companionStatus = 'Connected to the bundled local research service';
+      } catch {
+        companionClient = null;
+        companionAiClient = null;
+        companionStatus = 'The bundled local research service could not start.';
+      }
+      return;
+    }
     const parameters = new URLSearchParams(location.search);
     const token = parameters.get('token');
-    if (!token) return;
+    if (!token) {
+      try {
+        const response = await fetch(`${location.origin}/api/health`, {
+          credentials: 'same-origin',
+        });
+        if (!response.ok) return;
+        const health: unknown = await response.json().catch(() => null);
+        if (!isCompanionHealth(health)) return;
+        companionClient = createCompanionResearchClient({ baseUrl: location.origin });
+        companionAiClient = createCompanionAiClient({ baseUrl: location.origin });
+        companionStatus = 'Connected securely for this desktop session';
+      } catch {
+        // A normal hosted/browser session has no same-origin companion endpoint.
+      }
+      return;
+    }
     const requested = parameters.get('companion') ?? location.origin;
     const cleanQuery = stripCompanionCredentials(location.search);
     history.replaceState(
@@ -256,6 +336,14 @@
 
   async function restoreWorkspace(): Promise<void> {
     try {
+      const native = await resolveDesktopStorage();
+      if (native) {
+        if (!(await native.read('dusori.json'))) {
+          await createWorkspace(native, 'My learning workspace');
+        }
+        await activateStorage(native, 'Desktop workspace · on this device', true);
+        return;
+      }
       const saved = await restoreDirectoryHandle();
       if (saved) {
         const adapter = new FsaStorageAdapter(saved);
@@ -269,6 +357,11 @@
         await activateStorage(adapter, 'Browser workspace · private', true);
     } catch {
       // Restoration is best-effort. Setup remains available.
+      if (desktopRuntime) {
+        error = 'Dusori could not open its desktop workspace. Restart the app and try again.';
+      }
+    } finally {
+      workspaceRestoring = false;
     }
   }
 
@@ -334,11 +427,22 @@
       creatingTopic = false;
       previousSlug = '';
       topicTitle = '';
-      researchAutoStartSlug = created.topicSlug;
-      openResearch(created.topicSlug);
-      status = created.workspaceHomeConflict
-        ? 'Topic created. Home.md had external changes, so a proposal was written beside it.'
-        : 'Topic created. Automatic research is ready for the providers you allow.';
+      if (topicKind === 'certification') {
+        certificationSetupSlug = created.topicSlug;
+        researchAutoStartSlug = '';
+        openToday(created.topicSlug);
+        status = created.workspaceHomeConflict
+          ? 'Certification topic created. Home.md had external changes, so a proposal was written beside it.'
+          : 'Certification topic created without making a network request. Add the exact official outline when ready.';
+      } else {
+        certificationSetupSlug = '';
+        researchAutoStartSlug = created.topicSlug;
+        openResearch(created.topicSlug);
+        status = created.workspaceHomeConflict
+          ? 'Topic created. Home.md had external changes, so a proposal was written beside it.'
+          : 'Topic created. Research is ready for the providers you explicitly allow.';
+      }
+      topicKind = 'general';
     });
   }
 
@@ -349,6 +453,7 @@
     selectedSlug = '';
     notePath = '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
     syncLocation();
     void orientView();
@@ -378,6 +483,7 @@
     notePath = `Topics/${selectedSlug}/${relativePath}`;
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
     syncLocation();
     await orientView();
@@ -390,6 +496,7 @@
     learningRevision += 1;
     artifactRevision += 1;
     conflict = null;
+    inspectorOpen = false;
     syncLocation();
     void orientView();
     announceStatus('Curriculum applied. The imported roadmap is open.');
@@ -407,6 +514,7 @@
     workspaceView = 'today';
     notePath = '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
     if (record) {
       syncLocation();
@@ -423,6 +531,7 @@
     notePath = `Topics/${slug}/roadmap.md`;
     noteContent = (await storage.read(notePath))?.content ?? '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
     if (record) {
       syncLocation();
@@ -438,8 +547,38 @@
     workspaceView = 'research';
     notePath = '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
-    if (window.innerWidth >= 960) inspectorOpen = false;
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
+  }
+
+  function openSources(slug = selectedSlug, record = true): void {
+    if (!slug) return;
+    stopEditingNote();
+    creatingTopic = false;
+    selectedSlug = slug;
+    workspaceView = 'sources';
+    notePath = '';
+    conflict = null;
+    inspectorOpen = false;
+    mobileNavOpen = false;
+    if (record) {
+      syncLocation();
+      void orientView();
+    }
+  }
+
+  function openSettings(record = true): void {
+    stopEditingNote();
+    creatingTopic = false;
+    workspaceView = 'settings';
+    notePath = '';
+    conflict = null;
+    inspectorOpen = false;
+    mobileNavOpen = false;
     if (record) {
       syncLocation();
       void orientView();
@@ -452,8 +591,8 @@
     workspaceView = 'graph';
     notePath = '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
-    if (window.innerWidth >= 960) inspectorOpen = false;
     if (record) {
       syncLocation();
       void orientView();
@@ -466,8 +605,8 @@
     workspaceView = 'insights';
     notePath = '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
-    if (window.innerWidth >= 960) inspectorOpen = false;
     if (record) {
       syncLocation();
       void orientView();
@@ -484,6 +623,7 @@
     notePath = path;
     noteContent = (await storage.read(path))?.content ?? '';
     conflict = null;
+    inspectorOpen = false;
     mobileNavOpen = false;
     if (record) {
       syncLocation();
@@ -516,7 +656,6 @@
 
   async function openSearchDocument(path: string): Promise<void> {
     await openGraphDocument(path);
-    if (window.innerWidth < 960) inspectorOpen = false;
   }
 
   function handleRoadmapChanged(slug: string, content: string): void {
@@ -582,9 +721,36 @@
       noteDraft = created.content;
       editingNote = true;
       conflict = null;
+      inspectorOpen = false;
       mobileNavOpen = false;
       syncLocation();
       status = 'Note created. Add the first useful idea, then save it.';
+    });
+  }
+
+  async function annotateCurrentSource(): Promise<void> {
+    if (!storage || !selectedSlug || !notePath.includes('/Sources/items/')) return;
+    await perform(async () => {
+      const sourceName =
+        noteContent.match(/^#\s+(.+)$/mu)?.[1]?.trim() ??
+        notePath.split('/').at(-1)?.replace(/\.md$/u, '').replaceAll('-', ' ') ??
+        'saved source';
+      const created = await createNote(storage!, selectedSlug, `Notes on ${sourceName}`);
+      const sourceRelativePath = notePath
+        .slice(`Topics/${selectedSlug}/`.length)
+        .replace(/\.md$/u, '');
+      const annotationDraft = `${created.content.trimEnd()}\n\n## Source\n\n[[../${sourceRelativePath}]]\n\n## Annotation\n\n`;
+      workspaceView = 'note';
+      notePath = created.path;
+      noteContent = created.content;
+      noteDraft = annotationDraft;
+      editingNote = true;
+      conflict = null;
+      inspectorOpen = false;
+      mobileNavOpen = false;
+      syncLocation();
+      status = 'Annotation note created. Add what mattered, then save it locally.';
+      await orientView();
     });
   }
 
@@ -611,7 +777,7 @@
       noteContent = (await storage!.read(firstNotePath))?.content ?? externallyEdited;
       syncLocation();
       status = 'External content stayed in place. Dusori wrote a separate proposal and update log.';
-      if (window.innerWidth < 960) inspectorOpen = false;
+      inspectorOpen = false;
       await tick();
       conflictPanel?.scrollIntoView({ block: 'start' });
     });
@@ -622,7 +788,7 @@
     if (!conflict) return;
     workspaceView = 'note';
     syncLocation();
-    if (window.innerWidth < 960) inspectorOpen = false;
+    inspectorOpen = false;
     await tick();
     conflictPanel?.scrollIntoView({ block: 'start' });
   }
@@ -651,6 +817,7 @@
         updatePath: '',
       };
       workspaceView = 'note';
+      inspectorOpen = false;
       mobileNavOpen = false;
       syncLocation();
       await tick();
@@ -797,12 +964,12 @@
     if (event.key === 'Escape') {
       obsidianGuideOpen = false;
       if (mobileNavOpen) dismissMobileNav();
-      if (window.innerWidth < 960) inspectorOpen = false;
+      inspectorOpen = false;
     }
     // The drawer covers the canvas without being a dialog, so nothing stops Tab reaching what is
     // behind it. Held at the window: a listener on the <nav> would be an interaction handler on a
     // non-interactive element.
-    if (mobileNavOpen && railElement) containTab(railElement, event);
+    if (mobileNavOpen && navigationElement) containTab(navigationElement, event);
   }}
 />
 
@@ -811,7 +978,27 @@
   <meta name="description" content="A free local-first learning workspace that works without AI." />
 </svelte:head>
 
-{#if !workspace}
+{#if workspaceRestoring}
+  <main class="startup-state" aria-busy="true">
+    <span class="brand-symbol" aria-hidden="true">
+      <img
+        class="brand-mark-light"
+        src={`${base}/brand/dusori-mark.svg`}
+        alt=""
+        width="28"
+        height="28"
+      />
+      <img
+        class="brand-mark-dark"
+        src={`${base}/brand/dusori-mark-reversed.svg`}
+        alt=""
+        width="28"
+        height="28"
+      />
+    </span>
+    <p>Opening your learning studio…</p>
+  </main>
+{:else if !workspace}
   <main class="setup-shell">
     <header class="setup-header">
       <a class="wordmark" href="../">
@@ -853,34 +1040,36 @@
       </p>
     </section>
 
-    <section class="setup-options" aria-label="Workspace choices">
-      <article>
-        <HardDrive aria-hidden="true" size={24} strokeWidth={1.5} />
-        <h2>Browser workspace</h2>
-        <p>Works across modern browsers. Export regularly for a portable backup.</p>
-        <button class="primary-button" disabled={busy} onclick={createBrowserWorkspace}>
-          {busy ? 'Creating…' : 'Create workspace'}
-        </button>
-      </article>
+    {#if !desktopRuntime}
+      <section class="setup-options" aria-label="Workspace choices">
+        <article>
+          <HardDrive aria-hidden="true" size={24} strokeWidth={1.5} />
+          <h2>Browser workspace</h2>
+          <p>Works across modern browsers. Export regularly for a portable backup.</p>
+          <button class="primary-button" disabled={busy} onclick={createBrowserWorkspace}>
+            {busy ? 'Creating…' : 'Create workspace'}
+          </button>
+        </article>
 
-      <article>
-        <FolderOpen aria-hidden="true" size={24} strokeWidth={1.5} />
-        <h2>Connect a folder</h2>
-        <p>
-          Chromium desktop only. Choose a Dusori folder, including one inside an Obsidian vault.
-        </p>
-        <button
-          class="secondary-button"
-          disabled={busy || !('showDirectoryPicker' in globalThis)}
-          onclick={connectFolder}
-        >
-          Connect folder
-        </button>
-        <button class="text-button" disabled={busy} onclick={openObsidianGuide}>
-          Use Dusori with Obsidian
-        </button>
-      </article>
-    </section>
+        <article>
+          <FolderOpen aria-hidden="true" size={24} strokeWidth={1.5} />
+          <h2>Connect a folder</h2>
+          <p>
+            Chromium desktop only. Choose a Dusori folder, including one inside an Obsidian vault.
+          </p>
+          <button
+            class="secondary-button"
+            disabled={busy || !('showDirectoryPicker' in globalThis)}
+            onclick={connectFolder}
+          >
+            Connect folder
+          </button>
+          <button class="text-button" disabled={busy} onclick={openObsidianGuide}>
+            Use Dusori with Obsidian
+          </button>
+        </article>
+      </section>
+    {/if}
 
     {#if obsidianGuideOpen}
       <dialog
@@ -934,11 +1123,13 @@
       </dialog>
     {/if}
 
-    <label class="import-link" id="workspace-import">
-      <Upload aria-hidden="true" size={17} />
-      Import an exported workspace
-      <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
-    </label>
+    {#if !desktopRuntime}
+      <label class="import-link" id="workspace-import">
+        <Upload aria-hidden="true" size={17} />
+        Import an exported workspace
+        <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
+      </label>
+    {/if}
 
     {#if error}<p class="message error" role="alert">{error}</p>{/if}
     <p class="setup-footnote">
@@ -953,13 +1144,13 @@
     class="workbench"
   >
     <nav
-      bind:this={railElement}
+      bind:this={navigationElement}
       class:open={mobileNavOpen}
-      class="rail"
+      class="studio-header"
       id="workspace-navigation"
-      aria-label="Workspace"
+      aria-label="Dusori learning studio"
     >
-      <div class="rail-brand">
+      <div class="studio-brand">
         <span class="brand-symbol" aria-hidden="true">
           <img
             class="brand-mark-light"
@@ -978,89 +1169,80 @@
         </span>
         <span>Dusori</span>
         <button
-          bind:this={railCloseButton}
-          class="rail-close"
+          bind:this={navigationCloseButton}
+          class="studio-close"
           aria-label="Close workspace navigation"
           onclick={dismissMobileNav}
         >
           <X aria-hidden="true" size={20} />
         </button>
       </div>
-      <div class="rail-section">
-        <p>Workspace</p>
+      <div class="studio-section">
+        <p>Learning studio</p>
         <button
           class:active={workspaceView === 'today'}
-          class="rail-link"
+          class="studio-link"
           disabled={!selectedSlug}
           title={selectedSlug ? undefined : unlockHint}
           onclick={() => openToday()}
         >
           <BookOpen aria-hidden="true" size={18} />
-          Today
+          Learn
         </button>
         <button
-          class:active={workspaceView === 'research'}
-          class="rail-link research-link"
+          class:active={workspaceView === 'sources'}
+          class="studio-link"
           disabled={!selectedSlug}
           title={selectedSlug ? undefined : unlockHint}
-          onclick={() => openResearch()}
+          onclick={() => openSources()}
         >
-          <Search aria-hidden="true" size={18} />
-          Research
-        </button>
-        <button
-          class:active={workspaceView === 'roadmap'}
-          class="rail-link"
-          disabled={!selectedSlug}
-          title={selectedSlug ? undefined : unlockHint}
-          onclick={() => openRoadmap()}
-        >
-          <ListChecks aria-hidden="true" size={18} />
-          Roadmap
+          <Library aria-hidden="true" size={18} />
+          <span class="studio-link-label">Sources</span>
+          <span class="nav-count" aria-label={`${savedSourceCount} saved sources`}
+            >{savedSourceCount}</span
+          >
         </button>
         <button
           class:active={workspaceView === 'graph'}
-          class="rail-link"
+          class="studio-link"
           disabled={!workspace.topics.length}
           title={workspace.topics.length ? undefined : unlockHint}
           onclick={() => openGraph()}
         >
-          <Share2 aria-hidden="true" size={18} />
-          Graph
+          <Map aria-hidden="true" size={18} />
+          Map
         </button>
         <button
-          class:active={workspaceView === 'insights'}
-          class="rail-link"
-          disabled={!workspace.topics.length}
-          title={workspace.topics.length ? undefined : unlockHint}
-          onclick={() => openInsights()}
+          class:active={workspaceView === 'settings'}
+          class="studio-link"
+          onclick={() => openSettings()}
         >
-          <Activity aria-hidden="true" size={18} />
-          Insights
+          <Settings aria-hidden="true" size={18} />
+          Settings
         </button>
         {#if !selectedSlug}
-          <p class="rail-hint">{unlockHint}</p>
+          <p class="studio-hint">{unlockHint}</p>
         {/if}
       </div>
-      <div class="rail-section topic-list">
+      <div class="studio-section topic-list">
         <p>Topics</p>
         {#each workspace.topics as topic (topic.slug)}
           <button
             class:active={topic.slug === selectedSlug}
-            class="rail-link"
+            class="studio-link"
             title={topic.title}
             onclick={() => openTopic(topic.slug)}
           >
             <FileText aria-hidden="true" size={18} />
-            <span class="rail-link-label">{topic.title}</span>
+            <span class="studio-link-label">{topic.title}</span>
           </button>
         {/each}
-        <button class:active={creatingTopic} class="rail-link new-topic" onclick={startNewTopic}>
+        <button class:active={creatingTopic} class="studio-link new-topic" onclick={startNewTopic}>
           <Plus aria-hidden="true" size={18} />
-          <span class="rail-link-label">New topic</span>
+          <span class="studio-link-label">New topic</span>
         </button>
       </div>
-      <div class="rail-meta">
+      <div class="studio-meta">
         <span>{storageLabel}</span>
         <span>{online ? 'Online · local data' : 'Offline · ready'}</span>
       </div>
@@ -1068,7 +1250,7 @@
 
     {#if mobileNavOpen}
       <button
-        class="rail-backdrop"
+        class="studio-backdrop"
         aria-label="Close workspace navigation"
         onclick={dismissMobileNav}
       ></button>
@@ -1089,14 +1271,20 @@
         <div>
           <p class="path-label">
             {workspaceView === 'today'
-              ? 'Today · local activity'
-              : workspaceView === 'research'
-                ? 'Research · automatic discovery'
-                : workspaceView === 'graph'
-                  ? 'Graph · portable relationships'
-                  : workspaceView === 'insights'
-                    ? 'Insights · local evidence'
-                    : notePath || 'Workspace ready'}
+              ? 'Learn · your next step'
+              : workspaceView === 'sources'
+                ? `Sources · ${savedSourceCount} saved`
+                : workspaceView === 'research'
+                  ? 'Learn · find sources'
+                  : workspaceView === 'graph'
+                    ? 'Map · galaxy and outline'
+                    : workspaceView === 'insights'
+                      ? 'Learn · evidence and reflection'
+                      : workspaceView === 'roadmap'
+                        ? 'Learn · your path'
+                        : workspaceView === 'settings'
+                          ? 'Settings · workspace controls'
+                          : notePath || 'Workspace ready'}
           </p>
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
@@ -1122,8 +1310,55 @@
         </div>
       </header>
 
-      {#if selectedSlug}
-        {#if workspaceView === 'note'}
+      {#if selectedSlug && storage && workspaceView !== 'settings'}
+        <TopicAsk
+          {storage}
+          topicSlug={selectedSlug}
+          topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
+            selectedSlug}
+          onOpen={(path) => void openGraphDocument(path)}
+        />
+      {/if}
+
+      {#if workspaceView === 'settings'}
+        <AppSettings
+          storageKind={storage?.kind ?? 'unknown'}
+          {storageLabel}
+          {companionStatus}
+          {online}
+          {busy}
+          hasTopic={Boolean(selectedSlug)}
+          hasUnsavedWrites={editingNote || Boolean(conflict) || busy}
+          onExportWorkspace={() => void downloadWorkspace()}
+          onExportTopic={() => void downloadTopic()}
+          onImportWorkspace={(event) => void uploadWorkspace(event)}
+        />
+      {:else if selectedSlug}
+        {#if workspaceView === 'sources' && storage}
+          <section class="sources-studio" aria-labelledby="sources-view-title">
+            <header>
+              <div>
+                <p class="kicker">Your evidence shelf · {savedSourceCount} saved</p>
+                <h1 id="sources-view-title">Sources</h1>
+                <p>
+                  Everything you deliberately saved for this topic is here. Previewing a research
+                  result never adds it to this shelf.
+                </p>
+              </div>
+              <button class="primary-button" onclick={() => openResearch()}>
+                <Search aria-hidden="true" size={18} /> Find sources
+              </button>
+            </header>
+            <SourceLibrary
+              {storage}
+              topicSlug={selectedSlug}
+              companion={companionClient}
+              revision={artifactRevision}
+              onSourceSaved={refreshArtifacts}
+              onOpenSource={(path) => void openGraphDocument(path)}
+            />
+          </section>
+        {:else if workspaceView === 'note'}
           {#if editingNote}
             <section class="note-editor" aria-labelledby="note-editor-title">
               <div class="note-editor-heading">
@@ -1146,11 +1381,35 @@
               </div>
             </section>
           {:else}
-            <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
-            <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
-            <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
-              <MarkdownView content={noteContent} />
-            </div>
+            {#if notePath.includes('/Sources/items/')}
+              <article class="reading-room" aria-labelledby="reading-room-title">
+                <header>
+                  <div>
+                    <p class="kicker">Saved source · local reading copy</p>
+                    <h1 id="reading-room-title">Reading room</h1>
+                  </div>
+                  <div class="reading-room-actions">
+                    <button class="primary-button" onclick={() => void annotateCurrentSource()}>
+                      <Pencil aria-hidden="true" size={17} /> Annotate in a study note
+                    </button>
+                    <button class="secondary-button" onclick={() => openSources()}
+                      >All sources</button
+                    >
+                  </div>
+                </header>
+                <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
+                <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
+                <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
+                  <MarkdownView content={noteContent} />
+                </div>
+              </article>
+            {:else}
+              <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
+              <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
+              <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
+                <MarkdownView content={noteContent} />
+              </div>
+            {/if}
           {/if}
         {:else if workspaceView === 'graph' && storage}
           <KnowledgeGraph {storage} onOpen={(path) => void openGraphDocument(path)} />
@@ -1166,6 +1425,7 @@
               autoStart={researchAutoStartSlug === selectedSlug}
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
               onArtifactSaved={refreshArtifacts}
+              onOpenSource={(path) => void openGraphDocument(path)}
             />
           {/key}
         {:else if workspaceView === 'insights' && storage && workspace}
@@ -1177,22 +1437,52 @@
             onOpenTopic={(slug) => openToday(slug)}
           />
         {:else if storage && workspace}
-          <LearningLoop
-            {storage}
-            {workspace}
-            ai={companionAiClient}
-            topicSlug={selectedSlug}
-            view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
-            revision={learningRevision}
-            onArtifactSaved={refreshArtifacts}
-            onOpenProposal={(proposal) => void openPendingProposal(proposal)}
-            onOpenRoadmap={(slug) => void openRoadmap(slug)}
-            onOpenResearch={(slug) => openResearch(slug)}
-            onOpenTopic={(slug) => openToday(slug)}
-            onOpenWorkspaceHealth={() => void openWorkspaceHealth()}
-            onRoadmapChanged={handleRoadmapChanged}
-            onStatus={announceStatus}
-          />
+          {#if workspaceView === 'today' && certificationSetupSlug === selectedSlug}
+            <section class="certification-setup" aria-labelledby="certification-setup-title">
+              <div>
+                <p class="kicker">Certification setup · no lookup made</p>
+                <h1 id="certification-setup-title">Add the exact official outline.</h1>
+                <p>
+                  Paste or import the certification owner's current outline. Dusori does not guess a
+                  code, silently substitute another exam, or contact a provider before consent.
+                </p>
+              </div>
+              <CurriculumImporter
+                {storage}
+                topicSlug={selectedSlug}
+                onRoadmapApplied={(content) => {
+                  certificationSetupSlug = '';
+                  showImportedRoadmap(content);
+                }}
+                onSourceSaved={refreshArtifacts}
+              />
+              <button
+                class="text-button"
+                onclick={() => {
+                  certificationSetupSlug = '';
+                  announceStatus('Official outline setup deferred. Your topic remains unchanged.');
+                }}>Not now</button
+              >
+            </section>
+          {:else}
+            <LearningLoop
+              {storage}
+              {workspace}
+              ai={companionAiClient}
+              topicSlug={selectedSlug}
+              view={workspaceView === 'roadmap' ? 'roadmap' : 'today'}
+              revision={learningRevision}
+              onArtifactSaved={refreshArtifacts}
+              onOpenProposal={(proposal) => void openPendingProposal(proposal)}
+              onOpenRoadmap={(slug) => void openRoadmap(slug)}
+              onOpenResearch={(slug) => openResearch(slug)}
+              onOpenInsights={() => openInsights()}
+              onOpenTopic={(slug) => openToday(slug)}
+              onOpenWorkspaceHealth={() => void openWorkspaceHealth()}
+              onRoadmapChanged={handleRoadmapChanged}
+              onStatus={announceStatus}
+            />
+          {/if}
         {/if}
       {:else}
         <section class="empty-topic" aria-labelledby="new-topic-title">
@@ -1212,6 +1502,23 @@
               void addTopic();
             }}
           >
+            <fieldset class="topic-kind">
+              <legend>What kind of learning is this?</legend>
+              <label>
+                <input type="radio" bind:group={topicKind} value="general" />
+                <span>
+                  <strong>General topic</strong>
+                  <small>Build an editable path from sources you choose.</small>
+                </span>
+              </label>
+              <label>
+                <input type="radio" bind:group={topicKind} value="certification" />
+                <span>
+                  <strong>Certification</strong>
+                  <small>Start from the exact official outline—never a guessed replacement.</small>
+                </span>
+              </label>
+            </fieldset>
             <label for="topic-title">Topic name</label>
             <div class="input-row">
               <input
@@ -1219,7 +1526,7 @@
                 bind:value={topicTitle}
                 required
                 maxlength="160"
-                placeholder="AI Fundamentals"
+                placeholder={topicKind === 'certification' ? 'AI-900' : 'AI Fundamentals'}
                 aria-describedby="topic-help"
               />
               <button class="primary-button" disabled={busy || !topicTitle.trim()}>
@@ -1227,7 +1534,9 @@
               </button>
             </div>
             <p id="topic-help">
-              Use a clear topic name. Research starts automatically after one-time provider consent.
+              {topicKind === 'certification'
+                ? 'Use the exact certification code. Dusori will not search, rename, or substitute it before you approve a provider.'
+                : 'Use a clear topic name. Research starts only after one-time provider consent.'}
             </p>
             {#if previousSlug}
               <button class="text-button" type="button" disabled={busy} onclick={cancelNewTopic}>
@@ -1302,7 +1611,13 @@
       </button>
       <section>
         <p class="kicker">Storage</p>
-        <h2>{storage?.kind === 'fsa' ? 'Connected folder' : 'Browser workspace'}</h2>
+        <h2>
+          {storage?.kind === 'tauri'
+            ? 'Desktop workspace'
+            : storage?.kind === 'fsa'
+              ? 'Connected folder'
+              : 'Browser workspace'}
+        </h2>
         <p>{storageLabel}</p>
       </section>
 
@@ -1430,6 +1745,23 @@
 {/if}
 
 <style>
+  .startup-state {
+    display: grid;
+    min-height: 100dvh;
+    align-content: center;
+    justify-items: center;
+    gap: var(--space-sm);
+    color: var(--color-muted);
+  }
+
+  .startup-state p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
   .setup-shell {
     width: min(100%, 82rem);
     min-height: 100dvh;
@@ -1540,7 +1872,7 @@
 
   .kicker,
   .path-label,
-  .rail-section > p {
+  .studio-section > p {
     margin: 0;
     color: var(--color-muted);
     font-family: var(--font-mono);
@@ -1572,7 +1904,7 @@
   .inspector-action,
   .icon-button,
   .mobile-menu,
-  .rail-link {
+  .studio-link {
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-sm);
     background: transparent;
@@ -1695,12 +2027,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .rail,
+  .studio-header,
   .inspector {
     display: none;
   }
 
-  .rail.open {
+  .studio-header.open {
     position: fixed;
     z-index: var(--z-modal);
     inset: 0 auto 0 0;
@@ -1713,7 +2045,7 @@
     box-shadow: 1rem 0 3rem color-mix(in srgb, var(--color-ink) 16%, transparent);
   }
 
-  .rail-backdrop {
+  .studio-backdrop {
     position: fixed;
     z-index: calc(var(--z-modal) - 1);
     inset: 0;
@@ -1793,7 +2125,7 @@
     text-align: start;
   }
 
-  .rail-brand {
+  .studio-brand {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
@@ -1802,7 +2134,7 @@
     font-weight: 600;
   }
 
-  .rail-close {
+  .studio-close {
     display: grid;
     min-width: 2.75rem;
     min-height: 2.75rem;
@@ -1815,15 +2147,15 @@
     place-items: center;
   }
 
-  .rail-section {
+  .studio-section {
     display: grid;
     gap: var(--space-xs);
     margin-block-start: var(--space-xl);
-    /* An auto track would grow to the longest topic name and push the rail over the canvas. */
+    /* An auto track would grow to the longest topic name and push the topic shelf over the canvas. */
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .rail-link {
+  .studio-link {
     display: flex;
     width: 100%;
     min-width: 0;
@@ -1837,47 +2169,50 @@
     text-decoration: none;
   }
 
-  .rail-link.active {
+  .studio-link.active {
     border-color: var(--color-rule);
     background: var(--color-paper);
   }
 
   /* Flex children shrink by default, so a long topic name took its overflow out of the icon as
    * well as the label and squashed an 18px mark to a sliver. Only the label may give ground. */
-  .rail-link > :global(svg) {
+  .studio-link > :global(svg) {
     flex: none;
   }
 
   /* A topic name can run to 160 characters; truncate in place instead of spilling over the
    * canvas. The full name stays in the button's title and in the graph artifact index. */
-  .rail-link-label {
+  .studio-link-label {
     overflow: hidden;
     min-width: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .rail-link.new-topic {
+  .studio-link.new-topic {
     color: var(--color-accent-text);
     font-weight: 700;
   }
 
-  .rail-link.research-link {
-    color: light-dark(oklch(45% 0.14 250), oklch(78% 0.1 245));
+  .nav-count {
+    min-width: 1.5rem;
+    margin-inline-start: auto;
+    padding-inline: var(--space-2xs);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: 999px;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-align: center;
   }
 
-  .rail-link.research-link.active {
-    border-color: color-mix(in srgb, currentcolor 40%, var(--color-rule));
-    background: color-mix(in srgb, currentcolor 8%, var(--color-paper));
-  }
-
-  .rail-hint {
+  .studio-hint {
     color: var(--color-muted);
     font-size: var(--text-xs);
     line-height: 1.45;
   }
 
-  .rail-meta {
+  .studio-meta {
     display: grid;
     gap: var(--space-xs);
     margin-block-start: auto;
@@ -1944,6 +2279,81 @@
     width: min(100%, 54rem);
     margin-inline: auto;
     padding: var(--space-2xl) var(--page-gutter);
+  }
+
+  .sources-studio {
+    width: min(100%, 66rem);
+    margin-inline: auto;
+    padding: var(--space-2xl) var(--page-gutter) var(--space-3xl);
+  }
+
+  .sources-studio > header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    padding-block-end: var(--space-xl);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .sources-studio h1 {
+    margin-block-start: var(--space-xs);
+    font-size: clamp(2.5rem, 7vw, 4.75rem);
+  }
+
+  .sources-studio header p:last-child {
+    margin-block-end: 0;
+    color: var(--color-muted);
+  }
+
+  .sources-studio .primary-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .sources-studio :global(.source-library) {
+    margin-block-start: var(--space-xl);
+  }
+
+  .reading-room {
+    width: min(100%, 62rem);
+    margin-inline: auto;
+    padding: var(--space-xl) var(--page-gutter) var(--space-3xl);
+  }
+
+  .reading-room > header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    padding-block-end: var(--space-lg);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .reading-room h1 {
+    margin-block-start: var(--space-xs);
+    font-size: var(--text-2xl);
+  }
+
+  .reading-room-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+  }
+
+  .reading-room-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .reading-room .note-sheet {
+    width: min(100%, 46rem);
+    padding-inline: 0;
   }
 
   .note-editor {
@@ -2020,6 +2430,71 @@
   .empty-topic form {
     max-width: 42rem;
     margin-block-start: var(--space-xl);
+  }
+
+  .topic-kind {
+    display: grid;
+    gap: var(--space-xs);
+    margin: 0 0 var(--space-lg);
+    padding: 0;
+    border: 0;
+  }
+
+  .topic-kind legend {
+    margin-block-end: var(--space-xs);
+    font-weight: 700;
+  }
+
+  .topic-kind label {
+    display: grid;
+    min-height: 4.5rem;
+    align-items: start;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    grid-template-columns: auto minmax(0, 1fr);
+    cursor: pointer;
+  }
+
+  .topic-kind input {
+    min-height: 0;
+    margin-block-start: 0.3rem;
+    accent-color: var(--color-accent);
+  }
+
+  .topic-kind strong,
+  .topic-kind small {
+    display: block;
+  }
+
+  .topic-kind small {
+    color: var(--color-muted);
+  }
+
+  .certification-setup {
+    display: grid;
+    width: min(100%, 58rem);
+    gap: var(--space-xl);
+    margin-inline: auto;
+    padding: var(--space-2xl) var(--page-gutter) var(--space-3xl);
+  }
+
+  .certification-setup > div:first-child {
+    padding-block-end: var(--space-xl);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .certification-setup h1 {
+    max-width: 14ch;
+    margin-block-start: var(--space-xs);
+    font-size: clamp(2.25rem, 7vw, 4.5rem);
+  }
+
+  .certification-setup > div:first-child > p:last-child {
+    color: var(--color-muted);
+    font-size: var(--text-md);
   }
 
   .empty-topic label {
@@ -2124,7 +2599,7 @@
     .inspector-action:hover,
     .icon-button:hover,
     .mobile-menu:hover,
-    .rail-link:hover {
+    .studio-link:hover {
       background: var(--color-paper-2);
     }
 
@@ -2192,6 +2667,11 @@
     .setup-options h2 {
       margin-block-start: var(--space-sm);
     }
+
+    .sources-studio > header {
+      align-items: stretch;
+      flex-direction: column;
+    }
   }
 
   @media (min-width: 60rem) {
@@ -2231,22 +2711,95 @@
       border-inline-start: 0;
     }
 
-    .workbench {
-      grid-template-columns: 15rem minmax(0, 1fr) 20rem;
-    }
-
+    .workbench,
     .workbench.inspector-closed {
-      grid-template-columns: 15rem minmax(0, 1fr);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
     }
 
-    .rail,
-    .inspector {
+    .studio-header {
       position: sticky;
+      z-index: calc(var(--z-sticky) + 1);
       top: 0;
+      display: grid;
+      width: 100%;
+      height: auto;
+      min-height: 4.5rem;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-xs) var(--page-gutter);
+      border-inline-end: 0;
+      border-block-end: var(--rule-hair) solid var(--color-rule);
+      grid-template-columns: auto auto minmax(0, 1fr);
+      background: color-mix(in srgb, var(--color-paper) 96%, transparent);
+      box-shadow: none;
+    }
+
+    .studio-section {
       display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: var(--space-2xs);
+      margin-block-start: 0;
+    }
+
+    .studio-section > p {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .studio-link {
+      width: auto;
+      flex: none;
+      padding-inline: var(--space-sm);
+    }
+
+    .topic-list {
+      justify-content: flex-end;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .topic-list .studio-link-label {
+      max-width: 10rem;
+    }
+
+    .studio-meta {
+      display: none;
+    }
+
+    .canvas {
+      grid-row: 2;
+      grid-column: 1;
+    }
+
+    .canvas-bar {
+      position: static;
+    }
+
+    .canvas > :global(.topic-ask) {
+      top: 4.5rem;
+    }
+
+    .inspector {
+      position: fixed;
+      z-index: var(--z-modal);
+      inset: 0 0 0 auto;
+      display: flex;
+      width: min(88vw, 22rem);
       height: 100dvh;
       flex-direction: column;
+      gap: var(--space-xl);
+      padding: var(--space-xl) var(--space-lg);
+      border-inline-start: var(--rule-hair) solid var(--color-rule);
+      overflow-y: auto;
       background: var(--color-paper-2);
+      box-shadow: -1rem 0 3rem color-mix(in srgb, var(--color-ink) 16%, transparent);
     }
 
     /* Closed means hidden, not unmounted, so inspector drafts survive. */
@@ -2254,37 +2807,17 @@
       display: none;
     }
 
-    .rail {
-      width: auto;
-      inset: auto;
-      padding: var(--space-lg) var(--space-md);
-      border-inline-end: var(--rule-hair) solid var(--color-rule);
-      box-shadow: none;
-    }
-
     .mobile-menu {
       display: none;
     }
 
-    .rail-close,
-    .rail-backdrop,
-    .inspector-backdrop,
-    .inspector-close {
+    .studio-close,
+    .studio-backdrop {
       display: none;
     }
 
-    .inspector {
-      width: auto;
-      inset: auto;
-      gap: var(--space-xl);
-      padding: var(--space-xl) var(--space-lg);
-      border-inline-start: var(--rule-hair) solid var(--color-rule);
-      overflow-y: auto;
-      box-shadow: none;
-    }
-
     .mobile-status {
-      inset-inline-end: calc(20rem + var(--space-md));
+      inset-inline-end: var(--space-md);
     }
   }
 </style>

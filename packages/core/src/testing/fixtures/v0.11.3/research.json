@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "topicSlug": "legacy-topic",
+  "dismissed": [
+    {
+      "key": "legacy:dismissed",
+      "title": "Dismissed result",
+      "at": "2026-07-20T12:00:00.000Z",
+      "futureDismissedField": "keep"
+    }
+  ],
+  "seen": [
+    {
+      "at": "2026-07-20T12:00:00.000Z",
+      "key": "legacy:seen",
+      "futureSeenField": "keep"
+    }
+  ],
+  "runs": [
+    {
+      "at": "2026-07-20T12:00:00.000Z",
+      "searchText": "legacy topic",
+      "providers": [
+        {
+          "id": "wikipedia",
+          "label": "Wikipedia",
+          "outcome": "found",
+          "count": 1,
+          "futureProviderField": "keep"
+        }
+      ],
+      "newKeys": 1,
+      "futureRunField": "keep"
+    }
+  ],
+  "futureResearchField": { "keep": true }
+}

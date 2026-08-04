@@ -69,11 +69,14 @@ const unavailable = 'AI ranking could not be reached through the companion.';
 export function createCompanionAiClient(options: CompanionClientOptions): CompanionAiClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
-  const authorization = { Authorization: `Bearer ${options.token}` };
+  const authorization: Record<string, string> = options.token
+    ? { Authorization: `Bearer ${options.token}` }
+    : {};
 
   async function readJson(path: string, init?: RequestInit): Promise<unknown> {
     const response = await fetchImpl(`${base}${path}`, {
       ...init,
+      credentials: 'same-origin',
       headers: { ...authorization, 'Content-Type': 'application/json' },
     }).catch(() => null);
     if (!response?.ok) throw new CompanionFetchError(unavailable, 'ai-failed');

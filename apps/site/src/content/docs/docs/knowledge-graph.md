@@ -1,60 +1,37 @@
 ---
-title: Portable knowledge graph
-description: How Dusori maps local Markdown and Obsidian wikilinks without a graph database.
+title: Map and Outline
+description: Explore a galaxy or linear outline derived from portable local files.
 ---
 
-Dusori’s graph is a view of the workspace, not a second storage system. **No graph database** is created, no server receives the graph, and no proprietary file is required to reconstruct it.
+Choose **Map** in the primary navigation. It offers two ways to inspect the same workspace:
+
+- **Galaxy** is an explorable constellation of topics, notes, sources, and resolved wikilinks.
+- **Outline** is a linear, keyboard- and screen-reader-friendly hierarchy with the same artifacts and actions.
+
+Neither view stores a graph database or modifies learning progress.
 
 ## What becomes a node
 
-- `Home.md` is the workspace center.
-- Each topic’s `Overview.md` is a topic center.
-- Roadmaps, learning preferences, notes, dated updates, and readable source files are artifacts around that topic.
+- The workspace and each topic are structural centers.
+- Roadmaps, learning preferences, notes, dated updates, syntheses, and readable sources are artifacts.
+- `[[wikilinks]]` become edges when they resolve to one exact file.
+- Backlinks are those resolved edges read in reverse.
+- `tags:` frontmatter and inline `#tags` are derived on read and can filter the view.
 
-The graph uses normalized relative file paths as stable node IDs. Labels come from Markdown frontmatter, then the first heading, then the filename.
+Graph coordinates, zoom, filters, and display preferences stay in app-local UI state, outside the portable workspace. The same files can be used in Obsidian without a Dusori plugin.
 
-## What becomes an edge
+## Explore the galaxy
 
-- Topic containment connects an overview to the files carried by that topic.
-- Obsidian-style `[[wikilinks]]` connect the source file to the resolved target.
-- Links that cannot be resolved stay visible as explicit workspace-health issues; Dusori does not invent a destination.
+Use pointer, wheel, touch, or the keyboard-operable controls to pan and zoom. Link length and spacing change the view only. Search the artifact finder, filter by kind or tag, and open the original file from a result.
 
-## Search, backlinks, and health
+The deterministic initial layout means the same file relationships begin from the same geometry. A local force pass makes dense areas readable; it does not write positions to disk.
 
-The inspector's **Search workspace** action scans readable Markdown and text in the current session. Every query word must match; case and accents do not affect matching. Dusori stores neither an index nor query history and makes no network request.
+## Use Outline for precision
 
-Backlinks reverse the graph's resolved `links` edges for the current document. **Workspace health** refreshes that same graph and adds source consistency checks: invalid or missing manifests, tracked source files that are missing, and untracked files under `Sources/items/`. Inspection is read-only. An invalid manifest stays exactly where it is until you choose how to recover it.
+Outline lists topics and their artifacts without requiring spatial navigation. Use it when you want a predictable reading order, a compact audit of the workspace, or an accessible alternative to the galaxy.
 
-## Open a document
+## Link health
 
-Choose **Graph** in the workspace rail. A compact ledger reports notes, sources, resolved wikilinks, and unresolved links before the constellation. The graph is paired with an accessible artifact finder: search by title, filter notes, sources, or updates, then select an artifact to open the original Markdown or text file in Dusori. Search results, backlinks, and actionable health issues open the same exact file paths.
+The health ledger counts notes, sources, resolved wikilinks, and unresolved links. It also validates source manifests and the proposal ledger. Refreshing health is read-only.
 
-The constellation scales with workspace size and orders topics by their wikilink affinity. The layout remains deterministic and browser-local and writes no coordinates into your workspace, so opening the same folder in Obsidian remains clean.
-
-## Hubs and focus
-
-Notes touched by many wikilinks are hubs, marked with a marigold ring. Select a node to dim what it is not connected to and open the selected artifact directly; the same path works from the keyboard.
-
-## Adjust the view
-
-Zoom with the mouse wheel or a trackpad pinch, drag the background to pan, and open **View controls** on the stage for the same actions as buttons and sliders: zoom in and out, **Link length**, **Spacing**, and **Fit view**. Labels appear progressively as you zoom in, and hovering a node highlights its direct connections.
-
-## Arrange, filter, and color
-
-Drag a node to place it. It stays where you drop it instead of drifting back, and its neighbors settle around the new position. A focused node also moves from the keyboard: arrow keys nudge it, and Shift with an arrow key takes a larger step. **Release pins** hands every placed node back to the layout.
-
-**Show on the graph** filters the constellation by artifact kind — Notes, Sources, Updates, Documents, and Meta for roadmaps and learning preferences — and **Hide orphans** removes artifacts with no wikilinks. The workspace center and topic centers always stay visible so the constellation keeps its shape, and the panel counts what survives the filter.
-
-**Color by** switches the dots between **Kind**, the default, and **Topic**, which gives each topic its own hue with a legend beside the control. Topic hues are derived from the topic name, so the same workspace always draws the same colors.
-
-The **Artifact finder** beside the stage searches and narrows within whatever the graph is currently drawing, so hiding a kind on the stage also removes it from the list. The two work in layers: the graph filter decides what exists on screen, the finder helps you locate something inside it.
-
-Zoom, pan, sliders, filters, and the color choice are local view settings; they never touch your files. They persist in this browser only — placed nodes last for the session — and the settled layout stays deterministic for the same workspace and settings.
-
-## Portability and privacy
-
-Exporting or connecting the workspace already carries everything needed to rebuild the graph. The graph works offline after the app is loaded and does not require an account, plugin, telemetry endpoint, or AI model.
-
-## Insights from the same files
-
-**Insights** is a separate local projection of the same graph, roadmaps, manifests, and dated updates. It shows a fourteen-day activity pulse, objective completion, artifact mix, link health, topic depth, highly connected artifacts, and source provenance. Dusori does not persist an analytics index, estimate study time, invent a score, or send these signals away.
+Dusori can create the missing file named by one exact unresolved wikilink only after you choose that repair. It never rewrites an existing note to make a link work, and ambiguous links remain unresolved.

@@ -13,11 +13,16 @@ import { researchRoutes, type ResearchRoutesOptions } from './routes/research.js
 import { workspaceRoutes } from './routes/workspace.js';
 import { companionVersion } from './version.js';
 
+const sessionCookieName = 'dusori_session';
+
 export interface ServerOptions {
+  allowedOrigins?: readonly string[];
+  /** @deprecated Prefer allowedOrigins so every permitted origin is explicit. */
+  hostedOrigin?: string;
   root?: string;
+  serveStatic?: boolean;
   staticDirectory?: string;
   token: string;
-  hostedOrigin?: string;
   research?: ResearchRoutesOptions;
   ai?: AiRoutesOptions;
 }
@@ -27,21 +32,42 @@ function bearerToken(header: string | undefined): string | null {
   return match?.[1] ?? null;
 }
 
+function cookieToken(header: string | undefined): string | null {
+  for (const item of header?.split(';') ?? []) {
+    const [name, ...value] = item.trim().split('=');
+    if (name !== sessionCookieName) continue;
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function sessionCookie(token: string, secure: boolean): string {
+  return [
+    `${sessionCookieName}=${encodeURIComponent(token)}`,
+    'HttpOnly',
+    'Path=/',
+    'SameSite=Strict',
+    ...(secure ? ['Secure'] : []),
+  ].join('; ');
+}
+
 export async function createServer(options: ServerOptions): Promise<FastifyInstance> {
   const server = Fastify({ logger: false });
   const startedAt = Date.now();
   const root = options.root ? await canonicalRoot(options.root) : null;
   const hostedOrigin = options.hostedOrigin ?? 'https://udhawan97.github.io';
+  const allowedOrigins = new Set(options.allowedOrigins ?? [hostedOrigin]);
+  const allowSessionCookie = options.serveStatic !== false;
 
   await server.register(fastifyCors, {
     allowedHeaders: ['Authorization', 'Content-Type'],
     methods: ['GET', 'POST', 'OPTIONS'],
     origin(origin, callback) {
-      if (
-        !origin ||
-        origin === hostedOrigin ||
-        /^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u.test(origin)
-      ) {
+      if (!origin || allowedOrigins.has(origin)) {
         callback(null, true);
         return;
       }
@@ -55,11 +81,13 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
     if (!request.url.startsWith('/api/')) return;
     const origin = request.headers.origin;
     const ownOrigin = request.headers.host ? `http://${request.headers.host}` : null;
-    if (origin && origin !== hostedOrigin && origin !== ownOrigin) {
+    if (origin && !allowedOrigins.has(origin) && origin !== ownOrigin) {
       await reply.code(403).send({ error: 'Origin is not allowed.' });
       return reply;
     }
-    if (bearerToken(request.headers.authorization) !== options.token) {
+    const bearer = bearerToken(request.headers.authorization);
+    const cookie = allowSessionCookie ? cookieToken(request.headers.cookie) : null;
+    if (bearer !== options.token && cookie !== options.token) {
       await reply.code(401).send({ error: 'A valid session token is required.' });
       return reply;
     }
@@ -81,6 +109,14 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
   await server.register(researchRoutes, options.research ?? {});
   await server.register(aiRoutes, options.ai ?? {});
 
+  if (options.serveStatic === false) {
+    server.get('/', async () => ({
+      apiOnly: true,
+      message: 'Dusori companion API is running on loopback.',
+    }));
+    return server;
+  }
+
   const staticDirectory =
     options.staticDirectory ?? resolve(import.meta.dirname, `../public${appBasePath}`);
   try {
@@ -91,9 +127,10 @@ export async function createServer(options: ServerOptions): Promise<FastifyInsta
       wildcard: false,
     });
     server.get(`${appBasePath}/*`, async (_request, reply) => reply.sendFile('index.html'));
-    server.get('/', async (_request, reply) =>
-      reply.redirect(`${appBasePath}/?token=${encodeURIComponent(options.token)}`),
-    );
+    server.get('/', async (request, reply) => {
+      reply.header('Set-Cookie', sessionCookie(options.token, request.protocol === 'https'));
+      return reply.redirect(`${appBasePath}/`);
+    });
   } catch {
     server.get('/', async () => ({
       message: 'Dusori app assets are not built. Run pnpm build first.',

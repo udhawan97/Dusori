@@ -9,22 +9,15 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.11.3';
+const releaseVersion = '0.12.0';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
-const gettingStartedHref = `${docsHref}getting-started/`;
-const browserSupportHref = `${docsHref}browser-support/`;
-const learningLoopHref = `${docsHref}learning-loop/`;
-const graphHref = `${docsHref}knowledge-graph/`;
-const workspacesHref = `${docsHref}workspaces/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
 const releaseHref = `${githubHref}/releases/tag/v${releaseVersion}`;
-const sourceZipHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
-const licenseHref = `${githubHref}/blob/main/LICENSE`;
-const graphShotHref = `${projectBasePath}/app-graph.png`;
-const researchShotHref = `${projectBasePath}/app-research.png`;
-const workspaceShotHref = `${projectBasePath}/app-workspace.png`;
-const curriculumShotHref = `${projectBasePath}/app-curriculum.png`;
+const sourceHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
+const learnShot = `${projectBasePath}/app-learn.png`;
+const readerShot = `${projectBasePath}/app-reader.png`;
+const mapShot = `${projectBasePath}/app-map.png`;
 const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
 ---
 
@@ -43,473 +36,378 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <link rel="canonical" href={hostedProjectUrl} />
     <meta
       name="description"
-      content="Tell Dusori what you want to understand. It researches the sources you allow, keeps the evidence trail, and stays entirely on your device."
+      content="Dusori is a private learning studio that finds permitted sources, keeps what you save, guides the next step, and maps your local notes."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Dusori — research it, understand it, keep the files" />
+    <meta property="og:title" content="Dusori — one calm place to learn a hard topic" />
     <meta
       property="og:description"
-      content="A private research workbench built from ordinary files. It finds sources, keeps the evidence trail, and teaches from what you approve. No account, no telemetry, useful without AI."
+      content="Continue, read, annotate, explicitly mark learned or review, then see the map. No account, no telemetry, ordinary local files."
     />
     <meta property="og:url" content={hostedProjectUrl} />
     <meta property="og:image" content={socialImageHref} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Dusori research view on a dark local learning desk" />
+    <meta property="og:image:alt" content="Dusori private learning studio" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Dusori — research it, understand it, keep the files</title>
+    <title>Dusori — one calm place to learn a hard topic</title>
   </head>
   <body>
     <svg class="icon-defs" aria-hidden="true" focusable="false">
       <defs>
-        <symbol id="icon-arrow" viewBox="0 0 24 24">
-          <path d="M5 12h13M14 7l5 5-5 5"></path>
-        </symbol>
-        <symbol id="icon-browser" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-          <path d="M3 8h18M6 6h.01M9 6h.01"></path>
-        </symbol>
-        <symbol id="icon-download" viewBox="0 0 24 24">
-          <path d="M12 3v12M7 10l5 5 5-5M4 19h16"></path>
-        </symbol>
-        <symbol id="icon-terminal" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-          <path d="m7 9 3 3-3 3M13 15h4"></path>
-        </symbol>
-        <symbol id="icon-book" viewBox="0 0 24 24">
-          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5z"></path>
-          <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"></path>
-        </symbol>
-        <symbol id="icon-source" viewBox="0 0 24 24">
-          <path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h4"></path>
-        </symbol>
-        <symbol id="icon-review" viewBox="0 0 24 24">
-          <path d="M6 5h12M6 12h8M6 19h5"></path>
-          <path d="m16 16 2 2 4-5"></path>
-        </symbol>
-        <symbol id="icon-graph" viewBox="0 0 24 24">
-          <circle cx="6" cy="17" r="2"></circle>
-          <circle cx="12" cy="6" r="2"></circle>
-          <circle cx="18" cy="16" r="2"></circle>
-          <path d="m7 15 4-7m2 0 4 6M8 17l8-1"></path>
-        </symbol>
-        <symbol id="icon-lock" viewBox="0 0 24 24">
-          <rect x="4" y="10" width="16" height="11" rx="2"></rect>
-          <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path>
-        </symbol>
-        <symbol id="icon-folder" viewBox="0 0 24 24">
-          <path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
-          ></path>
-        </symbol>
-        <symbol id="icon-pdf" viewBox="0 0 24 24">
-          <path d="M6 3h8l4 4v14H6zM14 3v4h4"></path>
-          <path
-            d="M8.5 16v-4h1.2a1.2 1.2 0 0 1 0 2.4H8.5m4 1.6v-4h1.1a2 2 0 0 1 0 4zm4 0v-4h2.5m-2.5 2h2"
-          ></path>
-        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13m-5-5 5 5-5 5"></path></symbol>
+        <symbol id="i-browser" viewBox="0 0 24 24"
+          ><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 8h18M6 6h.01M9 6h.01"
+          ></path></symbol
+        >
+        <symbol id="i-download" viewBox="0 0 24 24"
+          ><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"></path></symbol
+        >
+        <symbol id="i-book" viewBox="0 0 24 24"
+          ><path
+            d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5zm16 0A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5z"
+          ></path></symbol
+        >
+        <symbol id="i-source" viewBox="0 0 24 24"
+          ><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6m-6 4h4"></path></symbol
+        >
+        <symbol id="i-map" viewBox="0 0 24 24"
+          ><circle cx="6" cy="17" r="2"></circle><circle cx="12" cy="6" r="2"></circle><circle
+            cx="18"
+            cy="16"
+            r="2"></circle><path d="m7 15 4-7m2 0 4 6M8 17l8-1"></path></symbol
+        >
+        <symbol id="i-lock" viewBox="0 0 24 24"
+          ><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"
+          ></path></symbol
+        >
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></symbol>
+        <symbol id="i-update" viewBox="0 0 24 24"
+          ><path d="M20 7v5h-5M4 17v-5h5"></path><path
+            d="M6.1 8A7 7 0 0 1 18 6l2 6M17.9 16A7 7 0 0 1 6 18l-2-6"></path></symbol
+        >
       </defs>
     </svg>
 
     <header class="site-nav">
-      <a class="nav-brand" href={`${projectBasePath}/`} aria-label="Dusori home">
+      <a class="brand" href={`${projectBasePath}/`} aria-label="Dusori home">
         <picture>
           <source
             media="(prefers-color-scheme: dark)"
             srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
           />
-          <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="28" height="28" />
+          <img src={`${projectBasePath}/brand/dusori-mark.svg`} alt="" width="30" height="30" />
         </picture>
         <span>Dusori</span>
       </a>
-      <a class="button button--nav" href={appHref}>
-        <svg aria-hidden="true"><use href="#icon-browser"></use></svg>
-        Open app
+      <nav aria-label="Primary">
+        <a href={docsHref}>Docs</a>
+      </nav>
+      <a class="button button--small" href={appHref}>
+        <svg aria-hidden="true"><use href="#i-browser"></use></svg> Open app
       </a>
     </header>
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <div class="hero-signature">
-            <picture class="hero-mark">
-              <source
-                media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)"
-                srcset={`${projectBasePath}/brand/dusori-mark-reversed.svg`}
-              />
-              <source
-                media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: light)"
-                srcset={`${projectBasePath}/brand/dusori-mark.svg`}
-              />
-              <source
-                media="(prefers-color-scheme: dark)"
-                srcset={`${projectBasePath}/brand/dusori-mark-animated-reversed.svg`}
-              />
-              <img
-                src={`${projectBasePath}/brand/dusori-mark-animated.svg`}
-                alt="Dusori ensō, rangoli, and katana mark"
-                width="80"
-                height="80"
-              />
-            </picture>
-            <a href={releaseHref}>v{releaseVersion} available now</a>
-          </div>
-          <h1 id="hero-title">Tell it what you<br />want to understand.</h1>
-          <p class="hero-lede">
-            Dusori searches the sources you allow, keeps the evidence trail, and turns what you
-            approve into a synthesis you can learn from — entirely on your device, in formats you
-            can open without Dusori.
+          <p class="eyebrow"><span>v{releaseVersion}</span> Private learning studio</p>
+          <h1 id="hero-title">A calm place for a difficult subject.</h1>
+          <p class="lede">
+            Dusori finds sources you permit, keeps only what you deliberately save, and gives you
+            one clear next step. Your reading, notes, progress, and map stay on your device.
           </p>
-          <div class="hero-actions">
-            <a class="button button--primary" href={appHref}>
-              <svg aria-hidden="true"><use href="#icon-browser"></use></svg>
-              Open Dusori
-            </a>
-            <a class="button button--secondary" href={sourceZipHref}>
-              <svg aria-hidden="true"><use href="#icon-download"></use></svg>
-              Download source ZIP
-            </a>
+          <div class="actions">
+            <a class="button button--primary" href={appHref}
+              ><svg aria-hidden="true"><use href="#i-browser"></use></svg> Open in browser</a
+            >
+            <a class="button" href="#downloads"
+              ><svg aria-hidden="true"><use href="#i-download"></use></svg> Download app</a
+            >
           </div>
-          <p class="hero-audience">
-            For people who need to check the answer, not just receive it — self-directed learners
-            who want the sources behind a claim, and researchers who need the provenance to hold up.
-          </p>
-          <p class="hero-trust">
-            No account · no telemetry · no hosted database · useful without AI
+          <p class="trust-line">
+            No account · no telemetry · no hosted workspace · useful without AI
           </p>
         </div>
-
-        <figure class="hero-proof">
+        <figure class="hero-figure">
           <img
-            src={researchShotHref}
-            alt="Dusori research view: one of seven providers allowed, quoted passages read from an approved source, and a per-topic freshness setting"
-            width="1280"
-            height="900"
+            src={learnShot}
+            alt="Dusori Learn view with one focused next step and four predictable destinations"
+            width="1440"
+            height="960"
             fetchpriority="high"
           />
           <figcaption>
-            <span>Real app · research mission</span>
-            <span>Browser workspace · private</span>
+            <span>Learn</span><span>One next step, derived from your files</span>
           </figcaption>
         </figure>
       </section>
 
-      <section class="start" id="start" aria-labelledby="start-title">
-        <header class="section-head">
-          <h2 id="start-title">Start where you are.</h2>
-          <p>
-            The browser is the simplest route. Download the source when you want the current release
-            on your own machine.
-          </p>
-        </header>
+      <section class="promise" aria-label="Dusori places">
+        <p>Four places. No mystery drawers.</p>
+        <dl>
+          <div><dt>Learn</dt><dd>Continue the topic.</dd></div>
+          <div><dt>Sources</dt><dd>Keep and read evidence.</dd></div>
+          <div><dt>Map</dt><dd>See galaxy or Outline.</dd></div>
+          <div><dt>Settings</dt><dd>Control files, privacy, updates.</dd></div>
+        </dl>
+      </section>
 
-        <div class="start-grid">
-          <article class="start-option start-option--featured">
-            <svg class="option-icon" aria-hidden="true"><use href="#icon-browser"></use></svg>
-            <div>
-              <h3>Use it in your browser</h3>
-              <p>
-                No terminal and no account. Where supported, install it from the browser for offline
-                use.
+      <section class="loop" id="how" aria-labelledby="loop-title">
+        <header class="section-heading">
+          <p class="eyebrow">The daily loop</p>
+          <h2 id="loop-title">From “I should study” to one honest action.</h2>
+          <p>Dusori can route the next step. It cannot claim you learned it.</p>
+        </header>
+        <ol class="loop-steps">
+          <li>
+            <span>01</span><div>
+              <h3>Continue</h3><p>
+                Resume the next unfinished objective, a ready source, or a due review.
               </p>
             </div>
-            <a class="option-link" href={appHref}>
-              Open app <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
-            </a>
-          </article>
-
-          <article class="start-option">
-            <svg class="option-icon" aria-hidden="true"><use href="#icon-download"></use></svg>
-            <div>
-              <h3>Download v{releaseVersion}</h3>
-              <p>Get the exact current source as a ZIP. Node.js 24 LTS is required to run it.</p>
-            </div>
-            <a class="option-link" href={sourceZipHref}>
-              Download ZIP <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
-            </a>
-          </article>
-
-          <article class="start-option">
-            <svg class="option-icon" aria-hidden="true"><use href="#icon-terminal"></use></svg>
-            <div>
-              <h3>Run it locally</h3>
-              <p>With Node.js 24, one command downloads and opens the current release.</p>
-            </div>
-            <a class="option-link" href="#run-locally">
-              See setup <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
-            </a>
-          </article>
-        </div>
-
-        <p class="package-note">
-          The npm companion now matches v{releaseVersion}. Run <code
-            >npx @udhawan97/dusori@latest</code
-          > to open the same current app without a global install.
-        </p>
-      </section>
-
-      <section class="tour" aria-labelledby="tour-title">
-        <header class="section-head section-head--wide">
-          <h2 id="tour-title">A desk that reads the evidence.</h2>
-          <p>
-            Dusori does not invent urgency or pretend you mastered something. It reads the files you
-            have, then gives you a clear next doorway.
-          </p>
-        </header>
-
-        <article class="tour-block tour-block--today">
-          <figure class="product-capture product-capture--wide">
-            <img
-              src={workspaceShotHref}
-              alt="Dusori Today view with evidence-backed learning and attention lanes"
-              width="1440"
-              height="960"
-              loading="lazy"
-            />
-          </figure>
-          <div class="capture-notes" aria-label="Today view details">
-            <div>
-              <svg aria-hidden="true"><use href="#icon-book"></use></svg>
-              <h3>Continue learning</h3>
-              <p>Resume a review, a ready source, or the next unfinished objective.</p>
-            </div>
-            <div>
-              <svg aria-hidden="true"><use href="#icon-review"></use></svg>
-              <h3>Needs attention</h3>
-              <p>See only decisions supported by current local evidence.</p>
-            </div>
-            <div>
-              <svg aria-hidden="true"><use href="#icon-lock"></use></svg>
-              <h3>Nothing silent</h3>
-              <p>Opening Today never changes progress or schedules a review.</p>
-            </div>
-          </div>
-          <a class="text-link" href={learningLoopHref}>How the learning loop works →</a>
-        </article>
-
-        <article class="tour-split">
-          <div class="tour-copy">
-            <svg class="tour-icon" aria-hidden="true"><use href="#icon-pdf"></use></svg>
-            <h2>A source becomes a roadmap—after you approve it.</h2>
-            <p>
-              Paste an outline or open an AWS Certification exam guide PDF. Dusori reads the file on
-              your device, fills the outline, and lets you edit the result before it writes the
-              roadmap.
-            </p>
-            <ul class="plain-list" role="list">
-              <li>PDF text stays on your device.</li>
-              <li>Scanned PDFs say when no text layer exists.</li>
-              <li>Preview comes before apply.</li>
-            </ul>
-            <a class="text-link" href={`${docsHref}curricula/`}>Read the curriculum guide →</a>
-          </div>
-          <figure class="product-capture product-capture--portrait">
-            <img
-              src={curriculumShotHref}
-              alt="Dusori curriculum preview showing Microsoft Learn roadmap items before the user applies them"
-              width="303"
-              height="729"
-              loading="lazy"
-            />
-            <figcaption>Real Microsoft guide preview · nothing applied yet</figcaption>
-          </figure>
-        </article>
-
-        <article class="tour-split tour-split--reverse">
-          <div class="tour-copy">
-            <svg class="tour-icon" aria-hidden="true"><use href="#icon-graph"></use></svg>
-            <h2>Your notes stay on speaking terms.</h2>
-            <p>
-              The graph comes from folders, Markdown, frontmatter, and wikilinks. Search it, filter
-              it, and find unresolved links—without creating a graph database you have to export
-              from later.
-            </p>
-            <ul class="plain-list" role="list">
-              <li>Backlinks reverse real resolved links.</li>
-              <li>Layout settings stay outside your workspace files.</li>
-              <li>The same Markdown works in Obsidian.</li>
-            </ul>
-            <a class="text-link" href={graphHref}>See the portable graph contract →</a>
-          </div>
-          <figure class="product-capture product-capture--graph">
-            <img
-              src={graphShotHref}
-              alt="Dusori knowledge constellation built from portable local artifacts"
-              width="2880"
-              height="1800"
-              loading="lazy"
-            />
-            <figcaption>Real graph view · files in, relationships out</figcaption>
-          </figure>
-        </article>
-      </section>
-
-      <section class="workflow" aria-labelledby="workflow-title">
-        <header class="section-head">
-          <h2 id="workflow-title">One loop, four honest steps.</h2>
-          <p>Each step leaves you with an ordinary file or an explicit decision.</p>
-        </header>
-        <ol class="steps">
-          <li>
-            <span class="step-number">1</span>
-            <h3>Name what you want to understand.</h3>
-            <p>Dusori opens a research mission for that topic and prepares its first scan.</p>
           </li>
           <li>
-            <span class="step-number">2</span>
-            <h3>Choose the evidence.</h3>
-            <p>
-              Providers stay off until you allow them, each naming what it sends. The trail records
-              what every provider returned — or failed to return.
-            </p>
+            <span>02</span><div>
+              <h3>Read</h3><p>
+                Open a source you deliberately saved. Previewing a result never adds it.
+              </p>
+            </div>
           </li>
           <li>
-            <span class="step-number">3</span>
-            <h3>Read what you kept.</h3>
-            <p>
-              Approved sources become verbatim quoted passages and a synthesis where every quoted
-              passage cites its source and thin evidence is marked as thin.
-            </p>
+            <span>03</span><div>
+              <h3>Annotate</h3><p>
+                Write beside the evidence in Markdown that remains useful outside Dusori.
+              </p>
+            </div>
           </li>
           <li>
-            <span class="step-number">4</span>
-            <h3>Learn from it, and keep it.</h3>
-            <p>
-              Build an optional interactive learning page, then keep everything as Markdown, JSON,
-              and HTML you can read anywhere.
-            </p>
+            <span>04</span><div>
+              <h3>Mark learned or review</h3><p>
+                Only your click changes the roadmap or review schedule.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span>05</span><div>
+              <h3>See what changed</h3><p>
+                The Map and Outline reflect the same files, links, sources, and tags.
+              </p>
+            </div>
           </li>
         </ol>
       </section>
 
-      <section class="ownership" aria-labelledby="ownership-title">
-        <div class="ownership-copy">
-          <svg class="tour-icon" aria-hidden="true"><use href="#icon-folder"></use></svg>
-          <h2 id="ownership-title">Your workspace stays useful without Dusori.</h2>
+      <section class="reader" aria-labelledby="reader-title">
+        <figure>
+          <img
+            src={readerShot}
+            alt="Dusori Reading room with a saved local source"
+            width="1440"
+            height="960"
+            loading="lazy"
+          />
+          <figcaption>Reading room · a local copy with provenance</figcaption>
+        </figure>
+        <div>
+          <p class="eyebrow">The evidence shelf</p>
+          <h2 id="reader-title">You always know what was saved.</h2>
           <p>
-            Browser storage is private to this site. Supported desktop browsers can connect one
-            folder you choose. ZIP import and export remain the universal way in and out.
+            Search results are candidates. <strong>Preview</strong> lets you inspect one;
+            <strong>Save source</strong> puts it on the shelf; <strong>Save & read</strong> opens its
+            local reading copy. The Sources count comes from the portable manifest—not from a transient
+            result list.
           </p>
-          <div class="ownership-links">
-            <a class="text-link" href={workspacesHref}>Workspace choices →</a>
-            <a class="text-link" href={browserSupportHref}>Browser support →</a>
-          </div>
+          <ul>
+            <li>
+              <svg aria-hidden="true"><use href="#i-check"></use></svg> Provider, URL, author, date, and
+              selection reason stay attached when available.
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="#i-check"></use></svg> Failed providers remain failures
+              in the research trail.
+            </li>
+            <li>
+              <svg aria-hidden="true"><use href="#i-check"></use></svg> A source does not become progress
+              until you say so.
+            </li>
+          </ul>
+          <a class="text-link" href={`${docsHref}sources/`}
+            >How sources work <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+          >
+        </div>
+      </section>
+
+      <section class="map" aria-labelledby="map-title">
+        <div>
+          <p class="eyebrow">Galaxy + Outline</p>
+          <h2 id="map-title">Zoom out without losing the path.</h2>
+          <p>
+            Explore an Obsidian-like constellation, then switch to the accessible linear Outline.
+            Both are derived from your folders, notes, sources, tags, and <code>[[wikilinks]]</code
+            >. No graph database sits between you and your files.
+          </p>
+          <a class="text-link" href={`${docsHref}knowledge-graph/`}
+            >Read the graph contract <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+          >
+        </div>
+        <figure>
+          <img
+            src={mapShot}
+            alt="Dusori Map with a galaxy view and matching linear outline"
+            width="1440"
+            height="960"
+            loading="lazy"
+          />
+          <figcaption>Map · the same knowledge in two views</figcaption>
+        </figure>
+      </section>
+
+      <section class="research" aria-labelledby="research-title">
+        <header class="section-heading">
+          <p class="eyebrow">Research with boundaries</p>
+          <h2 id="research-title">A capable researcher that shows its work.</h2>
+          <p>Each provider starts off. You see what it sends before the first request.</p>
+        </header>
+        <div class="research-ledger">
+          <article>
+            <span>Works directly</span><h3>Public knowledge</h3><p>
+              Microsoft Learn, Wikipedia, OpenAlex, GitHub, Stack Overflow, Hacker News, and npm.
+            </p>
+          </article>
+          <article>
+            <span>Local companion</span><h3>Broader discovery</h3><p>
+              arXiv, Reddit, general web search, and YouTube metadata through your API key or an
+              optional self-hosted fallback.
+            </p>
+          </article>
+          <article>
+            <span>Optional</span><h3>AI assistance</h3><p>
+              Local Ollama or your hosted-provider key. Model output is labeled; deterministic paths
+              remain.
+            </p>
+          </article>
+        </div>
+        <p class="legal-note">
+          Dusori does not bypass logins, paywalls, robots controls, or platform restrictions, and it
+          does not download YouTube media. Third-party terms and quotas still apply.
+          <a href={`${docsHref}research-providers/`}>Provider matrix →</a>
+        </p>
+      </section>
+
+      <section class="downloads" id="downloads" aria-labelledby="downloads-title">
+        <header class="section-heading">
+          <p class="eyebrow">Choose your door</p>
+          <h2 id="downloads-title">Browser, Mac, Windows, or source.</h2>
+          <p>
+            Desktop artifacts and checksums are listed together on the v{releaseVersion} release page.
+          </p>
+        </header>
+        <div class="download-grid">
+          <article class="download-card featured">
+            <svg aria-hidden="true"><use href="#i-browser"></use></svg>
+            <h3>Browser</h3><p>No account or terminal. Install as a PWA where supported.</p>
+            <a href={appHref}
+              >Open Dusori <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+          <article class="download-card">
+            <span class="platform">macOS</span><h3>Apple silicon</h3><p>
+              For M-series Macs. macOS 12 or newer.
+            </p>
+            <a href={releaseHref}
+              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+          <article class="download-card">
+            <span class="platform">macOS</span><h3>Intel</h3><p>
+              For Intel Macs. macOS 12 or newer.
+            </p>
+            <a href={releaseHref}
+              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+          <article class="download-card">
+            <span class="platform">Windows</span><h3>x64</h3><p>
+              Current-user installer for 64-bit Windows.
+            </p>
+            <a href={releaseHref}
+              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+          <article class="download-card code-card">
+            <span class="platform">Node.js 24</span><h3>
+              Local companion
+            </h3><pre><code>npx @udhawan97/dusori@latest</code></pre>
+            <a href={`${docsHref}getting-started/`}
+              >Setup guide <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+          <article class="download-card">
+            <span class="platform">Apache 2.0</span><h3>Source</h3><p>
+              Audit, change, or build the exact v{releaseVersion} tree.
+            </p>
+            <a href={sourceHref}
+              >Source ZIP <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            >
+          </article>
+        </div>
+        <aside class="warning">
+          <strong>First-launch warning</strong>
+          <p>
+            The v{releaseVersion} Mac and Windows installers are not Apple-notarized or Microsoft code-signed,
+            so Gatekeeper or SmartScreen may warn. Compare the download with
+            <code>SHA256SUMS.txt</code>. The separate in-app updater artifacts are signed by
+            Dusori's updater key.
+          </p>
+        </aside>
+      </section>
+
+      <section class="updates" aria-labelledby="updates-title">
+        <div class="update-mark"><svg aria-hidden="true"><use href="#i-update"></use></svg></div>
+        <div>
+          <p class="eyebrow">Desktop updates</p>
+          <h2 id="updates-title">Check. Download. Choose when to restart.</h2>
+          <p>
+            Settings can check GitHub on demand, or opt in to automatic checks and downloads at app
+            startup. Dusori verifies the update signature, shows the version and notes, then waits.
+            Nothing installs or relaunches until you choose <strong>Install and restart</strong>;
+            unsaved work blocks it.
+          </p>
+          <a class="text-link" href={`${docsHref}updates/`}
+            >Update and recovery guide <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+          >
+        </div>
+      </section>
+
+      <section class="ownership" aria-labelledby="ownership-title">
+        <div>
+          <p class="eyebrow">Portable by default</p>
+          <h2 id="ownership-title">The exit is the same door as the entrance.</h2>
+          <p>
+            Markdown, text, JSON, HTML, folders, and ZIPs. Use them in Obsidian, a text editor, or
+            your own tools.
+          </p>
         </div>
         <pre
-          aria-label="Dusori workspace file structure"><code>Dusori/
-├── Home.md
-├── dusori.json
-└── Topics/
-    └── your-topic/
-        ├── roadmap.md
-        ├── TUTOR.md
-        ├── Notes/
-        ├── Sources/
-        └── state.json</code></pre>
-      </section>
-
-      <section class="capabilities" aria-labelledby="capabilities-title">
-        <header class="section-head section-head--wide">
-          <h2 id="capabilities-title">The useful parts, in plain English.</h2>
-          <p>Everything below is in the current build. Optional network tools stay optional.</p>
-        </header>
-        <dl class="capability-ledger">
-          <div>
-            <dt>Research</dt>
-            <dd>
-              Asks before each provider can search, shows why each result surfaced, and keeps a
-              durable trail of every run — including the ones that failed.
-            </dd>
-          </div>
-          <div>
-            <dt>Synthesis</dt>
-            <dd>
-              Reads approved sources into verbatim quoted passages, then writes a cited synthesis
-              that marks what only one source claims.
-            </dd>
-          </div>
-          <div>
-            <dt>Learn</dt>
-            <dd>
-              Builds an optional self-contained learning page from those passages. Read it inside
-              Dusori, or open the file without Dusori.
-            </dd>
-          </div>
-          <div>
-            <dt>Keep a topic fresh</dt>
-            <dd>
-              Optional, per topic: re-scan when you open it after seven days, using only the
-              providers you already allowed. Nothing runs while Dusori is closed.
-            </dd>
-          </div>
-          <div>
-            <dt>Today</dt>
-            <dd>Opens with your research missions and the next evidence-backed action.</dd>
-          </div>
-          <div>
-            <dt>Review</dt>
-            <dd>Builds active-recall prompts from sources you approved.</dd>
-          </div>
-          <div>
-            <dt>Roadmaps</dt>
-            <dd>Turns outlines and supported exam-guide PDFs into reviewable Markdown plans.</dd>
-          </div>
-          <div>
-            <dt>Search + graph</dt>
-            <dd>Finds local text, tags, backlinks, hubs, and unresolved wikilinks.</dd>
-          </div>
-          <div>
-            <dt>Conflict safety</dt>
-            <dd>Proposes a new Markdown version when another editor changed the file first.</dd>
-          </div>
-          <div>
-            <dt>Portability</dt>
-            <dd>Imports and exports a whole workspace ZIP or one topic bundle.</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="final-cta" id="run-locally" aria-labelledby="final-title">
-        <div class="final-copy">
-          <h2 id="final-title">Take the browser door, or take the files.</h2>
-          <p>
-            Open Dusori immediately, or download v{releaseVersion} and run the same current app locally
-            with Node.js 24 LTS.
-          </p>
-          <div class="hero-actions">
-            <a class="button button--primary" href={appHref}>
-              <svg aria-hidden="true"><use href="#icon-browser"></use></svg>
-              Open app
-            </a>
-            <a class="button button--secondary" href={sourceZipHref}>
-              <svg aria-hidden="true"><use href="#icon-download"></use></svg>
-              Download source ZIP
-            </a>
-          </div>
-        </div>
-        <div class="run-command">
-          <p>
-            <svg aria-hidden="true"><use href="#icon-terminal"></use></svg>
-            With Node.js 24 LTS
-          </p>
-          <pre><code>npx @udhawan97/dusori@latest</code></pre>
-          <span
-            >Downloads and opens the current release. Nothing stays running after you close the
-            terminal.</span
-          >
-          <a class="text-link" href={gettingStartedHref}>Full setup guide →</a>
-        </div>
+          aria-label="Dusori workspace structure"><code>Topics/your-topic/
+├── roadmap.md
+├── Notes/
+├── Sources/
+│   ├── manifest.json
+│   └── items/
+├── research.json
+└── Updates/</code></pre>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span class="footer-brand">Dusori · Apache 2.0</span>
+      <div><strong>Dusori</strong><span>Your files stay yours.</span></div>
       <nav aria-label="Project">
-        <a href={docsHref}>Docs</a>
-        <a href={githubHref}>GitHub</a>
-        <a href={releaseHref}>v{releaseVersion}</a>
-        <a href={licenseHref}>License</a>
+        <a href={docsHref}>Docs</a><a href={githubHref}>GitHub</a><a href={releaseHref}
+          >v{releaseVersion}</a
+        ><a href={`${githubHref}/blob/main/LICENSE`}>Apache 2.0</a>
       </nav>
-      <span>Your files stay yours.</span>
     </footer>
   </body>
 </html>

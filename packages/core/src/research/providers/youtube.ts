@@ -1,5 +1,4 @@
 import { cappedMarkdown } from '../../sources/capped.js';
-import type { YouTubeTranscript } from '../companion.js';
 import type {
   ResearchCandidate,
   ResearchCapture,
@@ -8,29 +7,21 @@ import type {
 } from '../types.js';
 
 export const YOUTUBE_DISCLOSURE =
-  "Searching sends this topic's name and the objective's text to the Invidious instance you configured in the companion, through the local companion. Approving a video also asks that instance for its captions and its thumbnail. Your browser never contacts YouTube or Google, and nothing else from your workspace is sent. Allow on this device?";
+  "Searching sends this topic's name and the objective's text through your local companion to the official YouTube Data API, or to the self-hosted Invidious instance you configured as a fallback. Dusori receives video metadata and references only; it does not harvest captions or media. Your browser contacts only the companion, and nothing else from your workspace is sent. Allow on this device?";
 
 export type YouTubeSearch = (query: ResearchQuery) => Promise<ResearchCandidate[]>;
-export type YouTubeTranscriptFetch = (videoId: string) => Promise<YouTubeTranscript>;
-
-function videoIdOf(candidate: ResearchCandidate): string {
-  return candidate.meta.thumbnail ?? candidate.key.replace(/^youtube:/u, '');
-}
 
 /**
- * Videos earn their place on public view counts, but a video only becomes a source Dusori can
- * use when its captions come with it — everything downstream (search, graph, briefs, review
- * prompts) reads text. A video without captions is captured as an honest reference instead.
+ * YouTube discovery is reference and metadata only. Transcript text may still enter a workspace
+ * through the ordinary paste/file source flow when the learner owns it, supplied it, or has
+ * permission to use it; this provider never harvests captions from a third-party service.
  */
-export function createYouTubeProvider(options: {
-  search: YouTubeSearch;
-  transcript: YouTubeTranscriptFetch;
-}): ResearchProvider {
+export function createYouTubeProvider(options: { search: YouTubeSearch }): ResearchProvider {
   return {
     disclosure: YOUTUBE_DISCLOSURE,
     id: 'youtube',
     label: 'YouTube',
-    // Search and transcripts both go through the companion; the page fetches nothing.
+    // Search goes through the companion; the page fetches nothing.
     origins: [],
 
     // Never 'search-reference': a YouTube watch page has no readable article to upgrade to, so
@@ -64,28 +55,15 @@ export function createYouTubeProvider(options: {
         '',
       ].join('\n');
 
-      try {
-        const transcript = await options.transcript(videoIdOf(candidate));
-        return {
-          capturedVia: 'youtube-transcript',
-          content: cappedMarkdown(
-            heading,
-            `Captions (${transcript.label}) captured on ${date} through your Invidious instance. Captions are often machine-generated and can be wrong; check the video before trusting a line.\n\n## Transcript\n\n${transcript.text}\n`,
-          ),
-          title: candidate.title,
-          url: candidate.url,
-        };
-      } catch {
-        return {
-          capturedVia: 'youtube-reference',
-          content: cappedMarkdown(
-            heading,
-            `${candidate.snippet}\n\nNo captions were available for this video on ${date}, so Dusori stored the reference only. Watch it and write your own notes — a video without captions has no text for search, briefs, or review prompts.\n`,
-          ),
-          title: candidate.title,
-          url: candidate.url,
-        };
-      }
+      return {
+        capturedVia: 'youtube-reference',
+        content: cappedMarkdown(
+          heading,
+          `${candidate.snippet}\n\nSaved as a video reference on ${date}. Dusori does not harvest captions. You can add transcript text through Paste or File only when you supplied it, own it, or are authorized to use it.\n`,
+        ),
+        title: candidate.title,
+        url: candidate.url,
+      };
     },
   };
 }

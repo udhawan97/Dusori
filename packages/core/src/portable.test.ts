@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
-import { exportTopic } from './portable.js';
+import { exportTopic, prepareWorkspaceImport } from './portable.js';
 import { MemoryStorageAdapter } from './testing/memory-storage.js';
 import { createTopic, createWorkspace } from './workspace/create.js';
 
@@ -80,5 +80,37 @@ describe('exportTopic', () => {
 
     expect(paths.some((path) => path.startsWith('Topics/cloud-native/'))).toBe(false);
     expect(paths.some((path) => path.startsWith('Topics/cloud/'))).toBe(true);
+  });
+});
+
+describe('workspace archive resource limits', () => {
+  it('rejects a single expanded file before allocating it as imported text', async () => {
+    const zip = new JSZip();
+    zip.file('oversized.md', 'x'.repeat(9 * 1024 * 1024));
+    const archive = await zip.generateAsync({ compression: 'DEFLATE', type: 'uint8array' });
+
+    await expect(prepareWorkspaceImport(archive)).rejects.toThrow(/8 MiB per-file limit/u);
+  });
+
+  it('rejects a suspicious compression ratio before expanding archive entries', async () => {
+    const zip = new JSZip();
+    zip.file('repeated.md', 'repeated line\n'.repeat(160_000));
+    const archive = await zip.generateAsync({ compression: 'DEFLATE', type: 'uint8array' });
+
+    await expect(prepareWorkspaceImport(archive)).rejects.toThrow(/unsafe compression ratio/u);
+  });
+
+  it('rejects excessive file count and path depth before workspace validation', async () => {
+    const many = new JSZip();
+    for (let index = 0; index < 5_001; index += 1) many.file(`files/${index}.md`, 'x');
+    await expect(
+      prepareWorkspaceImport(await many.generateAsync({ type: 'uint8array' })),
+    ).rejects.toThrow(/more than 5,000 files/u);
+
+    const deep = new JSZip();
+    deep.file(`${'segment/'.repeat(17)}file.md`, 'x');
+    await expect(
+      prepareWorkspaceImport(await deep.generateAsync({ type: 'uint8array' })),
+    ).rejects.toThrow(/excessively deep or long path/u);
   });
 });

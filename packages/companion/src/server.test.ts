@@ -73,6 +73,81 @@ describe('companion boundary', () => {
     expect(preflight.headers['access-control-allow-origin']).toBe(origin);
   });
 
+  it('accepts only explicitly listed webview origins in API-only mode', async () => {
+    const server = await createServer({
+      allowedOrigins: ['tauri://localhost'],
+      serveStatic: false,
+      token,
+    });
+    servers.push(server);
+
+    const allowed = await server.inject({
+      headers: headers(token, 'tauri://localhost'),
+      method: 'GET',
+      url: '/api/health',
+    });
+    expect(allowed.statusCode).toBe(200);
+    expect(allowed.headers['access-control-allow-origin']).toBe('tauri://localhost');
+
+    const lookalike = await server.inject({
+      headers: headers(token, 'tauri://localhost.evil.example'),
+      method: 'GET',
+      url: '/api/health',
+    });
+    expect(lookalike.statusCode).toBe(403);
+
+    const root = await server.inject({ method: 'GET', url: '/' });
+    expect(root.statusCode).toBe(200);
+    expect(root.json()).toMatchObject({ apiOnly: true });
+    expect(root.body).not.toContain(token);
+    expect(
+      (
+        await server.inject({
+          headers: { cookie: `dusori_session=${encodeURIComponent(token)}` },
+          method: 'GET',
+          url: '/api/health',
+        })
+      ).statusCode,
+    ).toBe(401);
+  });
+
+  it('establishes a strict HttpOnly session without placing the token in the URL', async () => {
+    const staticDirectory = await mkdtemp(join(tmpdir(), 'dusori-static-'));
+    await writeFile(join(staticDirectory, 'index.html'), '<!doctype html><title>Dusori</title>');
+    const server = await createServer({ staticDirectory, token });
+    servers.push(server);
+
+    const response = await server.inject({ method: 'GET', url: '/' });
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe('/Dusori/app/');
+    expect(response.headers.location).not.toContain(token);
+    expect(response.headers.location).not.toContain('token=');
+    const rawSetCookie = response.headers['set-cookie'];
+    const setCookie = Array.isArray(rawSetCookie) ? rawSetCookie[0] : rawSetCookie;
+    expect(setCookie).toContain(`dusori_session=${encodeURIComponent(token)}`);
+    expect(setCookie).toContain('HttpOnly');
+    expect(setCookie).toContain('SameSite=Strict');
+    expect(setCookie).toContain('Path=/');
+    expect(setCookie).not.toContain('Secure');
+
+    const cookie = setCookie?.split(';')[0] ?? '';
+    const health = await server.inject({
+      headers: { cookie },
+      method: 'GET',
+      url: '/api/health',
+    });
+    expect(health.statusCode).toBe(200);
+    expect(health.json()).toMatchObject({ service: 'dusori-companion' });
+
+    const crossOrigin = await server.inject({
+      headers: { cookie, origin: 'https://evil.example' },
+      method: 'GET',
+      url: '/api/health',
+    });
+    expect(crossOrigin.statusCode).toBe(403);
+    expect(crossOrigin.body).not.toContain(token);
+  });
+
   it('rejects parent, absolute, and symlink escapes', async () => {
     const { outside, root, server } = await fixture();
     await mkdir(join(outside, 'secret'));
@@ -228,6 +303,40 @@ describe('companion boundary', () => {
       headers: headers(),
     });
     expect(missingQuery.statusCode).toBe(400);
+  });
+
+  it('reports provider availability without exposing configured values', async () => {
+    const secret = 'reddit-secret-value';
+    const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
+    const server = await createServer({
+      research: {
+        env: {
+          INVIDIOUS_URL: 'https://video.example',
+          REDDIT_CLIENT_ID: 'reddit-id',
+          REDDIT_CLIENT_SECRET: secret,
+        },
+      },
+      root,
+      staticDirectory: join(root, 'missing'),
+      token,
+    });
+    servers.push(server);
+
+    const response = await server.inject({
+      headers: headers(),
+      method: 'GET',
+      url: '/api/research/capabilities',
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().providers).toEqual(
+      expect.arrayContaining([
+        { available: true, id: 'youtube', mode: 'invidious-metadata-reference-only' },
+        { available: true, id: 'reddit', mode: 'oauth' },
+        { available: false, id: 'websearch', reason: 'not-configured' },
+      ]),
+    );
+    expect(response.body).not.toContain(secret);
+    expect(response.body).not.toContain('https://video.example');
   });
 
   it('proxies web search through the configured provider without echoing the key', async () => {
@@ -490,7 +599,7 @@ describe('youtube routes', () => {
     expect(seen.every((url) => url.startsWith('https://yewtu.example/'))).toBe(true);
   });
 
-  it('reports a missing instance and a video without captions', async () => {
+  it('reports a missing instance and refuses general caption harvesting', async () => {
     const { server } = await fixture();
     const unconfigured = await server.inject({
       headers: headers(),
@@ -500,20 +609,14 @@ describe('youtube routes', () => {
     expect(unconfigured.statusCode).toBe(503);
     expect(unconfigured.json().reason).toBe('not-configured');
 
-    const captionless = await youtubeServer(
-      (async () =>
-        new Response(JSON.stringify({ captions: [] }), {
-          headers: { 'Content-Type': 'application/json' },
-          status: 200,
-        })) as typeof fetch,
-    );
-    const response = await captionless.inject({
+    const response = await server.inject({
       headers: headers(),
       method: 'GET',
       url: '/api/research/youtube-transcript?id=dQw4w9WgXcQ',
     });
-    expect(response.statusCode).toBe(404);
-    expect(response.json().reason).toBe('no-captions');
+    expect(response.statusCode).toBe(403);
+    expect(response.json().reason).toBe('transcript-requires-user-supplied');
+    expect(response.json().error).toContain('does not harvest');
   });
 });
 

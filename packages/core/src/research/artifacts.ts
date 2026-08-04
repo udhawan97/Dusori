@@ -36,7 +36,7 @@ async function trackFile(
   const state = await readMachineFile(storage, statePath, TopicStateSchema, now);
   const next = TopicStateSchema.parse({
     ...state,
-    fileIndex: { ...state.fileIndex, [path]: { hash, modifiedAt } },
+    fileIndex: { ...state.fileIndex, [path]: { ...state.fileIndex[path], hash, modifiedAt } },
     updatedAt: now.toISOString(),
   });
   const snapshot = await storage.read(statePath);

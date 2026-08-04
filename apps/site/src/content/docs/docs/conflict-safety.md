@@ -13,7 +13,7 @@ Before a write:
 4. Dusori writes `<name>.proposed-<timestamp>.md` beside it.
 5. A dated entry links both versions from `Updates/YYYY/MM/YYYY-MM-DD.md`.
 
-The application surfaces the current and proposed text as a diff. It also records the proposal lifecycle in a schema-versioned, hash-guarded `Topics/<slug>/proposals.json` ledger, so **Today** can recover a pending decision after a reload. Accepting the proposal or keeping the current file records that resolution without deleting or rewriting either Markdown version. Historical `.proposed-*` files that predate the ledger remain ordinary readable files; Dusori does not guess their status.
+The application surfaces the current and proposed text as a diff. It also records the proposal lifecycle in a schema-versioned, hash-guarded `Topics/<slug>/proposals.json` ledger, so **Learn → Needs attention** can recover a pending decision after a reload. Accepting the proposal or keeping the current file records that resolution without deleting or rewriting either Markdown version. Historical `.proposed-*` files that predate the ledger remain ordinary readable files; Dusori does not guess their status.
 
 There is no last-write-wins path for user-owned Markdown.
 
@@ -25,4 +25,4 @@ Upgrading a URL source to its fetched full page text follows the same guard, but
 
 Generated artifacts follow two rules of their own, because Dusori writes them but you may edit them. Rebuilding `Synthesis.md` over a version you changed writes a proposal for review instead of overwriting it, exactly like a note. `Learning/learn.html` is not Markdown and has no proposal lifecycle, so an edited page is simply kept and the rebuilt page is written beside it — the message names the path so you can compare the two and delete whichever you do not want.
 
-ZIP replacement uses a different safety boundary because it replaces the whole browser workspace. Dusori validates the full archive before confirmation, snapshots the destination, and restores that snapshot if any replacement write fails. Preflight failures make no writes.
+ZIP replacement uses a different safety boundary because it replaces the whole workspace. Dusori validates the full archive before confirmation, then writes both a staged import and a durable backup before removing any live file. A failed replacement restores the backup. If persistent storage failure also prevents restoration, the untouched copy remains under `.dusori-import-recovery/backup` for export or manual recovery. Preflight and staging failures make no live-workspace writes.

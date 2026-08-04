@@ -8,8 +8,13 @@ import {
   importWorkspace,
   prepareWorkspaceImport,
   replaceWorkspace,
+  workspaceImportRecoveryRoot,
 } from '../portable.js';
-import { readMachineFile } from '../schemas/read-machine-file.js';
+import {
+  preflightMachineFile,
+  quarantineInvalidMachineFile,
+  readMachineFile,
+} from '../schemas/read-machine-file.js';
 import { WorkspaceSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace, workspaceFingerprint } from './create.js';
@@ -211,16 +216,72 @@ describe('workspace vertical slice', () => {
     expect(await workspaceFingerprint(destination)).toBe(before);
   });
 
-  it('quarantines invalid machine state instead of rewriting it', async () => {
+  it('keeps a durable untouched backup when both replacement and restoration writes fail', async () => {
+    class PersistentlyFailingStorageAdapter extends MemoryStorageAdapter {
+      failLiveWrites = false;
+
+      override async write(
+        path: string,
+        content: string,
+        options?: Parameters<MemoryStorageAdapter['write']>[2],
+      ) {
+        if (this.failLiveWrites && !path.startsWith(`${workspaceImportRecoveryRoot}/`)) {
+          throw new Error('persistent device failure');
+        }
+        return super.write(path, content, options);
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new PersistentlyFailingStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    await createTopic(destination, 'Typography', now);
+    const originalWorkspace = (await destination.read('dusori.json'))?.content;
+    destination.failLiveWrites = true;
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /untouched durable backup remains/u,
+    );
+    expect(
+      (await destination.read(`${workspaceImportRecoveryRoot}/backup/dusori.json`))?.content,
+    ).toBe(originalWorkspace);
+    expect(
+      (await destination.list(workspaceImportRecoveryRoot, true)).some(
+        (entry) => entry.path === `${workspaceImportRecoveryRoot}/backup/dusori.json`,
+      ),
+    ).toBe(true);
+  });
+
+  it('preflights and reads invalid machine state without moving it until repair is explicit', async () => {
     const storage = new MemoryStorageAdapter();
     await storage.write('dusori.json', '{not json', { expectedHash: null });
+
+    expect(await preflightMachineFile(storage, 'dusori.json', WorkspaceSchema)).toMatchObject({
+      path: 'dusori.json',
+      status: 'invalid',
+    });
     await expect(readMachineFile(storage, 'dusori.json', WorkspaceSchema, now)).rejects.toThrow(
-      /quarantined/u,
+      /preserved/u,
+    );
+    expect((await storage.read('dusori.json'))?.content).toBe('{not json');
+    expect((await storage.list('', true)).some((entry) => entry.path.includes('.invalid-'))).toBe(
+      false,
+    );
+
+    const invalidPath = await quarantineInvalidMachineFile(
+      storage,
+      'dusori.json',
+      WorkspaceSchema,
+      now,
     );
     const quarantined = (await storage.list('', true)).find((entry) =>
       entry.path.includes('.invalid-'),
     );
-    expect(quarantined?.path).toContain('dusori.json.invalid-');
+    expect(quarantined?.path).toBe(invalidPath);
     expect(await storage.read('dusori.json')).toBeNull();
   });
 });

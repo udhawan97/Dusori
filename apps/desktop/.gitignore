@@ -1,0 +1,6 @@
+/dist/
+/resources/*
+!/resources/.gitkeep
+/src-tauri/gen/
+/src-tauri/target/
+/src-tauri/updater.release.json

@@ -75,7 +75,7 @@ export async function createNote(
       updatedAt: now.toISOString(),
       fileIndex: {
         ...state.fileIndex,
-        [path]: { hash: written.hash, modifiedAt: written.modifiedAt },
+        [path]: { ...state.fileIndex[path], hash: written.hash, modifiedAt: written.modifiedAt },
       },
     });
     await storage.write(statePath, `${JSON.stringify(nextState, null, 2)}\n`, {

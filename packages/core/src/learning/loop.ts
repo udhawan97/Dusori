@@ -277,7 +277,7 @@ export async function buildTodaySummary(
         readTopicProgress(storage, topic.slug),
         readRecentTopicActivity(storage, topic.slug),
         // A corrupt review.json for one topic must not blank the whole Today
-        // view: readMachineFile already quarantines the bad file, so treat
+        // view: readMachineFile preserves the bad file for explicit repair, so treat
         // the read failure here as "no schedule" rather than propagating it
         // through this Promise.all. readReviewSchedule's own contract for
         // other callers is untouched.

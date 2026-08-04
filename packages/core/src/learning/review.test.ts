@@ -6,6 +6,7 @@ import {
   markTopicReviewed,
   nextReviewSchedule,
   readReviewSchedule,
+  ReviewScheduleSchema,
   reviewFilePath,
   type ReviewSchedule,
 } from './review.js';
@@ -16,6 +17,7 @@ import {
   type StorageAdapter,
   type WriteOptions,
 } from '../adapters.js';
+import { quarantineInvalidMachineFile } from '../schemas/read-machine-file.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { updateLogPath } from '../workspace/paths.js';
@@ -360,7 +362,7 @@ describe('spaced review persistence', () => {
     expect(await storage.read(logPath)).toBeNull();
   });
 
-  it('quarantines an invalid review file and starts fresh afterward', async () => {
+  it('preserves an invalid review until explicit quarantine, then starts fresh', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', created);
     const topic = await createTopic(storage, 'AI Fundamentals', created);
@@ -368,7 +370,10 @@ describe('spaced review persistence', () => {
 
     await expect(
       markTopicReviewed(storage, topic.topicSlug, 'good', new Date('2026-07-20T13:00:00.000Z')),
-    ).rejects.toThrow(/quarantined/u);
+    ).rejects.toThrow(/preserved/u);
+    const path = `Topics/${topic.topicSlug}/review.json`;
+    expect((await storage.read(path))?.content).toBe('not json');
+    await quarantineInvalidMachineFile(storage, path, ReviewScheduleSchema);
     expect(await readReviewSchedule(storage, topic.topicSlug)).toBeNull();
     await expect(
       markTopicReviewed(storage, topic.topicSlug, 'good', new Date('2026-07-20T14:00:00.000Z')),

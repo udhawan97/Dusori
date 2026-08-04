@@ -4,18 +4,16 @@ const maxResults = 8;
 const maxThumbnailBytes = 2 * 1024 * 1024;
 const videoId = /^[A-Za-z0-9_-]{11}$/u;
 const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const unreachableMessage = 'The configured Invidious instance could not be reached.';
+const youtubeSearchUpstream = 'https://www.googleapis.com/youtube/v3/search';
+const youtubeVideosUpstream = 'https://www.googleapis.com/youtube/v3/videos';
+const youtubeThumbnailUpstream = 'https://i.ytimg.com';
+const unreachableMessage = 'The configured YouTube metadata provider could not be reached.';
 const notConfiguredMessage =
-  'YouTube search is not configured. Set INVIDIOUS_URL to an Invidious instance ' +
-  '(self-hosted or public) before launching the companion.';
+  'YouTube search is not configured. Set YOUTUBE_API_KEY for the official YouTube Data API ' +
+  'free quota, or set INVIDIOUS_URL to a self-hosted Invidious instance, before launching the companion.';
 
 export type YouTubeFailureReason =
-  | 'fetch-failed'
-  | 'invalid-id'
-  | 'no-captions'
-  | 'not-configured'
-  | 'too-large'
-  | 'unsupported-type';
+  'fetch-failed' | 'invalid-id' | 'not-configured' | 'too-large' | 'unsupported-type';
 
 export type YouTubeEnv = Record<string, string | undefined>;
 
@@ -45,11 +43,6 @@ export interface YouTubeResult {
   viewCount: number;
 }
 
-export interface YouTubeTranscript {
-  label: string;
-  text: string;
-}
-
 export interface YouTubeThumbnail {
   body: Uint8Array;
   contentType: string;
@@ -67,35 +60,71 @@ const SearchSchema = z.array(
   }),
 );
 
-const CaptionsSchema = z.object({
-  captions: z.array(
+const OfficialSearchSchema = z.object({
+  items: z.array(
     z.object({
-      label: z.string(),
-      language_code: z.string().optional(),
-      url: z.string(),
+      id: z.object({ videoId: z.string() }),
+      snippet: z
+        .object({
+          channelTitle: z.string().optional(),
+          description: z.string().optional(),
+          publishedAt: z.string().optional(),
+          title: z.string().optional(),
+        })
+        .optional(),
     }),
   ),
 });
 
-/** The instance is operator-configured, exactly like SEARXNG_URL; Dusori ships no default host. */
-export function youtubeConfig(
-  env: YouTubeEnv = process.env,
-): { base: string; host: string } | null {
+const OfficialVideosSchema = z.object({
+  items: z.array(
+    z.object({
+      contentDetails: z.object({ duration: z.string().optional() }).optional(),
+      id: z.string(),
+      snippet: z
+        .object({
+          channelTitle: z.string().optional(),
+          description: z.string().optional(),
+          publishedAt: z.string().optional(),
+          title: z.string().optional(),
+        })
+        .optional(),
+      statistics: z.object({ viewCount: z.string().optional() }).optional(),
+    }),
+  ),
+});
+
+export type YouTubeConfig =
+  { kind: 'invidious'; base: string; host: string } | { kind: 'youtube-data-api' };
+
+function invidiousConfig(env: YouTubeEnv): Extract<YouTubeConfig, { kind: 'invidious' }> | null {
   const raw = env.INVIDIOUS_URL?.trim();
   if (!raw) return null;
   try {
     const url = new URL(raw);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-    return { base: url.origin, host: url.host };
+    return { base: url.origin, host: url.host, kind: 'invidious' };
   } catch {
     return null;
   }
 }
 
-function configured(env: YouTubeEnv): { base: string; host: string } {
+/** Reports the configured route without exposing an API key to the browser capability response. */
+export function youtubeConfig(env: YouTubeEnv = process.env): YouTubeConfig | null {
+  if (env.YOUTUBE_API_KEY?.trim()) return { kind: 'youtube-data-api' };
+  return invidiousConfig(env);
+}
+
+function configured(env: YouTubeEnv): YouTubeConfig {
   const config = youtubeConfig(env);
   if (!config) throw new YouTubeError(notConfiguredMessage, 'not-configured');
   return config;
+}
+
+function officialKey(env: YouTubeEnv): string {
+  const value = env.YOUTUBE_API_KEY?.trim() ?? '';
+  if (!value) throw new YouTubeError(notConfiguredMessage, 'not-configured');
+  return value;
 }
 
 function checkedId(id: string): string {
@@ -122,12 +151,90 @@ function collapse(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/gu, ' ').trim();
 }
 
-export async function searchYouTube(
+function publishedDate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString().slice(0, 10);
+}
+
+function nonnegativeInteger(value: string | number | undefined): number {
+  const parsed = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
+}
+
+function durationSeconds(value: string | undefined): number {
+  if (!value) return 0;
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/u.exec(value);
+  if (!match) return 0;
+  return (
+    nonnegativeInteger(match[1]) * 86_400 +
+    nonnegativeInteger(match[2]) * 3_600 +
+    nonnegativeInteger(match[3]) * 60 +
+    nonnegativeInteger(match[4])
+  );
+}
+
+async function searchOfficialYouTube(
   query: string,
-  { env = process.env, fetchImpl = fetch }: YouTubeOptions = {},
+  env: YouTubeEnv,
+  fetchImpl: typeof fetch,
 ): Promise<YouTubeResult[]> {
-  const { base } = configured(env);
-  const url = new URL(`${base}/api/v1/search`);
+  const key = officialKey(env);
+  const searchUrl = new URL(youtubeSearchUpstream);
+  searchUrl.search = new URLSearchParams({
+    key,
+    maxResults: String(maxResults),
+    part: 'snippet',
+    q: query,
+    safeSearch: 'moderate',
+    type: 'video',
+  }).toString();
+  const search = OfficialSearchSchema.safeParse(
+    await (await request(searchUrl.toString(), fetchImpl)).json().catch(() => null),
+  );
+  if (!search.success) throw new YouTubeError(unreachableMessage, 'fetch-failed');
+  const ids = search.data.items.map((item) => item.id.videoId).filter((id) => videoId.test(id));
+  if (ids.length === 0) return [];
+
+  const videosUrl = new URL(youtubeVideosUpstream);
+  videosUrl.search = new URLSearchParams({
+    id: ids.join(','),
+    key,
+    part: 'contentDetails,snippet,statistics',
+  }).toString();
+  const videos = OfficialVideosSchema.safeParse(
+    await (await request(videosUrl.toString(), fetchImpl)).json().catch(() => null),
+  );
+  if (!videos.success) throw new YouTubeError(unreachableMessage, 'fetch-failed');
+  const byId = new Map(videos.data.items.map((item) => [item.id, item]));
+
+  return ids.flatMap((id) => {
+    const item = byId.get(id);
+    if (!item) return [];
+    const title = collapse(item.snippet?.title);
+    if (!title) return [];
+    const date = publishedDate(item.snippet?.publishedAt);
+    return [
+      {
+        author: collapse(item.snippet?.channelTitle),
+        id,
+        lengthSeconds: durationSeconds(item.contentDetails?.duration),
+        ...(date ? { publishedAt: date } : {}),
+        summary: collapse(item.snippet?.description),
+        title,
+        url: `https://www.youtube.com/watch?v=${id}`,
+        viewCount: nonnegativeInteger(item.statistics?.viewCount),
+      },
+    ];
+  });
+}
+
+async function searchInvidious(
+  query: string,
+  config: Extract<YouTubeConfig, { kind: 'invidious' }>,
+  fetchImpl: typeof fetch,
+): Promise<YouTubeResult[]> {
+  const url = new URL(`${config.base}/api/v1/search`);
   url.search = new URLSearchParams({
     q: query,
     sort_by: 'view_count',
@@ -155,69 +262,39 @@ export async function searchYouTube(
     }));
 }
 
-/** WebVTT to prose: cue numbers, timing lines, inline tags, and repeated rolling lines removed. */
-export function transcriptFromVtt(vtt: string): string {
-  const lines: string[] = [];
-  for (const raw of vtt.replace(/\r\n?/gu, '\n').split('\n')) {
-    const line = raw
-      .replace(/<[^>]*>/gu, '')
-      .replace(/&nbsp;/gu, ' ')
-      .trim();
-    if (!line) continue;
-    if (line === 'WEBVTT' || /^(?:Kind|Language|NOTE|STYLE):?/u.test(line)) continue;
-    if (line.includes('-->') || /^\d+$/u.test(line)) continue;
-    if (lines.at(-1) === line) continue;
-    lines.push(line);
-  }
-  // Rolling captions repeat the previous line inside the next cue; drop a line already ending
-  // the text so the prose reads once.
-  const text: string[] = [];
-  for (const line of lines) {
-    if (text.at(-1) === line) continue;
-    text.push(line);
-  }
-  return text.join(' ').replace(/\s+/gu, ' ').trim();
-}
-
-export async function fetchYouTubeTranscript(
-  id: string,
+export async function searchYouTube(
+  query: string,
   { env = process.env, fetchImpl = fetch }: YouTubeOptions = {},
-): Promise<YouTubeTranscript> {
-  const { base } = configured(env);
-  const checked = checkedId(id);
-
-  const listed = await request(`${base}/api/v1/captions/${checked}`, fetchImpl);
-  const parsed = CaptionsSchema.safeParse(await listed.json().catch(() => null));
-  if (!parsed.success) throw new YouTubeError(unreachableMessage, 'fetch-failed');
-
-  const tracks = parsed.data.captions;
-  const track =
-    tracks.find((entry) => entry.language_code?.toLowerCase().startsWith('en')) ?? tracks[0];
-  if (!track) {
-    throw new YouTubeError('This video has no captions to capture.', 'no-captions');
-  }
-
-  let trackUrl: URL;
+): Promise<YouTubeResult[]> {
+  const config = configured(env);
+  if (config.kind === 'invidious') return searchInvidious(query, config, fetchImpl);
   try {
-    trackUrl = new URL(track.url, `${base}/`);
-  } catch {
-    throw new YouTubeError(unreachableMessage, 'fetch-failed');
+    return await searchOfficialYouTube(query, env, fetchImpl);
+  } catch (error) {
+    const fallback = invidiousConfig(env);
+    if (!fallback) throw error;
+    return searchInvidious(query, fallback, fetchImpl);
   }
-  // The instance is the only host this proxy ever talks to, whatever the listing says.
-  if (trackUrl.origin !== base) throw new YouTubeError(unreachableMessage, 'fetch-failed');
-
-  const text = transcriptFromVtt(await (await request(trackUrl.toString(), fetchImpl)).text());
-  if (!text) throw new YouTubeError('This video has no captions to capture.', 'no-captions');
-  return { label: collapse(track.label) || 'Captions', text };
 }
 
 export async function fetchYouTubeThumbnail(
   id: string,
   { env = process.env, fetchImpl = fetch }: YouTubeOptions = {},
 ): Promise<YouTubeThumbnail> {
-  const { base } = configured(env);
+  const config = configured(env);
   const checked = checkedId(id);
-  const response = await request(`${base}/vi/${checked}/mqdefault.jpg`, fetchImpl);
+  const url =
+    config.kind === 'youtube-data-api'
+      ? `${youtubeThumbnailUpstream}/vi/${checked}/mqdefault.jpg`
+      : `${config.base}/vi/${checked}/mqdefault.jpg`;
+  let response: Response;
+  try {
+    response = await request(url, fetchImpl);
+  } catch (error) {
+    const fallback = config.kind === 'youtube-data-api' ? invidiousConfig(env) : null;
+    if (!fallback) throw error;
+    response = await request(`${fallback.base}/vi/${checked}/mqdefault.jpg`, fetchImpl);
+  }
 
   const contentType = (response.headers.get('content-type') ?? '').split(';')[0]?.trim() ?? '';
   if (!imageTypes.has(contentType)) {

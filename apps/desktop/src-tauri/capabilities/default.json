@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "The Dusori window may use core Tauri IPC. Filesystem and updater access are exposed only through validated Dusori commands.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

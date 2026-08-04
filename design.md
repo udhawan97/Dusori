@@ -9,8 +9,10 @@ Atmospheric editorial: a nocturnal learning desk with Japanese spatial restraint
 ## Macrostructure family
 
 - Marketing pages: Workbench-led Split Studio with one dominant real product capture, an icon-led download shelf, and a ruled proof sequence.
-- App pages: Workbench with compact rail, primary canvas, optional inspector, and constellation-desk graph variation.
+- App pages: Reading Studio with a quiet four-destination header (`Learn`, `Sources`, `Map`, `Settings`), one primary reading canvas, a contextual evidence margin, and a source shelf that is always one action away. Research opens as a task sheet inside the current topic; it is not a destination. The constellation is a secondary representation of the same path and always has an Outline equivalent.
 - Content pages: Long Document with a narrow reading measure and ruled navigation.
+
+The app must never return to a dashboard rail full of product modules. Its governing sequence is `continue → read → annotate → explicitly mark learned or review → see what changed`. A screen gets one dominant next action. Saved sources, provider state, update controls, and recovery actions use literal labels rather than mystery icons.
 
 ## Theme
 
@@ -66,6 +68,16 @@ Use the existing 4-point named scale in `apps/app/src/styles/tokens.css`. Compon
 - Marketing may use the animated identity mark and real application screenshots.
 - App pages use only functional artifacts: file graph, progress wheel, source provenance, and current state.
 - Docs remain typography-led and do not animate content.
+
+## Learning Studio interaction contract
+
+- `Learn` opens on one evidence-backed Continue recommendation, its reason, **Choose another**, **Not now**, and an honest empty-queue action.
+- `Sources` is the only durable saved-source shelf. Preview never saves. **Save & read** both persists and opens, and the source count includes manifest records only.
+- `Map` renders concept and objective relationships derived from the workspace. It never infers mastery, and its Outline exposes the same nodes and actions without spatial navigation.
+- `Settings` owns provider permissions, local/desktop storage, import/export, updates, and privacy. It does not own learning content.
+- `Ask inside <topic>` is a persistent composer location, not an automatically stored chat. Without AI it searches local notes and sources and returns cited matches. A question or response becomes durable only through an explicit **Save to note** action.
+- **Mark learned** is always labeled as self-declared and maps to the portable `roadmap.md` checkbox. **Reopen** reverses it. Saved and Reviewed remain separate facts.
+- Provider capability (`Ready`, `Setup required`, `Disabled`) stays separate from run outcome (`Found`, `Empty`, `Failed`). Failures remain visible.
 
 ## What pages MUST share
 

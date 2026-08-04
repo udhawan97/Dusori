@@ -102,6 +102,7 @@ export async function upgradeSource(
       fetchedAt: now.toISOString(),
       mediaType: 'text/markdown',
       origin: {
+        ...record.origin,
         capturedAt: now.toISOString(),
         capturedVia: 'page-extract',
         provider: 'companion',
@@ -109,6 +110,7 @@ export async function upgradeSource(
       size: new TextEncoder().encode(content).byteLength,
     });
     const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
       schemaVersion,
       sources: manifest.sources.map((source) => (source === record ? nextRecord : source)),
     });

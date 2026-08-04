@@ -5,55 +5,65 @@ import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
 import { topicRoot } from '../workspace/paths.js';
 
-export const DismissedResearchSuggestionSchema = z.object({
-  key: z.string().min(1).max(320),
-  title: z.string().min(1).max(160),
-  at: z.string().datetime(),
-  // Optional: a catalog candidate is keyed `mslearn:<uid>`, a ranked-search
-  // candidate `mslearn:<url>` (the ranked API returns no uid). The URL is the
-  // one thing stable across both, so it's kept alongside the key to match a
-  // dismissal regardless of which path produced the candidate.
-  url: z.url().max(2048).optional(),
-});
+export const DismissedResearchSuggestionSchema = z
+  .object({
+    key: z.string().min(1).max(320),
+    title: z.string().min(1).max(160),
+    at: z.string().datetime(),
+    // Optional: a catalog candidate is keyed `mslearn:<uid>`, a ranked-search
+    // candidate `mslearn:<url>` (the ranked API returns no uid). The URL is the
+    // one thing stable across both, so it's kept alongside the key to match a
+    // dismissal regardless of which path produced the candidate.
+    url: z.url().max(2048).optional(),
+  })
+  .passthrough();
 
 // One candidate a past run already showed. `at` is when it was first seen, so a
 // candidate missing from this list is genuinely new since the last run.
-export const SeenResearchCandidateSchema = z.object({
-  at: z.string().datetime(),
-  key: z.string().min(1).max(320),
-  url: z.url().max(2048).optional(),
-});
+export const SeenResearchCandidateSchema = z
+  .object({
+    at: z.string().datetime(),
+    key: z.string().min(1).max(320),
+    url: z.url().max(2048).optional(),
+  })
+  .passthrough();
 
 // What one provider did in one run. `count` is candidates returned before ranking, so a
 // provider that answered with nothing is `empty` with 0 — never confused with `failed`.
-export const RunProviderOutcomeSchema = z.object({
-  id: z.string().min(1).max(40),
-  label: z.string().min(1).max(60),
-  outcome: z.enum(['empty', 'failed', 'found']),
-  count: z.number().int().nonnegative(),
-  message: z.string().min(1).max(300).optional(),
-});
+export const RunProviderOutcomeSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    label: z.string().min(1).max(60),
+    outcome: z.enum(['empty', 'failed', 'found']),
+    count: z.number().int().nonnegative(),
+    message: z.string().min(1).max(300).optional(),
+  })
+  .passthrough();
 
-export const ResearchRunRecordSchema = z.object({
-  at: z.string().datetime(),
-  searchText: z.string().min(1).max(400),
-  angleId: z.string().min(1).max(40).optional(),
-  providers: z.array(RunProviderOutcomeSchema).max(24),
-  newKeys: z.number().int().nonnegative(),
-});
+export const ResearchRunRecordSchema = z
+  .object({
+    at: z.string().datetime(),
+    searchText: z.string().min(1).max(400),
+    angleId: z.string().min(1).max(40).optional(),
+    providers: z.array(RunProviderOutcomeSchema).max(24),
+    newKeys: z.number().int().nonnegative(),
+  })
+  .passthrough();
 
-export const ResearchFileSchema = z.object({
-  schemaVersion: z.literal(schemaVersion),
-  topicSlug: z.string().min(1).max(80),
-  dismissed: z.array(DismissedResearchSuggestionSchema),
-  // Optional so every research.json written before run memory existed still
-  // parses unchanged, which is why adding them needs no schemaVersion bump.
-  lastRunAt: z.string().datetime().optional(),
-  seen: z.array(SeenResearchCandidateSchema).optional(),
-  runs: z.array(ResearchRunRecordSchema).optional(),
-  /** Standing permission to re-scan this topic when it is stale and Dusori is opened. */
-  autoRefresh: z.boolean().optional(),
-});
+export const ResearchFileSchema = z
+  .object({
+    schemaVersion: z.literal(schemaVersion),
+    topicSlug: z.string().min(1).max(80),
+    dismissed: z.array(DismissedResearchSuggestionSchema),
+    // Optional so every research.json written before run memory existed still
+    // parses unchanged, which is why adding them needs no schemaVersion bump.
+    lastRunAt: z.string().datetime().optional(),
+    seen: z.array(SeenResearchCandidateSchema).optional(),
+    runs: z.array(ResearchRunRecordSchema).optional(),
+    /** Standing permission to re-scan this topic when it is stale and Dusori is opened. */
+    autoRefresh: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type DismissedResearchSuggestion = z.infer<typeof DismissedResearchSuggestionSchema>;
 export type SeenResearchCandidate = z.infer<typeof SeenResearchCandidateSchema>;

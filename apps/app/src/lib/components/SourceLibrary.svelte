@@ -23,6 +23,7 @@
   export let companion: CompanionResearchClient | null = null;
   export let revision = 0;
   export let onSourceSaved: () => void = () => undefined;
+  export let onOpenSource: (path: string) => void = () => undefined;
 
   let method: 'paste' | 'file' | 'url' = 'paste';
   let extracting = false;
@@ -307,7 +308,7 @@
 >
   <div class="source-heading">
     <div>
-      <h2 id="source-library-title">Sources</h2>
+      <h2 id="source-library-title">Saved sources</h2>
       <p>Keep the material beside your notes. URL contents are never fetched automatically.</p>
     </div>
     <span class="source-count" aria-label={`${sources.length} saved sources`}>{sources.length}</span
@@ -384,7 +385,7 @@
     {/if}
 
     <button class="add-source" disabled={saving || loading}>
-      {saving ? 'Adding source…' : 'Add source'}
+      {saving ? 'Saving source…' : 'Save source'}
     </button>
   </form>
 
@@ -420,12 +421,19 @@
     <ul class="source-list" aria-label="Saved sources">
       {#each sources as source (source.sha256)}
         <li>
-          {#if source.url}
-            <a href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
+          {#if source.path}
+            <button class="source-title" onclick={() => onOpenSource(source.path!)}>
+              {source.title}
+            </button>
           {:else}
             <strong>{source.title}</strong>
           {/if}
           <span>{sourceDetail(source)}</span>
+          {#if source.url}
+            <a class="original-link" href={source.url} target="_blank" rel="noreferrer"
+              >Open original</a
+            >
+          {/if}
           {#if source.method === 'url' && companion}
             <button
               class="upgrade-source"
@@ -739,6 +747,7 @@
   }
 
   .source-list strong,
+  .source-list .source-title,
   .source-list a {
     display: block;
     min-width: 0;
@@ -750,9 +759,25 @@
     white-space: nowrap;
   }
 
+  .source-title {
+    width: fit-content;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: start;
+    cursor: pointer;
+  }
+
   .source-list a {
     color: var(--color-accent-text);
     text-underline-offset: 0.2em;
+  }
+
+  .source-list .original-link {
+    width: fit-content;
+    font-size: var(--text-xs);
+    font-weight: 400;
   }
 
   .source-list span {

@@ -13,3 +13,9 @@ playwright-report
 test-results
 output
 pnpm-lock.yaml
+apps/desktop/dist
+apps/desktop/resources
+apps/desktop/src-tauri/gen
+apps/desktop/src-tauri/target
+scripts/updater-signature-verifier/target
+apps/desktop/src-tauri/updater.release.json

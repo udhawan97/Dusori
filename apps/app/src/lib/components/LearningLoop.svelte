@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    Activity,
     AlertTriangle,
     ArrowRight,
     CalendarDays,
@@ -8,6 +9,7 @@
     Pause,
     Play,
     RotateCcw,
+    Search,
   } from '@lucide/svelte';
 
   import {
@@ -51,6 +53,7 @@
   export let onOpenProposal: (proposal: ProposalAttentionItem) => void = () => undefined;
   export let onOpenRoadmap: (slug: string) => void = () => undefined;
   export let onOpenResearch: (slug: string) => void = () => undefined;
+  export let onOpenInsights: () => void = () => undefined;
   export let onOpenTopic: (slug: string) => void = () => undefined;
   export let onOpenWorkspaceHealth: () => void = () => undefined;
   export let onRoadmapChanged: (slug: string, content: string) => void = () => undefined;
@@ -331,11 +334,22 @@
   {#if view === 'today'}
     <header class="page-heading">
       <p class="kicker">Local learning loop</p>
-      <h1 id="learning-loop-title">Today</h1>
+      <h1 id="learning-loop-title">Continue learning</h1>
       <p>
-        Continue from the next unfinished objective. This view is derived from your roadmap, topic
-        state, and dated update files.
+        One useful next step, chosen from your local learning path. Dusori never infers mastery or
+        changes progress for you.
       </p>
+      <div class="learn-actions" aria-label="Topic learning tools">
+        <button onclick={() => onOpenResearch(topicSlug)}>
+          <Search aria-hidden="true" size={16} /> Find sources
+        </button>
+        <button onclick={() => onOpenRoadmap(topicSlug)}>
+          <ListOrdered aria-hidden="true" size={16} /> Learning path
+        </button>
+        <button onclick={onOpenInsights}>
+          <Activity aria-hidden="true" size={16} /> Learning evidence
+        </button>
+      </div>
     </header>
 
     <dl class="today-ledger" aria-label="Workspace progress summary">
@@ -372,7 +386,7 @@
             <ListOrdered aria-hidden="true" size={22} />
             <div>
               <p class="section-label">Explicit local state</p>
-              <h2 id="continue-learning-title">Continue learning</h2>
+              <h2 id="continue-learning-title">Next up</h2>
             </div>
           </div>
           <p class="focus-explainer">
@@ -392,9 +406,10 @@
           {:else}
             <ol class="focus-list" aria-label="Continue learning">
               {#each focus.continueLearning as item, index (item.slug)}
-                <li>
+                <li class:primary-next={index === 0}>
                   <span class="queue-rank">{String(index + 1).padStart(2, '0')}</span>
                   <div class="focus-copy">
+                    {#if index === 0}<span class="next-label">Recommended next</span>{/if}
                     <strong>{item.title}</strong>
                     <p>{item.objective}</p>
                     <small
@@ -404,11 +419,11 @@
                   <div class="lane-actions">
                     <button
                       class="lane-action"
-                      aria-label={`${continueActionLabel(item)} — ${item.title}`}
+                      aria-label={`${index === 0 ? 'Continue' : continueActionLabel(item)} — ${item.title}`}
                       disabled={reviewWorkingSlug !== null}
                       onclick={() => continueFrom(item)}
                     >
-                      {continueActionLabel(item)}
+                      {index === 0 ? 'Continue' : continueActionLabel(item)}
                       <ArrowRight aria-hidden="true" size={16} />
                     </button>
                     {#if item.canStartReview && item.action !== 'start-review'}
@@ -567,6 +582,10 @@
       <p class="kicker">Topic roadmap</p>
       <h1 id="learning-loop-title">{selected?.title ?? 'Roadmap'}</h1>
       <p>Check off real Markdown tasks. Each change is hash-guarded and added to the update log.</p>
+      <p class="self-declared">
+        Progress is self-declared. Check an objective when it feels learned; reopen it whenever you
+        want to revisit it.
+      </p>
     </header>
 
     {#if loading}
@@ -642,6 +661,7 @@
               <label style={`--objective-depth: ${Math.min(entry.depth, 3)}`}>
                 <input
                   type="checkbox"
+                  aria-label={`${entry.completed ? 'Reopen' : 'Mark learned'} — ${entry.title}`}
                   checked={entry.completed}
                   onchange={(event) =>
                     toggleObjective(
@@ -651,7 +671,11 @@
                     )}
                 />
                 <span class:completed={entry.completed}>{entry.title}</span>
-                {#if workingIndex === entry.index}<small>Saving…</small>{/if}
+                <small>
+                  {workingIndex === entry.index
+                    ? 'Saving…'
+                    : `${entry.completed ? 'Reopen' : 'Mark learned'} · self-declared`}
+                </small>
               </label>
             {/if}
           {/each}
@@ -732,12 +756,42 @@
     font-size: clamp(2.4rem, 7vw, 4.75rem);
   }
 
-  .page-heading > p:last-child {
+  .page-heading > p:not(.self-declared) {
     max-width: 68ch;
     margin-block-start: var(--space-md);
     color: var(--color-muted);
     font-size: var(--text-md);
     line-height: 1.55;
+  }
+
+  .learn-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-lg);
+  }
+
+  .learn-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding-inline: var(--space-sm);
+    border-color: var(--color-rule);
+    background: transparent;
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+  }
+
+  .learn-actions button:first-child {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .self-declared {
+    margin-block-start: var(--space-sm);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
   }
 
   .kicker,
@@ -862,6 +916,29 @@
     gap: var(--space-sm);
     padding-block: var(--space-sm);
     border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .focus-list li.primary-next {
+    margin-block-start: var(--space-sm);
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-marigold);
+    background: var(--color-paper);
+  }
+
+  .primary-next .lane-action:first-child {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .next-label {
+    display: block;
+    margin-block-end: var(--space-2xs);
+    color: var(--color-accent-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .queue-rank,

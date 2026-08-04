@@ -9,3 +9,5 @@
 - [ADR-007: Vertical slice before AI](007-vertical-slice.md)
 - [ADR-008: Scaled constellation layout](008-scaled-constellation-layout.md)
 - [ADR-009: Durable proposal lifecycle ledger](009-durable-proposal-ledger.md)
+- [ADR-010: Tauri desktop shell and explicit signed updates](010-tauri-desktop-and-signed-updater.md)
+- [ADR-011: Consent-gated providers and lawful capture limits](011-provider-access-and-lawful-capture.md)

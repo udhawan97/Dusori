@@ -123,6 +123,11 @@ export async function readSourcesIntoClaims(
         continue;
       }
       const claims = extractClaims({ at, content: file.content, title: record.title });
+      const previousClaims = new Map((record.claims ?? []).map((claim) => [claim.text, claim]));
+      const compatibleClaims = claims.map((claim) => ({
+        ...previousClaims.get(claim.text),
+        ...claim,
+      }));
       if (claims.length === 0) {
         result.unreadable.push({
           reason:
@@ -141,19 +146,19 @@ export async function readSourcesIntoClaims(
       result.read.push({ claims: claims.length, path: record.path, title: record.title });
       const unchanged =
         record.readState === 'read' &&
-        record.claims?.length === claims.length &&
-        record.claims.every((claim, index) => claim.text === claims[index]?.text);
+        record.claims?.length === compatibleClaims.length &&
+        record.claims.every((claim, index) => claim.text === compatibleClaims[index]?.text);
       if (unchanged) {
         next.push(record);
         continue;
       }
-      next.push({ ...record, claims, readState: 'read' });
+      next.push({ ...record, claims: compatibleClaims, readState: 'read' });
       changed = true;
     }
 
     if (!changed) return result;
 
-    const nextManifest = SourceManifestSchema.parse({ schemaVersion, sources: next });
+    const nextManifest = SourceManifestSchema.parse({ ...manifest, schemaVersion, sources: next });
     try {
       await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
         expectedHash: manifestFile.hash,

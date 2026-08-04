@@ -60,8 +60,6 @@ const RedditResponseSchema = z.object({
   ),
 });
 
-const TranscriptResponseSchema = z.object({ label: z.string(), text: z.string().min(1) });
-
 const WebSearchResponseSchema = z.object({
   results: z.array(
     z.object({
@@ -75,6 +73,19 @@ const WebSearchResponseSchema = z.object({
 
 const FailureSchema = z.object({ error: z.string().optional(), reason: z.string().optional() });
 
+const ResearchCapabilitiesSchema = z.object({
+  providers: z.array(
+    z.object({
+      available: z.boolean(),
+      id: z.string(),
+      mode: z.string().optional(),
+      reason: z.string().optional(),
+    }),
+  ),
+});
+
+export type ResearchCapability = z.infer<typeof ResearchCapabilitiesSchema>['providers'][number];
+
 export class CompanionFetchError extends Error {
   constructor(
     message: string,
@@ -86,26 +97,21 @@ export class CompanionFetchError extends Error {
 }
 
 export interface CompanionResearchClient {
+  capabilities(): Promise<ResearchCapability[]>;
   fetchPage(url: string): Promise<FetchedPage>;
   searchMsLearnRanked(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchArxiv(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchReddit(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchWeb(query: ResearchQuery): Promise<ResearchCandidate[]>;
   searchYouTube(query: ResearchQuery): Promise<ResearchCandidate[]>;
-  /** Captions for one video, when the instance has them. Rejects with `no-captions` otherwise. */
-  fetchYouTubeTranscript(videoId: string): Promise<YouTubeTranscript>;
   /** Image bytes through the companion, so the browser never calls a Google host. */
   fetchYouTubeThumbnail(videoId: string): Promise<Blob>;
 }
 
-export interface YouTubeTranscript {
-  label: string;
-  text: string;
-}
-
 export interface CompanionClientOptions {
   baseUrl: string;
-  token: string;
+  /** Omit for the same-origin HttpOnly session established by the bundled companion app. */
+  token?: string;
   fetchImpl?: typeof fetch;
 }
 
@@ -118,7 +124,13 @@ export function createCompanionResearchClient(
 ): CompanionResearchClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const base = options.baseUrl.replace(/\/+$/u, '');
-  const authorization = { Authorization: `Bearer ${options.token}` };
+  const authorization: Record<string, string> = options.token
+    ? { Authorization: `Bearer ${options.token}` }
+    : {};
+  const session: Pick<RequestInit, 'credentials' | 'headers'> = {
+    credentials: 'same-origin',
+    headers: authorization,
+  };
 
   async function failureFrom(response: Response): Promise<CompanionFetchError> {
     const body: unknown = await response.json().catch(() => null);
@@ -130,8 +142,18 @@ export function createCompanionResearchClient(
   }
 
   return {
+    async capabilities() {
+      const response = await fetchImpl(`${base}/api/research/capabilities`, {
+        ...session,
+      }).catch(() => null);
+      if (!response?.ok) return [];
+      const parsed = ResearchCapabilitiesSchema.safeParse(await response.json().catch(() => null));
+      return parsed.success ? parsed.data.providers : [];
+    },
+
     async fetchPage(url) {
       const response = await fetchImpl(`${base}/api/research/fetch`, {
+        credentials: session.credentials,
         body: JSON.stringify({ url }),
         headers: { ...authorization, 'Content-Type': 'application/json' },
         method: 'POST',
@@ -152,7 +174,7 @@ export function createCompanionResearchClient(
 
     async searchMsLearnRanked(query) {
       const url = `${base}/api/research/mslearn-search?q=${encodeURIComponent(query.searchText)}`;
-      const response = await fetchImpl(url, { headers: authorization }).catch(() => null);
+      const response = await fetchImpl(url, session).catch(() => null);
       if (!response?.ok) throw new CompanionFetchError(fallbackSearchError, 'fetch-failed');
 
       const body: unknown = await response.json().catch(() => null);
@@ -273,32 +295,10 @@ export function createCompanionResearchClient(
       }));
     },
 
-    async fetchYouTubeTranscript(videoId) {
-      const response = await fetchImpl(
-        `${base}/api/research/youtube-transcript?id=${encodeURIComponent(videoId)}`,
-        { headers: authorization },
-      ).catch(() => null);
-      if (!response) {
-        throw new CompanionFetchError(
-          'The companion could not be reached for captions.',
-          'fetch-failed',
-        );
-      }
-      if (!response.ok) throw await failureFrom(response);
-      const parsed = TranscriptResponseSchema.safeParse(await response.json().catch(() => null));
-      if (!parsed.success) {
-        throw new CompanionFetchError(
-          'The companion returned an unfamiliar captions format.',
-          'fetch-failed',
-        );
-      }
-      return parsed.data;
-    },
-
     async fetchYouTubeThumbnail(videoId) {
       const response = await fetchImpl(
         `${base}/api/research/youtube-thumbnail?id=${encodeURIComponent(videoId)}`,
-        { headers: authorization },
+        session,
       ).catch(() => null);
       if (!response?.ok) {
         throw new CompanionFetchError('That thumbnail could not be loaded.', 'fetch-failed');
@@ -342,7 +342,7 @@ export function createCompanionResearchClient(
   };
 
   async function readJson(url: string, fallbackMessage: string): Promise<unknown> {
-    const response = await fetchImpl(url, { headers: authorization }).catch(() => null);
+    const response = await fetchImpl(url, session).catch(() => null);
     if (!response) throw new CompanionFetchError(fallbackMessage, 'fetch-failed');
     // A configuration problem (no search key set) is a different conversation from an
     // outage, so the reason the companion gives is carried through rather than flattened.

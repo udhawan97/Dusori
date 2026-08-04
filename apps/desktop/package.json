@@ -1,0 +1,20 @@
+{
+  "name": "@dusori/desktop",
+  "version": "0.12.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:resources": "node ../../scripts/build-desktop-sidecar.mjs",
+    "tauri": "tauri",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify:config": "node ../../scripts/verify-desktop-release.mjs --config-only"
+  },
+  "dependencies": {
+    "@dusori/storage-tauri": "workspace:*",
+    "@tauri-apps/api": "2.11.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "typescript": "6.0.3"
+  }
+}

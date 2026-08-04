@@ -17,6 +17,7 @@ export const ProposalEntrySchema = z
     resolution: ProposalResolutionSchema,
     resolvedAt: z.string().datetime().optional(),
   })
+  .passthrough()
   .superRefine((entry, context) => {
     if (entry.resolution === 'pending' && entry.resolvedAt !== undefined) {
       context.addIssue({
@@ -40,6 +41,7 @@ export const ProposalLedgerSchema = z
     topicSlug: z.string().min(1).max(80),
     proposals: z.array(ProposalEntrySchema),
   })
+  .passthrough()
   .superRefine((ledger, context) => {
     const root = `Topics/${ledger.topicSlug}/`;
     const seen = new Set<string>();

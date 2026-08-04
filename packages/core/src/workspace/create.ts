@@ -126,7 +126,7 @@ export async function createTopic(
     const writtenHome = await storage.write('Home.md', nextHome, {
       expectedHash: expectedHome.hash,
     });
-    homeVersion = fileVersion(writtenHome);
+    homeVersion = { ...expectedHome, ...fileVersion(writtenHome) };
   } else {
     workspaceHomeConflict = true;
     const proposal = await storage.write(

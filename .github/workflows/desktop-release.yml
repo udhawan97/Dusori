@@ -1,0 +1,215 @@
+name: Desktop release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    if: github.repository == 'udhawan97/Dusori'
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+            node_archive: node-v24.18.1-darwin-arm64.tar.gz
+            node_sha256: eb02f7fab96d3d67de40c5ec8566096fcb4c2026728787683ae5a97eb612b941
+            node_relative: node-v24.18.1-darwin-arm64/bin/node
+            node_license: node-v24.18.1-darwin-arm64/LICENSE
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+            node_archive: node-v24.18.1-darwin-x64.tar.gz
+            node_sha256: 6fb20fceacbb157c2f95825b80df4a454a0f6d81cdcd7bb81eeae9147e0e76ec
+            node_relative: node-v24.18.1-darwin-x64/bin/node
+            node_license: node-v24.18.1-darwin-x64/LICENSE
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+            node_archive: node-v24.18.1-win-x64.zip
+            node_sha256: ec56b84a7551893ab2324ebdfdc4ab974a63b4781162600b68a1293cc3e53765
+            node_relative: node-v24.18.1-win-x64/node.exe
+            node_license: node-v24.18.1-win-x64/LICENSE
+    runs-on: ${{ matrix.runner }}
+    env:
+      DUSORI_UPDATER_PUBLIC_KEY: ${{ vars.DUSORI_UPDATER_PUBLIC_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Check out immutable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.18.1
+
+      - name: Enable pinned pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.9.0 --activate
+          test "$(pnpm --version)" = "11.9.0"
+
+      - name: Require protected updater signing material
+        shell: bash
+        run: |
+          test -n "$DUSORI_UPDATER_PUBLIC_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          test -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          case "$DUSORI_UPDATER_PUBLIC_KEY" in *NOT_PROVISIONED*) exit 1;; esac
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static app
+        run: pnpm --filter @dusori/app build
+
+      - name: Install Rust target
+        shell: bash
+        run: |
+          case '${{ matrix.target }}' in
+            aarch64-apple-darwin) test "$(uname -m)" = 'arm64' ;;
+            x86_64-apple-darwin|x86_64-pc-windows-msvc) test "$(uname -m)" = 'x86_64' ;;
+            *) exit 1 ;;
+          esac
+          rustup target add '${{ matrix.target }}'
+
+      - name: Download and verify target-native Node runtime
+        shell: bash
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "${{ matrix.node_archive }}" \
+            "https://nodejs.org/dist/v24.18.1/${{ matrix.node_archive }}"
+          printf '%s  %s\n' '${{ matrix.node_sha256 }}' '${{ matrix.node_archive }}' > node-runtime.sha256
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum --check node-runtime.sha256
+          else
+            shasum -a 256 --check node-runtime.sha256
+          fi
+          case '${{ matrix.node_archive }}' in
+            *.zip) powershell -NoProfile -Command "Expand-Archive -LiteralPath '${{ matrix.node_archive }}' -DestinationPath node-runtime" ;;
+            *.tar.gz) mkdir node-runtime && tar -xzf '${{ matrix.node_archive }}' -C node-runtime ;;
+            *) exit 1 ;;
+          esac
+
+      - name: Prepare packaged companion and frontend
+        shell: bash
+        run: >-
+          node scripts/build-desktop-sidecar.mjs
+          --target '${{ matrix.target }}'
+          --node-binary 'node-runtime/${{ matrix.node_relative }}'
+          --node-license 'node-runtime/${{ matrix.node_license }}'
+
+      - name: Create private release config overlay
+        shell: bash
+        run: >-
+          node scripts/verify-desktop-release.mjs
+          --write-config apps/desktop/src-tauri/updater.release.json
+
+      - name: Build unsigned OS installer and signed updater artifact
+        shell: bash
+        run: >-
+          pnpm --filter @dusori/desktop exec tauri build
+          --target '${{ matrix.target }}'
+          --bundles '${{ matrix.bundles }}'
+          --config src-tauri/updater.release.json
+
+      - name: Collect and validate target artifacts
+        shell: bash
+        run: >-
+          node scripts/verify-desktop-release.mjs
+          --collect 'apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle'
+          --target '${{ matrix.target }}'
+          --output release-assets
+
+      - name: Upload verified target artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: desktop-${{ matrix.target }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Prepare verified desktop draft
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DUSORI_UPDATER_PUBLIC_KEY: ${{ vars.DUSORI_UPDATER_PUBLIC_KEY }}
+    steps:
+      - name: Check out immutable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.18.1
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          path: release-input
+          merge-multiple: true
+
+      - name: Verify version and compose stable updater metadata
+        shell: bash
+        run: |
+          rustc --version
+          VERSION="$(node -p "require('./package.json').version")"
+          test "$GITHUB_REF_NAME" = "v$VERSION"
+          node scripts/verify-desktop-release.mjs \
+            --artifacts release-input \
+            --version "$VERSION" \
+            --tag "$GITHUB_REF_NAME" \
+            --write-latest release-input/latest.json
+          cd release-input
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Create draft release and upload assets
+        shell: bash
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --draft \
+              --verify-tag \
+              --title "Dusori ${GITHUB_REF_NAME#v}" \
+              --notes "Desktop installers and signed automatic updates for Dusori ${GITHUB_REF_NAME#v}. See the checked-in release notes for verified changes and signing caveats."
+          fi
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')" = "true"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            --jq '.assets[].id' | while read -r asset_id; do
+              test -z "$asset_id" || gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            done
+          gh release upload "$GITHUB_REF_NAME" release-input/*
+
+      - name: Verify uploaded assets before publishing
+        shell: bash
+        run: |
+          find release-input -maxdepth 1 -type f -exec basename {} \; | sort > expected-assets.txt
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            --jq '.assets[].name' | sort > actual-assets.txt
+          cmp expected-assets.txt actual-assets.txt
+          gh release download "$GITHUB_REF_NAME" --dir downloaded
+          (cd downloaded && sha256sum --check SHA256SUMS.txt)
+          while read -r asset; do cmp "release-input/$asset" "downloaded/$asset"; done < expected-assets.txt

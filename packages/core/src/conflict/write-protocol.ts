@@ -113,7 +113,7 @@ export async function acceptMarkdownUpdate(
     updatedAt: now.toISOString(),
     fileIndex: {
       ...state.fileIndex,
-      [path]: { hash: written.hash, modifiedAt: written.modifiedAt },
+      [path]: { ...state.fileIndex[path], hash: written.hash, modifiedAt: written.modifiedAt },
     },
   });
   const stateFile = await storage.read(statePath);

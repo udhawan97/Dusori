@@ -4,6 +4,30 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-04
+
+### Learning Studio
+
+- Rebuilt the app around four predictable destinations — Learn, Sources, Map, and Settings — and the daily sequence Continue, Read, Annotate, explicitly Mark learned or review, then inspect Map/Outline.
+- Made Sources a manifest-backed evidence shelf and separated candidate Preview from Save source and Save & read. Saved text opens in a focused Reading room.
+- Added topic-local file search and a linear Outline beside the Obsidian-style galaxy, without remote chat history or a graph database.
+- Kept objective completion, topic status, and review outcomes as three separate explicit states; navigation still never claims progress or mastery.
+
+### Desktop and updates
+
+- Added open-source Tauri builds for macOS Apple silicon, macOS Intel, and Windows x64, each with a target-native Node.js 24 companion sidecar.
+- Added a signed GitHub release updater with separate check, download, install, and relaunch operations. Automatic opt-in covers checks and downloads only; installation waits for the learner and is blocked by unsaved work.
+- Added a three-target immutable-tag release workflow that cryptographically verifies updater signatures and stages an exact-asset draft containing `latest.json` plus `SHA256SUMS.txt`; publication happens only after the draft is downloaded and independently checked.
+- Documented that v0.12.0 OS installers are not Apple-notarized or Microsoft code-signed even though the in-app update artifacts carry a separate Dusori signature.
+
+### Safety, compatibility, and research
+
+- Kept the companion’s per-run credential out of the opened URL, stdout, and logs; bundled pages use a restricted same-origin cookie and desktop API-only sessions use an environment-provided token with an exact origin.
+- Made workspace machine-file readers tolerant of compatible future fields and preserved those fields across supported writes; bounded import preflight completes before destination mutation.
+- Separated provider availability from per-run found, empty, and failed outcomes.
+- Changed YouTube capture to metadata/reference-only, preferring the official Data API v3 through `YOUTUBE_API_KEY` with an optional self-hosted `INVIDIOUS_URL` fallback. Dusori no longer harvests captions; authorized transcript text can be added through the ordinary Paste or File path.
+- Rewrote the README, website, documentation, security policy, provider matrix, updater recovery guide, product contract, and architecture decisions around the v0.12.0 behavior.
+
 ## [0.11.3] - 2026-08-03
 
 ### Fixed
@@ -267,7 +291,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/udhawan97/Dusori/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/udhawan97/Dusori/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/udhawan97/Dusori/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/udhawan97/Dusori/compare/v0.11.0...v0.11.1
