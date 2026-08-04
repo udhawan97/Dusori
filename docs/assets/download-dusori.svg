@@ -2,13 +2,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 84" role="img" aria-labelledby="title desc">
   <!-- Hallmark · component: icon-led README action · genre: atmospheric editorial · theme: Dusori app tokens -->
   <title id="title">Download Dusori</title>
-  <desc id="desc">A download icon beside the words Download v0.12.1 and Apple silicon, Windows, checksums.</desc>
+  <desc id="desc">A download icon beside the words Download v0.12.2 and Apple silicon, Windows, checksums.</desc>
   <rect x="1" y="1" width="358" height="82" rx="10" fill="#14100d" stroke="#3e3732" stroke-width="2"/>
   <rect x="20" y="20" width="44" height="44" rx="7" fill="#c9862e"/>
   <g fill="none" stroke="#fffaf3" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M42 28v21M35 42l7 7 7-7M31 55h22"/>
   </g>
-  <text x="82" y="39" fill="#f7f1e8" font-family="'Zen Kaku Gothic New', Arial, sans-serif" font-size="20" font-weight="700">Download v0.12.1</text>
+  <text x="82" y="39" fill="#f7f1e8" font-family="'Zen Kaku Gothic New', Arial, sans-serif" font-size="20" font-weight="700">Download v0.12.2</text>
   <text x="82" y="59" fill="#c9bfb2" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="11" letter-spacing=".8">APPLE SILICON · WINDOWS</text>
   <path d="M327 35l7 7-7 7M318 42h16" fill="none" stroke="#cb4832" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

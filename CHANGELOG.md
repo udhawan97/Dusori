@@ -4,6 +4,16 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-08-04
+
+### Fixed
+
+- Replaced the mistakenly supplied nine-diamond desktop artwork with Dusori's canonical README identity: the open ensō, marigold rangoli geometry, and vermilion katana.
+- Regenerated the macOS ICNS, Windows ICO, and native PNG icon set from the same canonical dark app-icon source used by the public brand system.
+- Reworked the Apple-silicon DMG background to use the README palette and mark while preserving the verified drag-to-Applications layout.
+- Opened the packaged window at SvelteKit's `/Dusori/app/` base route so Tauri resolves the embedded index without presenting `/index.html` to the client router as a nonexistent route.
+- Corrected recovery guidance: v0.12.1 users must install v0.12.2 manually once because the launch-time 404 makes the in-app Settings updater inaccessible.
+
 ## [0.12.1] - 2026-08-04
 
 ### Fixed
@@ -301,7 +311,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/udhawan97/Dusori/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/udhawan97/Dusori/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/udhawan97/Dusori/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/udhawan97/Dusori/compare/v0.11.2...v0.11.3

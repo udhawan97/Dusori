@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.12.1 release contract · **Date:** 2026-08-04
+**Status:** v0.12.2 release contract · **Date:** 2026-08-04
 
 ## Product promise
 
@@ -125,7 +125,7 @@ The updater has four explicit operations:
 
 Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies both platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
-v0.12.1 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
+v0.12.2 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 
 ## Explicitly not built
 
@@ -136,7 +136,7 @@ v0.12.1 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Social-feed scraping, access-control bypass, or YouTube media/caption download
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.1
+- Apple notarization or Microsoft Authenticode signing for v0.12.2
 
 ## Trust model
 

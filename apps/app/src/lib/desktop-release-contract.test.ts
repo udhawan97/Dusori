@@ -26,6 +26,8 @@ describe('desktop release contract', () => {
   });
 
   it('declares native icons and a branded DMG layout', () => {
+    const readmeAppIcon = read('apps/site/public/brand/dusori-app-icon-dark.svg').trim();
+    const desktopIconSource = read('apps/desktop/src-tauri/icons/icon-source.svg').trim();
     const config = JSON.parse(read('apps/desktop/src-tauri/tauri.conf.json')) as {
       bundle?: {
         icon?: string[];
@@ -47,6 +49,7 @@ describe('desktop release contract', () => {
       'icons/icon.icns',
       'icons/icon.ico',
     ]);
+    expect(desktopIconSource).toBe(readmeAppIcon);
     expect(config.bundle?.macOS?.dmg).toMatchObject({
       background: 'dmg/background.png',
       windowSize: { width: 720, height: 460 },
@@ -62,6 +65,44 @@ describe('desktop release contract', () => {
     expect(rustShell).toContain('DUSORI_DESKTOP_PARENT_PID');
     expect(sidecar).toContain('process.kill(parentPid, 0)');
     expect(sidecar).toContain('void close()');
+  });
+
+  it('opens the packaged window at the Svelte base instead of an index.html route', () => {
+    const rustShell = read('apps/desktop/src-tauri/src/lib.rs');
+
+    expect(rustShell).toContain('const DESKTOP_APP_PATH: &str = "Dusori/app/";');
+    expect(rustShell).not.toContain('const DESKTOP_APP_PATH: &str = "Dusori/app/index.html";');
+  });
+
+  it('directs affected v0.12.0 and v0.12.1 users to a reachable manual repair', () => {
+    const originalDesktopRelease = read('apps/site/src/content/docs/docs/releases/v0-12-0.md');
+    const supersededRelease = read('apps/site/src/content/docs/docs/releases/v0-12-1.md');
+    const recoveryDocs = [
+      read('README.md'),
+      read('apps/site/src/pages/index.astro'),
+      read('apps/site/src/content/docs/docs/getting-started.md'),
+      read('apps/site/src/content/docs/docs/updates.md'),
+      originalDesktopRelease,
+      supersededRelease,
+      read('apps/site/src/content/docs/docs/releases/v0-12-2.md'),
+    ];
+
+    for (const document of recoveryDocs) {
+      expect(document).toContain('v0.12.0');
+      expect(document).toContain('v0.12.1');
+      expect(document).toContain('launch-time 404');
+      expect(document).toContain('Settings is inaccessible');
+      expect(document).toMatch(/(?:manual(?:ly)?[^\n]*v0\.12\.2|v0\.12\.2[^\n]*manual(?:ly)?)/iu);
+      expect(document).toMatch(/in-app updates\s+resume from v0\.12\.2 onward/iu);
+    }
+    expect(originalDesktopRelease).toContain(
+      '[Download current v0.12.2](https://github.com/udhawan97/Dusori/releases/tag/v0.12.2)',
+    );
+    expect(originalDesktopRelease).not.toContain('[Open v0.12.0 release downloads]');
+    expect(supersededRelease).toContain(
+      '[Download current v0.12.2](https://github.com/udhawan97/Dusori/releases/tag/v0.12.2)',
+    );
+    expect(supersededRelease).not.toContain('[Download v0.12.1]');
   });
 
   it('does not advertise an Intel Mac download', () => {

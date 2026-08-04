@@ -27,5 +27,5 @@ Release builds require private updater signing material from the protected GitHu
 
 - Desktop builds are platform-specific and release CI becomes a required proof lane.
 - Updater signing keys require durable offline recovery and protected CI storage.
-- v0.12.1 installers are not Apple-notarized or Microsoft code-signed, so first-launch OS warnings remain. Updater signatures do not replace OS trust signing.
+- v0.12.2 installers are not Apple-notarized or Microsoft code-signed, so first-launch OS warnings remain. Updater signatures do not replace OS trust signing.
 - A bad release feed must be withdrawn and replaced with a forward fix; the app does not silently downgrade.

@@ -12,13 +12,13 @@
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="300"></a>
   &nbsp;
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.1"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.1 for Apple silicon or Windows" width="300"></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.2"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.2 for Apple silicon or Windows" width="300"></a>
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a> ·
-  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-1/"><strong>Release notes</strong></a> ·
-  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.1/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
+  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-2/"><strong>Release notes</strong></a> ·
+  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.2/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
 </p>
 
 <p align="center">
@@ -66,14 +66,14 @@ Research is a tool inside a topic, not another place to get lost. A result has a
 | Choice                    | Best for                                                             | Start                                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                                                                          |
-| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.1/Dusori_0.12.1_aarch64-aarch64-apple-darwin.dmg)**   |
-| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.1/Dusori_0.12.1_x64-setup-x86_64-pc-windows-msvc.exe)** |
+| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_aarch64-aarch64-apple-darwin.dmg)**   |
+| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.2/Dusori_0.12.2_x64-setup-x86_64-pc-windows-msvc.exe)** |
 | **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                                                                                      |
-| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.1.zip)**                                                                 |
+| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.2.zip)**                                                                 |
 
-The v0.12.1 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
+The v0.12.2 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
 
-Already installed the v0.12.0 Mac build? Install v0.12.1 manually once. That older binary identifies itself as Intel even under Rosetta, so it cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place; native in-app updates resume from v0.12.1 onward.
+Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.12.2 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates resume from v0.12.2 onward.
 
 ### Local companion
 

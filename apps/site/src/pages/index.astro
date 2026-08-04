@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.12.1';
+const releaseVersion = '0.12.2';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
@@ -371,6 +371,11 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             startup. Dusori verifies the update signature, shows the version and notes, then waits.
             Nothing installs or relaunches until you choose <strong>Install and restart</strong>;
             unsaved work blocks it.
+          </p>
+          <p>
+            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.2 install. Both affected
+            versions open to a launch-time 404, so Settings is inaccessible. Normal in-app updates
+            resume from v0.12.2 onward.
           </p>
           <a class="text-link" href={`${docsHref}updates/`}
             >Update and recovery guide <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a

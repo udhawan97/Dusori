@@ -18,7 +18,9 @@ use sha2::{Digest, Sha256};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_updater::UpdaterExt;
 
-const DESKTOP_APP_PATH: &str = "Dusori/app/index.html";
+// Keep the visible URL at SvelteKit's configured base. Tauri resolves the trailing
+// slash to the embedded index.html without exposing `/index.html` as an app route.
+const DESKTOP_APP_PATH: &str = "Dusori/app/";
 const MAX_UPDATE_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Clone, Serialize)]
@@ -704,10 +706,16 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        append_bounded_update_chunk, checked_path, normalized_segments,
+        DESKTOP_APP_PATH, append_bounded_update_chunk, checked_path, normalized_segments,
         validate_downloaded_version, validate_update_content_length, verify_update_signature,
         write_workspace_file,
     };
+
+    #[test]
+    fn desktop_window_opens_at_the_svelte_base_route() {
+        assert_eq!(DESKTOP_APP_PATH, "Dusori/app/");
+        assert!(!DESKTOP_APP_PATH.ends_with("index.html"));
+    }
 
     #[test]
     fn accepts_portable_workspace_paths() {
