@@ -843,8 +843,13 @@
       <p class="kicker">Local-first · free · no account</p>
       <h1 id="setup-title">Make a learning space you can keep.</h1>
       <p>
-        Start privately in this browser, or grant access to one folder. Dusori stores plain Markdown
-        and JSON; it does not upload your notes.
+        <span class="setup-copy-wide">
+          Start privately in this browser, or grant access to one folder. Dusori stores plain
+          Markdown and JSON; it does not upload your notes.
+        </span>
+        <span class="setup-copy-compact">
+          Start in this browser or connect one folder. Your notes stay on this device.
+        </span>
       </p>
     </section>
 
@@ -1529,6 +1534,10 @@
     font-size: var(--text-md);
   }
 
+  .setup-copy-compact {
+    display: none;
+  }
+
   .kicker,
   .path-label,
   .rail-section > p {
@@ -2145,6 +2154,43 @@
 
     .input-row {
       grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
+  /* At the smallest supported widths the full display treatment made the primary start action
+   * only partly visible. Keep the same promise and hierarchy, but use a compact reading measure so
+   * the complete 44px action remains available even on a 320x568 screen. */
+  @media (max-width: 24rem) {
+    .setup-intro {
+      min-height: 0;
+      padding-block: var(--space-lg) var(--space-md);
+    }
+
+    .setup-intro h1 {
+      font-size: 2.25rem;
+      line-height: 1.06;
+    }
+
+    .setup-intro > p:last-child {
+      margin-block: var(--space-xs) 0;
+      font-size: var(--text-base);
+      line-height: 1.45;
+    }
+
+    .setup-copy-wide {
+      display: none;
+    }
+
+    .setup-copy-compact {
+      display: inline;
+    }
+
+    .setup-options article {
+      padding-block: var(--space-md);
+    }
+
+    .setup-options h2 {
+      margin-block-start: var(--space-sm);
     }
   }
 

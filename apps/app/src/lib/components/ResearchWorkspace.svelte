@@ -82,6 +82,7 @@
         {ai}
         {autoStart}
         {onAutoStartHandled}
+        {sourceRevision}
         onSourceSaved={handleSourceSaved}
       />
     </section>
@@ -91,9 +92,13 @@
         <ShieldCheck aria-hidden="true" size={18} />
         <span>Approved evidence</span>
       </div>
-      {#key `${topicSlug}-${sourceRevision}`}
-        <SourceLibrary {storage} {topicSlug} {companion} />
-      {/key}
+      <SourceLibrary
+        {storage}
+        {topicSlug}
+        {companion}
+        revision={sourceRevision}
+        onSourceSaved={handleSourceSaved}
+      />
     </aside>
   </div>
 

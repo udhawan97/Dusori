@@ -67,7 +67,7 @@ If the roadmap changed outside Dusori, the external content remains active and t
 
 The optional companion holds the loopback security boundary. It can fetch a page you explicitly confirm, reach Microsoft Learn's ranked search and arXiv, add Reddit through your own Reddit app and YouTube through your own Invidious instance, and expose one configured Brave, Tavily, or SearXNG general web-search provider. Optional Ollama, Anthropic, or OpenAI configuration can advise ranking, write a model-named brief from approved sources, and add a model-named overview to a synthesis. These capabilities appear only when the app is opened through the companion; deterministic research remains available without them. See [Sources](../sources/) for configuration and consent boundaries.
 
-For the current v0.11.1 app, install [Node.js 24 LTS](https://nodejs.org/en/download), then run:
+For the current v0.11.2 app, install [Node.js 24 LTS](https://nodejs.org/en/download), then run:
 
 ```sh
 npx @udhawan97/dusori@latest
@@ -79,7 +79,7 @@ This downloads and opens the current release without a global install. To approv
 npx @udhawan97/dusori@latest --root "/path/to/Dusori"
 ```
 
-If you prefer a source copy, download and unzip the [v0.11.1 source](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip), open a terminal in its folder, and run `npm start`. Or clone the repository and use the same cross-platform source path on macOS, Windows, or Linux:
+If you prefer a source copy, download and unzip the [v0.11.2 source](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.2.zip), open a terminal in its folder, and run `npm start`. Or clone the repository and use the same cross-platform source path on macOS, Windows, or Linux:
 
 ```sh
 git clone https://github.com/udhawan97/Dusori.git
@@ -87,7 +87,7 @@ cd Dusori
 npm start
 ```
 
-The [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori/v/0.11.1) and app are aligned at v0.11.1. The first source run downloads the repository-pinned pnpm version, installs dependencies, builds the app and companion, and then opens Dusori. The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.
+The [public npm companion](https://www.npmjs.com/package/@udhawan97/dusori/v/0.11.2) and app are aligned at v0.11.2. The first source run downloads the repository-pinned pnpm version, installs dependencies, builds the app and companion, and then opens Dusori. The companion binds only to `127.0.0.1`, uses a new token for each run, removes that token and the companion origin from the browser address immediately after a valid connection, and stops when its terminal process exits. Omit `--root` to keep folder access off.
 
 ## If something goes wrong
 

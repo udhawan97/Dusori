@@ -1,6 +1,6 @@
 <script lang="ts">
   import { AlertTriangle, Check, FilePlus2 } from '@lucide/svelte';
-  import { onMount, tick } from 'svelte';
+  import { tick } from 'svelte';
 
   import {
     StorageConflictError,
@@ -16,10 +16,13 @@
   } from '@dusori/core';
 
   import { modal } from '$lib/actions/modal';
+  import { createLatestRequestGate } from '$lib/latest-request';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let companion: CompanionResearchClient | null = null;
+  export let revision = 0;
+  export let onSourceSaved: () => void = () => undefined;
 
   let method: 'paste' | 'file' | 'url' = 'paste';
   let extracting = false;
@@ -46,6 +49,7 @@
   let upgradeCloseButton: HTMLButtonElement;
   let replacing = false;
   let upgradeError = '';
+  const refreshGate = createLatestRequestGate();
 
   function hostOf(record: SourceRecord): string {
     try {
@@ -131,6 +135,7 @@
       // upgradeError, then error, then success).
       error = '';
       success = 'Source upgraded to full page content and recorded in the update log.';
+      onSourceSaved();
       await tick();
       confirmInvoker?.focus();
       confirmInvoker = null;
@@ -155,18 +160,33 @@
     }
   }
 
-  onMount(() => {
-    void refresh();
-  });
+  $: void refreshForRevision(revision, storage, topicSlug);
 
-  async function refresh(): Promise<void> {
+  async function refreshForRevision(
+    currentRevision: number,
+    currentStorage: StorageAdapter,
+    currentTopicSlug: string,
+  ): Promise<void> {
+    if (currentRevision < 0) return;
+    await refresh(currentStorage, currentTopicSlug);
+  }
+
+  async function refresh(
+    currentStorage: StorageAdapter = storage,
+    currentTopicSlug: string = topicSlug,
+  ): Promise<void> {
+    const request = refreshGate.begin();
     loading = true;
     try {
-      sources = (await readSourceManifest(storage, topicSlug)).sources;
+      const nextSources = (await readSourceManifest(currentStorage, currentTopicSlug)).sources;
+      if (!refreshGate.isCurrent(request)) return;
+      error = '';
+      sources = nextSources;
     } catch (caught) {
+      if (!refreshGate.isCurrent(request)) return;
       error = caught instanceof Error ? caught.message : 'Dusori could not read these sources.';
     } finally {
-      loading = false;
+      if (refreshGate.isCurrent(request)) loading = false;
     }
   }
 
@@ -252,6 +272,7 @@
         pastedText = '';
         url = '';
         selectedFile = null;
+        onSourceSaved();
       }
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not add this source.';

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { addDaysUtc, localDateOf } from '../learning/review.js';
+import { buildWorkspaceRecap } from '../learning/loop.js';
 import { createNote } from '../notes/edit.js';
 import { schemaVersion } from '../schemas/workspace.js';
 import type { StorageAdapter } from '../adapters.js';
 import { addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
+import { updateLogPath } from '../workspace/paths.js';
 import { buildWorkspaceInsights } from './workspace-insights.js';
 
 const now = new Date('2026-07-27T12:00:00.000Z');
@@ -27,6 +29,29 @@ async function writeSchedule(
 }
 
 describe('workspace insights', () => {
+  it('uses one UTC calendar key for update paths, recap bounds, and activity labels', async () => {
+    const storage = new MemoryStorageAdapter();
+    const boundary = new Date('2026-08-04T00:30:00.000Z');
+    await createWorkspace(storage, 'Dusori', boundary);
+    const created = await createTopic(storage, 'UTC boundary', boundary);
+    await createNote(storage, created.topicSlug, 'Boundary note', boundary);
+
+    expect(await storage.read(updateLogPath(created.topicSlug, boundary))).not.toBeNull();
+
+    const recap = await buildWorkspaceRecap(storage, created.workspace, {
+      days: 1,
+      now: boundary,
+    });
+    const insights = await buildWorkspaceInsights(storage, created.workspace, {
+      days: 1,
+      now: boundary,
+    });
+
+    expect(recap).toMatchObject({ from: '2026-08-04', to: '2026-08-04' });
+    expect(recap.entries.at(0)?.date).toBe('2026-08-04');
+    expect(insights.activity.at(-1)?.date).toBe('2026-08-04');
+  });
+
   it('derives activity, evidence, provenance, and graph signals from local files', async () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);

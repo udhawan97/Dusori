@@ -757,6 +757,17 @@ test('insights derives an honest local analytics snapshot', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Most linked artifacts' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Source mix' })).toBeVisible();
   await expect(page.getByText(/does not estimate study time or invent a score/u)).toBeVisible();
+  const utcLabel = await page.evaluate(() =>
+    new Intl.DateTimeFormat('en-US', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    }).format(new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)),
+  );
+  await expect(page.locator('.pulse-column > span[title]').last()).toHaveAttribute(
+    'title',
+    new RegExp(`^${utcLabel}: \\d+ recorded changes$`, 'u'),
+  );
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -983,6 +994,15 @@ async function readWorkspaceFile(page: Page, path: string): Promise<string> {
     for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
     return (await (await directory.getFileHandle(name)).getFile()).text();
   }, path);
+}
+
+async function workspaceFileExists(page: Page, path: string): Promise<boolean> {
+  try {
+    await readWorkspaceFile(page, path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** PDF strings are parenthesised, so a literal parenthesis or backslash must be escaped. */
@@ -1245,6 +1265,10 @@ test('research requires disclosure, previews exact capture, and adds a graph sou
   preview = page.getByRole('dialog', { name: 'Preview research source' });
   await preview.getByRole('button', { name: 'Add to sources' }).click();
 
+  await expect(
+    page.getByRole('status').filter({ hasText: 'was added to saved research evidence.' }),
+  ).toBeFocused();
+
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Establish identity terms with Microsoft Entra',
   );
@@ -1326,6 +1350,30 @@ test('reading a saved source produces quoted passages, a synthesis, and a learni
   await createBrowserWorkspace(page);
   await createTopic(page, { remainInResearch: true });
 
+  const readSavedSources = page.getByRole('button', { name: 'Read saved sources' });
+  const buildSynthesis = page.getByRole('button', { name: 'Build synthesis' });
+  const createLearningPage = page.getByRole('button', { name: 'Create learning page' });
+  await expect(readSavedSources).toBeDisabled();
+  await expect(buildSynthesis).toBeDisabled();
+  await expect(createLearningPage).toBeDisabled();
+  await buildSynthesis.evaluate((button) => {
+    (button as HTMLButtonElement).disabled = false;
+    (button as HTMLButtonElement).click();
+  });
+  await createLearningPage.evaluate((button) => {
+    (button as HTMLButtonElement).disabled = false;
+    (button as HTMLButtonElement).click();
+  });
+  await expect(
+    page
+      .getByText(
+        'Read at least one saved source into quoted passages before building from evidence.',
+      )
+      .first(),
+  ).toBeVisible();
+  expect(await workspaceFileExists(page, 'Topics/ai-fundamentals/Synthesis.md')).toBe(false);
+  expect(await workspaceFileExists(page, 'Topics/ai-fundamentals/Learning/learn.html')).toBe(false);
+
   await page.getByRole('button', { name: 'Allow Wikipedia' }).click();
   await page
     .getByRole('dialog', { name: 'Allow Wikipedia search?' })
@@ -1344,13 +1392,23 @@ test('reading a saved source produces quoted passages, a synthesis, and a learni
     'Microsoft Entra Connect',
   );
 
-  await page.getByRole('button', { name: 'Read saved sources' }).click();
+  await expect(readSavedSources).toBeEnabled();
+  await expect(buildSynthesis).toBeDisabled();
+  await expect(createLearningPage).toBeDisabled();
+
+  await readSavedSources.evaluate((button) => {
+    (button as HTMLButtonElement).click();
+    (button as HTMLButtonElement).click();
+  });
   await expect(page.getByText('Read 1 source into')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Build synthesis' }).click();
+  await expect(buildSynthesis).toBeEnabled();
+  await expect(createLearningPage).toBeEnabled();
+
+  await buildSynthesis.click();
   await expect(page.getByText('Synthesis written from')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Create learning page' }).click();
+  await createLearningPage.click();
   await expect(page.getByText('Learning page built at')).toBeVisible();
 
   // Both artifacts are ordinary files in the portable tree, and the page needs no network.
@@ -2938,6 +2996,9 @@ test('the first run offers a workspace without scrolling', async ({ page }) => {
     [1440, 900],
     [1280, 720],
     [1512, 850],
+    [320, 568],
+    [320, 800],
+    [375, 667],
     [375, 812],
   ]) {
     await page.setViewportSize({ width, height });
@@ -2957,6 +3018,7 @@ test('the research view the app opens on shows its first control at desktop and 
     [1440, 900],
     [375, 812],
     [320, 720],
+    [414, 896],
   ]) {
     const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
@@ -2969,6 +3031,22 @@ test('the research view the app opens on shows its first control at desktop and 
       page.getByRole('button', { name: 'Allow Wikipedia' }),
       `the first provider control at ${width}×${height}`,
     );
+
+    const dimensions = await page.evaluate(() => {
+      const panel = document.querySelector('.research-panel')?.getBoundingClientRect();
+      return {
+        bodyWidth: document.body.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+        panelRight: panel?.right ?? Number.POSITIVE_INFINITY,
+        rootWidth: document.documentElement.scrollWidth,
+      };
+    });
+    expect(dimensions.rootWidth, `root overflow at ${width}px`).toBe(dimensions.clientWidth);
+    expect(dimensions.bodyWidth, `body overflow at ${width}px`).toBe(dimensions.clientWidth);
+    expect(
+      Math.ceil(dimensions.panelRight),
+      `research panel clipping at ${width}px`,
+    ).toBeLessThanOrEqual(width);
 
     // The creation toast lands over that same region now. It announces; it must not absorb a click.
     await expect(page.getByText('Topic created.')).toBeVisible();

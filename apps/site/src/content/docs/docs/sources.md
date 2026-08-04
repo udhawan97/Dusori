@@ -81,7 +81,7 @@ Dusori never ships a default instance and your browser never contacts YouTube, G
 
 Search credentials never enter the browser. Optional `OLLAMA_MODEL`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` configuration can add advisory AI ranking and a model-named research brief. AI receives only the content named by its separate consent disclosure, and any failure falls back to deterministic ranking or the deterministic brief.
 
-The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.11.1. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.11.1 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.1.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
+The companion is published as [`@udhawan97/dusori`](https://www.npmjs.com/package/@udhawan97/dusori) and released alongside the app at v0.11.2. With Node.js 24, run `npx @udhawan97/dusori@latest`; approve one existing folder with `npx @udhawan97/dusori@latest --root "/path/to/Dusori"`, or omit `--root` to keep folder access off. The [v0.11.2 source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.11.2.zip) and repository clone remain available through `npm start`. Follow [Getting started](../getting-started/) for the complete setup.
 
 ## Topic file contract
 

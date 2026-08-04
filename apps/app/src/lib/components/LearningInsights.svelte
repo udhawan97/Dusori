@@ -8,6 +8,8 @@
     type WorkspaceInsights,
   } from '@dusori/core';
 
+  import { formatUtcCalendarDate } from '$lib/calendar-date';
+
   export let storage: StorageAdapter;
   export let workspace: Workspace;
   export let revision = 0;
@@ -42,9 +44,7 @@
   }
 
   function shortDate(date: string): string {
-    return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(
-      new Date(`${date}T00:00:00.000Z`),
-    );
+    return formatUtcCalendarDate(date);
   }
 
   function evidenceOrbit(value: WorkspaceInsights | null): string {

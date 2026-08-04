@@ -60,6 +60,7 @@
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let topicTitle: string;
+  export let sourceRevision = 0;
   export let onSourceSaved: () => void = () => undefined;
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
@@ -119,6 +120,8 @@
   } | null = null;
   let previewInvoker: HTMLButtonElement | null = null;
   let previewCloseButton: HTMLButtonElement;
+  let acceptedSourceStatusElement: HTMLParagraphElement;
+  let acceptedSourceStatus = '';
   let fetchFullContent = true;
   let adding = false;
   let previewError = '';
@@ -139,6 +142,11 @@
   let learnNotice = '';
   let learnError = '';
   let learnRevision = 0;
+  let savedSourceCount = 0;
+  let quotedPassageCount = 0;
+  let loadingEvidence = true;
+  let evidenceEligibilityError = '';
+  let evidenceRequest = 0;
 
   const objectiveAngleId = 'roadmap-objective';
 
@@ -159,6 +167,7 @@
   $: aiAllowed = readConsented([aiConsent], consentTick).has(aiConsent.id);
   $: shortlist = runResult?.shortlist ?? [];
   $: overflow = runResult?.overflow ?? [];
+  $: void refreshEvidenceEligibility(sourceRevision, storage, topicSlug);
   $: allProvidersFailed = Boolean(
     runResult &&
     attemptedProviderCount > 0 &&
@@ -203,6 +212,62 @@
       autoRefresh = false;
       staleOnOpen = false;
     }
+  }
+
+  async function inspectEvidence(
+    currentStorage: StorageAdapter = storage,
+    currentTopicSlug: string = topicSlug,
+  ): Promise<{ passages: number; sources: number }> {
+    const manifest = await readSourceManifest(currentStorage, currentTopicSlug);
+    return {
+      passages: manifest.sources.reduce((total, source) => total + (source.claims?.length ?? 0), 0),
+      sources: manifest.sources.length,
+    };
+  }
+
+  async function refreshEvidenceEligibility(
+    _revision: number,
+    currentStorage: StorageAdapter,
+    currentTopicSlug: string,
+  ): Promise<void> {
+    const request = ++evidenceRequest;
+    loadingEvidence = true;
+    evidenceEligibilityError = '';
+    try {
+      const eligibility = await inspectEvidence(currentStorage, currentTopicSlug);
+      if (request !== evidenceRequest) return;
+      savedSourceCount = eligibility.sources;
+      quotedPassageCount = eligibility.passages;
+    } catch (caught) {
+      if (request !== evidenceRequest) return;
+      savedSourceCount = 0;
+      quotedPassageCount = 0;
+      evidenceEligibilityError =
+        caught instanceof Error
+          ? caught.message
+          : 'Dusori could not check the saved research evidence.';
+    } finally {
+      if (request === evidenceRequest) loadingEvidence = false;
+    }
+  }
+
+  async function requireQuotedEvidence(action: 'learn' | 'synthesis'): Promise<boolean> {
+    try {
+      const refreshedEvidence = await inspectEvidence();
+      savedSourceCount = refreshedEvidence.sources;
+      quotedPassageCount = refreshedEvidence.passages;
+      if (refreshedEvidence.passages > 0) return true;
+      const message =
+        'Read at least one saved source into quoted passages before building from evidence.';
+      if (action === 'synthesis') synthesisError = message;
+      else learnError = message;
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : 'Dusori could not check the saved evidence.';
+      if (action === 'synthesis') synthesisError = message;
+      else learnError = message;
+    }
+    return false;
   }
 
   // The control stays disabled until the workspace file has the answer, so the setting can
@@ -499,8 +564,11 @@
         };
       }
       if (notice) notices = [...notices, notice];
+      acceptedSourceStatus = `${capture.title} was added to saved research evidence.`;
       onSourceSaved();
       await closePreview(false);
+      await tick();
+      acceptedSourceStatusElement?.focus();
     } catch (caught) {
       previewError =
         caught instanceof Error ? caught.message : 'Dusori could not add this research source.';
@@ -569,20 +637,33 @@
 
   /** Reads every saved source's local text into verbatim claims. No network, no model. */
   async function readSources(): Promise<void> {
+    if (readingSources) return;
     readingSources = true;
     deepError = '';
     deepResult = null;
     try {
+      const eligibility = await inspectEvidence();
+      savedSourceCount = eligibility.sources;
+      quotedPassageCount = eligibility.passages;
+      if (eligibility.sources === 0) {
+        deepError = 'Add at least one readable source before asking Dusori to read it.';
+        return;
+      }
       const result = await readSourcesIntoClaims(storage, topicSlug);
       deepResult = {
         claims: result.read.reduce((total, entry) => total + entry.claims, 0),
         read: result.read.length,
         unreadable: result.unreadable.map((entry) => `${entry.title} — ${entry.reason}`),
       };
+      const refreshedEvidence = await inspectEvidence();
+      savedSourceCount = refreshedEvidence.sources;
+      quotedPassageCount = refreshedEvidence.passages;
       onSourceSaved();
     } catch (caught) {
       deepError =
-        caught instanceof Error ? caught.message : 'Dusori could not read the saved sources.';
+        caught instanceof Error
+          ? caught.message
+          : 'Dusori could not check or read the saved sources.';
     } finally {
       readingSources = false;
     }
@@ -619,10 +700,12 @@
   }
 
   async function buildSynthesis(): Promise<void> {
+    if (buildingSynthesis) return;
     buildingSynthesis = true;
     synthesisError = '';
     synthesisNotice = '';
     try {
+      if (!(await requireQuotedEvidence('synthesis'))) return;
       const result = await writeTopicSynthesis(
         storage,
         topicSlug,
@@ -644,10 +727,12 @@
   }
 
   async function buildLearnPage(): Promise<void> {
+    if (buildingLearnPage) return;
     buildingLearnPage = true;
     learnError = '';
     learnNotice = '';
     try {
+      if (!(await requireQuotedEvidence('learn'))) return;
       const result = await writeLearnPage(storage, topicSlug, topicTitle);
       learnNotice =
         result.status === 'written'
@@ -789,6 +874,17 @@
       <p class="notice" role="status">{notice}</p>
     {/each}
 
+    {#if acceptedSourceStatus}
+      <p
+        class="notice accepted-source-status"
+        role="status"
+        tabindex="-1"
+        bind:this={acceptedSourceStatusElement}
+      >
+        {acceptedSourceStatus}
+      </p>
+    {/if}
+
     {#if runResult?.skipped.length}
       <ul class="skipped-list" aria-label="Skipped providers">
         {#each runResult.skipped as skip (skip.id)}
@@ -800,26 +896,63 @@
     <section class="understand-bay" aria-labelledby="understand-title">
       <h3 id="understand-title">Understand this topic</h3>
       <p class="understand-explainer">
-        Read what you saved into quoted passages, then build a synthesis and an optional learning
-        page from those quotes.
+        Add a readable source, then read it into quoted passages. Synthesis and the optional
+        learning page unlock after the first quoted passage.
         {aiAllowed && aiCapability
           ? `Only the synthesis overview leaves this device, to ${aiCapability.model}.`
           : 'Nothing here contacts the network.'}
       </p>
       <div class="understand-actions">
-        <button disabled={readingSources} onclick={() => void readSources()}>
+        <button
+          disabled={readingSources || loadingEvidence || savedSourceCount === 0}
+          aria-describedby={savedSourceCount === 0 ? 'read-sources-requirement' : undefined}
+          onclick={() => void readSources()}
+        >
           <BookOpenCheck aria-hidden="true" size={16} />
           {readingSources ? 'Reading saved sources…' : 'Read saved sources'}
         </button>
-        <button disabled={buildingSynthesis} onclick={() => void buildSynthesis()}>
+        <button
+          disabled={buildingSynthesis || loadingEvidence || quotedPassageCount === 0}
+          aria-describedby={quotedPassageCount === 0
+            ? savedSourceCount === 0
+              ? 'read-sources-requirement'
+              : 'quoted-evidence-requirement'
+            : undefined}
+          onclick={() => void buildSynthesis()}
+        >
           <Sparkles aria-hidden="true" size={16} />
           {buildingSynthesis ? 'Building synthesis…' : 'Build synthesis'}
         </button>
-        <button disabled={buildingLearnPage} onclick={() => void buildLearnPage()}>
+        <button
+          disabled={buildingLearnPage || loadingEvidence || quotedPassageCount === 0}
+          aria-describedby={quotedPassageCount === 0
+            ? savedSourceCount === 0
+              ? 'read-sources-requirement'
+              : 'quoted-evidence-requirement'
+            : undefined}
+          onclick={() => void buildLearnPage()}
+        >
           <GraduationCap aria-hidden="true" size={16} />
           {buildingLearnPage ? 'Building learning page…' : 'Create learning page'}
         </button>
       </div>
+      {#if savedSourceCount === 0}
+        <p class="quiet-note evidence-requirement" id="read-sources-requirement">
+          Add a readable source in Approved evidence first.
+        </p>
+      {:else if quotedPassageCount === 0}
+        <p class="quiet-note evidence-requirement" id="quoted-evidence-requirement">
+          Read the saved {savedSourceCount === 1 ? 'source' : 'sources'} to unlock evidence-built artifacts.
+        </p>
+      {:else}
+        <p class="quiet-note evidence-requirement">
+          {quotedPassageCount} quoted {quotedPassageCount === 1 ? 'passage' : 'passages'} ready for evidence-built
+          artifacts.
+        </p>
+      {/if}
+      {#if evidenceEligibilityError}
+        <p class="action-error" role="alert">{evidenceEligibilityError}</p>
+      {/if}
       {#if deepResult}
         <p class="notice" role="status">
           Read {deepResult.read}
@@ -1090,6 +1223,7 @@
 <style>
   .research-panel {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     container-type: inline-size;
     gap: var(--space-lg);
   }
@@ -1195,6 +1329,16 @@
     background: var(--color-paper);
     color: var(--color-accent-text);
     font-size: var(--text-xs);
+  }
+
+  .evidence-requirement {
+    display: block;
+    margin-block-start: var(--space-xs);
+  }
+
+  .accepted-source-status:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
   }
 
   .refresh-setting {

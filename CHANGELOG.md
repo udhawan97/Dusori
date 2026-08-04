@@ -4,6 +4,17 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-08-03
+
+### Fixed
+
+- Research controls fit their container at 320px instead of widening the page, and the first-run workspace action remains fully visible and at least 44px tall in a 320×568 viewport.
+- Synthesis and learning-page actions remain unavailable until the topic has at least one saved source and one quoted passage. The handlers repeat the check before writing, so a forced or stale control cannot create a zero-evidence artifact.
+- Accepting a preview now moves keyboard focus to the persistent saved-source confirmation; closing without accepting still restores the preview control.
+- Insights format UTC-keyed activity dates in UTC, matching dated update paths and recap bounds instead of moving an entry across days in another device timezone.
+- Synthesis and learning-page actions now enter their busy state and clear prior feedback before asynchronously rechecking evidence, so a new request cannot appear to inherit an earlier success.
+- Overlapping source-library refreshes apply only the newest result, and repeated read requests enter their busy state before the first asynchronous check.
+
 ## [0.11.1] - 2026-08-03
 
 ### Fixed
@@ -250,7 +261,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/udhawan97/Dusori/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/udhawan97/Dusori/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/udhawan97/Dusori/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/udhawan97/Dusori/compare/v0.9.1...v0.10.0
