@@ -175,6 +175,11 @@ async function openResearch(page: Page): Promise<void> {
   if (await page.getByRole('heading', { name: 'Research this topic' }).isVisible()) return;
   const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  await expect
+    .poll(
+      async () => (await workspaceNavigation.isVisible()) || (await navigationButton.isVisible()),
+    )
+    .toBe(true);
   if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
   await workspaceNavigation.getByRole('button', { name: 'Research', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
