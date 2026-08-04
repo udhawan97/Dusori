@@ -275,8 +275,11 @@ async function openTodayView(page: Page): Promise<void> {
   }
   const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori learning studio' });
   const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
+  // A reload briefly renders the workspace-restoring screen. Wait for the responsive shell to
+  // choose either its wide navigation or its narrow drawer trigger before deciding which path to
+  // use; an immediate visibility probe can mistake that loading frame for the mobile layout.
+  await expect(workspaceNavigation.or(navigationButton)).toBeVisible();
   if (!(await workspaceNavigation.isVisible())) {
-    await expect(navigationButton).toBeVisible();
     await navigationButton.click();
   }
   await workspaceNavigation.getByRole('button', { name: 'Learn', exact: true }).click();
