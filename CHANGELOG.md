@@ -8,7 +8,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ### Research Desk
 
-- Rebuilt the primary workflow around four direct destinations: Research, Sources, Map, and Settings. Optional learning tools remain under Settings without gating the question-to-brief research path.
+- Rebuilt the primary workflow around five direct destinations: Research, Sources, Learn, Map, and Settings. Learning is first-class without gating the question-to-brief research path.
 - Added one-action research that searches allowed providers, preserves per-provider outcomes, saves a varied top-five shelf, reads available provider text, and writes a cited brief without requiring a roadmap first.
 - Added visible provider readiness for built-in catalogs and companion-backed arXiv, Reddit, web-search, and YouTube paths. Every provider starts unchecked and explains what may be sent and saved before consent.
 - Persisted certification intent across relaunches, routed Microsoft certification codes such as AI-103 and AI-901 to Microsoft Learn, and kept the official-outline setup available until an outline is applied.

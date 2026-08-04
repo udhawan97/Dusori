@@ -32,8 +32,9 @@ The primary navigation always means the same thing:
 
 - **Research** turns a plain-language question into a durable source trail and brief.
 - **Sources** is the saved evidence shelf, including readable and browser-only references.
+- **Learn** holds the study path, review sessions, evidence insights, and certification outline import.
 - **Map** opens as a readable research Outline; the visual constellation is optional.
-- **Settings** holds appearance, storage, privacy, export/import, companion status, updates, and optional learning tools.
+- **Settings** holds appearance, storage, privacy, export/import, companion status, and updates.
 
 ## Follow the research
 
@@ -41,7 +42,7 @@ Every run keeps the exact query and one outcome per provider: `found`, `empty`, 
 
 Readable captures contribute quoted passages to `Synthesis.md`. A URL-only reference remains useful as an **Open original** browser link but cannot support a claim until the companion reads it or you add permitted text. HTTP 401, 403, and 429 failures remain visible after reload.
 
-Roadmaps, objectives, review prompts, and learning pages remain optional under **Settings → Optional learning tools**. A certification topic preserves that intent across relaunches and offers the exact official-outline importer until an outline is applied.
+Roadmaps, objectives, review prompts, and learning pages are first-class tools under **Learn**. A certification topic preserves that intent across relaunches and offers the exact official-outline importer until an outline is applied.
 
 ## Make a portable backup
 

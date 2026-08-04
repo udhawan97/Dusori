@@ -3,6 +3,7 @@
   import { pushState, replaceState } from '$app/navigation';
   import { base } from '$app/paths';
   import {
+    BookOpen,
     Download,
     FileText,
     FolderOpen,
@@ -1256,6 +1257,16 @@
           <span class="nav-count" aria-label={`${savedSourceCount} saved sources`}
             >{savedSourceCount}</span
           >
+        </button>
+        <button
+          class:active={['today', 'roadmap', 'insights'].includes(workspaceView)}
+          class="studio-link"
+          disabled={!selectedSlug}
+          title={selectedSlug ? undefined : unlockHint}
+          onclick={() => void openLearning()}
+        >
+          <BookOpen aria-hidden="true" size={18} />
+          Learn
         </button>
         <button
           class:active={workspaceView === 'graph'}

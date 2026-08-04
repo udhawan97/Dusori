@@ -3,15 +3,15 @@ title: Product roadmap
 description: What v0.12.3 ships and what remains explicitly unbuilt.
 ---
 
-The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
+The product roadmap is not a progress score for the learner. Inside the app, **Learn** shows the learner's own objectives and **Map/Outline** shows what the local research files contain. This page is the project roadmap.
 
 ## Shipped in v0.12.3
 
-- Research, Sources, Map, and Settings as four predictable destinations
+- Research, Sources, Learn, Map, and Settings as five predictable destinations
 - One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
 - Certification intent that survives relaunch, routes Microsoft exam codes to Microsoft Learn, and offers official-outline import
 - Visible provider readiness for built-in, web, social, video, and academic research paths
-- Optional file-derived learning, explicit roadmap completion, source-grounded reviews, and evidence signals under Settings
+- First-class file-derived learning, explicit roadmap completion, source-grounded reviews, and evidence signals under Learn
 - Separate Read, Readable evidence, URL reference, and blocked-page states with durable provenance
 - Local Reading room and topic-local question search
 - Galaxy plus accessible linear Outline

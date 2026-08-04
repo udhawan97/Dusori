@@ -16,14 +16,15 @@ Dusori has no hosted account, workspace database, analytics, telemetry, or paid 
 
 ## Information architecture
 
-The app has four stable primary destinations:
+The app has five stable primary destinations:
 
 1. **Research** — one plain-language question to provider outcomes, a saved shortlist, and a cited brief.
 2. **Sources** — the current topic’s evidence shelf and Reading room, with provenance and readable/reference states.
-3. **Map** — an explorable galaxy and accessible linear Outline derived from the same files.
-4. **Settings** — appearance, storage, privacy, companion status, export/import, desktop updates, and optional learning tools.
+3. **Learn** — the study path, official-outline import, objectives, review, and evidence insights.
+4. **Map** — an explorable galaxy and accessible linear Outline derived from the same files.
+5. **Settings** — appearance, storage, privacy, companion status, export/import, and desktop updates.
 
-The topic-aware destinations never claim that the researcher has made progress. Objectives, reviews, roadmaps, insights, and official-outline import live under **Settings → Optional learning tools** and never gate research.
+All five destinations remain topic-aware. Opening any view never claims that the learner has made progress, and learning tools never gate research.
 
 ## Non-negotiable state semantics
 
