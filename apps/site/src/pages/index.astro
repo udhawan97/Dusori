@@ -9,14 +9,13 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.12.0';
+const releaseVersion = '0.12.1';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
 const releaseHref = `${githubHref}/releases/tag/v${releaseVersion}`;
 const releaseAssetHref = `${githubHref}/releases/download/v${releaseVersion}`;
 const macArmInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`;
-const macIntelInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-x86_64-apple-darwin.dmg`;
 const windowsInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`;
 const sourceHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
 const learnShot = `${projectBasePath}/app-learn.png`;
@@ -323,14 +322,6 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             <a href={macArmInstallerHref}
               >Download Apple silicon .dmg <svg aria-hidden="true"><use href="#i-arrow"></use></svg
               ></a
-            >
-          </article>
-          <article class="download-card">
-            <span class="platform">macOS</span><h3>Intel</h3><p>
-              For Intel Macs. macOS 12 or newer.
-            </p>
-            <a href={macIntelInstallerHref}
-              >Download Intel .dmg <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
             >
           </article>
           <article class="download-card">

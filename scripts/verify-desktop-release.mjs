@@ -4,10 +4,17 @@ import { basename, extname, join, resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const configPath = resolve(repositoryRoot, 'apps/desktop/src-tauri/tauri.conf.json');
+const configRoot = resolve(repositoryRoot, 'apps/desktop/src-tauri');
 const fixedEndpoint = 'https://github.com/udhawan97/Dusori/releases/latest/download/latest.json';
+const requiredIcons = [
+  'icons/32x32.png',
+  'icons/128x128.png',
+  'icons/128x128@2x.png',
+  'icons/icon.icns',
+  'icons/icon.ico',
+];
 const requiredPlatforms = new Map([
   ['aarch64-apple-darwin', 'darwin-aarch64'],
-  ['x86_64-apple-darwin', 'darwin-x86_64'],
   ['x86_64-pc-windows-msvc', 'windows-x86_64'],
 ]);
 
@@ -39,6 +46,23 @@ if (!String(config.plugins?.updater?.pubkey).includes('NOT_PROVISIONED')) {
     'The source config must retain its safe placeholder; release builds use an ignored overlay.',
   );
 }
+if (JSON.stringify(config.bundle?.icon) !== JSON.stringify(requiredIcons)) {
+  throw new Error('Desktop bundles must declare the complete native icon set.');
+}
+for (const icon of requiredIcons) await stat(resolve(configRoot, icon));
+const dmg = config.bundle?.macOS?.dmg;
+if (
+  dmg?.background !== 'dmg/background.png' ||
+  dmg?.windowSize?.width !== 720 ||
+  dmg?.windowSize?.height !== 460 ||
+  dmg?.appPosition?.x !== 180 ||
+  dmg?.appPosition?.y !== 230 ||
+  dmg?.applicationFolderPosition?.x !== 540 ||
+  dmg?.applicationFolderPosition?.y !== 230
+) {
+  throw new Error('The macOS bundle must retain the branded drag-to-Applications DMG layout.');
+}
+await stat(resolve(configRoot, dmg.background));
 
 const writeConfig = argument('--write-config');
 if (writeConfig) {
@@ -142,7 +166,7 @@ if (artifactsRoot || latestPath) {
   };
   const destination = resolve(repositoryRoot, latestPath);
   await writeFile(destination, `${JSON.stringify(latest, null, 2)}\n`);
-  process.stdout.write(`Verified three signed updater targets and wrote ${destination}.\n`);
+  process.stdout.write(`Verified two signed updater targets and wrote ${destination}.\n`);
 }
 
 if (process.argv.includes('--config-only')) {

@@ -23,12 +23,15 @@ function argument(name) {
 
 function hostTarget() {
   if (platform === 'darwin' && arch === 'arm64') return 'aarch64-apple-darwin';
-  if (platform === 'darwin' && arch === 'x64') return 'x86_64-apple-darwin';
   if (platform === 'win32' && arch === 'x64') return 'x86_64-pc-windows-msvc';
   throw new Error(`Unsupported desktop build host: ${platform}/${arch}`);
 }
 
 const target = argument('--target') ?? hostTarget();
+const supportedTargets = new Set(['aarch64-apple-darwin', 'x86_64-pc-windows-msvc']);
+if (!supportedTargets.has(target)) {
+  throw new Error(`Unsupported desktop build target: ${target}`);
+}
 const nodeBinary = argument('--node-binary');
 const nodeLicense = argument('--node-license');
 const skipRuntime = process.argv.includes('--skip-runtime');
@@ -49,7 +52,8 @@ const { createServer } = require(${JSON.stringify(resolve(repositoryRoot, 'packa
 (async () => {
   const token = process.env.DUSORI_SESSION_TOKEN;
   const hostedOrigin = process.env.DUSORI_DESKTOP_ORIGIN;
-  if (!token || token.length < 32 || !hostedOrigin) process.exit(64);
+  const parentPid = Number(process.env.DUSORI_DESKTOP_PARENT_PID);
+  if (!token || token.length < 32 || !hostedOrigin || !Number.isSafeInteger(parentPid) || parentPid < 2) process.exit(64);
   const server = await createServer({
     allowedOrigins: [hostedOrigin],
     serveStatic: false,
@@ -59,10 +63,21 @@ const { createServer } = require(${JSON.stringify(resolve(repositoryRoot, 'packa
   const address = server.server.address();
   if (!address || typeof address === 'string') process.exit(70);
   process.stdout.write('DUSORI_READY ' + JSON.stringify({ port: address.port }) + '\\n');
+  let closing = false;
   const close = async () => {
+    if (closing) return;
+    closing = true;
+    clearInterval(parentWatch);
     await server.close();
     process.exit(0);
   };
+  const parentWatch = setInterval(() => {
+    try {
+      process.kill(parentPid, 0);
+    } catch {
+      void close();
+    }
+  }, 1000);
   process.once('SIGINT', close);
   process.once('SIGTERM', close);
 })().catch(() => process.exit(70));
@@ -104,6 +119,12 @@ if (!skipRuntime) {
     );
   }
   if (target.includes('apple-darwin')) {
+    const { stdout: runtimeArchitectures } = await execFileAsync('lipo', ['-archs', source]);
+    if (runtimeArchitectures.trim() !== 'arm64') {
+      throw new Error(
+        `The macOS desktop runtime must be Apple silicon arm64, got ${runtimeArchitectures.trim()}.`,
+      );
+    }
     const { stdout: linkedLibraries } = await execFileAsync('otool', ['-L', source]);
     const unsafe = linkedLibraries
       .split('\n')

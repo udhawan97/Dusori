@@ -5,6 +5,10 @@ description: Check, download, verify, install, relaunch, or recover the Dusori d
 
 The browser build updates when the hosted site refreshes. The desktop app uses a signed update feed published with GitHub Releases.
 
+:::caution[One-time v0.12.0 Mac repair]
+The v0.12.0 Mac download was an Intel binary, so it identifies itself to the updater as Intel even on an M-series Mac. It cannot safely select the new Apple silicon feed. Download and install the v0.12.1 Apple silicon DMG once; your workspace is stored separately and remains in place. Updates from v0.12.1 onward use the native Apple silicon feed.
+:::
+
 ## Manual update
 
 1. Open **Settings → App updates**.
@@ -26,11 +30,11 @@ The option does **not** authorize installation or restart. Every update still wa
 
 - Release builds contain only the updater public key.
 - Private signing material is held by the protected GitHub release environment.
-- `latest.json` maps Apple silicon, Intel Mac, and Windows x64 to a version-tagged asset and its signature.
+- `latest.json` maps Apple silicon and Windows x64 to a version-tagged asset and its signature.
 - The app enforces a 512 MiB download limit.
 - If the offered version changes after download, installation is refused and you must check and download again.
 
-The OS installer itself is not Apple-notarized or Microsoft code-signed in v0.12.0. That is why Gatekeeper or SmartScreen may warn on first install even though the in-app updater has its own valid signature.
+The OS installer itself is not Apple-notarized or Microsoft code-signed in v0.12.1. That is why Gatekeeper or SmartScreen may warn on first install even though the in-app updater has its own valid signature.
 
 ## Recovery
 

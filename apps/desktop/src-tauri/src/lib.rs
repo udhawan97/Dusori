@@ -580,6 +580,7 @@ fn spawn_companion(app: &tauri::AppHandle) -> Result<CompanionState, String> {
         .arg(companion)
         .env("DUSORI_SESSION_TOKEN", &token)
         .env("DUSORI_DESKTOP_ORIGIN", desktop_origin)
+        .env("DUSORI_DESKTOP_PARENT_PID", std::process::id().to_string())
         .env("DUSORI_NO_OPEN", "1")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

@@ -28,13 +28,6 @@ jobs:
             node_sha256: eb02f7fab96d3d67de40c5ec8566096fcb4c2026728787683ae5a97eb612b941
             node_relative: node-v24.18.1-darwin-arm64/bin/node
             node_license: node-v24.18.1-darwin-arm64/LICENSE
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
-            bundles: app,dmg
-            node_archive: node-v24.18.1-darwin-x64.tar.gz
-            node_sha256: 6fb20fceacbb157c2f95825b80df4a454a0f6d81cdcd7bb81eeae9147e0e76ec
-            node_relative: node-v24.18.1-darwin-x64/bin/node
-            node_license: node-v24.18.1-darwin-x64/LICENSE
           - runner: windows-2025
             target: x86_64-pc-windows-msvc
             bundles: nsis
@@ -48,7 +41,7 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
-      - name: Check out immutable tag
+      - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -84,7 +77,7 @@ jobs:
         run: |
           case '${{ matrix.target }}' in
             aarch64-apple-darwin) test "$(uname -m)" = 'arm64' ;;
-            x86_64-apple-darwin|x86_64-pc-windows-msvc) test "$(uname -m)" = 'x86_64' ;;
+            x86_64-pc-windows-msvc) test "$(uname -m)" = 'x86_64' ;;
             *) exit 1 ;;
           esac
           rustup target add '${{ matrix.target }}'
@@ -124,7 +117,7 @@ jobs:
       - name: Build unsigned OS installer and signed updater artifact
         shell: bash
         run: >-
-          pnpm --filter @dusori/desktop exec tauri build
+          env -u CI pnpm --filter @dusori/desktop exec tauri build
           --target '${{ matrix.target }}'
           --bundles '${{ matrix.bundles }}'
           --config src-tauri/updater.release.json
@@ -156,7 +149,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       DUSORI_UPDATER_PUBLIC_KEY: ${{ vars.DUSORI_UPDATER_PUBLIC_KEY }}
     steps:
-      - name: Check out immutable tag
+      - name: Check out release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false

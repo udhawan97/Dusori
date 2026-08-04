@@ -1,11 +1,11 @@
 ---
 title: Product roadmap
-description: What v0.12.0 ships and what remains explicitly unbuilt.
+description: What v0.12.1 ships and what remains explicitly unbuilt.
 ---
 
 The product roadmap is not a progress score for the learner. Inside the app, **Learning path** shows the learner’s own objectives and **Map/Outline** shows what their files contain. This page is the project roadmap.
 
-## Shipped in v0.12.0
+## Shipped in v0.12.1
 
 - Learn, Sources, Map, and Settings as the four predictable destinations
 - File-derived Continue routing, explicit roadmap completion, source-grounded reviews, and evidence signals
@@ -15,7 +15,7 @@ The product roadmap is not a progress score for the learner. Inside the app, **L
 - Consent-gated research with a durable per-provider outcome trail
 - Keyless browser providers plus configured companion providers
 - Portable Markdown/text/JSON/HTML workspaces and conflict-safe proposals
-- Browser PWA, Node companion, macOS Apple silicon, macOS Intel, and Windows x64 release paths
+- Browser PWA, Node companion, macOS Apple silicon, and Windows x64 release paths
 - Signed in-app update artifacts with separate check, download, install, and restart actions
 
 ## Intentionally not built
@@ -27,7 +27,7 @@ The product roadmap is not a progress score for the learner. Inside the app, **L
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.0 installers
+- Apple notarization or Microsoft Authenticode signing for v0.12.1 installers
 
 ## Candidates for later releases
 

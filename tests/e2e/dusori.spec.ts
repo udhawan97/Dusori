@@ -361,10 +361,7 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
     'href',
     `${directInstallerHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`,
   );
-  await expect(page.getByRole('link', { name: 'Download Intel .dmg' })).toHaveAttribute(
-    'href',
-    `${directInstallerHref}/Dusori_${releaseVersion}_x64-x86_64-apple-darwin.dmg`,
-  );
+  await expect(page.getByRole('link', { name: 'Download Intel .dmg' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Download Windows x64 .exe' })).toHaveAttribute(
     'href',
     `${directInstallerHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`,

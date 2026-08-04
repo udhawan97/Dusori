@@ -1,5 +1,8 @@
 fn main() {
     let target = std::env::var("TARGET").expect("Cargo did not provide TARGET");
+    if target == "x86_64-apple-darwin" {
+        panic!("Intel macOS builds are unsupported; build aarch64-apple-darwin instead");
+    }
     println!("cargo:rustc-env=DUSORI_TARGET_TRIPLE={target}");
     println!("cargo:rerun-if-env-changed=DUSORI_UPDATER_PUBLIC_KEY");
     println!("cargo:rerun-if-changed=updater.release.json");

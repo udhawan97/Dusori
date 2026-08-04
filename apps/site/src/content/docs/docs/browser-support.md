@@ -22,10 +22,9 @@ The app needs JavaScript, IndexedDB, Web Crypto, and service workers for the hos
 
 ## Desktop targets
 
-v0.12.0 produces separate artifacts for:
+v0.12.1 produces separate artifacts for:
 
 - macOS 12 or newer on Apple silicon (`aarch64`);
-- macOS 12 or newer on Intel (`x86_64`);
 - 64-bit Windows (`x86_64`, current-user NSIS installer).
 
 The installers are not Apple-notarized or Microsoft code-signed, so the operating system may show a first-launch warning. Release assets include `SHA256SUMS.txt`. Automatic-update artifacts are separately signed with the Dusori updater key and are rejected when the signature does not match.

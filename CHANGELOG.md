@@ -4,9 +4,15 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
-### Documentation
+## [0.12.1] - 2026-08-04
 
-- Replaced the stale v0.9.1 social preview with the current v0.12.0 Learning Studio hero, made browser/download choices direct and version-correct, simplified documentation navigation, and synchronized provider and updater guidance.
+### Fixed
+
+- Replaced the missing desktop bundle icon with the supplied nine-diamond mark and added a branded drag-to-Applications DMG layout.
+- Retired the Intel Mac build so macOS artifacts, bundled Node.js runtimes, updater metadata, downloads, and CI now target Apple silicon only. Windows x64 remains supported.
+- Documented the one-time manual v0.12.0-to-v0.12.1 Mac reinstall required because the old Intel-targeted process cannot safely select the new Apple silicon update feed.
+- Made the bundled companion detect an unexpectedly terminated desktop parent and exit instead of remaining as an orphaned local process.
+- Replaced the stale v0.9.1 social preview with the current Learning Studio hero, made browser/download choices direct and version-correct, simplified documentation navigation, and synchronized provider and updater guidance.
 
 ## [0.12.0] - 2026-08-04
 
@@ -295,7 +301,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/udhawan97/Dusori/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/udhawan97/Dusori/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/udhawan97/Dusori/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/udhawan97/Dusori/compare/v0.11.1...v0.11.2

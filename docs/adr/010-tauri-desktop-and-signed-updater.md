@@ -4,7 +4,7 @@
 
 ## Decision
 
-Ship the existing Svelte application in a Tauri 2 desktop shell for macOS Apple silicon, macOS Intel, and Windows x64. Bundle a target-native Node.js 24 runtime plus a compiled companion entry as a sidecar resource. Keep workspace logic in shared TypeScript packages; the Rust shell owns process launch, update verification, and validated IPC only.
+Ship the existing Svelte application in a Tauri 2 desktop shell for macOS Apple silicon and Windows x64. Intel Macs are intentionally unsupported. Bundle a target-native Node.js 24 runtime plus a compiled companion entry as a sidecar resource. Keep workspace logic in shared TypeScript packages; the Rust shell owns process launch, update verification, and validated IPC only.
 
 Desktop updates use Tauri’s updater with a fixed GitHub Releases endpoint:
 
@@ -14,7 +14,7 @@ https://github.com/udhawan97/Dusori/releases/latest/download/latest.json
 
 Check, download, install, and restart remain separate commands. An opt-in may automate checks and downloads, never installation or restart. Unsaved work blocks install and relaunch.
 
-Release builds require private updater signing material from the protected GitHub `release` environment and inject only the public key into a release-only configuration overlay. The checked-in configuration stays safely unprovisioned. A matching `v<version>` tag builds all three targets; publication is blocked until signatures, assets, `latest.json`, and `SHA256SUMS.txt` are verified.
+Release builds require private updater signing material from the protected GitHub `release` environment and inject only the public key into a release-only configuration overlay. The checked-in configuration stays safely unprovisioned. A matching `v<version>` tag builds both targets; publication is blocked until signatures, assets, `latest.json`, and `SHA256SUMS.txt` are verified.
 
 ## Why
 
@@ -27,5 +27,5 @@ Release builds require private updater signing material from the protected GitHu
 
 - Desktop builds are platform-specific and release CI becomes a required proof lane.
 - Updater signing keys require durable offline recovery and protected CI storage.
-- v0.12.0 installers are not Apple-notarized or Microsoft code-signed, so first-launch OS warnings remain. Updater signatures do not replace OS trust signing.
+- v0.12.1 installers are not Apple-notarized or Microsoft code-signed, so first-launch OS warnings remain. Updater signatures do not replace OS trust signing.
 - A bad release feed must be withdrawn and replaced with a forward fix; the app does not silently downgrade.
