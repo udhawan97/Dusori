@@ -14,7 +14,7 @@ https://github.com/udhawan97/Dusori/releases/latest/download/latest.json
 
 Check, download, install, and restart remain separate commands. An opt-in may automate checks and downloads, never installation or restart. Unsaved work blocks install and relaunch.
 
-Release builds require private updater signing material from the protected GitHub `release` environment and inject only the public key into a release-only configuration overlay. The checked-in configuration stays safely unprovisioned. A matching immutable `v<version>` tag builds all three targets; publication is blocked until signatures, assets, `latest.json`, and `SHA256SUMS.txt` are verified.
+Release builds require private updater signing material from the protected GitHub `release` environment and inject only the public key into a release-only configuration overlay. The checked-in configuration stays safely unprovisioned. A matching `v<version>` tag builds all three targets; publication is blocked until signatures, assets, `latest.json`, and `SHA256SUMS.txt` are verified.
 
 ## Why
 

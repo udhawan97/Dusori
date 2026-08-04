@@ -10,9 +10,15 @@
 </p>
 
 <p align="center">
-  <a href="https://udhawan97.github.io/Dusori/app/"><strong>Open in browser</strong></a> ·
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.0"><strong>Download v0.12.0</strong></a> ·
-  <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a>
+  <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="300"></a>
+  &nbsp;
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.0"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.0 for macOS or Windows" width="300"></a>
+</p>
+
+<p align="center">
+  <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a> ·
+  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-0/"><strong>Release notes</strong></a> ·
+  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.0/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
 </p>
 
 <p align="center">
@@ -57,14 +63,14 @@ Research is a tool inside a topic, not another place to get lost. A result has a
 
 ## Choose how to run it
 
-| Choice                    | Best for                                                             | Start                                                                                  |
-| ------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                             |
-| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Open v0.12.0 downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0)** |
-| **macOS — Intel**         | Intel Macs; bundled app and signed in-app updater feed               | **[Open v0.12.0 downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0)** |
-| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Open v0.12.0 downloads](https://github.com/udhawan97/Dusori/releases/tag/v0.12.0)** |
-| **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                         |
-| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.0.zip)**    |
+| Choice                    | Best for                                                             | Start                                                                                                                                               |
+| ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                                                                          |
+| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.0/Dusori_0.12.0_aarch64-aarch64-apple-darwin.dmg)**   |
+| **macOS — Intel**         | Intel Macs; bundled app and signed in-app updater feed               | **[Download Intel `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.0/Dusori_0.12.0_x64-x86_64-apple-darwin.dmg)**                |
+| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.0/Dusori_0.12.0_x64-setup-x86_64-pc-windows-msvc.exe)** |
+| **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                                                                                      |
+| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.0.zip)**                                                                 |
 
 The v0.12.0 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
 

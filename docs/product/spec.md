@@ -123,7 +123,7 @@ The updater has four explicit operations:
 3. Install only when the learner confirms and no work is unsaved.
 4. Relaunch only after installation was explicitly requested.
 
-Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from an immutable matching tag, requires protected signing material, cryptographically verifies all three platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
+Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies all three platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
 v0.12.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 

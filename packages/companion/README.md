@@ -37,8 +37,16 @@ OLLAMA_MODEL="gemma3:4b" npx @udhawan97/dusori@latest
 
 # Add the Reddit provider with a "script" app from reddit.com/prefs/apps
 REDDIT_CLIENT_ID="..." REDDIT_CLIENT_SECRET="..." npx @udhawan97/dusori@latest
+
+# Search YouTube metadata with your Data API key
+YOUTUBE_API_KEY="..." npx @udhawan97/dusori@latest
+
+# Or use an Invidious instance that you host yourself as a fallback
+INVIDIOUS_URL="https://video.example.org" npx @udhawan97/dusori@latest
 ```
 
 Reddit stopped answering anonymous clients, so its provider needs both `REDDIT_CLIENT_ID` and `REDDIT_CLIENT_SECRET`; without them the companion reports it as not configured and the research run skips it. Set `RESEARCH_WEB_SEARCH=brave|tavily|searxng` when multiple search credentials are present. Optional Anthropic and OpenAI providers use `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; `AI_PROVIDER=ollama|anthropic|openai` selects among multiple configured providers. Run `npx @udhawan97/dusori@latest --help` for the full environment reference.
+
+YouTube discovery prefers the official Data API v3 when `YOUTUBE_API_KEY` is set. `INVIDIOUS_URL` is an optional fallback, and Dusori does not select or depend on a public instance for you. Both paths return metadata, thumbnails, and references only: the companion never harvests captions or downloads video or audio.
 
 Search and AI credentials never enter the browser. The app learns only the active provider and model, asks for separate consent before AI egress, and keeps deterministic ranking and briefs as the failure fallback. No scheduling, telemetry, or background daemon is included.

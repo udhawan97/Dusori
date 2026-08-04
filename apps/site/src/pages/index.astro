@@ -14,6 +14,10 @@ const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
 const releaseHref = `${githubHref}/releases/tag/v${releaseVersion}`;
+const releaseAssetHref = `${githubHref}/releases/download/v${releaseVersion}`;
+const macArmInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`;
+const macIntelInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-x86_64-apple-darwin.dmg`;
+const windowsInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`;
 const sourceHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
 const learnShot = `${projectBasePath}/app-learn.png`;
 const readerShot = `${projectBasePath}/app-reader.png`;
@@ -300,7 +304,8 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <p class="eyebrow">Choose your door</p>
           <h2 id="downloads-title">Browser, Mac, Windows, or source.</h2>
           <p>
-            Desktop artifacts and checksums are listed together on the v{releaseVersion} release page.
+            Each desktop card opens its installer. Signatures, checksums, and updater files remain
+            on the <a href={releaseHref}>v{releaseVersion} release page</a>.
           </p>
         </header>
         <div class="download-grid">
@@ -315,24 +320,26 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             <span class="platform">macOS</span><h3>Apple silicon</h3><p>
               For M-series Macs. macOS 12 or newer.
             </p>
-            <a href={releaseHref}
-              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            <a href={macArmInstallerHref}
+              >Download Apple silicon .dmg <svg aria-hidden="true"><use href="#i-arrow"></use></svg
+              ></a
             >
           </article>
           <article class="download-card">
             <span class="platform">macOS</span><h3>Intel</h3><p>
               For Intel Macs. macOS 12 or newer.
             </p>
-            <a href={releaseHref}
-              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            <a href={macIntelInstallerHref}
+              >Download Intel .dmg <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
             >
           </article>
           <article class="download-card">
             <span class="platform">Windows</span><h3>x64</h3><p>
               Current-user installer for 64-bit Windows.
             </p>
-            <a href={releaseHref}
-              >Release downloads <svg aria-hidden="true"><use href="#i-arrow"></use></svg></a
+            <a href={windowsInstallerHref}
+              >Download Windows x64 .exe <svg aria-hidden="true"><use href="#i-arrow"></use></svg
+              ></a
             >
           </article>
           <article class="download-card code-card">
@@ -356,7 +363,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <strong>First-launch warning</strong>
           <p>
             The v{releaseVersion} Mac and Windows installers are not Apple-notarized or Microsoft code-signed,
-            so Gatekeeper or SmartScreen may warn. Compare the download with
+            so Gatekeeper or SmartScreen may warn. Compare each download with the published{' '}
             <code>SHA256SUMS.txt</code>. The separate in-app updater artifacts are signed by
             Dusori's updater key.
           </p>

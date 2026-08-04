@@ -4,6 +4,10 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Documentation
+
+- Replaced the stale v0.9.1 social preview with the current v0.12.0 Learning Studio hero, made browser/download choices direct and version-correct, simplified documentation navigation, and synchronized provider and updater guidance.
+
 ## [0.12.0] - 2026-08-04
 
 ### Learning Studio
@@ -17,7 +21,7 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 - Added open-source Tauri builds for macOS Apple silicon, macOS Intel, and Windows x64, each with a target-native Node.js 24 companion sidecar.
 - Added a signed GitHub release updater with separate check, download, install, and relaunch operations. Automatic opt-in covers checks and downloads only; installation waits for the learner and is blocked by unsaved work.
-- Added a three-target immutable-tag release workflow that cryptographically verifies updater signatures and stages an exact-asset draft containing `latest.json` plus `SHA256SUMS.txt`; publication happens only after the draft is downloaded and independently checked.
+- Added a three-target matching-version-tag release workflow that cryptographically verifies updater signatures and stages an exact-asset draft containing `latest.json` plus `SHA256SUMS.txt`; publication happens only after the draft is downloaded and independently checked.
 - Documented that v0.12.0 OS installers are not Apple-notarized or Microsoft code-signed even though the in-app update artifacts carry a separate Dusori signature.
 
 ### Safety, compatibility, and research

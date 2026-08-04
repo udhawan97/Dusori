@@ -26,7 +26,7 @@ The option does **not** authorize installation or restart. Every update still wa
 
 - Release builds contain only the updater public key.
 - Private signing material is held by the protected GitHub release environment.
-- `latest.json` maps Apple silicon, Intel Mac, and Windows x64 to an immutable tagged asset and its signature.
+- `latest.json` maps Apple silicon, Intel Mac, and Windows x64 to a version-tagged asset and its signature.
 - The app enforces a 512 MiB download limit.
 - If the offered version changes after download, installation is refused and you must check and download again.
 
@@ -54,4 +54,4 @@ If installation or relaunch fails:
 4. Verify its SHA-256 checksum.
 5. Reinstall. Export the workspace ZIP before any storage troubleshooting.
 
-If a release feed is withdrawn, automatic checks stop offering that asset. Existing installations and workspace files remain usable. Dusori does not silently downgrade; use a prior installer from its immutable release page only when the release notes explicitly direct it.
+If a release feed is withdrawn, automatic checks stop offering that asset. Existing installations and workspace files remain usable. Dusori does not silently downgrade; use a prior installer from its versioned release page only when the release notes explicitly direct it, and verify its signature or published checksum.

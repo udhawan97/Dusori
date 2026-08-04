@@ -356,9 +356,18 @@ test('landing, setup, workspace, note, and conflict screens are accessible', asy
   await expect(
     page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Docs' }),
   ).toHaveAttribute('href', '/Dusori/docs/');
-  await expect(page.getByRole('link', { name: 'Release downloads' }).first()).toHaveAttribute(
+  const directInstallerHref = `https://github.com/udhawan97/Dusori/releases/download/v${releaseVersion}`;
+  await expect(page.getByRole('link', { name: 'Download Apple silicon .dmg' })).toHaveAttribute(
     'href',
-    `https://github.com/udhawan97/Dusori/releases/tag/v${releaseVersion}`,
+    `${directInstallerHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`,
+  );
+  await expect(page.getByRole('link', { name: 'Download Intel .dmg' })).toHaveAttribute(
+    'href',
+    `${directInstallerHref}/Dusori_${releaseVersion}_x64-x86_64-apple-darwin.dmg`,
+  );
+  await expect(page.getByRole('link', { name: 'Download Windows x64 .exe' })).toHaveAttribute(
+    'href',
+    `${directInstallerHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`,
   );
   await expect(page.getByRole('link', { name: 'Source ZIP' })).toHaveAttribute(
     'href',

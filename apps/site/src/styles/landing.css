@@ -148,9 +148,7 @@ svg:not(.icon-defs) {
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
-  transition:
-    transform var(--dur-micro) var(--ease-out),
-    background var(--dur-short) var(--ease-out);
+  transition: transform var(--dur-micro) var(--ease-out);
 }
 .button--small {
   min-height: 2.75rem;
