@@ -274,6 +274,7 @@ main > section,
   z-index: 5;
   inset: 0 0 auto auto;
   width: clamp(9rem, 12vw, 12rem);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-sm);
   justify-items: end;
   color: var(--color-ink);
@@ -282,8 +283,10 @@ main > section,
 .app-icon-shell {
   display: block;
   position: relative;
+  min-width: 0;
   width: 100%;
   aspect-ratio: 1;
+  justify-self: stretch;
   transform: rotateX(9deg) rotateY(-14deg) rotateZ(2deg);
   transform-style: preserve-3d;
   transition: transform var(--dur-long) var(--ease-out);
@@ -333,6 +336,7 @@ main > section,
 .app-icon-copy {
   display: grid;
   width: min(18rem, 76vw);
+  justify-self: end;
   gap: var(--space-3xs);
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-rule);
@@ -839,6 +843,7 @@ main > section,
   }
   .app-icon-copy {
     width: min(18rem, calc(100vw - (2 * var(--layout-gutter))));
+    justify-self: center;
     text-align: center;
   }
   .hero-figure {
