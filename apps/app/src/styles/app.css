@@ -40,7 +40,7 @@ textarea {
 
 button,
 a {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 button {

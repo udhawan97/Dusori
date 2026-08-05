@@ -1235,10 +1235,17 @@
     text-decoration-thickness: 1px;
   }
 
+  .objective-list label > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .objective-list small {
+    min-width: 0;
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
+    overflow-wrap: anywhere;
   }
 
   .conflict-state,
@@ -1449,7 +1456,13 @@
     }
 
     .objective-list label {
+      grid-template-columns: 1.5rem minmax(0, 1fr);
+      align-items: start;
       padding-inline-start: calc(var(--objective-depth) * var(--space-sm));
+    }
+
+    .objective-list small {
+      grid-column: 2;
     }
 
     .focus-list li {

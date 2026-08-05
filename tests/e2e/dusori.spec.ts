@@ -830,6 +830,59 @@ test('map outline filters artifacts without changing the separated atlas', async
   await expectNoSeriousA11yViolations(page);
 });
 
+test('map outline keeps long artifact titles inside their own row and column', async ({ page }) => {
+  await page.setViewportSize({ width: 1059, height: 824 });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openInspector(page);
+
+  const title = 'Research brief — Explain the central mechanism in your own words. — 2026-08-04';
+  await page.getByLabel('New note title').fill(title);
+  await page.getByRole('button', { name: 'Create note' }).click();
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+
+  for (const width of [320, 375, 639, 640, 641, 768, 1059, 1440]) {
+    await page.setViewportSize({ width, height: width < 768 ? 812 : 900 });
+    const row = page
+      .getByRole('list', { name: 'Map documents' })
+      .getByRole('button', { name: `${title} Note`, exact: true });
+    await expect(row).toBeVisible();
+
+    const geometry = await row.evaluate((button) => {
+      const label = button.querySelector('span');
+      const kind = button.querySelector('small');
+      if (!(label instanceof HTMLElement) || !(kind instanceof HTMLElement)) {
+        throw new Error('Artifact row is missing its label or kind.');
+      }
+
+      const labelBox = label.getBoundingClientRect();
+      const kindBox = kind.getBoundingClientRect();
+      const ink = document.createRange();
+      ink.selectNodeContents(label);
+      const inkRight = Math.max(
+        ...Array.from(ink.getClientRects(), (fragment) => fragment.right),
+        labelBox.right,
+      );
+
+      return {
+        inkRight,
+        kindLeft: kindBox.left,
+        labelClientWidth: label.clientWidth,
+        labelScrollWidth: label.scrollWidth,
+      };
+    });
+
+    expect(
+      geometry.inkRight,
+      `artifact title paints into its kind label at ${width}px`,
+    ).toBeLessThanOrEqual(geometry.kindLeft);
+    expect(
+      geometry.labelScrollWidth,
+      `artifact title escapes its grid column at ${width}px`,
+    ).toBeLessThanOrEqual(geometry.labelClientWidth);
+  }
+});
+
 test('a workspace can grow past its first topic', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -2110,6 +2163,18 @@ test('Today and Roadmap remain usable without overflow at supported narrow width
     const page = await context.newPage();
     await createBrowserWorkspace(page);
     await createTopic(page);
+    await page.evaluate(async (title) => {
+      const root = await navigator.storage.getDirectory();
+      const dusori = await root.getDirectoryHandle('Dusori');
+      const topic = await (
+        await dusori.getDirectoryHandle('Topics')
+      ).getDirectoryHandle('ai-fundamentals');
+      const handle = await topic.getFileHandle('roadmap.md');
+      const current = await (await handle.getFile()).text();
+      const writable = await handle.createWritable();
+      await writable.write(`${current.trimEnd()}\n- [ ] ${title}\n`);
+      await writable.close();
+    }, unbreakableToken);
     await page.getByRole('button', { name: 'Open workspace navigation' }).click();
     await openTodayView(page);
     await expect(page.getByRole('heading', { name: 'Continue learning' })).toBeVisible();
@@ -2127,6 +2192,21 @@ test('Today and Roadmap remain usable without overflow at supported narrow width
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(dimensions.scrollWidth, `Roadmap overflow at ${width}px`).toBe(dimensions.clientWidth);
+
+    const objectiveBleeds = await page
+      .locator('.objective-list label > span, .objective-list label > small')
+      .evaluateAll((labels) =>
+        labels.flatMap((label) => {
+          const box = label.getBoundingClientRect();
+          const ink = document.createRange();
+          ink.selectNodeContents(label);
+          const escapes = Array.from(ink.getClientRects()).some(
+            (fragment) => fragment.left < box.left - 1 || fragment.right > box.right + 1,
+          );
+          return escapes ? [label.textContent?.trim() ?? ''] : [];
+        }),
+      );
+    expect(objectiveBleeds, `Roadmap text bleeding at ${width}px`).toEqual([]);
     await context.close();
   }
 });
