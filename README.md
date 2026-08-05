@@ -1,4 +1,8 @@
 <p align="center">
+  <a href="https://udhawan97.github.io/Dusori/app/"><img src="apps/site/public/brand/dusori-app-icon.svg" alt="Dusori app icon with an open ensō, rangoli geometry, and katana on warm paper" width="132"></a>
+</p>
+
+<p align="center">
   <img src="docs/assets/dusori-readme-logo-inverted.svg" alt="Dusori — a private learning studio" width="720">
 </p>
 
@@ -10,9 +14,11 @@
 </p>
 
 <p align="center">
-  <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="300"></a>
+  <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="260"></a>
   &nbsp;
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.3"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.3 for Apple silicon or Windows" width="300"></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.3"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.3 for Apple silicon or Windows" width="260"></a>
+  &nbsp;
+  <a href="https://udhawan97.github.io/Dusori/docs/getting-started/"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24" width="260"></a>
 </p>
 
 <p align="center">

@@ -18,6 +18,7 @@ const releaseAssetHref = `${githubHref}/releases/download/v${releaseVersion}`;
 const macArmInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_aarch64-aarch64-apple-darwin.dmg`;
 const windowsInstallerHref = `${releaseAssetHref}/Dusori_${releaseVersion}_x64-setup-x86_64-pc-windows-msvc.exe`;
 const sourceHref = `${githubHref}/archive/refs/tags/v${releaseVersion}.zip`;
+const appIconHref = `${projectBasePath}/brand/dusori-app-icon.svg`;
 const researchShot = `${projectBasePath}/app-research.png`;
 const readerShot = `${projectBasePath}/app-reader.png`;
 const mapShot = `${projectBasePath}/app-map.png`;
@@ -135,18 +136,38 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             No account · no telemetry · no hosted workspace · useful without AI
           </p>
         </div>
-        <figure class="hero-figure">
-          <img
-            src={researchShot}
-            alt="Dusori Research Desk with a question, provider outcomes, and saved evidence"
-            width="1440"
-            height="960"
-            fetchpriority="high"
-          />
-          <figcaption>
-            <span>Research</span><span>One question to a durable source-backed brief</span>
-          </figcaption>
-        </figure>
+        <div class="hero-stage">
+          <a class="app-icon-module" href="#how">
+            <span class="app-icon-shell">
+              <span class="app-icon-depth app-icon-depth--back" aria-hidden="true"></span>
+              <span class="app-icon-depth app-icon-depth--middle" aria-hidden="true"></span>
+              <img
+                class="app-icon-face"
+                src={appIconHref}
+                alt="Dusori app icon with an open ensō, rangoli geometry, and katana on warm paper"
+                width="512"
+                height="512"
+              />
+            </span>
+            <span class="app-icon-copy">
+              <strong>One icon. One evidence trail.</strong>
+              <span>Begin with the complete research path <span aria-hidden="true">↓</span></span>
+            </span>
+          </a>
+
+          <figure class="hero-figure">
+            <img
+              src={researchShot}
+              alt="Dusori Research Desk with a question, provider outcomes, and saved evidence"
+              width="1440"
+              height="960"
+              fetchpriority="high"
+            />
+            <figcaption>
+              <span>Research</span><span>One question to a durable source-backed brief</span>
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       <section class="promise" aria-label="Dusori places">
@@ -158,6 +179,40 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <div><dt>Settings</dt><dd>Choose appearance, privacy, files.</dd></div>
         </dl>
       </section>
+
+      <nav class="site-guide" aria-label="Explore Dusori">
+        <p><span>Follow one evidence trail</span> The app icon opens into four clear stops.</p>
+        <ol>
+          <li>
+            <a href="#how"
+              ><small>01 · How it works</small><strong
+                >Question → Search/Save → Read → Synthesize</strong
+              ></a
+            >
+          </li>
+          <li>
+            <a href="#sources"
+              ><small>02 · Inspect sources</small><strong
+                >See what was captured, blocked, or kept local</strong
+              ></a
+            >
+          </li>
+          <li>
+            <a href="#map"
+              ><small>03 · Follow Trail/Map</small><strong
+                >Trace the same files in Outline or atlas</strong
+              ></a
+            >
+          </li>
+          <li>
+            <a href="#downloads"
+              ><small>04 · Run Dusori</small><strong
+                >Choose browser, desktop, companion, or source</strong
+              ></a
+            >
+          </li>
+        </ol>
+      </nav>
 
       <section class="loop" id="how" aria-labelledby="loop-title">
         <header class="section-heading">
@@ -204,7 +259,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         </ol>
       </section>
 
-      <section class="reader" aria-labelledby="reader-title">
+      <section class="reader" id="sources" aria-labelledby="reader-title">
         <figure>
           <img
             src={readerShot}
@@ -243,7 +298,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         </div>
       </section>
 
-      <section class="map" aria-labelledby="map-title">
+      <section class="map" id="map" aria-labelledby="map-title">
         <div>
           <p class="eyebrow">Evidence atlas + Outline</p>
           <h2 id="map-title">Separate the trail without losing the links.</h2>
