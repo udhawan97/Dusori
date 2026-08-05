@@ -25,7 +25,9 @@ async function topicStorage(): Promise<MemoryStorageAdapter> {
 describe('mission overview', () => {
   it('assigns every registered provider to a known lens', () => {
     for (const provider of createResearchProviders({ companion: null })) {
-      expect(['academic', 'community', 'docs', 'video', 'web']).toContain(lensFor(provider.id));
+      expect(['academic', 'books', 'community', 'docs', 'video', 'web']).toContain(
+        lensFor(provider.id),
+      );
     }
   });
 
@@ -41,12 +43,17 @@ describe('mission overview', () => {
       discovered: 0,
       lastRun: null,
       lastRunAt: null,
-      lensCounts: { academic: 0, community: 0, docs: 0, video: 0, web: 0 },
+      lensCounts: { academic: 0, books: 0, community: 0, docs: 0, video: 0, web: 0 },
       readSources: 0,
       runCount: 0,
       savedSources: 0,
       topicSlug: slug,
     });
+  });
+
+  it('keeps scholarly metadata and book records in their truthful lenses', () => {
+    expect(lensFor('crossref')).toBe('academic');
+    expect(lensFor('openlibrary')).toBe('books');
   });
 
   it('counts saved sources per lens and reports the last run', async () => {

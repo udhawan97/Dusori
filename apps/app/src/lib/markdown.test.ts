@@ -24,6 +24,15 @@ title: Hidden metadata
     expect(rendered.html).not.toContain('javascript:');
   });
 
+  it('marks ordinary web links to open outside the reading room', async () => {
+    const rendered = await renderMarkdown(
+      'Original URL: <https://example.org/research?q=attention>\n',
+    );
+
+    expect(rendered.html).toContain('target="_blank"');
+    expect(rendered.html).toContain('rel="nofollow noopener noreferrer"');
+  });
+
   it('leaves code blocks reachable by keyboard because they scroll sideways', async () => {
     const rendered = await renderMarkdown(['```', 'const wide = 1;', '```', ''].join('\n'));
 

@@ -25,14 +25,14 @@ If you installed a v0.12.0 or v0.12.1 desktop build, install v0.12.3 manually on
 3. Choose **Create topic**. The new topic opens at the **Research Desk**.
 4. Enter the question you want answered.
 5. Select one or more providers after reading their disclosures. No request is sent before consent.
-6. Choose **Research topic**. Dusori searches, ranks, saves up to five varied sources, reads available text, and builds a quoted brief automatically.
+6. Choose **Research topic**. Dusori searches, deduplicates, ranks, saves up to eight varied sources, reads available text, and builds a quoted brief automatically.
 7. Open **Sources** to read a local copy, retry a blocked page, open the original in your browser, remove a source, or restore one later.
 
 The primary navigation always means the same thing:
 
 - **Research** turns a plain-language question into a durable source trail and brief.
 - **Sources** is the saved evidence shelf, including readable and browser-only references.
-- **Map** opens as a readable research Outline; the visual constellation is optional.
+- **Map** opens as a readable research Outline; the separated visual evidence atlas is optional.
 - **Settings** holds appearance, storage, privacy, export/import, companion status, updates, and optional learning tools.
 
 ## Follow the research

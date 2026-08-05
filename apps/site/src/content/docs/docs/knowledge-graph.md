@@ -1,12 +1,12 @@
 ---
 title: Map and Outline
-description: Explore a galaxy or linear outline derived from portable local files.
+description: Explore a separated evidence atlas or linear outline derived from portable local files.
 ---
 
 Choose **Map** in the primary navigation. The readable **Outline** opens first; the visual view is optional:
 
 - **Outline** is a linear, keyboard- and screen-reader-friendly hierarchy with the same artifacts and actions.
-- **Visual map** is an explorable constellation of topics, notes, sources, and resolved wikilinks.
+- **Visual map** gives each topic a separate room, with named lanes for sources, notes, briefs and learning, and updates.
 
 Neither view stores a graph database or invents progress. The research journey reports discovered, saved, read, and quoted counts from local files.
 
@@ -18,17 +18,17 @@ Neither view stores a graph database or invents progress. The research journey r
 - Backlinks are those resolved edges read in reverse.
 - `tags:` frontmatter and inline `#tags` are derived on read and can filter the view.
 
-Graph coordinates, zoom, filters, and display preferences stay in app-local UI state, outside the portable workspace. The same files can be used in Obsidian without a Dusori plugin.
+View choice and Outline filters stay in app-local UI state, outside the portable workspace. The same files can be used in Obsidian without a Dusori plugin.
 
-## Explore the visual map
+## Read the visual map
 
-Use pointer, wheel, touch, or the keyboard-operable controls to pan and zoom. Link length and spacing change the view only. Search the artifact finder, filter by kind or tag, and open the original file from a result.
+Each topic room begins with an evidence spine: discovered, saved, read, and quoted. Below it, every artifact has one readable home in Sources, Notes, Briefs & learning, or Updates. Cross-topic wikilinks appear as counted “Connects to” labels rather than lines crossing through other labels.
 
-The deterministic initial layout means the same file relationships begin from the same geometry. A local force pass makes dense areas readable; it does not write positions to disk.
+Nothing is positioned by physics and there is no zoom level to repair. Open any artifact directly from its lane.
 
 ## Use Outline for precision
 
-Outline lists topics and their artifacts without requiring spatial navigation. Use it when you want a predictable reading order, a compact audit of the workspace, or an accessible alternative to the galaxy.
+Outline lists topics and their artifacts without requiring spatial navigation. Use it when you want a predictable reading order, a compact audit of the workspace, or search and kind/tag filters.
 
 ## Link health
 

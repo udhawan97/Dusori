@@ -3,7 +3,7 @@ title: Sources and research
 description: Ask one question, keep an honest research trail, and read or remove the sources Dusori finds.
 ---
 
-Dusori’s main job is research. Open **Research**, ask a question in ordinary language, and choose which providers may receive it. Dusori then searches, ranks, saves a varied shortlist of up to five sources, reads the text it can obtain legitimately, and builds a source-backed brief. There is no roadmap or quiz prerequisite.
+Dusori’s main job is research. Open **Research**, ask a question in ordinary language, and choose which providers may receive it. Dusori then searches, removes duplicate URLs, ranks, saves a varied shortlist of up to eight sources, reads the text it can obtain legitimately, and builds a source-backed brief. There is no roadmap or quiz prerequisite.
 
 ## One question, one research run
 
@@ -48,7 +48,7 @@ Saved source text is bounded to 2 MiB. URLs with embedded usernames or passwords
 
 ## Research providers
 
-Seven keyless public providers work without the companion: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and npm. Broad questions avoid specialist developer catalogs unless their terms are relevant. Allowed providers run together, and one timeout does not discard another provider’s useful results.
+Nine keyless public providers work without the companion: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, and npm. Broad questions avoid specialist developer catalogs unless their terms are relevant. Allowed providers run together, and one timeout does not discard another provider’s useful results.
 
 The companion can add arXiv, configured general web search, Reddit, and YouTube metadata. See the [provider and legal matrix](../research-providers/) for credentials, egress, and limits.
 

@@ -61,6 +61,7 @@
   import { resolveDesktopStorage, startBundledDesktopSession } from '$lib/desktop-platform';
   import { runAutomaticUpdateCheck } from '$lib/app-updates';
   import { wikilinkTarget } from '$lib/markdown';
+  import { handleExternalLink, isExternalHttpUrl } from '$lib/open-external';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -672,7 +673,16 @@
   async function followWikilink(event: MouseEvent): Promise<void> {
     if (!storage) return;
     const anchor = (event.target as Element | null)?.closest('a');
-    const target = wikilinkTarget(anchor?.getAttribute('href') ?? null);
+    const href = anchor?.getAttribute('href') ?? '';
+    if (isExternalHttpUrl(href)) {
+      try {
+        await handleExternalLink(event, href, desktopRuntime);
+      } catch {
+        announceStatus('The system browser could not open this link.');
+      }
+      return;
+    }
+    const target = wikilinkTarget(href);
     if (!target) return;
     event.preventDefault();
     const entries = await storage.list('', true);
@@ -1387,6 +1397,7 @@
           storageKind={storage?.kind ?? 'unknown'}
           {storageLabel}
           {companionStatus}
+          ai={companionAiClient}
           {online}
           {busy}
           hasTopic={Boolean(selectedSlug)}
@@ -1486,6 +1497,7 @@
               topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
                 selectedSlug}
               companion={companionClient}
+              ai={companionAiClient}
               autoStart={researchAutoStartSlug === selectedSlug}
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
               onArtifactSaved={refreshArtifacts}

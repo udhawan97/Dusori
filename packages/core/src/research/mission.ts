@@ -3,11 +3,12 @@ import type { SourceRecord } from '../schemas/workspace.js';
 import { readSourceManifest } from '../sources/import.js';
 import { readResearchFile, type ResearchRunRecord } from './research-file.js';
 
-export type MissionLens = 'academic' | 'community' | 'docs' | 'video' | 'web';
+export type MissionLens = 'academic' | 'books' | 'community' | 'docs' | 'video' | 'web';
 
 export const missionLenses: readonly MissionLens[] = [
   'docs',
   'academic',
+  'books',
   'community',
   'video',
   'web',
@@ -15,6 +16,7 @@ export const missionLenses: readonly MissionLens[] = [
 
 export const missionLensLabels: Record<MissionLens, string> = {
   academic: 'Academic',
+  books: 'Books',
   community: 'Community',
   docs: 'Docs',
   video: 'Video',
@@ -25,11 +27,13 @@ export const missionLensLabels: Record<MissionLens, string> = {
 // because a lens must never hide a source the learner actually saved.
 const lensByProvider: Record<string, MissionLens> = {
   arxiv: 'academic',
+  crossref: 'academic',
   github: 'docs',
   hackernews: 'community',
   mslearn: 'docs',
   npm: 'docs',
   openalex: 'academic',
+  openlibrary: 'books',
   reddit: 'community',
   stackexchange: 'community',
   websearch: 'web',
@@ -58,7 +62,7 @@ export interface MissionOverview {
 }
 
 function emptyLensCounts(): Record<MissionLens, number> {
-  return { academic: 0, community: 0, docs: 0, video: 0, web: 0 };
+  return { academic: 0, books: 0, community: 0, docs: 0, video: 0, web: 0 };
 }
 
 /** A source counts as read once its local text produced claims. */

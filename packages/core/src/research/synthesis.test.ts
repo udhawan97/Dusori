@@ -82,7 +82,7 @@ describe('topic synthesis', () => {
       topicTitle: 'Spaced repetition learning',
     });
 
-    expect(synthesis.missingLenses).toEqual(['Academic', 'Community', 'Video', 'Web']);
+    expect(synthesis.missingLenses).toEqual(['Academic', 'Books', 'Community', 'Video', 'Web']);
     expect(synthesis.openQuestions.some((question) => question.includes('academic'))).toBe(true);
   });
 
@@ -100,6 +100,8 @@ describe('topic synthesis', () => {
       '“Reviews at increasing intervals counter forgetting.” — [[abc123456789-spaced-repetition|Spaced repetition]]',
     );
     expect(markdown).toContain('Every line below is quoted from saved source text.');
+    expect(markdown).toContain('## Evidence digest');
+    expect(markdown).toMatch(/\*\*.+\*\* — \d+ sources? · \d+ passages?/u);
     // Nothing may appear that is not traceable: each bullet under What matters carries a citation.
     for (const line of markdown.split('\n').filter((entry) => entry.startsWith('- “'))) {
       expect(line).toMatch(/—\s+(?:\[\[|\[)/u);
@@ -119,13 +121,13 @@ describe('topic synthesis', () => {
     expect(three.indexOf('**2006**')).toBeLessThan(three.indexOf('**2023**'));
   });
 
-  it('names the model when AI wrote the overview, and keeps quotes regardless', () => {
+  it('names the model as passage selector, and keeps quotes regardless', () => {
     const markdown = renderSynthesisMarkdown(
       buildTopicSynthesis({ now, sources: [wiki, paper], topicTitle: 'T' }),
       { aiModel: 'llama3', aiOverview: 'Spacing works because retrieval strengthens memory.' },
     );
 
-    expect(markdown).toContain('written by llama3');
+    expect(markdown).toContain('llama3 selected the overview passages');
     expect(markdown).toContain('Spacing works because retrieval strengthens memory.');
     expect(markdown).toContain('“Distributed practice beats massed practice.”');
   });

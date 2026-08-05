@@ -99,7 +99,8 @@
   }
 
   async function readAiCapability(): Promise<void> {
-    aiCapability = ai ? ((await ai.capabilities())[0] ?? null) : null;
+    const capability = ai ? ((await ai.capabilities())[0] ?? null) : null;
+    aiCapability = capability?.status === 'model-failed' ? null : capability;
   }
 
   /**

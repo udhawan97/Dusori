@@ -552,7 +552,7 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
     page.getByRole('heading', { name: 'From a question to evidence you can inspect.' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Zoom out without losing the path.' }),
+    page.getByRole('heading', { name: 'Separate the trail without losing the links.' }),
   ).toBeVisible();
   await expect(page.getByText('Start with the accessible linear Outline')).toBeVisible();
   await expect(page.getByText('npx @udhawan97/dusori@latest')).toBeVisible();
@@ -563,7 +563,7 @@ test('public site explains the identity, Obsidian boundary, and portable graph',
   for (const imageName of [
     'Dusori Research Desk with a question, provider outcomes, and saved evidence',
     'Dusori Reading room with a saved local source',
-    'Dusori Map with a readable research outline and optional visual constellation',
+    'Dusori Map with a readable research outline and separated visual evidence atlas',
   ]) {
     const capture = page.getByRole('img', { name: imageName });
     await capture.scrollIntoViewIfNeeded();
@@ -706,43 +706,28 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
 
   await page.getByRole('button', { name: 'Map', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
-  // Canvas-heavy views close the inspector so the constellation gets the full workspace.
+  // The map gets the full workspace while its outline or atlas is open.
   await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
-  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
+  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
   await expect(page.getByRole('button', { name: 'Outline', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(graph).toBeHidden();
+  await expect(atlas).toBeHidden();
   await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
   await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('First look');
   await page.getByRole('button', { name: 'Visual map', exact: true }).click();
-  await expect(graph).toBeVisible();
-  await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('First look');
-  await expect(page.getByRole('list', { name: 'Map documents' }).getByRole('listitem')).toHaveCount(
-    1,
-  );
-  await page.getByRole('searchbox', { name: 'Search graph artifacts' }).fill('');
+  await expect(atlas).toBeVisible();
+  await expect(atlas.getByRole('heading', { name: 'AI Fundamentals' })).toBeVisible();
+  await expect(atlas.getByRole('heading', { name: 'Sources', exact: true })).toBeVisible();
+  await expect(atlas.getByRole('heading', { name: 'Notes', exact: true })).toBeVisible();
+  await expect(atlas.getByRole('heading', { name: 'Briefs & learning' })).toBeVisible();
+  await expect(atlas.getByRole('heading', { name: 'Updates', exact: true })).toBeVisible();
   await expect(page.getByText(/\d+ research artifacts · \d+ connections/u)).toBeVisible();
-
-  const hub = graph.getByRole('button', { name: /AI Fundamentals, overview, \d+ wikilinks, hub/u });
-  await expect(hub).toHaveClass(/hub/u);
-
-  const focusedNode = graph.getByRole('button').first();
-  await focusedNode.focus();
-  await expect(focusedNode).toHaveCount(1);
-  await page.keyboard.press('Enter');
-  await expect(focusedNode).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.selection-action').getByRole('button')).toBeVisible();
   await expectNoSeriousA11yViolations(page);
-  await page.keyboard.press('Escape');
-  await expect(focusedNode).toHaveAttribute('aria-pressed', 'false');
 
-  await page
-    .getByRole('list', { name: 'Map documents' })
-    .getByRole('button', { name: /First look/u })
-    .click();
+  await atlas.getByRole('button', { name: /First look/u }).click();
   await expect(page.getByRole('heading', { name: 'First look at AI Fundamentals' })).toBeVisible();
 });
 
@@ -755,7 +740,7 @@ test('a wikilink in a rendered document opens what it names', async ({ page }) =
     await page.getByRole('button', { name: 'Map', exact: true }).click();
     await page
       .getByRole('list', { name: 'Map documents' })
-      .getByRole('button', { name: 'AI Fundamentals overview', exact: true })
+      .getByRole('button', { name: 'AI Fundamentals Overview', exact: true })
       .click();
     await expect(sheet.getByRole('heading', { name: 'AI Fundamentals' })).toBeVisible();
   };
@@ -771,34 +756,26 @@ test('a wikilink in a rendered document opens what it names', async ({ page }) =
   await expect(sheet).toContainText('Establish the terms and boundaries.');
 });
 
-test('graph view zooms, adjusts forces, and remembers the sliders', async ({ page }) => {
+test('visual map separates evidence into readable topic lanes', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
+  await addPastedSource(page);
 
   await openGalaxy(page);
-  const svg = page.locator('svg.constellation');
-  await expect(svg).toBeVisible();
-  await expect(svg).toHaveAttribute('viewBox', /.+/u);
-  const fitted = await svg.getAttribute('viewBox');
+  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
+  const room = atlas.locator('.topic-room').filter({ hasText: 'AI Fundamentals' });
+  await expect(room).toBeVisible();
+  await expect(room.getByRole('definition')).toHaveCount(4);
+  await expect(room.getByRole('button', { name: /Transformer notes/u })).toBeVisible();
+  await expect(page.locator('svg.constellation')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'View controls' }).click();
-  await page.getByRole('button', { name: 'Zoom in' }).click();
-  const zoomed = await svg.getAttribute('viewBox');
-  expect(zoomed).not.toBe(fitted);
-
-  await page.getByLabel('Link length').fill('220');
-  await page.getByLabel('Spacing').fill('0.9');
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 812 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
   await expectNoSeriousA11yViolations(page);
-
-  await page.reload();
-  await openGalaxy(page);
-  await page.getByRole('button', { name: 'View controls' }).click();
-  await expect(page.getByLabel('Link length')).toHaveValue('220');
-  await expect(page.getByLabel('Spacing')).toHaveValue('0.9');
-
-  await page.getByRole('button', { name: 'Zoom in' }).click();
-  await page.getByRole('button', { name: 'Fit view' }).click();
-  await expect(svg).toHaveAttribute('viewBox', /.+/u);
 });
 
 test('insights derives an honest local analytics snapshot', async ({ page }) => {
@@ -832,60 +809,25 @@ test('insights derives an honest local analytics snapshot', async ({ page }) => 
   await expectNoSeriousA11yViolations(page);
 });
 
-test('graph nodes pin where dropped, filter by kind, and color by topic', async ({ page }) => {
+test('map outline filters artifacts without changing the separated atlas', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
 
-  await openGalaxy(page);
-  const graph = page.getByRole('group', { name: 'Workspace knowledge graph' });
-  await expect(graph).toBeVisible();
-  await page.getByRole('button', { name: 'View controls' }).click();
-  // Scoped: the artifact finder beside the stage has its own same-named kind buttons.
-  const showOnGraph = page.getByRole('group', { name: 'Show on the graph' });
-
-  // A keyboard nudge is the accessible equivalent of dragging, and it pins too.
-  const releasePins = page.getByRole('button', { name: 'Release pins' });
-  await expect(releasePins).toBeDisabled();
-  const note = graph.getByRole('button', { name: /First look/u });
-  const noteCircle = note.locator('circle').first();
-  const beforeX = await noteCircle.getAttribute('cx');
-  await note.focus();
-  for (let press = 0; press < 4; press += 1) {
-    await page.keyboard.press('Shift+ArrowRight');
-  }
-  await expect(noteCircle).not.toHaveAttribute('cx', beforeX ?? '');
-  await expect(releasePins).toBeEnabled();
-  // The nudged node keeps its seat instead of drifting back like Obsidian's.
-  const pinnedX = await noteCircle.getAttribute('cx');
-  await page.waitForTimeout(400);
-  await expect(noteCircle).toHaveAttribute('cx', pinnedX ?? '');
-  await releasePins.click();
-  await expect(releasePins).toBeDisabled();
-
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
   const documents = page.getByRole('list', { name: 'Map documents' });
+  await expect.poll(() => documents.getByRole('button').count()).toBeGreaterThan(1);
   const beforeCount = await documents.getByRole('button').count();
-  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
+  const filters = page.getByRole('group', { name: 'Filter graph artifacts' });
+  await filters.getByRole('button', { name: 'Notes', exact: true }).click();
   expect(await documents.getByRole('button').count()).toBeLessThan(beforeCount);
-  await expect(graph.getByRole('button', { name: /First look/u })).toHaveCount(0);
-  // Structure survives every filter so the constellation never empties out.
-  await expect(graph.getByRole('button', { name: /AI Fundamentals, overview/u })).toBeVisible();
-  await showOnGraph.getByRole('button', { name: 'Notes', exact: true }).click();
-  expect(await documents.getByRole('button').count()).toBe(beforeCount);
+  await expect(documents).toContainText('First look');
+  await expect(documents).not.toContainText('AI Fundamentals');
 
-  await page.getByLabel('Color by').selectOption('topic');
-  await expect(page.getByRole('list', { name: 'Topic colors' })).toContainText('ai-fundamentals');
-  await expect(
-    graph
-      .getByRole('button', { name: /AI Fundamentals, overview/u })
-      .locator('circle')
-      .first(),
-  ).toHaveAttribute('fill', /oklch/u);
+  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
+  await expect(atlas.getByRole('button', { name: /First look/u })).toBeVisible();
+  await expect(atlas.getByRole('button', { name: /AI Fundamentals/u }).first()).toBeVisible();
   await expectNoSeriousA11yViolations(page);
-
-  await page.reload();
-  await openGalaxy(page);
-  await page.getByRole('button', { name: 'View controls' }).click();
-  await expect(page.getByLabel('Color by')).toHaveValue('topic');
 });
 
 test('a workspace can grow past its first topic', async ({ page }) => {
@@ -1227,7 +1169,7 @@ test('shows unresolved links and backlinks from the same local graph', async ({ 
   await navigation.getByRole('button', { name: 'Map', exact: true }).click();
   await page
     .getByRole('list', { name: 'Map documents' })
-    .getByRole('button', { name: 'First look note', exact: true })
+    .getByRole('button', { name: 'First look Note', exact: true })
     .click();
   await openInspector(page);
   await page.getByRole('button', { name: 'Refresh workspace health' }).click();
@@ -1262,6 +1204,18 @@ test('source library stores pasted text and URL references without remote fetchi
   ).toHaveAttribute('href', 'https://arxiv.org/abs/1706.03762');
   expect(remoteRequests).toEqual([]);
 
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Transformers paper' })
+    .getByRole('button', { name: 'Transformers paper' })
+    .click();
+  const savedOriginal = page
+    .locator('.note-sheet')
+    .getByRole('link', { name: 'https://arxiv.org/abs/1706.03762' });
+  await expect(savedOriginal).toHaveAttribute('target', '_blank');
+  await expect(savedOriginal).toHaveAttribute('rel', /noopener/u);
+  await expect(page.getByRole('heading', { name: 'Transformers paper' })).toBeVisible();
+
   const sourceState = await page.evaluate(async () => {
     const origin = await navigator.storage.getDirectory();
     const root = await origin.getDirectoryHandle('Dusori');
@@ -1290,6 +1244,8 @@ test('source library stores pasted text and URL references without remote fetchi
   expect(sourceState.itemNames).toHaveLength(2);
   expect(sourceState.yearNames).not.toEqual([]);
 
+  await openSources(page);
+  await page.getByLabel('Source type').selectOption('url');
   await page.getByLabel('Source title').fill('Private file');
   await page.getByLabel('Web address').fill('file:///private/notes.txt');
   await page.getByRole('button', { name: 'Save source' }).click();
@@ -2340,8 +2296,9 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
     'aria-pressed',
     'true',
   );
-  await expect(sitePage.getByRole('group', { name: 'Workspace knowledge graph' })).toBeHidden();
-  await sitePage.screenshot({ path: 'test-results/screenshots/app-map.png' });
+  await sitePage.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await expect(sitePage.getByRole('region', { name: 'Workspace evidence atlas' })).toBeVisible();
+  await sitePage.screenshot({ fullPage: true, path: 'test-results/screenshots/app-map.png' });
   await siteContext.close();
 });
 
@@ -2592,9 +2549,12 @@ test.describe('companion flows', () => {
     await expect(page.locator('.graph-ledger > div').filter({ hasText: 'Sources' })).toContainText(
       '0',
     );
-    await expect(
-      page.getByRole('region', { name: 'What this workspace has actually researched' }),
-    ).toContainText('0 saved');
+    await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+    const room = page
+      .getByRole('region', { name: 'Workspace evidence atlas' })
+      .locator('.topic-room')
+      .filter({ hasText: 'AI Fundamentals' });
+    await expect(room.getByRole('definition').nth(1)).toHaveText('0');
 
     await page.reload();
     await openSources(page);
@@ -2664,12 +2624,70 @@ test.describe('companion flows', () => {
       'How attention works',
     );
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('URL reference');
+    const savedVideo = page
+      .getByLabel('Saved research evidence')
+      .getByRole('listitem')
+      .filter({ hasText: 'How attention works' });
+    await expect(savedVideo.getByRole('link', { name: 'Open original' })).toHaveAttribute(
+      'href',
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    );
+    await expect(savedVideo.getByRole('link', { name: 'Open original' })).toHaveAttribute(
+      'target',
+      '_blank',
+    );
     const manifest = await readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json');
     expect(manifest).toContain('"provider": "youtube"');
     expect(manifest).toContain('"capturedVia": "youtube-reference"');
     expect(manifest).toContain('"readState": "reference"');
     expect(transcriptRequests).toEqual([]);
     expect(googleRequests).toEqual([]);
+  });
+
+  test('Settings distinguishes a failed local model from a configured hosted provider', async ({
+    page,
+  }) => {
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ json: companionHealth });
+    });
+    await page.route('**/api/ai/capabilities', async (route) => {
+      await route.fulfill({
+        json: {
+          providers: [{ id: 'ollama', model: 'gemma4:12b-it-qat', status: 'model-failed' }],
+        },
+      });
+    });
+    await createBrowserWorkspace(page);
+    await expectCompanionConnected(page);
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(page.getByText(/is installed, but it did not pass/u)).toBeVisible();
+    await expect(page.locator('.ai-ready')).toHaveCount(0);
+
+    await page.unroute('**/api/ai/capabilities');
+    await page.route('**/api/ai/capabilities', async (route) => {
+      await route.fulfill({
+        json: {
+          providers: [{ id: 'ollama', model: 'older-companion-model' }],
+        },
+      });
+    });
+    await page.getByRole('button', { name: 'Check AI setup' }).click();
+    await expect(page.getByText(/was detected in Ollama, but has not passed/u)).toBeVisible();
+    await expect(page.getByText(/configured through hosted provider/u)).toHaveCount(0);
+
+    await page.unroute('**/api/ai/capabilities');
+    await page.route('**/api/ai/capabilities', async (route) => {
+      await route.fulfill({
+        json: {
+          providers: [{ id: 'openai', model: 'gpt-4o-mini', status: 'configured' }],
+        },
+      });
+    });
+    await page.getByRole('button', { name: 'Check AI setup' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Use the hosted provider you configured' }),
+    ).toBeVisible();
+    await expect(page.getByText(/This is not a model on this computer/u)).toBeVisible();
   });
 
   test('sharper review prompts need their own consent and fall back to the templates', async ({

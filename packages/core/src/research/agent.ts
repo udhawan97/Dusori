@@ -1,6 +1,7 @@
 import type { StorageAdapter } from '../adapters.js';
 import { rankCandidates, selectDiverse, type RankedCandidate } from './rank.js';
 import {
+  canonicalUrl,
   readResearchFile,
   recordResearchRun,
   type ResearchRunRecord,
@@ -36,6 +37,16 @@ export interface RunResearchAgentInput {
 }
 
 const defaultTimeoutMs = 12_000;
+
+function dedupeRankedCandidates(candidates: RankedCandidate[]): RankedCandidate[] {
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const key = canonicalUrl(candidate.url);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 async function withTimeout<T>(work: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -105,7 +116,7 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
   });
 
   const fresh = await filterResearchSuggestions(input.storage, input.topicSlug, found, now);
-  const ranked = rankCandidates(input.query, fresh, { now, seen });
+  const ranked = dedupeRankedCandidates(rankCandidates(input.query, fresh, { now, seen }));
   const { overflow, shortlist } = selectDiverse(ranked, input.limit);
 
   // The run itself is evidence: a failure trail must survive reload exactly like a success,

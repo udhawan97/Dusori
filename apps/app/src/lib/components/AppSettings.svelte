@@ -6,9 +6,12 @@
     Palette,
     RefreshCw,
     ShieldCheck,
+    Sparkles,
     Upload,
   } from '@lucide/svelte';
   import { onMount } from 'svelte';
+
+  import type { CompanionAiClient } from '@dusori/core';
 
   import {
     automaticUpdatePreferenceKey,
@@ -23,6 +26,7 @@
   export let storageKind: string;
   export let storageLabel: string;
   export let companionStatus: string;
+  export let ai: CompanionAiClient | null = null;
   export let online: boolean;
   export let busy = false;
   export let hasTopic = false;
@@ -41,6 +45,10 @@
   let appearance: Appearance = 'system';
   let consentDecisions: StoredConsentDecision[] = [];
   let appearanceStatus = '';
+  let aiChecking = false;
+  let aiProvider = '';
+  let aiModel = '';
+  let aiStatus: 'configured' | 'model-failed' | 'ready' | '' = '';
 
   onMount(() => {
     appearance = readAppearance();
@@ -53,6 +61,7 @@
       updateStatus = `Dusori ${automaticallyDownloaded.version ?? 'update'} downloaded after startup and is ready to install.`;
     }
     void prepareUpdates();
+    void inspectLocalAi();
   });
 
   const consentLabels: Record<string, string> = {
@@ -64,6 +73,8 @@
     'mslearn-ranked': 'Microsoft Learn ranked search',
     npm: 'npm registry',
     openalex: 'OpenAlex',
+    crossref: 'Crossref',
+    openlibrary: 'Open Library',
     reddit: 'Reddit',
     stackexchange: 'Stack Exchange',
     websearch: 'Configured web search',
@@ -81,6 +92,25 @@
   function clearProviderDecision(scope: string): void {
     if (!resetConsent(scope)) return;
     consentDecisions = listConsentDecisions();
+  }
+
+  async function inspectLocalAi(): Promise<void> {
+    aiChecking = true;
+    aiProvider = '';
+    aiModel = '';
+    aiStatus = '';
+    try {
+      const capability = (await ai?.capabilities())?.[0];
+      aiProvider = capability?.id ?? '';
+      aiModel = capability?.model ?? '';
+      aiStatus = capability?.status ?? (capability ? 'configured' : '');
+    } catch {
+      aiProvider = '';
+      aiModel = '';
+      aiStatus = '';
+    } finally {
+      aiChecking = false;
+    }
   }
 
   async function prepareUpdates(): Promise<void> {
@@ -307,6 +337,75 @@
       {/if}
     </section>
 
+    <section aria-labelledby="local-ai-title">
+      <div class="section-heading">
+        <Sparkles aria-hidden="true" size={22} strokeWidth={1.5} />
+        <div>
+          <p class="eyebrow">
+            {aiProvider && aiProvider !== 'ollama'
+              ? 'Optional hosted synthesis'
+              : 'Optional local synthesis'}
+          </p>
+          <h2 id="local-ai-title">
+            {aiProvider && aiProvider !== 'ollama'
+              ? 'Use the hosted provider you configured'
+              : 'Use a model already on this computer'}
+          </h2>
+        </div>
+      </div>
+      {#if aiProvider === 'ollama' && aiStatus === 'ready'}
+        <p class="ai-ready"><strong>{aiModel}</strong> passed a local generation check.</p>
+        <p class="detail">
+          After separate AI consent, Dusori may use it to order search results and write a concise
+          overview by selecting quoted passages. Source wording, citations, and the deterministic
+          fallback remain intact.
+        </p>
+      {:else if aiProvider === 'ollama' && aiStatus === 'model-failed'}
+        <p>
+          <strong>{aiModel}</strong> is installed, but it did not pass a small structured generation check.
+          Dusori will keep using its deterministic synthesis.
+        </p>
+        <p class="detail">
+          Update Ollama, re-pull that model, or choose another chat-capable model.
+        </p>
+      {:else if aiProvider === 'ollama' && aiModel}
+        <p>
+          <strong>{aiModel}</strong> was detected in Ollama, but has not passed Dusori's generation check.
+        </p>
+        <p class="detail">
+          Update the companion, then check again. Dusori will keep using deterministic synthesis
+          until the model is verified.
+        </p>
+      {:else if aiModel}
+        <p><strong>{aiModel}</strong> is configured through hosted provider {aiProvider}.</p>
+        <p class="detail">
+          This is not a model on this computer. Separate AI consent names the payload scope before
+          Dusori sends anything through the companion.
+        </p>
+      {:else}
+        <p>
+          No model is active right now. Start Ollama with an installed model, then check again.
+          Dusori discovers running local chat models automatically, then performs a small structured
+          generation check; no API key or app restart is needed.
+        </p>
+        <ol class="ai-steps">
+          <li>Open Ollama and leave it running.</li>
+          <li>If you need one, choose and pull a chat-capable model in Ollama yourself.</li>
+          <li>Return here and choose Check AI setup.</li>
+        </ol>
+      {/if}
+      <div class="actions">
+        <button disabled={aiChecking || !ai} onclick={() => void inspectLocalAi()}>
+          <RefreshCw aria-hidden="true" size={17} />
+          {aiChecking ? 'Checking…' : 'Check AI setup'}
+        </button>
+      </div>
+      <p class="detail">
+        Dusori never downloads a model, starts Ollama, or sends workspace text to a model without
+        your action and consent.
+      </p>
+    </section>
+
     <section aria-labelledby="updates-title">
       <div class="section-heading">
         <RefreshCw aria-hidden="true" size={22} strokeWidth={1.5} />
@@ -426,6 +525,18 @@
   .status {
     color: var(--color-muted);
     font-size: var(--text-sm);
+  }
+
+  .ai-ready {
+    margin-block-end: var(--space-xs);
+    color: var(--color-accent-text);
+  }
+
+  .ai-steps {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 62ch;
+    padding-inline-start: 1.25rem;
   }
 
   .actions {

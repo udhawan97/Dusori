@@ -1,5 +1,13 @@
 import { loadDusoriDesktop } from '$lib/desktop-platform';
 
+export function isExternalHttpUrl(url: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Keeps ordinary browser anchors native while routing desktop clicks to the system browser.
  * Returns false when the page is not running inside Dusori desktop, so the caller can leave the

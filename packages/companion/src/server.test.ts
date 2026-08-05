@@ -676,7 +676,13 @@ describe('ai routes', () => {
   it('reports an unconfigured provider when asked for review prompts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
     const server = await createServer({
-      ai: { env: {} },
+      ai: {
+        env: {},
+        fetchImpl: (async () =>
+          new Response(JSON.stringify({ models: [] }), {
+            headers: { 'Content-Type': 'application/json' },
+          })) as typeof fetch,
+      },
       root,
       staticDirectory: join(root, 'missing'),
       token,
@@ -699,7 +705,13 @@ describe('ai routes', () => {
   it('reports no providers when nothing is configured', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dusori-root-'));
     const server = await createServer({
-      ai: { env: {} },
+      ai: {
+        env: {},
+        fetchImpl: (async () =>
+          new Response(JSON.stringify({ models: [] }), {
+            headers: { 'Content-Type': 'application/json' },
+          })) as typeof fetch,
+      },
       root,
       staticDirectory: join(root, 'missing'),
       token,
@@ -748,7 +760,9 @@ describe('ai routes', () => {
       method: 'GET',
       url: '/api/ai/capabilities',
     });
-    expect(capabilities.json()).toEqual({ providers: [{ id: 'openai', model: 'gpt-4o-mini' }] });
+    expect(capabilities.json()).toEqual({
+      providers: [{ id: 'openai', model: 'gpt-4o-mini', status: 'configured' }],
+    });
     expect(capabilities.body).not.toContain('sk-secret-key');
 
     const rerank = await server.inject({
@@ -816,7 +830,9 @@ describe('ai routes', () => {
       call += 1;
       if (call === 1) {
         return new Response(
-          JSON.stringify({ response: 'Spacing works because retrieval strengthens memory.' }),
+          JSON.stringify({
+            response: '[{"passages":[1]}]',
+          }),
           { headers: { 'Content-Type': 'application/json' }, status: 200 },
         );
       }
@@ -841,7 +857,7 @@ describe('ai routes', () => {
       url: '/api/ai/synthesize',
     });
     expect(written.statusCode).toBe(200);
-    expect(written.json().overview).toContain('retrieval strengthens memory');
+    expect(written.json().overview).toContain('Reviews help.');
 
     // The cap is the disclosure: a payload beyond it never reaches the model.
     const oversized = await server.inject({

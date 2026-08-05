@@ -1,5 +1,5 @@
 import type { SourceClaim, SourceRecord } from '../schemas/workspace.js';
-import { lensFor, missionLensLabels } from './mission.js';
+import { lensFor, missionLensLabels, missionLenses } from './mission.js';
 
 export interface SynthesisClaim extends SourceClaim {
   sourceTitle: string;
@@ -205,7 +205,7 @@ export function buildTopicSynthesis(input: BuildSynthesisInput): TopicSynthesis 
       .filter((record) => record.origin)
       .map((record) => lensFor(record.origin!.provider)),
   );
-  const missingLenses = (['docs', 'academic', 'community', 'video', 'web'] as const)
+  const missingLenses = missionLenses
     .filter((lens) => !covered.has(lens))
     .map((lens) => missionLensLabels[lens]);
 
@@ -230,7 +230,7 @@ function citation(claim: SynthesisClaim): string {
 }
 
 export interface RenderSynthesisOptions {
-  /** AI prose for "What matters", already model-checked. Never replaces a claim. */
+  /** Verbatim source passages selected and ordered by an optional model. */
   aiOverview?: string;
   aiModel?: string;
 }
@@ -255,7 +255,7 @@ export function renderSynthesisMarkdown(
     `# Synthesis — ${synthesis.topicTitle}`,
     '',
     options.aiModel
-      ? `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). The overview below was written by ${options.aiModel}; every quoted passage and its citation is taken from your sources, not from the model.`
+      ? `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). ${options.aiModel} selected the overview passages; every word and citation below comes from your sources, not from the model.`
       : `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). Every line below is quoted from saved source text.`,
     '',
   ];
@@ -268,7 +268,14 @@ export function renderSynthesisMarkdown(
     return `${lines.join('\n')}`;
   }
 
-  lines.push('## What matters', '');
+  lines.push('## Evidence digest', '');
+  for (const cluster of synthesis.clusters.slice(0, 5)) {
+    const passageCount = cluster.claims.length;
+    lines.push(
+      `- **${cluster.heading}** — ${cluster.sourceCount} ${cluster.sourceCount === 1 ? 'source' : 'sources'} · ${passageCount} ${passageCount === 1 ? 'passage' : 'passages'}`,
+    );
+  }
+  lines.push('', '## What matters', '');
   if (options.aiOverview) lines.push(options.aiOverview.trim(), '');
   for (const cluster of synthesis.clusters.slice(0, 5)) {
     lines.push(`### ${cluster.heading}`, '');

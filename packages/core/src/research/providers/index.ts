@@ -1,11 +1,13 @@
 import type { CompanionResearchClient } from '../companion.js';
 import type { ResearchProvider, ResearchQuery } from '../types.js';
 import { createArxivProvider } from './arxiv.js';
+import { crossrefProvider } from './crossref.js';
 import { githubProvider } from './github.js';
 import { hackerNewsProvider } from './hackernews.js';
 import { createMsLearnProvider, msLearnProvider } from './mslearn.js';
 import { npmProvider } from './npm.js';
 import { openAlexProvider } from './openalex.js';
+import { openLibraryProvider } from './openlibrary.js';
 import { createRedditProvider } from './reddit.js';
 import { stackExchangeProvider } from './stackexchange.js';
 import { createWebSearchProvider } from './websearch.js';
@@ -13,11 +15,13 @@ import { wikipediaProvider } from './wikipedia.js';
 import { createYouTubeProvider } from './youtube.js';
 
 export * from './arxiv.js';
+export * from './crossref.js';
 export * from './github.js';
 export * from './hackernews.js';
 export * from './mslearn.js';
 export * from './npm.js';
 export * from './openalex.js';
+export * from './openlibrary.js';
 export * from './reddit.js';
 export * from './stackexchange.js';
 export * from './websearch.js';
@@ -32,6 +36,8 @@ export const researchProviders = [
   githubProvider,
   stackExchangeProvider,
   openAlexProvider,
+  crossrefProvider,
+  openLibraryProvider,
   npmProvider,
 ] as const;
 
@@ -41,7 +47,9 @@ export interface ResearchProviderOptions {
 
 const generalResearchProviders = new Set([
   'arxiv',
+  'crossref',
   'openalex',
+  'openlibrary',
   'reddit',
   'websearch',
   'wikipedia',
@@ -121,7 +129,7 @@ export function selectProvidersForQuery(
 
 /**
  * The provider list for a session. A companion upgrades Microsoft Learn to ranked search and
- * unlocks the two providers the browser cannot reach itself, so the list is built rather than
+ * unlocks companion-only providers the browser cannot reach itself, so the list is built rather than
  * declared — adding a provider stays one file plus one entry here.
  */
 export function createResearchProviders(options: ResearchProviderOptions = {}): ResearchProvider[] {
@@ -134,6 +142,8 @@ export function createResearchProviders(options: ResearchProviderOptions = {}): 
     githubProvider,
     stackExchangeProvider,
     openAlexProvider,
+    crossrefProvider,
+    openLibraryProvider,
     npmProvider,
     createArxivProvider({ search: (query) => companion.searchArxiv(query) }),
     createRedditProvider({ search: (query) => companion.searchReddit(query) }),

@@ -145,7 +145,7 @@ describe('runResearchAgent', () => {
     expect(file?.seen?.map((item) => item.key).sort()).toEqual(['alpha:1', 'alpha:2']);
   });
 
-  it('holds the shortlist to five and puts the rest in overflow', async () => {
+  it('holds the default shortlist to eight and puts the rest in overflow', async () => {
     const { storage, topicSlug } = await workspace();
     const many = Array.from({ length: 9 }, (_item, index) =>
       candidate({
@@ -163,8 +163,39 @@ describe('runResearchAgent', () => {
       topicSlug,
     });
 
-    expect(result.shortlist).toHaveLength(5);
-    expect(result.overflow).toHaveLength(4);
+    expect(result.shortlist).toHaveLength(8);
+    expect(result.overflow).toHaveLength(1);
+  });
+
+  it('keeps only the strongest copy when providers return the same canonical URL', async () => {
+    const { storage, topicSlug } = await workspace();
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('alpha', [
+          candidate({
+            key: 'alpha:weak',
+            snippet: 'TypeScript generics.',
+            title: 'Short note',
+            url: 'https://example.com/article?utm_source=alpha',
+          }),
+        ]),
+        stubProvider('beta', [
+          candidate({
+            key: 'beta:strong',
+            snippet: 'Understand generics deeply in TypeScript.',
+            title: 'TypeScript generics guide',
+            url: 'https://example.com/article',
+          }),
+        ]),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.shortlist.map((item) => item.key)).toEqual(['beta:strong']);
+    expect((await readResearchFile(storage, topicSlug, now))?.seen).toHaveLength(1);
   });
 
   // A failed run is evidence too. Writing nothing used to make "the providers broke" and

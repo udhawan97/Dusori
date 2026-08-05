@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import {
   AiError,
-  aiConfig,
+  inspectAiCapability,
   rerankWithAi,
   writeBriefWithAi,
   writeRecallPromptsWithAi,
@@ -106,7 +106,7 @@ function failureReply(error: unknown): { code: number; body: { error: string; re
 
 export async function aiRoutes(server: FastifyInstance, options: AiRoutesOptions): Promise<void> {
   server.get('/api/ai/capabilities', async () => {
-    const config = aiConfig(options.env);
+    const config = await inspectAiCapability(options);
     return { providers: config ? [config] : [] };
   });
 

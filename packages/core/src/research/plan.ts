@@ -25,6 +25,19 @@ const englishStopwords = new Set([
   'with',
 ]);
 
+const researchInstructionTerms = new Set([
+  'central',
+  'describe',
+  'explain',
+  'guide',
+  'introduction',
+  'mechanism',
+  'overview',
+  'own',
+  'words',
+  'your',
+]);
+
 function cleanObjectiveTitle(input: string): string {
   return input
     .replace(/!\[([^\]]*)\]\([^)]*\)/gu, '$1')
@@ -48,6 +61,16 @@ function deriveTerms(input: string): string[] {
   return [...new Set(normalized.split(/\s+/u).filter((term) => !englishStopwords.has(term)))];
 }
 
+function requiredPhrases(input: string): string[] {
+  return [
+    ...new Set(
+      [...input.matchAll(/\b(?:AI|AZ|DP|MB|MD|MS|PL|SC)-\d{3}\b/giu)].map((match) =>
+        deriveTerms(match[0]).join(' '),
+      ),
+    ),
+  ].filter(Boolean);
+}
+
 export function buildResearchQuery(
   topicTitle: string,
   objective: { title: string },
@@ -59,9 +82,18 @@ export function buildResearchQuery(
   // ("Explain the central mechanism in your own words") name no subject, so an objective-only
   // query matches on filler words and returns unrelated sources.
   const topicTerms = deriveTerms(topic).filter((term) => !objectiveTerms.includes(term));
+  const subjectTerms = [...new Set([...deriveTerms(topic), ...objectiveTerms])].filter(
+    (term) => !researchInstructionTerms.has(term),
+  );
+  const searchText = [topic, objectiveTitle === topic ? '' : objectiveTitle]
+    .filter(Boolean)
+    .join(' ');
+  const phrases = requiredPhrases(searchText);
   return {
     objectiveTitle,
-    searchText: [topic, objectiveTitle === topic ? '' : objectiveTitle].filter(Boolean).join(' '),
+    ...(phrases.length ? { requiredPhrases: phrases } : {}),
+    searchText,
+    ...(subjectTerms.length ? { subjectTerms } : {}),
     terms: [...objectiveTerms, ...topicTerms],
     topicTitle: topic,
   };

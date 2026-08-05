@@ -49,6 +49,11 @@ export type LookupImpl = (
   options: { all: true },
 ) => Promise<Array<{ address: string; family: number }>>;
 
+export interface ResolvedAddress {
+  address: string;
+  family: number;
+}
+
 export interface FetchPageOptions {
   fetchImpl?: typeof fetch;
   lookupImpl?: LookupImpl;
@@ -60,8 +65,7 @@ export interface FetchPageOptions {
 
 export type PinnedFetchImpl = (
   url: URL,
-  address: string,
-  family: number,
+  addresses: ResolvedAddress[],
   signal: AbortSignal,
 ) => Promise<Response>;
 
@@ -108,14 +112,11 @@ function parseTarget(rawUrl: string): URL {
   return url;
 }
 
-async function resolvePublicHost(
-  url: URL,
-  lookupImpl: LookupImpl,
-): Promise<{ address: string; family: number }> {
+async function resolvePublicHost(url: URL, lookupImpl: LookupImpl): Promise<ResolvedAddress[]> {
   const host = url.hostname.replace(/^\[|\]$/gu, '');
   if (isIP(host)) {
     if (isBlockedAddress(host)) throw new FetchPageError(blockedMessage, 'blocked-host');
-    return { address: host, family: isIP(host) };
+    return [{ address: host, family: isIP(host) }];
   }
   let addresses: Array<{ address: string; family: number }>;
   try {
@@ -129,7 +130,27 @@ async function resolvePublicHost(
   if (addresses.length === 0 || addresses.some((entry) => isBlockedAddress(entry.address))) {
     throw new FetchPageError(blockedMessage, 'blocked-host');
   }
-  return addresses[0]!;
+  return addresses;
+}
+
+/**
+ * Adapts already-validated DNS answers to both lookup callback shapes Node may request. Node 24
+ * asks for `all: true` during connection setup, so returning a scalar there is interpreted as an
+ * address record and fails before the request leaves the machine.
+ */
+export function createPinnedLookup(addresses: readonly ResolvedAddress[]): LookupFunction {
+  if (addresses.length === 0) throw new Error('A pinned request needs a validated address.');
+  return (_hostname, options, callback) => {
+    if (options.all)
+      callback(
+        null,
+        addresses.map((entry) => ({ ...entry })),
+      );
+    else {
+      const first = addresses[0]!;
+      callback(null, first.address, first.family);
+    }
+  };
 }
 
 /**
@@ -139,13 +160,10 @@ async function resolvePublicHost(
  */
 async function pinnedFetch(
   url: URL,
-  address: string,
-  family: number,
+  addresses: ResolvedAddress[],
   signal: AbortSignal,
 ): Promise<Response> {
-  const lookupPinned: LookupFunction = (_hostname, _options, callback) => {
-    callback(null, address, family);
-  };
+  const lookupPinned = createPinnedLookup(addresses);
   return new Promise<Response>((resolve, reject) => {
     const request = (url.protocol === 'https:' ? httpsRequest : httpRequest)(
       url,
@@ -193,7 +211,7 @@ async function guardedResponse(
     try {
       response =
         fetchImpl === undefined
-          ? await pinnedFetchImpl(current, resolved.address, resolved.family, signal)
+          ? await pinnedFetchImpl(current, resolved, signal)
           : await fetchImpl(current.toString(), { redirect: 'manual', signal });
     } catch (error) {
       if (isAbortTimeout(error)) throw timeoutFetchError(timeoutMs);

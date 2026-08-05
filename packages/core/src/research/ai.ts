@@ -9,7 +9,13 @@ import type { ResearchQuery } from './types.js';
 import type { RecallAiRequest } from '../learning/recall.js';
 
 const CapabilitiesSchema = z.object({
-  providers: z.array(z.object({ id: z.string(), model: z.string() })),
+  providers: z.array(
+    z.object({
+      id: z.string(),
+      model: z.string(),
+      status: z.enum(['configured', 'model-failed', 'ready']).optional(),
+    }),
+  ),
 });
 
 const RerankResponseSchema = z.object({
@@ -31,6 +37,10 @@ export const recallPromptTimeoutMs = 20_000;
 
 export type AiCapability = z.infer<typeof CapabilitiesSchema>['providers'][number];
 
+export function isUsableAiCapability(capability: AiCapability | null | undefined): boolean {
+  return Boolean(capability && capability.status !== 'model-failed');
+}
+
 export interface AiRerankEntry {
   key: string;
   aiScore: number;
@@ -45,7 +55,7 @@ export interface CompanionAiClient {
   /** A proposed depth and preference list for one topic's TUTOR.md. Never applied on its own. */
   tutorPreferences(request: TutorAiRequest): Promise<TutorAiProposal>;
   writeBrief(query: ResearchQuery, sources: BriefSource[]): Promise<string>;
-  /** Overview prose for a synthesis, from passages the workspace already quotes. */
+  /** An overview assembled from model-selected passages that the workspace already quotes. */
   writeSynthesis(topic: string, claims: SynthesisAiClaim[]): Promise<string>;
 }
 

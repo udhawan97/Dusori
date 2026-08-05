@@ -39,6 +39,23 @@ function keepCodeBlocksKeyboardReachable() {
   };
 }
 
+function markExternalLinks() {
+  return (tree: HastNode): void => {
+    const walk = (node: HastNode): void => {
+      const href = node.tagName === 'a' ? node.properties?.href : undefined;
+      if (typeof href === 'string' && /^https?:\/\//iu.test(href)) {
+        node.properties = {
+          ...node.properties,
+          rel: ['nofollow', 'noopener', 'noreferrer'],
+          target: '_blank',
+        };
+      }
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(tree);
+  };
+}
+
 const wikilinkHrefPrefix = '#wiki-';
 
 /**
@@ -83,6 +100,7 @@ export async function renderMarkdown(markdown: string): Promise<RenderedMarkdown
     .use(remarkRehype)
     .use(rehypeSanitize)
     .use(keepCodeBlocksKeyboardReachable)
+    .use(markExternalLinks)
     .use(rehypeStringify)
     .process(wikilinked);
   return { html: String(file), mermaid };

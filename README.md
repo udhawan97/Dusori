@@ -35,10 +35,10 @@
 Dusori is organized around the question—not around objectives or setup machinery.
 
 1. **Ask.** Enter the topic or question in plain language.
-2. **Research.** Dusori searches permitted providers, ranks a varied shortlist, and saves up to five sources.
+2. **Research.** Dusori searches permitted providers, removes duplicate URLs, ranks a varied shortlist, and saves up to eight sources.
 3. **Read.** Provider extracts and guarded companion fetches become local reading copies; blocked pages stay browser-ready references.
 4. **Synthesize.** Quotable passages become one honest brief with visible gaps and citations.
-5. **See the trail.** Map opens as a readable research Outline; the visual constellation is optional.
+5. **See the trail.** Map opens as a searchable Outline; the visual evidence atlas separates every topic into source, note, brief, and update lanes.
 
 <p align="center">
   <img src="apps/site/public/app-research.png" alt="Dusori Research Desk with a plain-language question, provider outcomes, and saved evidence" width="920">
@@ -47,12 +47,12 @@ Dusori is organized around the question—not around objectives or setup machine
 
 ## Four places, each with one job
 
-| Place        | What it is for                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------ |
-| **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                                   |
-| **Sources**  | Read local evidence, open blocked pages in the browser, add your own material, remove, or restore.     |
-| **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or optional visual constellation. |
-| **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                          |
+| Place        | What it is for                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                               |
+| **Sources**  | Read local evidence, open blocked pages in the browser, add your own material, remove, or restore. |
+| **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or separated evidence atlas.  |
+| **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                      |
 
 The Research Desk adds the ranked shortlist to Sources automatically. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
 
@@ -109,18 +109,20 @@ Dusori never installs or restarts itself. It blocks installation while the curre
 
 Every provider begins off. The first request asks permission and says what leaves the device. A durable trail distinguishes results, empty responses, and failures.
 
-| Runs where         | Providers                                                                      | Account or key                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| Browser or desktop | Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, npm | None for discovery                                                                               |
-| Local companion    | arXiv                                                                          | None                                                                                             |
-| Local companion    | General web through SearXNG                                                    | Self-hosted or public instance you choose                                                        |
-| Local companion    | Brave Search or Tavily                                                         | Your API key; free tier may be available                                                         |
-| Local companion    | Reddit                                                                         | Your own Reddit app credentials                                                                  |
-| Local companion    | YouTube Data API v3 (preferred) or Invidious fallback                          | Your `YOUTUBE_API_KEY`, or an optional self-hosted `INVIDIOUS_URL`; metadata and references only |
-| Local companion    | Ollama                                                                         | Local model; no hosted account required                                                          |
-| Local companion    | Anthropic or OpenAI                                                            | Your key and provider terms                                                                      |
+| Runs where         | Providers                                                                                              | Account or key                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Browser or desktop | Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, npm | None for discovery                                                                               |
+| Local companion    | arXiv                                                                                                  | None                                                                                             |
+| Local companion    | General web through SearXNG                                                                            | Self-hosted or public instance you choose                                                        |
+| Local companion    | Brave Search or Tavily                                                                                 | Your API key; free tier may be available                                                         |
+| Local companion    | Reddit                                                                                                 | Your own Reddit app credentials                                                                  |
+| Local companion    | YouTube Data API v3 (preferred) or Invidious fallback                                                  | Your `YOUTUBE_API_KEY`, or an optional self-hosted `INVIDIOUS_URL`; metadata and references only |
+| Local companion    | Ollama                                                                                                 | Running loopback chat model must pass a structured generation check; no hosted account required  |
+| Local companion    | Anthropic or OpenAI                                                                                    | Your key and provider terms                                                                      |
 
 Dusori does not scrape social sites behind a login, bypass access controls, download YouTube media, or promise that a third-party free tier will remain available. Provider availability and usage terms belong to each provider. See the [provider and legal matrix](https://udhawan97.github.io/Dusori/docs/research-providers/).
+
+The [open research stack evaluation](docs/research/2026-08-05-open-research-stack-evaluation.md) credits the projects studied for orchestration, metasearch, extraction, and local-model patterns and records why they are inspiration, an optional service, or a future dependency—not hidden runtime code.
 
 AI is optional. Deterministic ranking, source storage, quoted synthesis structure, and graph construction work without it. Any AI feature has its own disclosure and labels its model output.
 
@@ -150,8 +152,8 @@ AI is optional. Deterministic ranking, source storage, quoted synthesis structur
 Markdown and text are user-owned. JSON is machine-owned, schema-versioned, and validated. If another editor changes Markdown before Dusori writes, Dusori keeps that version active and creates a reviewable proposal instead of overwriting it. Unknown compatible data from newer workspaces is preserved during supported edits.
 
 <p align="center">
-  <img src="apps/site/public/app-map.png" alt="Dusori Map with a readable research outline and optional visual constellation" width="920">
-  <br><sub><em>Outline opens first; the optional constellation shows the same portable notes, sources, and wikilinks.</em></sub>
+  <img src="apps/site/public/app-map.png" alt="Dusori Map with a readable research outline and separated visual evidence atlas" width="920">
+  <br><sub><em>Outline opens first; the optional atlas gives every topic and artifact type its own readable lane.</em></sub>
 </p>
 
 ## Build from source

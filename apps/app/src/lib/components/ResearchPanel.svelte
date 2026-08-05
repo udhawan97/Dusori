@@ -25,6 +25,8 @@
     createResearchProviders,
     dismissSuggestion,
     isMissionStale,
+    isReadableResearchCapture,
+    isUsableAiCapability,
     readResearchFile,
     readSourceManifest,
     readSourcesIntoClaims,
@@ -53,6 +55,7 @@
 
   import { modal } from '$lib/actions/modal';
   import { grantConsent, hasConsent as deviceHasConsent } from '$lib/consent';
+  import { createAiSynthesisOptions } from '$lib/research-synthesis';
   import LearnPanel from './LearnPanel.svelte';
   import MarkdownView from './MarkdownView.svelte';
   import ResearchTrail from './ResearchTrail.svelte';
@@ -111,7 +114,8 @@
   $: void readAiCapability(ai);
 
   async function readAiCapability(client: CompanionAiClient | null): Promise<void> {
-    aiCapability = client ? ((await client.capabilities())[0] ?? null) : null;
+    const capability = client ? ((await client.capabilities())[0] ?? null) : null;
+    aiCapability = isUsableAiCapability(capability) ? capability : null;
   }
 
   // Reuses the provider consent machinery: same storage key shape, same dialog, its own scope.
@@ -485,6 +489,7 @@
   function kindLabel(candidate: RankedCandidate): string {
     const labels: Record<string, string> = {
       article: 'Article',
+      book: 'Book',
       course: 'Course',
       docs: 'Docs',
       paper: 'Paper',
@@ -580,7 +585,7 @@
           author: candidate.meta.author ?? candidate.meta.channel ?? candidate.meta.byline,
           publishedAt: candidate.publishedAt,
           publisher: provider.label,
-          readState: capturedVia === 'search-reference' ? 'reference' : 'readable',
+          readState: isReadableResearchCapture(capturedVia) ? 'readable' : 'reference',
           whySelected: candidate.reasons.slice(0, 8),
         },
         title: capture.title,
@@ -724,19 +729,13 @@
     if (!ai || !aiCapability || !hasConsent(aiConsent)) return { options: {} };
     try {
       const manifest = await readSourceManifest(storage, topicSlug);
-      const claims = manifest.sources.flatMap((record) =>
-        (record.claims ?? []).map((claim) => ({
-          ...(claim.heading === undefined ? {} : { heading: claim.heading }),
-          source: record.title,
-          text: claim.text,
-        })),
-      );
-      if (claims.length === 0) return { options: {} };
       return {
-        options: {
-          aiModel: aiCapability.model,
-          aiOverview: await ai.writeSynthesis(topicTitle, claims.slice(0, 60)),
-        },
+        options: await createAiSynthesisOptions(
+          ai,
+          aiCapability.model,
+          topicTitle,
+          manifest.sources,
+        ),
       };
     } catch {
       return {

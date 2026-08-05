@@ -82,7 +82,12 @@ const maxRunEntries = 50;
 // string for anything unparseable rather than throwing.
 export function canonicalUrl(url: string): string {
   try {
-    return new URL(url).toString();
+    const parsed = new URL(url);
+    parsed.hash = '';
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (/^(?:utm_.+|fbclid|gclid|mc_cid|mc_eid)$/iu.test(key)) parsed.searchParams.delete(key);
+    }
+    return parsed.toString();
   } catch {
     return url;
   }

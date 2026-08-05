@@ -6,6 +6,8 @@
     addSource,
     buildResearchQuery,
     createResearchProviders,
+    isReadableResearchCapture,
+    isUsableAiCapability,
     readResearchFile,
     readSourceManifest,
     readSourcesIntoClaims,
@@ -13,6 +15,7 @@
     runResearchAgent,
     selectProvidersForQuery,
     writeTopicSynthesis,
+    type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
     type ResearchCapability,
@@ -26,12 +29,14 @@
   import { modal } from '$lib/actions/modal';
   import { denyConsent, grantConsent, hasConsent, readConsent } from '$lib/consent';
   import { openExternalFromDesktop } from '$lib/open-external';
+  import { createAiSynthesisOptions } from '$lib/research-synthesis';
   import MarkdownView from './MarkdownView.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let topicTitle: string;
   export let companion: CompanionResearchClient | null = null;
+  export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
   export let onAutoStartHandled: () => void = () => undefined;
   export let onSourceSaved: (path?: string) => void = () => undefined;
@@ -71,6 +76,7 @@
   let providers: ResearchProvider[] = [];
   let availableProviders: ResearchProvider[] = [];
   let capabilities = new Map<string, ResearchCapability>();
+  let aiModel = '';
   let question = topicTitle;
   let stage: Stage = 'idle';
   let runResult: ResearchRunResult | null = null;
@@ -94,6 +100,8 @@
     { id: 'mslearn', label: 'Microsoft Learn', mode: 'browser' },
     { id: 'wikipedia', label: 'Wikipedia', mode: 'browser' },
     { id: 'openalex', label: 'OpenAlex', mode: 'browser' },
+    { id: 'crossref', label: 'Crossref', mode: 'browser' },
+    { id: 'openlibrary', label: 'Open Library', mode: 'browser' },
     { id: 'github', label: 'GitHub', mode: 'browser' },
     { id: 'stackexchange', label: 'Stack Exchange', mode: 'browser' },
     { id: 'hackernews', label: 'Hacker News', mode: 'browser' },
@@ -156,6 +164,14 @@
         capabilities = new Map();
       }
     }
+    if (ai) {
+      try {
+        const capability = (await ai.capabilities())[0];
+        aiModel = isUsableAiCapability(capability) ? (capability?.model ?? '') : '';
+      } catch {
+        aiModel = '';
+      }
+    }
     availableProviders = providers.filter(providerAvailable);
     await restoreResultState();
     if (autoStart && !autoStarted) {
@@ -206,10 +222,6 @@
           ? caught.message
           : 'The system browser could not open this research link.';
     }
-  }
-
-  function isReadableCapture(capturedVia: string): boolean {
-    return ['api-abstract', 'api-extract', 'page-extract', 'readme-extract'].includes(capturedVia);
   }
 
   function stateFor(record: SourceRecord): SourceState {
@@ -409,7 +421,7 @@
           author: candidate.meta.author ?? candidate.meta.channel ?? candidate.meta.byline,
           publishedAt: candidate.publishedAt,
           publisher: provider.label,
-          readState: isReadableCapture(capturedVia) ? 'readable' : 'reference',
+          readState: isReadableResearchCapture(capturedVia) ? 'readable' : 'reference',
           whySelected: candidate.reasons.slice(0, 8),
         },
         title: capture.title,
@@ -424,7 +436,7 @@
           topicSlug,
         });
       }
-      const readable = isReadableCapture(capturedVia);
+      const readable = isReadableResearchCapture(capturedVia);
       const savedMessage = captureFailure
         ? `${captureFailure} Open the original or paste text.`
         : saved.restored
@@ -465,7 +477,7 @@
       const routedProviders = selectProvidersForQuery(providerList, query);
       const result = await runResearchAgent({
         fetchImpl: fetch,
-        limit: 5,
+        limit: 8,
         providers: routedProviders,
         query,
         storage,
@@ -504,10 +516,33 @@
       }
 
       stage = 'writing';
-      const synthesis = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+      let synthesisOptions = {};
+      let aiUnavailable = false;
+      if (ai && aiModel && hasConsent('companion-ai')) {
+        try {
+          const manifest = await readSourceManifest(storage, topicSlug);
+          synthesisOptions = await createAiSynthesisOptions(
+            ai,
+            aiModel,
+            topicTitle,
+            manifest.sources,
+          );
+        } catch {
+          aiUnavailable = true;
+        }
+      }
+      const synthesis = await writeTopicSynthesis(
+        storage,
+        topicSlug,
+        topicTitle,
+        new Date(),
+        synthesisOptions,
+      );
       if (synthesis.status === 'written') {
         stage = 'complete';
-        status = `Brief assembled from ${synthesis.synthesis.claimCount} quoted passages across ${synthesis.synthesis.readCount} sources.`;
+        status = `Brief assembled from ${synthesis.synthesis.claimCount} quoted passages across ${synthesis.synthesis.readCount} sources.${
+          aiUnavailable ? ' AI was unavailable, so the evidence-first fallback was used.' : ''
+        }`;
         onSourceSaved(synthesis.path);
       } else {
         stage = 'complete';
@@ -571,7 +606,7 @@
     <ShieldCheck aria-hidden="true" size={17} />
     <span
       >{allowedProviders.length} allowed · {relevantProviderCount} relevant here · {undecidedProviders.length}
-      undecided · AI stays separate</span
+      undecided · {aiModel ? `${aiModel} ready for optional synthesis` : 'AI stays separate'}</span
     >
   </div>
 
@@ -579,7 +614,8 @@
     <summary>Research providers and setup</summary>
     <p>
       Browser providers need only your consent. Web search, social, video, and arXiv use the free
-      local companion so keys and cross-origin requests stay off the hosted app.
+      local companion so keys and cross-origin requests stay off the hosted app. A running Ollama
+      chat model must pass a structured generation check and still needs its own AI consent.
     </p>
     <ul aria-label="Research provider availability">
       {#each providerAvailability as provider (provider.id)}

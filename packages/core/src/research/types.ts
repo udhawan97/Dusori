@@ -5,8 +5,24 @@ export interface ResearchQuery {
   searchText: string;
   /** Objective terms followed by the topic terms it does not already carry. */
   terms: string[];
+  /** Subject-bearing terms after generic research instructions are removed. */
+  subjectTerms?: string[];
+  /** Structured identifiers that must appear together, e.g. `AI-901` as `ai 901`. */
+  requiredPhrases?: string[];
   /** Which research angle seeded this query, recorded on the run so a trail stays readable. */
   angleId?: string;
+}
+
+const readableCaptureMethods = new Set([
+  'api-abstract',
+  'api-extract',
+  'page-extract',
+  'readme-extract',
+]);
+
+/** One shared evidence boundary for every research UI. */
+export function isReadableResearchCapture(capturedVia: string): boolean {
+  return readableCaptureMethods.has(capturedVia);
 }
 
 /**
@@ -18,7 +34,7 @@ export type ResearchProviderId = string;
 
 /** What a candidate is, used to keep a shortlist from filling up with one kind of thing. */
 export type ResearchCandidateKind =
-  'article' | 'course' | 'docs' | 'paper' | 'qa' | 'repo' | 'video';
+  'article' | 'book' | 'course' | 'docs' | 'paper' | 'qa' | 'repo' | 'video';
 
 export interface ResearchCandidate {
   key: string;

@@ -16,6 +16,7 @@ export interface BriefOptions {
 
 const kindHeadings: Record<ResearchCandidateKind, string> = {
   article: 'Articles',
+  book: 'Books',
   course: 'Courses',
   docs: 'Documentation',
   paper: 'Papers',
@@ -29,6 +30,7 @@ const kindOrder: ResearchCandidateKind[] = [
   'course',
   'video',
   'paper',
+  'book',
   'article',
   'repo',
   'qa',

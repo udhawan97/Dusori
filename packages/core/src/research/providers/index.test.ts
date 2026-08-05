@@ -12,7 +12,12 @@ describe('research provider routing', () => {
       }),
     );
 
-    expect(selected.map((provider) => provider.id)).toEqual(['wikipedia', 'openalex']);
+    expect(selected.map((provider) => provider.id)).toEqual([
+      'wikipedia',
+      'openalex',
+      'crossref',
+      'openlibrary',
+    ]);
   });
 
   it('uses developer catalogs for a programming question', () => {
@@ -27,6 +32,8 @@ describe('research provider routing', () => {
       'github',
       'stackexchange',
       'openalex',
+      'crossref',
+      'openlibrary',
       'npm',
     ]);
   });

@@ -35,8 +35,12 @@ function jsonResponse(body: unknown): Response {
 describe('CompanionAiClient', () => {
   it('reads capabilities and treats failure as no AI', async () => {
     const capable = client((async () =>
-      jsonResponse({ providers: [{ id: 'ollama', model: 'gemma3:4b' }] })) as typeof fetch);
-    expect(await capable.capabilities()).toEqual([{ id: 'ollama', model: 'gemma3:4b' }]);
+      jsonResponse({
+        providers: [{ id: 'ollama', model: 'gemma3:4b', status: 'ready' }],
+      })) as typeof fetch);
+    expect(await capable.capabilities()).toEqual([
+      { id: 'ollama', model: 'gemma3:4b', status: 'ready' },
+    ]);
 
     const down = client((async () => {
       throw new Error('offline');

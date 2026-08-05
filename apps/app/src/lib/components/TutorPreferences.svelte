@@ -119,7 +119,10 @@
     aiBusy = true;
     error = '';
     try {
-      const models = await aiClient.capabilities();
+      const models = (await aiClient.capabilities()).filter(
+        (capability) => capability.status !== 'model-failed',
+      );
+      if (models.length === 0) throw new Error('No AI model passed its readiness check.');
       const proposed = await aiClient.tutorPreferences({
         depth,
         preferences,

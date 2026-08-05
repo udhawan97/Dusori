@@ -8,6 +8,8 @@ export interface RankedCandidate extends ResearchCandidate {
   isNew: boolean;
   /** Distinct query terms present in the title or summary. Zero means off-topic for selection. */
   relevanceMatches?: number;
+  /** Matches to subject-bearing terms, excluding generic research instructions. */
+  subjectMatches?: number;
   /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
   aiScore?: number;
   aiNote?: string;
@@ -53,9 +55,24 @@ function words(input: string): Set<string> {
   );
 }
 
+function normalizedText(input: string): string {
+  return [...words(input)].join(' ');
+}
+
+function containsRequiredPhrases(query: ResearchQuery, candidate: ResearchCandidate): boolean {
+  if (!query.requiredPhrases?.length) return true;
+  const haystack = normalizedText(`${candidate.title} ${candidate.snippet} ${candidate.url}`);
+  return query.requiredPhrases.every((phrase) => haystack.includes(phrase));
+}
+
 function matchedTermCount(query: ResearchQuery, candidate: ResearchCandidate): number {
   const found = words(`${candidate.title} ${candidate.snippet}`);
   return query.terms.filter((term) => found.has(term)).length;
+}
+
+function matchedSubjectCount(query: ResearchQuery, candidate: ResearchCandidate): number {
+  const found = words(`${candidate.title} ${candidate.snippet}`);
+  return (query.subjectTerms ?? []).filter((term) => found.has(term)).length;
 }
 
 /** Full credit under a year old, decaying to a floor by five; missing or unusable is neutral. */
@@ -96,6 +113,7 @@ export function rankCandidates(
   const scored = candidates
     .filter((candidate) => {
       if (!candidate.title.trim()) return false;
+      if (!containsRequiredPhrases(query, candidate)) return false;
       try {
         return ['http:', 'https:'].includes(new URL(candidate.url).protocol);
       } catch {
@@ -140,6 +158,9 @@ export function rankCandidates(
         ...candidate,
         isNew: options.seen ? !options.seen.has(candidate.key) : false,
         relevanceMatches: matchedTermCount(query, candidate),
+        ...(query.subjectTerms?.length
+          ? { subjectMatches: matchedSubjectCount(query, candidate) }
+          : {}),
         rankScore:
           WEIGHTS.relevance * relevance +
           WEIGHTS.community * community +
@@ -159,15 +180,19 @@ export function rankCandidates(
 /**
  * Builds a genuinely varied first shelf: novel kind + provider + hostname first, then novel
  * provider + hostname, then novel hostname, before score-only fill. A single publication or
- * provider cannot own the first five when comparable alternatives exist.
+ * provider cannot own the first shelf when comparable alternatives exist.
  */
 export function selectDiverse(
   ranked: RankedCandidate[],
-  limit = 5,
+  limit = 8,
 ): { shortlist: RankedCandidate[]; overflow: RankedCandidate[] } {
   // Diversity is a tie-breaker among relevant material, never a reason to promote an unrelated
   // page. Off-topic candidates remain visible in overflow for transparency and manual inspection.
-  const eligibleRanked = ranked.filter((candidate) => (candidate.relevanceMatches ?? 0) > 0);
+  const eligibleRanked = ranked.filter(
+    (candidate) =>
+      (candidate.relevanceMatches ?? 0) > 0 &&
+      (candidate.subjectMatches === undefined || candidate.subjectMatches > 0),
+  );
   const picked = new Set<string>();
   const kinds = new Set<string>();
   const providers = new Set<string>();

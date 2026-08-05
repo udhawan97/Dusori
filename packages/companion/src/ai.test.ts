@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   AiError,
   aiConfig,
+  inspectAiCapability,
+  resolveAiConfig,
   rerankWithAi,
   writeBriefWithAi,
   writeRecallPromptsWithAi,
+  writeSynthesisWithAi,
 } from './ai.js';
 
 const candidates = [
@@ -13,10 +16,10 @@ const candidates = [
   { key: 'b', kind: 'repo', snippet: 'Type challenges', title: 'Challenges', url: 'https://b' },
 ];
 
-function jsonResponse(body: unknown): Response {
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     headers: { 'Content-Type': 'application/json' },
-    status: 200,
+    status,
   });
 }
 
@@ -56,6 +59,95 @@ describe('aiConfig', () => {
   it('lets env vars override the default models', () => {
     const config = aiConfig({ ANTHROPIC_API_KEY: 'sk-x', ANTHROPIC_MODEL: 'claude-haiku-4-5' });
     expect(config?.model).toBe('claude-haiku-4-5');
+  });
+});
+
+describe('local model discovery', () => {
+  it('discovers a running Ollama model without requiring shell environment variables', async () => {
+    const fetchImpl = async (input: Parameters<typeof fetch>[0]): Promise<Response> => {
+      expect(String(input)).toBe('http://127.0.0.1:11434/api/tags');
+      return jsonResponse({
+        models: [
+          { name: 'gemma4:12b-it-qat', size: 7_151_003_754 },
+          { name: 'llama3.2:latest', size: 2_019_393_189 },
+        ],
+      });
+    };
+
+    await expect(
+      resolveAiConfig({ env: {}, fetchImpl: fetchImpl as typeof fetch }),
+    ).resolves.toEqual({ id: 'ollama', model: 'llama3.2:latest' });
+  });
+
+  it('keeps explicit provider configuration ahead of local discovery', async () => {
+    const fetchImpl = async (): Promise<Response> => {
+      throw new Error('discovery should not run');
+    };
+
+    await expect(
+      resolveAiConfig({ env: { OPENAI_API_KEY: 'sk-test' }, fetchImpl: fetchImpl as typeof fetch }),
+    ).resolves.toMatchObject({ id: 'openai' });
+  });
+
+  it('does not discover or call an Ollama service outside this computer', async () => {
+    const fetchImpl = async (): Promise<Response> => {
+      throw new Error('a non-loopback address must never be contacted');
+    };
+
+    await expect(
+      resolveAiConfig({
+        env: { OLLAMA_URL: 'http://192.168.1.20:11434' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      resolveAiConfig({
+        env: { OLLAMA_MODEL: 'llama3.2:latest', OLLAMA_URL: 'https://ollama.example' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it('calls an Ollama model ready only after structured generation succeeds', async () => {
+    const requests: string[] = [];
+    const fetchImpl = async (input: Parameters<typeof fetch>[0]): Promise<Response> => {
+      requests.push(String(input));
+      return String(input).endsWith('/api/tags')
+        ? jsonResponse({ models: [{ name: 'llama3.2:latest', size: 2_000 }] })
+        : jsonResponse({ response: '{"ready":true}' });
+    };
+
+    await expect(
+      inspectAiCapability({ env: {}, fetchImpl: fetchImpl as typeof fetch }),
+    ).resolves.toEqual({ id: 'ollama', model: 'llama3.2:latest', status: 'ready' });
+    expect(requests).toEqual([
+      'http://127.0.0.1:11434/api/tags',
+      'http://127.0.0.1:11434/api/generate',
+    ]);
+  });
+
+  it('keeps a listed but generation-incompatible Ollama model out of ready state', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({ error: 'unknown model architecture' }, 500);
+
+    await expect(
+      inspectAiCapability({
+        env: { OLLAMA_MODEL: 'gemma4:12b-it-qat' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).resolves.toEqual({
+      id: 'ollama',
+      model: 'gemma4:12b-it-qat',
+      status: 'model-failed',
+    });
+  });
+
+  it('labels a hosted provider as configured rather than local-ready', async () => {
+    await expect(inspectAiCapability({ env: { OPENAI_API_KEY: 'sk-test' } })).resolves.toEqual({
+      id: 'openai',
+      model: 'gpt-4o-mini',
+      status: 'configured',
+    });
   });
 });
 
@@ -139,13 +231,16 @@ describe('rerankWithAi', () => {
     expect(ranked).toEqual([{ aiScore: 0.5, key: 'a', note: '' }]);
   });
 
-  it('reports not-configured without touching the network', async () => {
-    const fetchImpl = async (): Promise<Response> => {
-      throw new Error('must not be called');
+  it('reports not-configured after local discovery finds no running model', async () => {
+    const calls: string[] = [];
+    const fetchImpl = async (input: Parameters<typeof fetch>[0]): Promise<Response> => {
+      calls.push(String(input));
+      return jsonResponse({ models: [] });
     };
     await expect(
       rerankWithAi('q', candidates, { env: {}, fetchImpl: fetchImpl as typeof fetch }),
     ).rejects.toMatchObject({ reason: 'not-configured' });
+    expect(calls).toEqual(['http://127.0.0.1:11434/api/tags']);
   });
 
   it('turns unparseable model output into a friendly failure without the key', async () => {
@@ -182,6 +277,74 @@ describe('writeBriefWithAi', () => {
       writeBriefWithAi('q', [{ reasons: [], title: 'T', url: 'https://a' }], {
         env: { OLLAMA_MODEL: 'gemma3:4b' },
         fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ reason: 'ai-failed' });
+  });
+});
+
+describe('writeSynthesisWithAi', () => {
+  it('accepts only passage selections and renders exact source text with its labels', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({
+        response: '[{"passages":[1]}]',
+      });
+
+    const overview = await writeSynthesisWithAi(
+      'Memory',
+      [{ source: 'Study A', text: 'Retrieval strengthens later recall.' }],
+      { env: { OLLAMA_MODEL: 'llama3.2:latest' }, fetchImpl: fetchImpl as typeof fetch },
+    );
+
+    expect(overview).toBe('Retrieval strengthens later recall. _(Evidence: Study A)_');
+  });
+
+  it('accepts a single selection object from smaller local models', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({
+        response: '```json\n{"passages":[1]}\n```',
+      });
+
+    await expect(
+      writeSynthesisWithAi(
+        'Memory',
+        [{ source: 'Study A', text: 'Retrieval strengthens later recall.' }],
+        { env: { OLLAMA_MODEL: 'llama3.2:latest' }, fetchImpl: fetchImpl as typeof fetch },
+      ),
+    ).resolves.toBe('Retrieval strengthens later recall. _(Evidence: Study A)_');
+  });
+
+  it('rejects a point that cites a passage it was not given', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({ response: '[{"passages":[2]}]' });
+
+    await expect(
+      writeSynthesisWithAi('Memory', [{ source: 'Study A', text: 'One passage.' }], {
+        env: { OLLAMA_MODEL: 'llama3.2:latest' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).rejects.toMatchObject({ reason: 'ai-failed' });
+  });
+
+  it('ignores model-authored prose and renders only the selected passage', async () => {
+    const fetchImpl = async (): Promise<Response> =>
+      jsonResponse({ response: '[{"text":"Invented claim","passages":[1]}]' });
+
+    await expect(
+      writeSynthesisWithAi('Memory', [{ source: 'Study A', text: 'Exact source sentence.' }], {
+        env: { OLLAMA_MODEL: 'llama3.2:latest' },
+        fetchImpl: fetchImpl as typeof fetch,
+      }),
+    ).resolves.toBe('Exact source sentence. _(Evidence: Study A)_');
+  });
+
+  it('falls back instead of waiting forever for a silent model', async () => {
+    const fetchImpl = async (): Promise<Response> => new Promise(() => undefined);
+
+    await expect(
+      writeSynthesisWithAi('Memory', [{ source: 'Study A', text: 'Exact source sentence.' }], {
+        env: { OLLAMA_MODEL: 'llama3.2:latest' },
+        fetchImpl: fetchImpl as typeof fetch,
+        timeoutMs: 5,
       }),
     ).rejects.toMatchObject({ reason: 'ai-failed' });
   });

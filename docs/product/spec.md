@@ -27,7 +27,7 @@ The topic-aware destinations never claim that the researcher has made progress. 
 
 ## Non-negotiable state semantics
 
-- A research run saves up to five ranked results to the manifest-backed shelf automatically.
+- A research run saves up to eight deduplicated, ranked results to the manifest-backed shelf automatically.
 - Provider-returned abstracts, extracts, and READMEs may be saved after provider consent; arbitrary result pages are never fetched automatically.
 - A URL reference cannot support a claim until readable text exists.
 - Opening a topic, source, map, or review does not change learning progress.
@@ -70,7 +70,7 @@ Existing tracked Markdown requires an expected hash. If another editor changed i
 
 Supported source paths are pasted text, local Markdown/text, locally extracted PDF text, URL reference, and explicitly saved research candidate. A PDF never leaves the device; no OCR is included. URL references are not fetched by the hosted app.
 
-Seven keyless providers run from browser or desktop app after consent: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, and npm. The companion can add arXiv, configured Reddit, configured general web search, configured YouTube metadata, and optional AI.
+Nine keyless providers run from browser or desktop app after consent: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, and npm. The companion can add arXiv, configured Reddit, configured general web search, configured YouTube metadata, and optional AI.
 
 Every provider has:
 
@@ -90,7 +90,7 @@ YouTube discovery prefers the official Data API v3 through an operator-supplied 
 
 Reading saved sources extracts at most twelve verbatim passages per readable source with heading context. An unreadable reference is reported, not silently treated as evidence.
 
-`Synthesis.md` groups cited passages, marks single-source support as thin, builds a dated timeline when evidence permits, and names open questions and missing lenses. Rebuilds use the proposal protocol. Optional AI may write only a model-labeled overview under a separate disclosure; the evidence table and citation structure remain deterministic.
+`Synthesis.md` opens with a concise evidence digest, groups cited passages, marks single-source support as thin, builds a dated timeline when evidence permits, and names open questions and missing lenses. Rebuilds use the proposal protocol. Optional AI may select and order only the quoted passage IDs supplied under a separate disclosure; displayed wording, evidence labels, and citations remain deterministic and verbatim.
 
 `Learning/learn.html` is self-contained, offline, network-free, scoreless, and portable. In-app display uses a sandbox that permits the page’s own script but denies the app origin, workspace storage, and cookies.
 
@@ -104,7 +104,7 @@ A per-topic freshness preference may re-scan when the topic is opened after seve
 
 ## Map and evidence
 
-Galaxy and Outline use the same graph derived from topic containment and resolved `[[wikilinks]]`. Backlinks reverse resolved edges; tags are read from ordinary Markdown. Coordinates, zoom, filters, and health state are not persisted in the workspace.
+Evidence atlas and Outline use the same graph derived from topic containment and resolved `[[wikilinks]]`. The atlas gives each topic its own room and separates sources, notes, briefs/learning, and updates into named lanes; cross-topic links are counted instead of drawn across labels. Backlinks reverse resolved edges; tags are read from ordinary Markdown. View choice, Outline filters, and health state are not persisted in the workspace.
 
 Learning evidence derives activity, objective progress, artifact mix, link health, provenance, hubs, tags, topic depth, and review pressure. It persists no analytics index and claims no mastery.
 

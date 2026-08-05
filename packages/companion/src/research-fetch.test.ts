@@ -4,11 +4,31 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  createPinnedLookup,
   FetchPageError,
   fetchReadablePage,
   maxFetchBytes,
   type LookupImpl,
 } from './research-fetch.js';
+
+describe('pinned DNS lookup', () => {
+  it('returns every validated address when Node requests the all-address shape', async () => {
+    const addresses = [
+      { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+      { address: '93.184.215.14', family: 4 },
+    ];
+    const lookup = createPinnedLookup(addresses);
+
+    const result = await new Promise<unknown>((resolve, reject) => {
+      lookup('example.org', { all: true }, (error, value) => {
+        if (error) reject(error);
+        else resolve(value);
+      });
+    });
+
+    expect(result).toEqual(addresses);
+  });
+});
 
 const publicLookup: LookupImpl = async () => [{ address: '93.184.215.14', family: 4 }];
 const privateLookup: LookupImpl = async () => [{ address: '10.0.0.5', family: 4 }];
@@ -151,14 +171,17 @@ describe('fetchReadablePage', () => {
     ).rejects.toMatchObject({ reason: 'redirect-host' });
   });
 
-  it('pins the production request to the address that passed validation', async () => {
+  it('pins the production request to every address that passed validation', async () => {
     let dnsAnswer = '93.184.215.14';
-    const lookupImpl: LookupImpl = async () => [{ address: dnsAnswer, family: 4 }];
-    const seen: string[] = [];
+    const lookupImpl: LookupImpl = async () => [
+      { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+      { address: dnsAnswer, family: 4 },
+    ];
+    const seen: Array<Array<{ address: string; family: number }>> = [];
     const page = await fetchReadablePage('https://rebind.example/article.txt', {
       lookupImpl,
-      pinnedFetchImpl: async (_url, address) => {
-        seen.push(address);
+      pinnedFetchImpl: async (_url, addresses) => {
+        seen.push(addresses);
         // A rebinding resolver would now answer private space, but the request already carries
         // the validated address and never asks DNS again.
         dnsAnswer = '127.0.0.1';
@@ -167,7 +190,12 @@ describe('fetchReadablePage', () => {
         });
       },
     });
-    expect(seen).toEqual(['93.184.215.14']);
+    expect(seen).toEqual([
+      [
+        { address: '2606:2800:220:1:248:1893:25c8:1946', family: 6 },
+        { address: '93.184.215.14', family: 4 },
+      ],
+    ]);
     expect(page.text).toBe('pinned public response');
   });
 

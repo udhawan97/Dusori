@@ -125,12 +125,16 @@ export function resolveWikilink(
 export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<WorkspaceGraph> {
   const entries = await storage.list('', true);
   const removedSourcePaths = new Set<string>();
+  const sourceTitlesByPath = new Map<string, string>();
   for (const entry of entries) {
     if (entry.kind !== 'file' || !/\/Sources\/manifest\.json$/u.test(entry.path)) continue;
     const snapshot = await storage.read(entry.path);
     if (!snapshot) continue;
     try {
       const manifest = SourceManifestSchema.parse(JSON.parse(snapshot.content));
+      for (const source of manifest.sources) {
+        if (source.path) sourceTitlesByPath.set(source.path, source.title);
+      }
       for (const removed of manifest.removedSources ?? []) {
         if (removed.record.path) removedSourcePaths.add(removed.record.path);
       }
@@ -153,7 +157,7 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     nodes.push({
       id: path,
       kind: nodeKind(path),
-      label: documentLabel(path, content),
+      label: sourceTitlesByPath.get(path) ?? documentLabel(path, content),
       path,
       ...(tags.length ? { tags } : {}),
       ...(topicSlug(path) ? { topicSlug: topicSlug(path) } : {}),

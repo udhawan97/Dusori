@@ -12,6 +12,16 @@ describe('portable workspace graph', () => {
     const storage = new MemoryStorageAdapter();
     await createWorkspace(storage, 'Dusori', now);
     await createTopic(storage, 'AI Fundamentals', now);
+    const source = await addSource(
+      storage,
+      {
+        content: 'A quoted source without a Markdown heading.',
+        method: 'paste',
+        title: 'Readable source title',
+        topicSlug: 'ai-fundamentals',
+      },
+      now,
+    );
     await storage.write(
       'Topics/ai-fundamentals/Notes/concept-map.md',
       '# Concept map\n\nReturn to [[../Overview]] and [[roadmap]]. See [[Missing note]].\n',
@@ -32,6 +42,10 @@ describe('portable workspace graph', () => {
     expect(graph.nodes.find((node) => node.path === 'Home.md')).toMatchObject({
       kind: 'home',
       label: 'Dusori',
+    });
+    expect(graph.nodes.find((node) => node.path === source.path)).toMatchObject({
+      kind: 'source',
+      label: 'Readable source title',
     });
     expect(graph.edges).toEqual(
       expect.arrayContaining([

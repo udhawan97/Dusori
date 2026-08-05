@@ -184,6 +184,45 @@ describe('rankCandidates', () => {
   it('returns an empty list for no candidates', () => {
     expect(rankCandidates(query, [], { now })).toEqual([]);
   });
+
+  it('rejects loose token matches when the query carries a required phrase', () => {
+    const certificationQuery: ResearchQuery = {
+      ...query,
+      requiredPhrases: ['ai 901'],
+      searchText: 'AI-901 preparation',
+      terms: ['ai', '901', 'preparation'],
+    };
+    const ranked = rankCandidates(
+      certificationQuery,
+      [
+        candidate({ key: 'exact', title: 'AI-901 exam preparation' }),
+        candidate({ key: 'loose', title: '901 AI tools used in society' }),
+      ],
+      { now },
+    );
+
+    expect(ranked.map((item) => item.key)).toEqual(['exact']);
+  });
+
+  it('keeps generic research instructions from admitting an unrelated ordinary-topic result', () => {
+    const ordinaryQuery: ResearchQuery = {
+      objectiveTitle: 'Explain the central mechanism in your own words',
+      searchText: 'Spaced repetition Explain the central mechanism in your own words',
+      subjectTerms: ['spaced', 'repetition'],
+      terms: ['explain', 'central', 'mechanism', 'words', 'spaced', 'repetition'],
+      topicTitle: 'Spaced repetition',
+    };
+    const ranked = rankCandidates(
+      ordinaryQuery,
+      [
+        candidate({ key: 'relevant', title: 'The mechanism of spaced repetition' }),
+        candidate({ key: 'filler', title: 'Explain the central mechanism in cell division' }),
+      ],
+      { now },
+    );
+
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
+  });
 });
 
 describe('selectDiverse', () => {

@@ -11,6 +11,7 @@ describe('research query planning', () => {
     ).toEqual({
       objectiveTitle: 'Configure Microsoft Entra ID for the tenant',
       searchText: 'Azure administration Configure Microsoft Entra ID for the tenant',
+      subjectTerms: ['azure', 'administration', 'configure', 'microsoft', 'entra', 'id', 'tenant'],
       terms: ['configure', 'microsoft', 'entra', 'id', 'tenant', 'azure', 'administration'],
       topicTitle: 'Azure administration',
     });
@@ -34,6 +35,7 @@ describe('research query planning', () => {
       'ai',
       'fundamentals',
     ]);
+    expect(query.subjectTerms).toEqual(['ai', 'fundamentals']);
   });
 
   it('never repeats a term the objective already carries', () => {
@@ -58,5 +60,11 @@ describe('research query planning', () => {
 
     expect(query.searchText).toBe('History of the printing press');
     expect(query.terms).toEqual(['history', 'printing', 'press']);
+  });
+
+  it('preserves a certification code as a required phrase for ranking', () => {
+    const query = buildResearchQuery('AI-901', { title: 'Prepare for AI-901' });
+
+    expect(query.requiredPhrases).toEqual(['ai 901']);
   });
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Compass, ShieldCheck } from '@lucide/svelte';
 
-  import type { CompanionResearchClient, StorageAdapter } from '@dusori/core';
+  import type { CompanionAiClient, CompanionResearchClient, StorageAdapter } from '@dusori/core';
 
   import ResearchDeskPanel from './ResearchDeskPanel.svelte';
   import SourceLibrary from './SourceLibrary.svelte';
@@ -10,6 +10,7 @@
   export let topicSlug: string;
   export let topicTitle: string;
   export let companion: CompanionResearchClient | null = null;
+  export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
   export let onAutoStartHandled: () => void = () => undefined;
   export let onArtifactSaved: () => void = () => undefined;
@@ -47,6 +48,7 @@
         {topicSlug}
         {topicTitle}
         {companion}
+        {ai}
         {autoStart}
         {onAutoStartHandled}
         onSourceSaved={handleSourceSaved}
@@ -71,7 +73,7 @@
   </div>
 
   <p class="trust-line">
-    A research action saves up to five ranked references. Arbitrary discovered pages are never
+    A research action saves up to eight ranked references. Arbitrary discovered pages are never
     fetched in the background; full-page reading always names the host first.
   </p>
 </section>

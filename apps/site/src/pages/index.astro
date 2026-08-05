@@ -154,7 +154,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <dl>
           <div><dt>Research</dt><dd>Ask, search, rank, synthesize.</dd></div>
           <div><dt>Sources</dt><dd>Read, open, remove, restore.</dd></div>
-          <div><dt>Map</dt><dd>Follow Outline or constellation.</dd></div>
+          <div><dt>Map</dt><dd>Follow Outline or evidence atlas.</dd></div>
           <div><dt>Settings</dt><dd>Choose appearance, privacy, files.</dd></div>
         </dl>
       </section>
@@ -197,7 +197,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <li>
             <span>05</span><div>
               <h3>See the trail</h3><p>
-                Outline and constellation reflect the same local sources, notes, and links.
+                Outline and evidence atlas reflect the same local sources, notes, and links.
               </p>
             </div>
           </li>
@@ -219,7 +219,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <p class="eyebrow">The evidence shelf</p>
           <h2 id="reader-title">You always know what was saved.</h2>
           <p>
-            Research saves up to five ranked results to a varied first shelf. Readable captures are
+            Research saves up to eight ranked results to a varied first shelf. Readable captures are
             labeled separately from browser-only references. You can remove any source from active
             research and restore it later without losing the local copy.
           </p>
@@ -245,11 +245,11 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
 
       <section class="map" aria-labelledby="map-title">
         <div>
-          <p class="eyebrow">Galaxy + Outline</p>
-          <h2 id="map-title">Zoom out without losing the path.</h2>
+          <p class="eyebrow">Evidence atlas + Outline</p>
+          <h2 id="map-title">Separate the trail without losing the links.</h2>
           <p>
-            Start with the accessible linear Outline, then switch to an Obsidian-like constellation
-            when spatial exploration helps. Both are derived from your folders, notes, sources,
+            Start with the accessible linear Outline, then switch to a visual atlas where each topic
+            and artifact type has its own lane. Both are derived from your folders, notes, sources,
             tags, and <code>[[wikilinks]]</code>. No graph database sits between you and your files.
           </p>
           <a class="text-link" href={`${docsHref}knowledge-graph/`}
@@ -259,7 +259,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <figure>
           <img
             src={mapShot}
-            alt="Dusori Map with a readable research outline and optional visual constellation"
+            alt="Dusori Map with a readable research outline and separated visual evidence atlas"
             width="1440"
             height="960"
             loading="lazy"
@@ -277,7 +277,8 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
         <div class="research-ledger">
           <article>
             <span>Works directly</span><h3>Public knowledge</h3><p>
-              Microsoft Learn, Wikipedia, OpenAlex, GitHub, Stack Overflow, Hacker News, and npm.
+              Microsoft Learn, Wikipedia, OpenAlex, Crossref, Open Library, GitHub, Stack Overflow,
+              Hacker News, and npm.
             </p>
           </article>
           <article>
@@ -288,8 +289,8 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           </article>
           <article>
             <span>Optional</span><h3>AI assistance</h3><p>
-              Local Ollama or your hosted-provider key. Model output is labeled; deterministic paths
-              remain.
+              A running Ollama chat model is self-tested before use, or use your hosted-provider
+              key. Model output is passage-indexed and labeled; deterministic paths remain.
             </p>
           </article>
         </div>
