@@ -29,7 +29,7 @@
     "@axe-core/playwright": "4.12.1",
     "@dusori/core": "workspace:*",
     "@eslint/js": "10.0.1",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.62.1",
     "@testing-library/svelte": "5.4.2",
     "@types/node": "26.1.2",
     "@types/wicg-file-system-access": "2023.10.7",
