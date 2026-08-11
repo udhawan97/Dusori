@@ -16,15 +16,15 @@
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="260"></a>
   &nbsp;
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.3"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.3 for Apple silicon or Windows" width="260"></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.12.4"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.12.4 for Apple silicon or Windows" width="260"></a>
   &nbsp;
   <a href="https://udhawan97.github.io/Dusori/docs/getting-started/"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24" width="260"></a>
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a> ·
-  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-3/"><strong>Release notes</strong></a> ·
-  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.3/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
+  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-12-4/"><strong>Release notes</strong></a> ·
+  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.12.4/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
 </p>
 
 <p align="center">
@@ -74,14 +74,14 @@ Objectives, review, roadmaps, and certification outline import remain available 
 | Choice                    | Best for                                                             | Start                                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                                                                          |
-| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_aarch64-aarch64-apple-darwin.dmg)**   |
-| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.3/Dusori_0.12.3_x64-setup-x86_64-pc-windows-msvc.exe)** |
+| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.4/Dusori_0.12.4_aarch64-aarch64-apple-darwin.dmg)**   |
+| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.4/Dusori_0.12.4_x64-setup-x86_64-pc-windows-msvc.exe)** |
 | **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                                                                                      |
-| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.3.zip)**                                                                 |
+| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.12.4.zip)**                                                                 |
 
-The v0.12.3 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
+The v0.12.4 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
 
-Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.12.3 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates work from v0.12.2 onward.
+Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.12.4 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates work from v0.12.2 onward.
 
 ### Local companion
 
@@ -131,6 +131,20 @@ Dusori does not scrape social sites behind a login, bypass access controls, down
 The [open research stack evaluation](docs/research/2026-08-05-open-research-stack-evaluation.md) credits the projects studied for orchestration, metasearch, extraction, and local-model patterns and records why they are inspiration, an optional service, or a future dependency—not hidden runtime code.
 
 AI is optional. Deterministic ranking, source storage, quoted synthesis structure, and graph construction work without it. Any AI feature has its own disclosure and labels its model output.
+
+### One run, one inspectable contract
+
+v0.12.4 concentrates the search-to-brief transaction behind one tested boundary. A provider can
+fail without costing results from the others; a capture can fail while its URL and failure record
+remain saved; a local model can disappear while deterministic synthesis still completes; and an
+edited brief still becomes a proposal instead of being overwritten. Provider readiness, consent
+labels, evidence lenses, capture policy, and declared browser origins now come from the same
+catalog. Tests guard both hosted and desktop content-security policies against that origin list.
+
+Today is likewise projected as one read-only snapshot, and workspace navigation uses one pure set
+of topic, document, URL, Back/Forward, and focus rules. Those changes do not alter the workspace
+schema or the Ask → Search → Save → Read → Brief contract; they reduce the number of places that
+can disagree about it.
 
 ## The files remain the product
 

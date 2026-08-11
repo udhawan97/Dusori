@@ -9,7 +9,7 @@ import {
   lensFor,
   missionAgeInDays,
 } from './mission.js';
-import { createResearchProviders } from './providers/index.js';
+import { researchProviderPolicy } from './providers/index.js';
 import { recordResearchRun } from './research-file.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
@@ -24,7 +24,7 @@ async function topicStorage(): Promise<MemoryStorageAdapter> {
 
 describe('mission overview', () => {
   it('assigns every registered provider to a known lens', () => {
-    for (const provider of createResearchProviders({ companion: null })) {
+    for (const provider of researchProviderPolicy.entries) {
       expect(['academic', 'books', 'community', 'docs', 'video', 'web']).toContain(
         lensFor(provider.id),
       );

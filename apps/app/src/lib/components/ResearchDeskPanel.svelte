@@ -3,25 +3,21 @@
   import { onMount, tick } from 'svelte';
 
   import {
-    addSource,
     buildResearchQuery,
-    createResearchProviders,
-    isReadableResearchCapture,
     isUsableAiCapability,
+    loadResearchProviderCatalog,
     readResearchFile,
     readSourceManifest,
-    readSourcesIntoClaims,
-    recordSourceFetchFailure,
-    runResearchAgent,
-    selectProvidersForQuery,
-    writeTopicSynthesis,
+    runResearchSequence,
     type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
-    type ResearchCapability,
+    type ResearchProviderCatalogEntry,
+    type ResearchProviderSession,
     type ResearchProvider,
-    type ResearchRunResult,
     type ResearchRunRecord,
+    type ResearchSequenceResult,
+    type ResearchSequenceProgress,
     type SourceRecord,
     type StorageAdapter,
   } from '@dusori/core';
@@ -60,8 +56,6 @@
     message: string;
   }
 
-  const companionOnlyProviderIds = new Set(['arxiv', 'reddit', 'websearch', 'youtube']);
-  const captureTimeoutMs = 12_000;
   const stageCopy: Record<Stage, string> = {
     complete: 'Brief ready',
     evaluating: 'Evaluating relevance, authority, recency, and variety',
@@ -75,11 +69,12 @@
 
   let providers: ResearchProvider[] = [];
   let availableProviders: ResearchProvider[] = [];
-  let capabilities = new Map<string, ResearchCapability>();
+  let providerAvailability: readonly ResearchProviderCatalogEntry[] = [];
+  let providerSession: ResearchProviderSession | null = null;
   let aiModel = '';
   let question = topicTitle;
   let stage: Stage = 'idle';
-  let runResult: ResearchRunResult | null = null;
+  let runResult: ResearchSequenceResult | null = null;
   let latestRun: ResearchRunRecord | null = null;
   let sourceProgress: SourceProgress[] = [];
   let savedSources: SourceRecord[] = [];
@@ -96,74 +91,24 @@
   let consentRevision = 0;
   let consentDialog: HTMLDialogElement;
 
-  const providerCatalog = [
-    { id: 'mslearn', label: 'Microsoft Learn', mode: 'browser' },
-    { id: 'wikipedia', label: 'Wikipedia', mode: 'browser' },
-    { id: 'openalex', label: 'OpenAlex', mode: 'browser' },
-    { id: 'crossref', label: 'Crossref', mode: 'browser' },
-    { id: 'openlibrary', label: 'Open Library', mode: 'browser' },
-    { id: 'github', label: 'GitHub', mode: 'browser' },
-    { id: 'stackexchange', label: 'Stack Exchange', mode: 'browser' },
-    { id: 'hackernews', label: 'Hacker News', mode: 'browser' },
-    { id: 'npm', label: 'npm', mode: 'browser' },
-    { id: 'arxiv', label: 'arXiv', mode: 'companion' },
-    { id: 'reddit', label: 'Reddit', mode: 'companion' },
-    { id: 'websearch', label: 'Web search', mode: 'companion' },
-    { id: 'youtube', label: 'YouTube', mode: 'companion' },
-  ] as const;
-
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
   $: allowedProviders = providersWithConsent(availableProviders, consentRevision, 'allowed');
   $: undecidedProviders = providersWithConsent(availableProviders, consentRevision, 'undecided');
   $: browserSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(question.trim() || topicTitle)}`;
-  $: relevantProviderCount = selectProvidersForQuery(
-    allowedProviders,
-    buildResearchQuery(topicTitle, { title: question.trim() || topicTitle }),
-  ).length;
-  $: providerAvailability = providerCatalog.map((entry) => {
-    const provider = providers.find((candidate) => candidate.id === entry.id);
-    const capability = capabilities.get(entry.id);
-    if (entry.mode === 'browser') {
-      return {
-        ...entry,
-        available: Boolean(provider),
-        detail: provider ? 'Ready in this app' : 'Unavailable in this build',
-      };
-    }
-    if (!companion) {
-      return {
-        ...entry,
-        available: false,
-        detail: 'Requires the free local companion',
-      };
-    }
-    return {
-      ...entry,
-      available: Boolean(provider && capability?.available),
-      detail:
-        provider && capability?.available
-          ? 'Ready through the local companion'
-          : capability?.reason === 'not-configured'
-            ? 'Not configured in the local companion'
-            : capability?.reason || 'Not configured in the local companion',
-    };
-  });
-
+  $: relevantProviderCount =
+    providerSession?.select(
+      buildResearchQuery(topicTitle, { title: question.trim() || topicTitle }),
+      new Set(allowedProviders.map(scopeOf)),
+    ).length ?? 0;
   onMount(() => {
     void initialize();
   });
 
   async function initialize(): Promise<void> {
-    providers = createResearchProviders({ companion });
-    if (companion) {
-      try {
-        capabilities = new Map(
-          (await companion.capabilities()).map((capability) => [capability.id, capability]),
-        );
-      } catch {
-        capabilities = new Map();
-      }
-    }
+    providerSession = await loadResearchProviderCatalog({ companion });
+    providers = [...providerSession.providers];
+    availableProviders = [...providerSession.availableProviders];
+    providerAvailability = providerSession.catalog;
     if (ai) {
       try {
         const capability = (await ai.capabilities())[0];
@@ -172,7 +117,6 @@
         aiModel = '';
       }
     }
-    availableProviders = providers.filter(providerAvailable);
     await restoreResultState();
     if (autoStart && !autoStarted) {
       autoStarted = true;
@@ -195,12 +139,6 @@
         ? hasConsent(scopeOf(provider))
         : readConsent(scopeOf(provider)) === 'undecided',
     );
-  }
-
-  function providerAvailable(provider: ResearchProvider): boolean {
-    if (!companion) return !companionOnlyProviderIds.has(provider.id);
-    const capability = capabilities.get(provider.id);
-    return capability ? capability.available : !companionOnlyProviderIds.has(provider.id);
   }
 
   function hostOf(url: string): string {
@@ -348,121 +286,32 @@
     await research(allowed);
   }
 
-  async function captureWithTimeout(
-    provider: ResearchProvider,
-    candidate: RankedCandidate,
-  ): Promise<Awaited<ReturnType<ResearchProvider['capture']>>> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      return await Promise.race([
-        provider.capture(candidate, fetch),
-        new Promise<never>((_resolve, reject) => {
-          timer = setTimeout(() => {
-            reject(
-              new Error(
-                `${provider.label} took too long to read this result. The browser-ready reference was kept.`,
-              ),
-            );
-          }, captureTimeoutMs);
-        }),
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-
   function updateProgress(key: string, update: Partial<SourceProgress>): void {
     sourceProgress = sourceProgress.map((entry) =>
       entry.key === key ? { ...entry, ...update } : entry,
     );
   }
 
-  async function saveCandidate(candidate: RankedCandidate): Promise<void> {
-    const provider = providers.find((item) => item.id === candidate.provider);
-    if (!provider) return;
-    const base: SourceProgress = {
-      host: hostOf(candidate.url),
-      key: candidate.key,
-      message: 'Saving provider capture…',
-      state: 'saving',
-      title: candidate.title,
-      url: candidate.url,
-    };
-    sourceProgress = [...sourceProgress, base];
-
-    let capture: { content?: string; title: string; url: string } = {
-      title: candidate.title,
-      url: candidate.url,
-    };
-    let capturedVia = provider.capturedVia(candidate);
-    let captureFailure = '';
-    try {
-      const captured = await captureWithTimeout(provider, candidate);
-      capture = captured;
-      capturedVia = captured.capturedVia ?? capturedVia;
-    } catch (caught) {
-      captureFailure =
-        caught instanceof Error
-          ? caught.message
-          : `${provider.label} could not capture this result. The reference was kept.`;
-      capturedVia = 'search-reference';
+  function observeResearch(progress: ResearchSequenceProgress): void {
+    stage = progress.stage;
+    if (progress.candidate && !progress.source) {
+      sourceProgress = [
+        ...sourceProgress,
+        {
+          host: hostOf(progress.candidate.url),
+          key: progress.candidate.key,
+          message: 'Saving provider capture…',
+          state: 'saving',
+          title: progress.candidate.title,
+          url: progress.candidate.url,
+        },
+      ];
     }
-
-    try {
-      const saved = await addSource(storage, {
-        ...(capture.content === undefined ? {} : { content: capture.content }),
-        method: 'url',
-        origin: {
-          capturedAt: new Date().toISOString(),
-          capturedVia,
-          provider: provider.id,
-        },
-        provenance: {
-          author: candidate.meta.author ?? candidate.meta.channel ?? candidate.meta.byline,
-          publishedAt: candidate.publishedAt,
-          publisher: provider.label,
-          readState: isReadableResearchCapture(capturedVia) ? 'readable' : 'reference',
-          whySelected: candidate.reasons.slice(0, 8),
-        },
-        title: capture.title,
-        topicSlug,
-        url: capture.url,
-      });
-      if (captureFailure) {
-        await recordSourceFetchFailure(storage, {
-          message: captureFailure,
-          sha256: saved.record.sha256,
-          state: 'failed',
-          topicSlug,
-        });
-      }
-      const readable = isReadableResearchCapture(capturedVia);
-      const savedMessage = captureFailure
-        ? `${captureFailure} Open the original or paste text.`
-        : saved.restored
-          ? 'Restored to active research.'
-          : saved.upgraded
-            ? 'Readable text added to the saved reference.'
-            : saved.deduplicated
-              ? 'Already saved in this topic.'
-              : readable
-                ? 'Readable provider text saved.'
-                : 'Reference saved; the original page was not fetched.';
-      updateProgress(candidate.key, {
-        key: saved.record.sha256,
-        message: `${savedMessage}${saved.warning ? ` ${saved.warning}` : ''}`,
-        state: captureFailure
-          ? 'failed'
-          : saved.deduplicated && !saved.upgraded
-            ? 'duplicate'
-            : readable
-              ? 'readable'
-              : 'reference',
-      });
-    } catch (caught) {
-      updateProgress(candidate.key, {
-        message: caught instanceof Error ? caught.message : 'This result could not be saved.',
-        state: 'failed',
+    if (progress.candidate && progress.source) {
+      updateProgress(progress.candidate.key, {
+        key: progress.source.record?.sha256 ?? progress.candidate.key,
+        message: progress.source.message,
+        state: progress.source.status,
       });
     }
   }
@@ -474,76 +323,56 @@
     runError = '';
     try {
       const query = buildResearchQuery(topicTitle, { title: question.trim() });
-      const routedProviders = selectProvidersForQuery(providerList, query);
-      const result = await runResearchAgent({
+      const routedProviders =
+        providerSession?.select(query, new Set(providerList.map(scopeOf))) ?? providerList;
+      const result = await runResearchSequence({
+        enhanceSynthesis:
+          ai && aiModel && hasConsent('companion-ai')
+            ? (sources) => createAiSynthesisOptions(ai, aiModel, topicTitle, sources)
+            : undefined,
         fetchImpl: fetch,
         limit: 8,
+        onProgress: observeResearch,
         providers: routedProviders,
         query,
         storage,
         topicSlug,
+        topicTitle,
       });
       runResult = result;
       latestRun = result.run;
       discoveredCount = result.shortlist.length + result.overflow.length;
-      stage = 'evaluating';
-      await tick();
-      if (result.shortlist.length === 0) {
+      if (result.status === 'no-results') {
         stage = 'idle';
         const failed = result.skipped.length;
         status =
-          failed === routedProviders.length
-            ? 'Every provider failed this lookup. Saved research is unchanged.'
-            : failed > 0
-              ? 'No relevant sources were found, and some providers failed. Saved research is unchanged.'
-              : 'No relevant sources were found. Try a more specific question or search in your browser.';
+          routedProviders.length === 0
+            ? 'No allowed provider matches this question. Allow a broader provider or make the question more specific.'
+            : failed > 0 && failed === routedProviders.length
+              ? 'Every provider failed this lookup. Saved research is unchanged.'
+              : failed > 0
+                ? 'No relevant sources were found, and some providers failed. Saved research is unchanged.'
+                : 'No relevant sources were found. Try a more specific question or search in your browser.';
         return;
       }
-      stage = 'saving';
-      for (const candidate of result.shortlist) await saveCandidate(candidate);
       onSourceSaved();
-
-      stage = 'reading';
-      const read = await readSourcesIntoClaims(storage, topicSlug);
-      readCount = read.read.length;
-      claimCount = read.read.reduce((total, entry) => total + entry.claims, 0);
+      readCount = result.readCount;
+      claimCount = result.claimCount;
       await restoreResultState();
-      if (claimCount === 0) {
+      if (result.status === 'needs-readable-evidence') {
         stage = 'needs-reading';
         status = `${result.shortlist.length} references saved, but none contains quotable source text yet.`;
         onSourceSaved();
         return;
       }
-
-      stage = 'writing';
-      let synthesisOptions = {};
-      let aiUnavailable = false;
-      if (ai && aiModel && hasConsent('companion-ai')) {
-        try {
-          const manifest = await readSourceManifest(storage, topicSlug);
-          synthesisOptions = await createAiSynthesisOptions(
-            ai,
-            aiModel,
-            topicTitle,
-            manifest.sources,
-          );
-        } catch {
-          aiUnavailable = true;
-        }
-      }
-      const synthesis = await writeTopicSynthesis(
-        storage,
-        topicSlug,
-        topicTitle,
-        new Date(),
-        synthesisOptions,
-      );
-      if (synthesis.status === 'written') {
+      if (result.status === 'brief-ready' && result.synthesis?.status === 'written') {
         stage = 'complete';
-        status = `Brief assembled from ${synthesis.synthesis.claimCount} quoted passages across ${synthesis.synthesis.readCount} sources.${
-          aiUnavailable ? ' AI was unavailable, so the evidence-first fallback was used.' : ''
+        status = `Brief assembled from ${result.synthesis.synthesis.claimCount} quoted passages across ${result.synthesis.synthesis.readCount} sources.${
+          result.aiUnavailable
+            ? ' AI was unavailable, so the evidence-first fallback was used.'
+            : ''
         }`;
-        onSourceSaved(synthesis.path);
+        onSourceSaved(result.synthesis.path);
       } else {
         stage = 'complete';
         status = 'Your edited brief was kept. A refreshed proposal is waiting in Needs attention.';

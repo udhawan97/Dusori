@@ -4,6 +4,22 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-08-11
+
+### Reliability and architecture
+
+- Concentrated the complete search-to-brief transaction behind one tested research sequence while preserving provider consent, per-provider outcomes, bounded capture, per-source partial failure, evidence extraction, deterministic AI fallback, and conflict-safe brief proposals.
+- Replaced scattered provider policy with one capability-aware catalog for all 13 research providers, including consent labels and scopes, query routing, evidence lenses, capture policy, availability, and network origins.
+- Added parity tests proving both the hosted and desktop content-security policies allow every browser-provider origin declared by the catalog.
+- Projected the full Today view through one read-only, clock-consistent operation and centralized topic, document, URL, Back/Forward, and new-topic navigation rules in a pure decision module.
+- Removed the unused legacy Research panel and recorded the deeper workflow boundaries in ADR-013.
+
+### Dependencies and documentation
+
+- Updated `pdfjs-dist` to 6.2.108, Vite to 8.2.1, Playwright to 1.62.1, `tsx` to 4.23.11, and `eslint-plugin-astro` to 3.1.0, with one regenerated lockfile and the Astro compiler's declared WASM peers.
+- Patched the production dependency graph for current Fastify router/URI, Mermaid, Sharp, glob expansion, YAML, and Nano ID advisories; the release audit now reports no high or moderate findings.
+- Refreshed the README, landing page, documentation, release guidance, screenshots, social preview, product contract, and security wording against the verified v0.12.4 behavior.
+
 ## [0.12.3] - 2026-08-04
 
 ### Research Desk
@@ -332,7 +348,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.3...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.4...HEAD
+[0.12.4]: https://github.com/udhawan97/Dusori/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/udhawan97/Dusori/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/udhawan97/Dusori/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/udhawan97/Dusori/compare/v0.12.0...v0.12.1

@@ -1,11 +1,11 @@
 ---
 title: Product roadmap
-description: What v0.12.3 ships and what remains explicitly unbuilt.
+description: What v0.12.4 ships and what remains explicitly unbuilt.
 ---
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
-## Shipped in v0.12.3
+## Shipped in v0.12.4
 
 - Research, Sources, Map, and Settings as four predictable destinations
 - One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
@@ -21,6 +21,9 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Browser PWA, Node companion, macOS Apple silicon, and Windows x64 release paths
 - Signed in-app update artifacts with separate check, download, install, and restart actions
 - Native desktop and installer icons derived from the same ensō, rangoli, and katana identity shown in the README
+- One search-to-brief transaction with partial-failure and deterministic-fallback interface tests
+- One capability-aware provider catalog shared by consent, routing, evidence lenses, and CSP parity tests
+- One read-only Today projection and one pure workspace navigation decision module
 
 ## Intentionally not built
 
@@ -31,7 +34,7 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.3 installers
+- Apple notarization or Microsoft Authenticode signing for v0.12.4 installers
 
 ## Candidates for later releases
 

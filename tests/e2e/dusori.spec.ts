@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 
 import AxeBuilder from '@axe-core/playwright';
-import { createResearchProviders } from '@dusori/core';
+import { researchProviderPolicy } from '@dusori/core';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 // The landing page and the docs index both advertise the current release. Pinning the number here
@@ -538,6 +538,32 @@ test('website and docs render distinct, usable light and dark themes', async ({ 
   await expect.poll(colors).toEqual(docsLight);
 });
 
+test('landing reflows at a 200% equivalent viewport and honors reduced motion', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 720, height: 450 });
+  await page.goto('/Dusori/');
+
+  const evidence = await page.evaluate(() => {
+    const icon = document.querySelector<HTMLElement>('.app-icon-module');
+    const figure = document.querySelector<HTMLElement>('.hero-figure');
+    return {
+      animation: icon ? getComputedStyle(icon).animationName : '',
+      clientWidth: document.documentElement.clientWidth,
+      figureTransform: figure ? getComputedStyle(figure).transform : '',
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(evidence).toMatchObject({
+    animation: 'none',
+    figureTransform: 'none',
+    reducedMotion: true,
+  });
+  expect(evidence.scrollWidth).toBe(evidence.clientWidth);
+});
+
 test('public site explains the identity, Obsidian boundary, and portable graph', async ({
   page,
 }) => {
@@ -617,6 +643,26 @@ test('app follows the system and persists an explicit appearance choice', async 
     await Promise.all(button.getAnimations().map((animation) => animation.finished));
   });
   await expectNoSeriousA11yViolations(page);
+});
+
+test('global Settings reloads without a topic and unsafe note URLs fall back safely', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  const navigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  await navigation.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('topic')).toBeNull();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+
+  await navigation.getByRole('button', { name: 'New topic' }).click();
+  await createTopic(page, { remainInResearch: true });
+  await page.goto(
+    '/Dusori/app/?topic=ai-fundamentals&view=note&path=Topics%2Fai-fundamentals%2F..%2Fdusori.json',
+  );
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('view')).not.toBe('note');
 });
 
 test('Settings exposes and persists all four appearance modes', async ({ page }) => {
@@ -1426,7 +1472,7 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
 // is enforced ahead of the network stack, so a forbidden origin never reaches its route and is
 // the only way a probe can fail.
 test('the shipped policy lets every browser-called provider origin through', async ({ page }) => {
-  const origins = [...new Set(createResearchProviders().flatMap((provider) => provider.origins))];
+  const origins = researchProviderPolicy.browserOrigins;
   expect(origins.length).toBeGreaterThan(0);
   for (const origin of origins) {
     await page.route(`${origin}/**`, async (route) => {
@@ -2362,6 +2408,50 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   const studioNavigation = sitePage.getByRole('navigation', { name: 'Dusori Research Desk' });
   await studioNavigation.getByRole('button', { name: 'Research', exact: true }).click();
   await expect(sitePage.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await sitePage.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    await route.fulfill({
+      contentType: 'application/json',
+      json:
+        url.searchParams.get('list') === 'search'
+          ? {
+              query: {
+                search: [
+                  {
+                    pageid: 1,
+                    size: 5200,
+                    snippet: 'How attention relates tokens to the rest of their context.',
+                    title: 'Attention in machine learning',
+                    wordcount: 620,
+                  },
+                ],
+              },
+            }
+          : {
+              query: {
+                pages: {
+                  '1': {
+                    extract:
+                      'Attention lets each token weigh the other tokens in its context. The attention mechanism allows every token to weigh the other tokens in context before producing the next representation.\n\n== Multi-head attention ==\n\nMulti-head attention learns several relationships in parallel, which lets different heads emphasize different patterns.\n\n== Transformer layers ==\n\nTransformer layers pair attention with feed-forward transformations and residual connections.',
+                    pageid: 1,
+                    title: 'Attention in machine learning',
+                  },
+                },
+              },
+            },
+    });
+  });
+  await sitePage.getByLabel('Question or topic').fill('How does attention work?');
+  await sitePage.getByRole('button', { name: 'Research topic' }).click();
+  const providerDisclosure = sitePage.getByRole('dialog', {
+    name: 'Choose where this question may go.',
+  });
+  await providerDisclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await providerDisclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(
+    sitePage.getByRole('heading', { name: 'Synthesis — AI Fundamentals' }),
+  ).toBeVisible();
+  await expect(sitePage.getByRole('article')).toContainText('Assembled on');
   await sitePage.screenshot({ path: 'test-results/screenshots/app-research.png' });
 
   await studioNavigation.getByRole('button', { name: /^Sources/u }).click();
@@ -2380,6 +2470,41 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await expect(sitePage.getByRole('region', { name: 'Workspace evidence atlas' })).toBeVisible();
   await sitePage.screenshot({ fullPage: true, path: 'test-results/screenshots/app-map.png' });
   await siteContext.close();
+
+  const ogContext = await browser.newContext({ viewport: { width: 1200, height: 630 } });
+  const ogPage = await ogContext.newPage();
+  await ogPage.goto('/Dusori/');
+  await ogPage.addStyleTag({
+    content: `
+      .site-nav { position: relative !important; }
+      .hero {
+        min-height: 0 !important;
+        align-items: start !important;
+        gap: 3rem !important;
+        padding-block: 2.5rem !important;
+      }
+      .hero-copy { gap: 1rem !important; }
+      .hero h1 {
+        font-size: 4.4rem !important;
+        line-height: 0.94 !important;
+      }
+      .lede {
+        font-size: 1rem !important;
+        line-height: 1.4 !important;
+      }
+      .actions, .trust-line { display: none !important; }
+      .hero-stage { padding-block-start: 4rem !important; }
+      .app-icon-module {
+        transform: scale(0.88);
+        transform-origin: top right;
+      }
+    `,
+  });
+  const ledeBox = await ogPage.locator('.lede').boundingBox();
+  expect(ledeBox, 'social card lede should be rendered').not.toBeNull();
+  expect(ledeBox!.y + ledeBox!.height, 'social card lede is clipped').toBeLessThanOrEqual(630);
+  await ogPage.screenshot({ path: 'test-results/screenshots/og-dusori.png' });
+  await ogContext.close();
 });
 
 async function captureAtTop(page: Page, options: Parameters<Page['screenshot']>[0]): Promise<void> {

@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.12.3';
+const releaseVersion = '0.12.4';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
@@ -55,7 +55,10 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <meta property="og:image" content={socialImageHref} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Dusori private learning studio" />
+    <meta
+      property="og:image:alt"
+      content="Dusori evidence trail from a hard question to a cited local brief"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <title>Dusori — a calm, honest research desk</title>
   </head>
@@ -349,6 +352,13 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             </p>
           </article>
         </div>
+        <ol class="run-contract" aria-label="One research run contract">
+          <li><span>01</span><strong>Search</strong><small>Only providers allowed here</small></li>
+          <li><span>02</span><strong>Record</strong><small>Found, empty, or failed</small></li>
+          <li><span>03</span><strong>Save</strong><small>Each capture commits alone</small></li>
+          <li><span>04</span><strong>Read</strong><small>References make no claims</small></li>
+          <li><span>05</span><strong>Brief</strong><small>Write or safe proposal</small></li>
+        </ol>
         <p class="legal-note">
           Dusori does not bypass logins, paywalls, robots controls, or platform restrictions, and it
           does not download YouTube media. Third-party terms and quotas still apply.
@@ -431,7 +441,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             unsaved work blocks it.
           </p>
           <p>
-            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.3 install. Both affected
+            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.4 install. Both affected
             versions open to a launch-time 404, so Settings is inaccessible. Normal in-app updates
             work from v0.12.2 onward.
           </p>

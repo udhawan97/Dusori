@@ -86,6 +86,7 @@ describe('desktop release contract', () => {
       supersededRelease,
       read('apps/site/src/content/docs/docs/releases/v0-12-2.md'),
       read('apps/site/src/content/docs/docs/releases/v0-12-3.md'),
+      read('apps/site/src/content/docs/docs/releases/v0-12-4.md'),
     ];
 
     for (const document of recoveryDocs) {
@@ -93,15 +94,15 @@ describe('desktop release contract', () => {
       expect(document).toContain('v0.12.1');
       expect(document).toContain('launch-time 404');
       expect(document).toContain('Settings is inaccessible');
-      expect(document).toMatch(/(?:manual(?:ly)?[^\n]*v0\.12\.3|v0\.12\.3[^\n]*manual(?:ly)?)/iu);
+      expect(document).toMatch(/(?:manual(?:ly)?[^\n]*v0\.12\.4|v0\.12\.4[^\n]*manual(?:ly)?)/iu);
       expect(document).toMatch(/in-app updates\s+(?:work|resume) from v0\.12\.2 onward/iu);
     }
     expect(originalDesktopRelease).toContain(
-      '[Download current v0.12.3](https://github.com/udhawan97/Dusori/releases/tag/v0.12.3)',
+      '[Download current v0.12.4](https://github.com/udhawan97/Dusori/releases/tag/v0.12.4)',
     );
     expect(originalDesktopRelease).not.toContain('[Open v0.12.0 release downloads]');
     expect(supersededRelease).toContain(
-      '[Download current v0.12.3](https://github.com/udhawan97/Dusori/releases/tag/v0.12.3)',
+      '[Download current v0.12.4](https://github.com/udhawan97/Dusori/releases/tag/v0.12.4)',
     );
     expect(supersededRelease).not.toContain('[Download v0.12.1]');
   });

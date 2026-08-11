@@ -1,4 +1,3 @@
-export * from './agent.js';
 export * from './ai.js';
 export * from './angles.js';
 export * from './artifacts.js';
@@ -14,5 +13,6 @@ export * from './rank.js';
 export * from './reputation.js';
 export * from './research-file.js';
 export * from './score.js';
+export * from './sequence.js';
 export * from './suggest.js';
 export * from './types.js';

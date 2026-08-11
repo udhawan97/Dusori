@@ -5,18 +5,24 @@ description: Provider access, configuration, data sent, capture limits, and thir
 
 Every provider is off until its disclosure is accepted on the device. The disclosure names the host and query data. Provider credentials stay in the local companion environment and are not stored in the workspace.
 
+v0.12.4 uses one provider catalog for the 13 research adapters. The catalog is not a plugin loader;
+it is the tested source of truth for readiness, the exact consent scope, query routing, evidence
+lens, capture policy, and browser origin. Tests require both hosted and desktop content-security
+policies to permit every browser origin declared there. Optional AI remains outside that catalog
+because it has its own consent and payload contract.
+
 | Provider            | Route                | Configuration                                   | What Dusori saves                                                   | Important boundary                                                    |
 | ------------------- | -------------------- | ----------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Microsoft Learn     | Browser or companion | None                                            | Catalog/reference metadata; companion may fetch exact approved page | Microsoft terms apply                                                 |
+| Microsoft Learn     | Browser or companion | None                                            | Catalog or ranked-search reference; no module-page snapshot         | Microsoft terms apply                                                 |
 | Wikipedia           | Browser              | None                                            | Bounded extract and reference                                       | Wikimedia terms and source license apply                              |
 | Hacker News         | Browser              | None                                            | Public result/reference metadata                                    | Algolia/HN availability applies                                       |
-| GitHub              | Browser              | None for public search path                     | Public result/reference metadata                                    | GitHub rate limits and terms apply                                    |
-| Stack Overflow      | Browser              | None                                            | Public result/reference metadata                                    | Stack Exchange terms and content license apply                        |
+| GitHub              | Browser              | None for public search path                     | Public repository metadata and bounded published README where found | GitHub rate limits and terms apply                                    |
+| Stack Overflow      | Browser              | None                                            | Public question body and answer metadata from the API               | Stack Exchange terms and content license apply                        |
 | OpenAlex            | Browser              | None                                            | Public metadata and reconstructed abstract where supplied           | OpenAlex source/license metadata still matters                        |
 | Crossref            | Browser              | None                                            | Public scholarly metadata and abstract where supplied               | Publisher and work licenses still apply                               |
 | Open Library        | Browser              | None                                            | Public book metadata and description where supplied                 | Edition and linked-text rights still vary                             |
 | npm                 | Browser              | None                                            | Package metadata and published README                               | Package and registry licenses vary                                    |
-| arXiv               | Companion            | None                                            | Public result/reference metadata                                    | Paper licenses vary                                                   |
+| arXiv               | Companion            | None                                            | Public paper metadata and abstract                                  | Paper licenses vary                                                   |
 | SearXNG             | Companion            | `SEARXNG_URL`                                   | Search references                                                   | You choose and trust the instance                                     |
 | Brave Search        | Companion            | `BRAVE_API_KEY`                                 | Search references                                                   | Your account, quota, and provider terms                               |
 | Tavily              | Companion            | `TAVILY_API_KEY`                                | Search references                                                   | Your account, quota, and provider terms                               |
@@ -48,3 +54,14 @@ Dusori being free and open source does not make third-party services free, perma
 AI is optional and consent is feature-specific. Dusori discovers a running Ollama service on this computer's loopback address without requiring shell-only settings, chooses the lightest recognized chat model unless `OLLAMA_MODEL` names one explicitly, and calls it ready only after a small structured generation check succeeds. A listed model that cannot load stays labeled as failed. Dusori does not contact LAN or hosted Ollama-compatible endpoints, and it never starts Ollama or downloads a model. Hosted Anthropic/OpenAI configuration is labeled as hosted, not local. Depending on the feature, the disclosure may cover the query plus candidate metadata, accepted-source excerpts, a roadmap objective, current preferences, or typed instructions. For synthesis, the model may select and order approved passage IDs; the displayed wording remains verbatim source text. Deterministic ranking, synthesis structure, and prompt generation remain the fallbacks.
 
 Never put provider keys in workspace files, notes, screenshots, bug reports, or command-line arguments. Supply them as local companion environment variables.
+
+## Failure and fallback behavior
+
+A research run asks all relevant, allowed providers concurrently. One timeout or provider error is
+recorded and does not discard results from the others. Saving then proceeds source by source: if
+content capture fails, Dusori keeps the URL reference and the failure message; if one save fails,
+the remaining shortlist still proceeds. Only saved readable text can become quoted evidence.
+
+If separately consented AI synthesis becomes unavailable, Dusori writes the deterministic
+evidence-first brief. If the learner edited the current brief, the refresh becomes a proposal rather
+than overwriting it.

@@ -1,51 +1,42 @@
 import { readFileSync } from 'node:fs';
 
-import { createResearchProviders, type CompanionResearchClient } from '@dusori/core';
+import { researchProviderPolicy } from '@dusori/core';
 import { describe, expect, it } from 'vitest';
 
-/**
- * Only its presence matters: this test reads what a provider declares and never searches, so
- * every method rejects. A proxy rather than a literal, so growing the companion's interface
- * does not drag an unrelated test along with it.
- */
-const unusedCompanion = new Proxy(
-  {},
-  { get: () => () => Promise.reject(new Error('the CSP test never calls the companion')) },
-) as CompanionResearchClient;
-
 const appHtml = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
+const tauriConfig = JSON.parse(
+  readFileSync(new URL('../../desktop/src-tauri/tauri.conf.json', import.meta.url), 'utf8'),
+) as { app?: { security?: { csp?: string } } };
 
-/** The origins `app.html` permits the page to call, read from the shipped policy itself. */
-function connectSrc(): string[] {
-  const policy = /http-equiv="Content-Security-Policy"[^>]*content="([^"]+)"/su.exec(appHtml)?.[1];
-  if (!policy) throw new Error('app.html declares no Content-Security-Policy.');
+function connectSrc(policy: string, surface: string): string[] {
   const directive = policy
     .split(';')
     .map((part) => part.trim())
     .find((part) => part.startsWith('connect-src'));
-  if (!directive) throw new Error('The app Content-Security-Policy declares no connect-src.');
+  if (!directive) throw new Error(`${surface} declares no connect-src policy.`);
   return directive.split(/\s+/u).slice(1);
 }
+
+const hostedPolicy = /http-equiv="Content-Security-Policy"[^>]*content="([^"]+)"/su.exec(
+  appHtml,
+)?.[1];
+if (!hostedPolicy) throw new Error('app.html declares no Content-Security-Policy.');
+const desktopPolicy = tauriConfig.app?.security?.csp;
+if (!desktopPolicy) throw new Error('tauri.conf.json declares no Content-Security-Policy.');
 
 /**
  * A provider that reaches its API from the browser is dead on the deployed app unless the
  * policy names its origin, and the failure only shows up at search time. Deriving the list
  * from the registry means adding a provider cannot quietly skip this.
  */
-describe('the app policy permits every origin its providers call from the browser', () => {
-  const allowed = connectSrc();
-  // Both lists, because a running companion changes which providers exist and the
-  // upgraded Microsoft Learn still falls back to fetching the catalog from the browser.
-  const providers = [
-    ...createResearchProviders(),
-    ...createResearchProviders({ companion: unusedCompanion }),
-  ];
-
-  for (const provider of providers) {
-    for (const origin of provider.origins) {
-      it(`allows ${provider.id} to reach ${origin}`, () => {
-        expect(allowed).toContain(origin);
-      });
-    }
+describe.each([
+  ['hosted app', hostedPolicy],
+  ['desktop app', desktopPolicy],
+])('%s policy', (surface, policy) => {
+  const allowed = connectSrc(policy, surface);
+  for (const origin of researchProviderPolicy.browserOrigins) {
+    it(`allows provider calls to reach ${origin}`, () => {
+      expect(allowed).toContain(origin);
+    });
   }
 });

@@ -12,6 +12,7 @@ export * from './learning/recall.js';
 export * from './learning/tutor.js';
 export * from './learning/review.js';
 export * from './learning/today-focus.js';
+export * from './learning/today.js';
 export * from './notes/edit.js';
 export * from './portable.js';
 export * from './research/index.js';

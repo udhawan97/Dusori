@@ -14,13 +14,9 @@
 
   import {
     acceptMarkdownUpdate,
-    buildTodayFocus,
-    buildTodaySummary,
-    buildWorkspaceRecap,
-    deriveMissionOverview,
     lineDiff,
     markTopicReviewed,
-    nextScheduledReview,
+    projectToday,
     resolvePendingProposal,
     setTopicStatus,
     updateRoadmapObjective,
@@ -77,12 +73,9 @@
   let sessionItem: ContinueLearningItem | null = null;
 
   $: selected = summaries.find((summary) => summary.slug === topicSlug) ?? null;
-  $: activeCount = summaries.filter((summary) => summary.status === 'active').length;
-  $: completedObjectives = summaries.reduce(
-    (count, summary) => count + summary.progress.completed,
-    0,
-  );
-  $: totalObjectives = summaries.reduce((count, summary) => count + summary.progress.total, 0);
+  let activeCount = 0;
+  let completedObjectives = 0;
+  let totalObjectives = 0;
   $: changedRows = conflict
     ? lineDiff(conflict.currentContent, conflict.proposalContent)
         .filter((row) => row.kind !== 'same')
@@ -98,23 +91,15 @@
     loading = true;
     error = '';
     try {
-      const [nextSummaries, nextRecap] = await Promise.all([
-        buildTodaySummary(storage, workspace),
-        buildWorkspaceRecap(storage, workspace),
-      ]);
-      summaries = nextSummaries;
-      focus = await buildTodayFocus(storage, workspace, nextSummaries);
-      nextReview = nextScheduledReview(nextSummaries);
-      recap = nextRecap;
-      // Derived per topic from its own files; a complete topic has no mission left to run.
-      missions = await Promise.all(
-        nextSummaries
-          .filter((summary) => summary.status !== 'complete')
-          .map(async (summary) => ({
-            ...(await deriveMissionOverview(storage, summary.slug)),
-            title: summary.title,
-          })),
-      );
+      const today = await projectToday(storage, workspace);
+      summaries = today.summaries;
+      focus = today.focus;
+      nextReview = today.nextReview;
+      recap = today.recap;
+      missions = today.missions;
+      activeCount = today.totals.activeTopics;
+      completedObjectives = today.totals.completedObjectives;
+      totalObjectives = today.totals.totalObjectives;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not read learning progress.';
     } finally {

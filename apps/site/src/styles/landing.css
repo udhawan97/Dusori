@@ -570,6 +570,37 @@ main > section,
 .research-ledger p {
   color: var(--color-muted);
 }
+.run-contract {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: var(--space-xl) 0 0;
+  padding: 0;
+  border-block-end: 1px solid var(--color-rule);
+  list-style: none;
+}
+.run-contract li {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2xs);
+  padding: var(--space-md);
+  border-inline-start: 1px solid var(--color-rule);
+}
+.run-contract li:first-child {
+  border-inline-start: 0;
+}
+.run-contract span,
+.run-contract small {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.run-contract span {
+  color: var(--color-accent-text);
+}
+.run-contract strong {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+}
 .legal-note {
   max-width: 70ch;
   margin: var(--space-xl) auto 0;
@@ -795,6 +826,16 @@ main > section,
   .research-ledger article:first-child {
     border-block-start: 0;
   }
+  .run-contract {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .run-contract li:nth-child(4) {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-rule);
+  }
+  .run-contract li:nth-child(5) {
+    border-block-start: 1px solid var(--color-rule);
+  }
   .download-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -878,6 +919,17 @@ main > section,
   .loop-steps li > div {
     grid-template-columns: 1fr;
     gap: var(--space-xs);
+  }
+  .run-contract {
+    grid-template-columns: 1fr;
+  }
+  .run-contract li,
+  .run-contract li:nth-child(4) {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-rule);
+  }
+  .run-contract li:first-child {
+    border-block-start: 0;
   }
   .download-grid {
     grid-template-columns: 1fr;

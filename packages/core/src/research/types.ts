@@ -80,6 +80,8 @@ export interface ResearchProvider {
    * proxies the request, because that call goes to localhost.
    */
   readonly origins: readonly string[];
+  /** Catalog policy enforced by the sequence; reference-only providers cannot create claims. */
+  readonly capturePolicy?: 'readable-or-reference' | 'reference-only';
   search(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]>;
   capture(candidate: ResearchCandidate, fetchImpl: typeof fetch): Promise<ResearchCapture>;
   /**

@@ -12,3 +12,4 @@
 - [ADR-010: Tauri desktop shell and explicit signed updates](010-tauri-desktop-and-signed-updater.md)
 - [ADR-011: Consent-gated providers and lawful capture limits](011-provider-access-and-lawful-capture.md)
 - [ADR-012: Separated evidence atlas](012-separated-evidence-atlas.md)
+- [ADR-013: Deep workflow boundaries](013-deep-workflow-boundaries.md)

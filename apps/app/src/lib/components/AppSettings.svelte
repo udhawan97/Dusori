@@ -11,7 +11,7 @@
   } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
-  import type { CompanionAiClient } from '@dusori/core';
+  import { researchProviderPolicy, type CompanionAiClient } from '@dusori/core';
 
   import {
     automaticUpdatePreferenceKey,
@@ -65,21 +65,8 @@
   });
 
   const consentLabels: Record<string, string> = {
-    arxiv: 'arXiv',
+    ...researchProviderPolicy.consentLabels,
     'companion-ai': 'AI ranking and synthesis',
-    github: 'GitHub',
-    hackernews: 'Hacker News',
-    mslearn: 'Microsoft Learn catalog',
-    'mslearn-ranked': 'Microsoft Learn ranked search',
-    npm: 'npm registry',
-    openalex: 'OpenAlex',
-    crossref: 'Crossref',
-    openlibrary: 'Open Library',
-    reddit: 'Reddit',
-    stackexchange: 'Stack Exchange',
-    websearch: 'Configured web search',
-    wikipedia: 'Wikipedia',
-    youtube: 'YouTube metadata',
   };
 
   function chooseAppearance(next: Appearance): void {

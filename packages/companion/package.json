@@ -1,6 +1,6 @@
 {
   "name": "@udhawan97/dusori",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "description": "Optional loopback-only companion for the Dusori local-first learning app.",
   "license": "Apache-2.0",
   "homepage": "https://udhawan97.github.io/Dusori/docs/getting-started/",
@@ -44,7 +44,7 @@
     "@fastify/cors": "11.3.0",
     "@fastify/static": "10.1.2",
     "@mozilla/readability": "0.6.0",
-    "fastify": "5.11.2",
+    "fastify": "5.11.3",
     "linkedom": "0.18.13",
     "zod": "4.4.3"
   },

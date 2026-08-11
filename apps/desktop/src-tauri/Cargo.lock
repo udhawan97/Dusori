@@ -763,7 +763,7 @@ checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dusori-desktop"
-version = "0.12.3"
+version = "0.12.4"
 dependencies = [
  "atomicwrites",
  "base64 0.22.1",

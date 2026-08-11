@@ -263,6 +263,56 @@ describe('local source library', () => {
     expect(afterRestore.removedSources).toEqual([]);
   });
 
+  it('never downgrades active or removed readable text with a weaker reference capture', async () => {
+    const storage = await topicStorage();
+    const content = '# Durable evidence\n\nThis readable text must not be replaced by a stub.\n';
+    const input = {
+      content,
+      method: 'url' as const,
+      provenance: { readState: 'readable' as const },
+      title: 'Durable evidence',
+      topicSlug: 'ai-fundamentals',
+      url: 'https://example.org/durable-evidence',
+    };
+    const added = await addSource(storage, input, now);
+
+    const activeRediscovery = await addSource(
+      storage,
+      {
+        ...input,
+        content: '# Reference stub\n\nNo readable evidence was captured.\n',
+        provenance: { readState: 'reference' },
+      },
+      now,
+    );
+    expect(activeRediscovery).toMatchObject({
+      deduplicated: true,
+      record: { readState: 'readable' },
+    });
+    expect((await storage.read(added.path))?.content).toBe(content);
+
+    await removeSourceFromResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'ai-fundamentals' },
+      now,
+    );
+    const removedRediscovery = await addSource(
+      storage,
+      {
+        ...input,
+        content: '# Reference stub\n\nNo readable evidence was captured.\n',
+        provenance: { readState: 'reference' },
+      },
+      now,
+    );
+
+    expect(removedRediscovery).toMatchObject({ deduplicated: true, tombstoned: true });
+    const manifest = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(manifest.sources).toEqual([]);
+    expect(manifest.removedSources?.[0]?.record.readState).toBe('readable');
+    expect((await storage.read(added.path))?.content).toBe(content);
+  });
+
   it('restores a removed URL with a fresh readable capture and clears its old failure', async () => {
     const storage = await topicStorage();
     const input = {

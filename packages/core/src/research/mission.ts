@@ -2,8 +2,9 @@ import type { StorageAdapter } from '../adapters.js';
 import type { SourceRecord } from '../schemas/workspace.js';
 import { readSourceManifest } from '../sources/import.js';
 import { readResearchFile, type ResearchRunRecord } from './research-file.js';
+import { researchProviderPolicy, type ResearchProviderLens } from './providers/catalog.js';
 
-export type MissionLens = 'academic' | 'books' | 'community' | 'docs' | 'video' | 'web';
+export type MissionLens = ResearchProviderLens;
 
 export const missionLenses: readonly MissionLens[] = [
   'docs',
@@ -23,26 +24,8 @@ export const missionLensLabels: Record<MissionLens, string> = {
   web: 'Web',
 };
 
-// A fixed map over provider ids. An unknown provider lands in `web` rather than vanishing,
-// because a lens must never hide a source the learner actually saved.
-const lensByProvider: Record<string, MissionLens> = {
-  arxiv: 'academic',
-  crossref: 'academic',
-  github: 'docs',
-  hackernews: 'community',
-  mslearn: 'docs',
-  npm: 'docs',
-  openalex: 'academic',
-  openlibrary: 'books',
-  reddit: 'community',
-  stackexchange: 'community',
-  websearch: 'web',
-  wikipedia: 'docs',
-  youtube: 'video',
-};
-
 export function lensFor(providerId: string): MissionLens {
-  return lensByProvider[providerId] ?? 'web';
+  return researchProviderPolicy.lensFor(providerId);
 }
 
 export interface MissionOverview {

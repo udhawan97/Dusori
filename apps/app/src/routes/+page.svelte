@@ -22,7 +22,7 @@
     X,
   } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
-  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet } from 'svelte/reactivity';
 
   import {
     WorkspaceSchema,
@@ -62,6 +62,14 @@
   import { runAutomaticUpdateCheck } from '$lib/app-updates';
   import { wikilinkTarget } from '$lib/markdown';
   import { handleExternalLink, isExternalHttpUrl } from '$lib/open-external';
+  import {
+    parseWorkspaceLocation,
+    transitionWorkspaceNavigation,
+    workspaceNavigationUrl,
+    type WorkspaceNavigationIntent,
+    type WorkspaceNavigationState,
+    type WorkspaceView,
+  } from '$lib/workspace-navigation';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
   import LearningLoop from '$lib/components/LearningLoop.svelte';
@@ -92,9 +100,7 @@
   let editingNote = false;
   let editableNote = false;
   let newNoteTitle = '';
-  let workspaceView:
-    'graph' | 'insights' | 'note' | 'research' | 'roadmap' | 'settings' | 'sources' | 'today' =
-    'note';
+  let workspaceView: WorkspaceView = 'note';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
   let error = '';
@@ -206,29 +212,70 @@
 
   /** Reflects the open view in the URL so reload, Back and Forward all land where the user was. */
   function syncLocation(replace = false): void {
-    const parameters = new SvelteURLSearchParams(location.search);
-    if (selectedSlug) parameters.set('topic', selectedSlug);
-    else parameters.delete('topic');
-    parameters.set('view', workspaceView);
-    if (workspaceView === 'note' && notePath) parameters.set('path', notePath);
-    else parameters.delete('path');
-
-    const query = parameters.toString();
-    const next = `${location.pathname}${query ? `?${query}` : ''}`;
+    const next = workspaceNavigationUrl(
+      { documentPath: notePath, topicSlug: selectedSlug, view: workspaceView },
+      location.pathname,
+      location.search,
+    );
     if (next === `${location.pathname}${location.search}`) return;
     if (replace) replaceState(next, {});
     else pushState(next, {});
   }
 
+  function currentNavigationState(): WorkspaceNavigationState {
+    return {
+      creatingTopic,
+      documentPath: notePath,
+      topicCreationReturnSlug: previousSlug,
+      topicSlug: selectedSlug,
+      view: workspaceView,
+    };
+  }
+
+  function commitNavigation(
+    intent: WorkspaceNavigationIntent,
+    record = true,
+    replace = false,
+  ): boolean {
+    const decision = transitionWorkspaceNavigation(currentNavigationState(), intent, {
+      history: record ? (replace ? 'replace' : 'push') : 'none',
+      pathname: location.pathname,
+      search: location.search,
+    });
+    if (decision.rejected) {
+      status = decision.rejected;
+      return false;
+    }
+    stopEditingNote();
+    creatingTopic = decision.state.creatingTopic;
+    previousSlug = decision.state.topicCreationReturnSlug;
+    selectedSlug = decision.state.topicSlug;
+    workspaceView = decision.state.view;
+    notePath = decision.state.documentPath;
+    conflict = null;
+    inspectorOpen = false;
+    mobileNavOpen = false;
+    if (decision.history !== 'none' && decision.url !== `${location.pathname}${location.search}`) {
+      if (decision.history === 'replace') replaceState(decision.url, {});
+      else pushState(decision.url, {});
+    }
+    if (decision.orient) void orientView();
+    return true;
+  }
+
   /** Applies the view described by the current URL. Never writes history back. */
   async function applyLocationView(): Promise<void> {
     if (!storage || !workspace) return;
-    const parameters = new URLSearchParams(location.search);
-    const slug = parameters.get('topic') ?? '';
-    const known = workspace.topics.some((topic) => topic.slug === slug);
-    if (!known) return;
-    const view = parameters.get('view');
-    const path = parameters.get('path');
+    const restored = parseWorkspaceLocation(
+      location.search,
+      new Set(workspace.topics.map((topic) => topic.slug)),
+    );
+    if (!restored) return;
+    const { documentPath: path, topicSlug: slug, view } = restored;
+    const requested = new URLSearchParams(location.search);
+    const normalizeLocation =
+      requested.get('view') !== view ||
+      (view === 'note' ? requested.get('path') !== path : requested.has('path'));
     if (view === 'graph') openGraph(false);
     else if (view === 'insights') openInsights(false);
     else if (view === 'research') openResearch(slug, false);
@@ -240,6 +287,7 @@
     else if (view === 'sources') openSources(slug, false);
     else if (view === 'note' && path) await openGraphDocument(path, false);
     else openResearch(slug, false);
+    if (normalizeLocation) syncLocation(true);
   }
 
   async function refreshSavedSourceCount(
@@ -393,7 +441,8 @@
     workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
     const first = workspace.topics[0];
     if (!first) {
-      if (!restoreView) await orientView();
+      if (restoreView) await applyLocationView();
+      else await orientView();
       return;
     }
     await prepareCertificationSetup(first.slug);
@@ -442,8 +491,6 @@
         kind: creatingKind,
       });
       workspace = created.workspace;
-      creatingTopic = false;
-      previousSlug = '';
       topicTitle = '';
       if (creatingKind === 'certification') {
         dismissedCertificationSetups.delete(created.topicSlug);
@@ -467,59 +514,29 @@
 
   /** Reveals the topic form again once a workspace already has topics. */
   function startNewTopic(): void {
-    previousSlug = selectedSlug;
-    creatingTopic = true;
-    selectedSlug = '';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    syncLocation();
-    void orientView();
+    commitNavigation({ kind: 'start-topic' });
   }
 
   function cancelNewTopic(): void {
-    creatingTopic = false;
     const slug = previousSlug;
-    previousSlug = '';
-    if (slug) void openTopic(slug);
+    if (commitNavigation({ kind: 'cancel-topic' }, false) && slug) void openTopic(slug);
   }
 
   async function openTopic(slug: string): Promise<void> {
     if (!storage) return;
-    stopEditingNote();
-    creatingTopic = false;
-    selectedSlug = slug;
     await prepareCertificationSetup(slug);
     const synthesis = await storage.read(`Topics/${slug}/Synthesis.md`);
     const manifest = await readSourceManifest(storage, slug).catch(() => null);
-    if (synthesis && !manifest?.synthesisStaleAt) await openDocument('Synthesis.md');
-    else openResearch(slug);
-  }
-
-  async function openDocument(relativePath: string): Promise<void> {
-    if (!storage || !selectedSlug) return;
-    stopEditingNote();
-    workspaceView = 'note';
-    notePath = `Topics/${selectedSlug}/${relativePath}`;
-    noteContent = (await storage.read(notePath))?.content ?? '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    syncLocation();
-    await orientView();
+    if (synthesis && !manifest?.synthesisStaleAt) {
+      await openGraphDocument(`Topics/${slug}/Synthesis.md`);
+    } else openResearch(slug);
   }
 
   function showImportedRoadmap(content: string): void {
-    workspaceView = 'roadmap';
-    notePath = `Topics/${selectedSlug}/roadmap.md`;
+    if (!commitNavigation({ kind: 'open', topicSlug: selectedSlug, view: 'roadmap' })) return;
     noteContent = content;
     learningRevision += 1;
     artifactRevision += 1;
-    conflict = null;
-    inspectorOpen = false;
-    syncLocation();
-    void orientView();
     announceStatus('Curriculum applied. The imported roadmap is open.');
   }
 
@@ -528,19 +545,7 @@
   }
 
   function openToday(slug = selectedSlug, record = true): void {
-    if (!slug) return;
-    stopEditingNote();
-    creatingTopic = false;
-    selectedSlug = slug;
-    workspaceView = 'today';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', topicSlug: slug, view: 'today' }, record);
   }
 
   async function prepareCertificationSetup(slug: string): Promise<void> {
@@ -561,111 +566,36 @@
 
   async function openRoadmap(slug = selectedSlug, record = true): Promise<void> {
     if (!storage || !slug) return;
-    stopEditingNote();
-    creatingTopic = false;
-    selectedSlug = slug;
-    workspaceView = 'roadmap';
-    notePath = `Topics/${slug}/roadmap.md`;
-    noteContent = (await storage.read(notePath))?.content ?? '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      await orientView();
-    }
+    const path = `Topics/${slug}/roadmap.md`;
+    noteContent = (await storage.read(path))?.content ?? '';
+    commitNavigation({ kind: 'open', topicSlug: slug, view: 'roadmap' }, record);
   }
 
   function openResearch(slug = selectedSlug, record = true): void {
-    if (!slug) return;
-    stopEditingNote();
-    creatingTopic = false;
-    selectedSlug = slug;
-    workspaceView = 'research';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', topicSlug: slug, view: 'research' }, record);
   }
 
   function openSources(slug = selectedSlug, record = true): void {
-    if (!slug) return;
-    stopEditingNote();
-    creatingTopic = false;
-    selectedSlug = slug;
-    workspaceView = 'sources';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', topicSlug: slug, view: 'sources' }, record);
   }
 
   function openSettings(record = true): void {
-    stopEditingNote();
-    creatingTopic = false;
-    workspaceView = 'settings';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', view: 'settings' }, record);
   }
 
   function openGraph(record = true): void {
-    stopEditingNote();
-    creatingTopic = false;
-    workspaceView = 'graph';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', view: 'graph' }, record);
   }
 
   function openInsights(record = true): void {
-    stopEditingNote();
-    creatingTopic = false;
-    workspaceView = 'insights';
-    notePath = '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      void orientView();
-    }
+    commitNavigation({ kind: 'open', view: 'insights' }, record);
   }
 
   async function openGraphDocument(path: string, record = true): Promise<void> {
     if (!storage) return;
-    stopEditingNote();
-    const match = /^Topics\/([^/]+)\//u.exec(path);
-    if (match?.[1]) selectedSlug = match[1];
-    creatingTopic = false;
-    workspaceView = 'note';
-    notePath = path;
-    noteContent = (await storage.read(path))?.content ?? '';
-    conflict = null;
-    inspectorOpen = false;
-    mobileNavOpen = false;
-    if (record) {
-      syncLocation();
-      await orientView();
-    }
+    const content = (await storage.read(path))?.content ?? '';
+    if (!commitNavigation({ documentPath: path, kind: 'open', view: 'note' }, record)) return;
+    noteContent = content;
   }
 
   // Delegated from the note sheet rather than from MarkdownView, which also renders research
@@ -762,15 +692,10 @@
     await perform(async () => {
       const created = await createNote(storage!, selectedSlug, newNoteTitle);
       newNoteTitle = '';
-      workspaceView = 'note';
-      notePath = created.path;
+      if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
       editingNote = true;
-      conflict = null;
-      inspectorOpen = false;
-      mobileNavOpen = false;
-      syncLocation();
       status = 'Note created. Add the first useful idea, then save it.';
     });
   }
@@ -787,17 +712,11 @@
         .slice(`Topics/${selectedSlug}/`.length)
         .replace(/\.md$/u, '');
       const annotationDraft = `${created.content.trimEnd()}\n\n## Source\n\n[[../${sourceRelativePath}]]\n\n## Annotation\n\n`;
-      workspaceView = 'note';
-      notePath = created.path;
+      if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = annotationDraft;
       editingNote = true;
-      conflict = null;
-      inspectorOpen = false;
-      mobileNavOpen = false;
-      syncLocation();
       status = 'Annotation note created. Add what mattered, then save it locally.';
-      await orientView();
     });
   }
 
@@ -816,15 +735,12 @@
         'Notes/001-first-look.md',
         proposed,
       );
-      if ('proposalPath' in result) conflict = result;
       // The proof is only convincing if its result is on screen: show the note the proposal
       // concerns, then bring the diff and its accept action into view.
-      workspaceView = 'note';
-      notePath = firstNotePath;
+      if (!commitNavigation({ documentPath: firstNotePath, kind: 'open', view: 'note' })) return;
       noteContent = (await storage!.read(firstNotePath))?.content ?? externallyEdited;
-      syncLocation();
+      if ('proposalPath' in result) conflict = result;
       status = 'External content stayed in place. Dusori wrote a separate proposal and update log.';
-      inspectorOpen = false;
     });
     // The accept control is disabled while `perform` is busy, so focus only after the operation
     // releases it. Focusing a disabled control silently does nothing and leaves the decision below
@@ -838,9 +754,16 @@
   /** Brings an existing proposal back on screen from the inspector. */
   async function showConflict(): Promise<void> {
     if (!conflict) return;
-    workspaceView = 'note';
-    syncLocation();
-    inspectorOpen = false;
+    const visibleConflict = conflict;
+    if (
+      !commitNavigation({
+        documentPath: visibleConflict.currentPath,
+        kind: 'open',
+        view: 'note',
+      })
+    )
+      return;
+    conflict = visibleConflict;
     await tick();
     conflictPanel?.scrollIntoView({ block: 'start' });
     conflictAcceptButton?.focus();
@@ -855,10 +778,15 @@
       ]);
       if (!current) throw new Error(`The proposal target is missing: ${item.currentPath}`);
       if (!proposed) throw new Error(`The proposal file is missing: ${item.proposalPath}`);
-      stopEditingNote();
-      creatingTopic = false;
-      selectedSlug = item.topicSlug;
-      notePath = item.currentPath;
+      if (
+        !commitNavigation({
+          documentPath: item.currentPath,
+          kind: 'open',
+          topicSlug: item.topicSlug,
+          view: 'note',
+        })
+      )
+        return;
       noteContent = current.content;
       conflict = {
         currentContent: current.content,
@@ -869,10 +797,6 @@
         proposalPath: item.proposalPath,
         updatePath: '',
       };
-      workspaceView = 'note';
-      inspectorOpen = false;
-      mobileNavOpen = false;
-      syncLocation();
       await tick();
       conflictPanel?.scrollIntoView({ block: 'start' });
       conflictAcceptButton?.focus();

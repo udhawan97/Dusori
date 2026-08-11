@@ -54,6 +54,8 @@ export interface AddedSource {
   path: string;
   record: SourceRecord;
   restored?: boolean;
+  /** A weaker rediscovery respected the user's reversible removal and left its item untouched. */
+  tombstoned?: boolean;
   /** A URL reference already existed and now has readable provider text. */
   upgraded?: boolean;
   updatePath?: string;
@@ -188,6 +190,12 @@ export async function addSource(
     );
     if (duplicate) {
       if (input.method === 'url' && input.content !== undefined && duplicate.path) {
+        if (
+          input.provenance?.readState === 'reference' &&
+          (duplicate.readState === 'read' || duplicate.readState === 'readable')
+        ) {
+          return { deduplicated: true, path: duplicate.path, record: duplicate };
+        }
         const itemFile = await storage.read(duplicate.path);
         if (!itemFile) {
           throw new Error(
@@ -259,6 +267,18 @@ export async function addSource(
     );
     if (removed) {
       const restoredPath = removed.record.path ?? path;
+      if (
+        input.method === 'url' &&
+        input.provenance?.readState === 'reference' &&
+        (removed.record.readState === 'read' || removed.record.readState === 'readable')
+      ) {
+        return {
+          deduplicated: true,
+          path: restoredPath,
+          record: removed.record,
+          tombstoned: true,
+        };
+      }
       let restoredRecord = removed.record;
       if (input.method === 'url' && input.content !== undefined) {
         const retained = await storage.read(restoredPath);

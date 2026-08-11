@@ -31,3 +31,11 @@ _Avoid_: Inbox item, repair task
 **Source-ready objective**:
 An objective with at least one learner-approved source whose text is readable on the current device. The term claims availability only, not source quality, completeness, or learner understanding.
 _Avoid_: Well-researched objective, complete objective
+
+**Research run**:
+A user-requested, consent-bounded attempt that records its exact question and every provider outcome before saving a varied shortlist. A run may finish with results, no results, or provider failures; each is durable evidence about that attempt.
+_Avoid_: Crawl, background search, research session
+
+**Research provider**:
+A named external discovery capability with its own disclosure, consent scope, availability, run outcome, and bounded capture policy. Availability never implies that a run found evidence.
+_Avoid_: Search engine, integration, data source

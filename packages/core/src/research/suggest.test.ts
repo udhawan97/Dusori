@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { StorageConflictError } from '../adapters.js';
-import { addSource } from '../sources/import.js';
+import { addSource, removeSourceFromResearch } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import type { ResearchCandidate } from './types.js';
@@ -138,6 +138,37 @@ describe('research suggestions', () => {
     );
 
     expect(remaining.map((item) => item.title)).toEqual(['Keep first', 'Keep second']);
+  });
+
+  it('keeps a user-removed URL out of later automatic research suggestions', async () => {
+    const storage = await topicStorage();
+    const url = 'https://example.org/retained-evidence';
+    const added = await addSource(
+      storage,
+      {
+        content: '# Retained evidence\n\nThe readable text must survive removal.\n',
+        method: 'url',
+        provenance: { readState: 'readable' },
+        title: 'Retained evidence',
+        topicSlug: 'azure-administration',
+        url,
+      },
+      now,
+    );
+    await removeSourceFromResearch(
+      storage,
+      { sha256: added.record.sha256, topicSlug: 'azure-administration' },
+      now,
+    );
+
+    const remaining = await filterResearchSuggestions(
+      storage,
+      'azure-administration',
+      [candidate({ key: 'web:retained', provider: 'web', title: 'Retained evidence', url })],
+      now,
+    );
+
+    expect(remaining).toEqual([]);
   });
 
   it('drops a ranked-search candidate whose URL was dismissed under its catalog-style key', async () => {

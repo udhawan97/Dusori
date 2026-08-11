@@ -39,12 +39,22 @@ export async function filterResearchSuggestions(
   const savedUrls = new Set(
     manifest.sources.flatMap((source) => (source.url ? [canonicalUrl(source.url)] : [])),
   );
+  const removedUrls = new Set(
+    (manifest.removedSources ?? []).flatMap((source) =>
+      source.record.url ? [canonicalUrl(source.record.url)] : [],
+    ),
+  );
   const dismissedKeys = new Set(dismissed.map((item) => item.key));
   const dismissedUrls = new Set(
     dismissed.flatMap((item) => (item.url ? [canonicalUrl(item.url)] : [])),
   );
   return candidates.filter((candidate) => {
     const url = canonicalUrl(candidate.url);
-    return !savedUrls.has(url) && !dismissedKeys.has(candidate.key) && !dismissedUrls.has(url);
+    return (
+      !savedUrls.has(url) &&
+      !removedUrls.has(url) &&
+      !dismissedKeys.has(candidate.key) &&
+      !dismissedUrls.has(url)
+    );
   });
 }
