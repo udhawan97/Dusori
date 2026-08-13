@@ -4,6 +4,40 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-13
+
+### Question-shaped research
+
+- Added consent-gated Europe PMC discovery for biomedical literature, saving returned abstracts as
+  readable evidence and metadata-only records as citation references.
+- Added consent-gated Library of Congress discovery for digitized primary-source records, with
+  item-only URL validation, reference-only capture, a 20-requests-per-minute start limit, and
+  bounded `Retry-After` backoff without automatic retries.
+- Made provider routing a deterministic local intersection: specialist adapters appear and run only
+  for relevant questions, and an allowed unrelated provider is never used as fallback egress.
+- Kept polysemous words such as `virus`, `infection`, `archive`, `office`, `windows`, and `library`
+  from routing a specialist on their own, with cross-audience near-miss fixtures that prefer no
+  egress to a guess.
+- Extended duplicate handling from canonical URLs and DOIs to conservative scholarly-title matches
+  while preferring an already-returned abstract and retaining every provider's outcome in the
+  durable run trail.
+
+### Experience and reliability
+
+- Rebuilt provider consent as a fixed heading and action footer around one scrolling provider list;
+  all actions remain visible at 320 x 568 and in zoom/growth/dynamic-viewport stress; Escape,
+  backdrop, button, and completion paths return focus to Research topic.
+- Kept the complete provider catalog and every saved decision visible outside the focused prompt.
+- Made System appearance react live to operating-system color changes while Paper, Ink, and Night
+  remain stable explicit choices.
+- Replaced abandoned provider search and capture promises with real aborting fetch timeouts.
+
+### Documentation and release
+
+- Recorded question-shaped consent and fail-closed routing in ADR-014 and synchronized the product
+  contract, README, website, provider/legal guide, source guide, platform guidance, screenshots,
+  social metadata, and release notes with the verified v0.13.0 behavior.
+
 ## [0.12.4] - 2026-08-11
 
 ### Reliability and architecture
@@ -348,7 +382,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.12.4...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/udhawan97/Dusori/compare/v0.12.4...v0.13.0
 [0.12.4]: https://github.com/udhawan97/Dusori/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/udhawan97/Dusori/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/udhawan97/Dusori/compare/v0.12.1...v0.12.2

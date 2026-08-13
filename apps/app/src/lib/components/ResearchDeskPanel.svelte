@@ -90,16 +90,19 @@
   let selectedScopes: string[] = [];
   let consentRevision = 0;
   let consentDialog: HTMLDialogElement;
+  let researchButton: HTMLButtonElement;
 
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
   $: allowedProviders = providersWithConsent(availableProviders, consentRevision, 'allowed');
   $: undecidedProviders = providersWithConsent(availableProviders, consentRevision, 'undecided');
   $: browserSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(question.trim() || topicTitle)}`;
-  $: relevantProviderCount =
-    providerSession?.select(
-      buildResearchQuery(topicTitle, { title: question.trim() || topicTitle }),
-      new Set(allowedProviders.map(scopeOf)),
-    ).length ?? 0;
+  $: currentQuery = buildResearchQuery(topicTitle, { title: question.trim() || topicTitle });
+  $: relevantProviders = providerSession?.select(currentQuery) ?? availableProviders;
+  $: relevantAllowedProviderCount = providersWithConsent(
+    relevantProviders,
+    consentRevision,
+    'allowed',
+  ).length;
   onMount(() => {
     void initialize();
   });
@@ -131,14 +134,25 @@
 
   function providersWithConsent(
     candidates: ResearchProvider[],
-    _revision: number,
+    revision: number,
     state: 'allowed' | 'undecided',
   ): ResearchProvider[] {
+    void revision;
     return candidates.filter((provider) =>
       state === 'allowed'
         ? hasConsent(scopeOf(provider))
         : readConsent(scopeOf(provider)) === 'undecided',
     );
+  }
+
+  function providerDecision(scope: string, revision: number): string {
+    void revision;
+    const decision = readConsent(scope);
+    return decision === 'allowed'
+      ? 'Allowed on this device'
+      : decision === 'denied'
+        ? 'Off on this device'
+        : 'Not decided';
   }
 
   function hostOf(url: string): string {
@@ -231,9 +245,8 @@
     if (running || !question.trim()) return;
     runError = '';
     status = '';
-    const undecided = availableProviders.filter(
-      (provider) => readConsent(scopeOf(provider)) === 'undecided',
-    );
+    const relevant = providerSession?.select(currentQuery) ?? availableProviders;
+    const undecided = relevant.filter((provider) => readConsent(scopeOf(provider)) === 'undecided');
     if (undecided.length > 0) {
       consentProviders = undecided;
       selectedScopes = [];
@@ -242,10 +255,10 @@
       consentDialog.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
       return;
     }
-    const allowed = availableProviders.filter((provider) => hasConsent(scopeOf(provider)));
+    const allowed = relevant.filter((provider) => hasConsent(scopeOf(provider)));
     if (allowed.length === 0) {
       runError =
-        'No research provider is allowed. Reset a provider decision in Settings to continue.';
+        'No allowed provider matches this question. Reset a relevant provider decision in Settings or change the question.';
       return;
     }
     await research(allowed);
@@ -257,10 +270,15 @@
       : selectedScopes.filter((item) => item !== scope);
   }
 
+  function restoreResearchFocus(): void {
+    void tick().then(() => queueMicrotask(() => researchButton?.focus()));
+  }
+
   function closeConsent(): void {
     consentOpen = false;
     consentProviders = [];
     selectedScopes = [];
+    restoreResearchFocus();
   }
 
   async function confirmConsent(): Promise<void> {
@@ -277,13 +295,15 @@
         'This device could not remember the provider choices. Check browser storage and try again.';
       return;
     }
-    const allowed = availableProviders.filter((provider) => hasConsent(scopeOf(provider)));
+    const relevant = providerSession?.select(currentQuery) ?? availableProviders;
+    const allowed = relevant.filter((provider) => hasConsent(scopeOf(provider)));
     if (allowed.length === 0) {
       runError =
-        'Every provider was kept off. Reset a provider decision in Settings when you want to research.';
+        'Every relevant provider was kept off. Reset a provider decision in Settings when you want to research.';
       return;
     }
     await research(allowed);
+    restoreResearchFocus();
   }
 
   function updateProgress(key: string, update: Partial<SourceProgress>): void {
@@ -424,7 +444,7 @@
         disabled={running}
         placeholder="What changed the spread of the printing press?"
       />
-      <button class="primary" disabled={running || !question.trim()}>
+      <button bind:this={researchButton} class="primary" disabled={running || !question.trim()}>
         <Search aria-hidden="true" size={17} />
         {running ? 'Researching…' : 'Research topic'}
       </button>
@@ -434,8 +454,10 @@
   <div class="provider-summary">
     <ShieldCheck aria-hidden="true" size={17} />
     <span
-      >{allowedProviders.length} allowed · {relevantProviderCount} relevant here · {undecidedProviders.length}
-      undecided · {aiModel ? `${aiModel} ready for optional synthesis` : 'AI stays separate'}</span
+      >{allowedProviders.length} allowed overall · {relevantAllowedProviderCount} relevant and allowed
+      here · {undecidedProviders.length} undecided overall · {aiModel
+        ? `${aiModel} ready for optional synthesis`
+        : 'AI stays separate'}</span
     >
   </div>
 
@@ -451,7 +473,9 @@
         <li>
           <span class:ready={provider.available} aria-hidden="true"></span>
           <strong>{provider.label}</strong>
-          <small>{provider.detail}</small>
+          <small
+            >{provider.detail} · {providerDecision(provider.consentScope, consentRevision)}</small
+          >
         </li>
       {/each}
     </ul>
@@ -583,42 +607,65 @@
     use:modal
     class="consent"
     aria-labelledby="consent-title"
+    aria-describedby="consent-description"
     oncancel={(event) => {
       event.preventDefault();
       closeConsent();
     }}
+    onclick={(event) => {
+      if (event.target === event.currentTarget) closeConsent();
+    }}
   >
-    <p class="dialog-label">One-time provider choices</p>
-    <h2 id="consent-title">Choose where this question may go.</h2>
-    <p>
-      Each choice is stored separately on this device. Clearing a box records “denied”; closing this
-      sheet records nothing. A selected provider receives this question and may return abstracts,
-      READMEs, or extracts that Dusori saves locally. Notes, saved page bodies, and unrelated
-      workspace files are never sent.
-    </p>
-    <ul>
-      {#each consentProviders as provider (scopeOf(provider))}
-        <li>
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedScopes.includes(scopeOf(provider))}
-              onchange={(event) => toggleScope(scopeOf(provider), event.currentTarget.checked)}
-            />
-            <span><strong>{provider.label}</strong>{provider.disclosure}</span>
-          </label>
-        </li>
-      {/each}
-    </ul>
+    <div class="dialog-heading">
+      <p class="dialog-label">One-time provider choices</p>
+      <h2 id="consent-title" aria-label="Choose where this question may go.">
+        <span class="full-copy">Choose where this question may go.</span>
+        <span class="compact-copy" aria-hidden="true">Choose providers</span>
+      </h2>
+      <p id="consent-description">
+        <span>
+          Only relevant providers are shown. Choices stay separately on this device; closing records
+          nothing.
+        </span>
+        <span class="consent-detail">
+          The full catalog remains under Research providers and setup. Selected providers receive
+          only this topic and objective. Notes, saved pages, and unrelated files never leave.
+        </span>
+      </p>
+    </div>
+    <div class="consent-scroll">
+      <ul>
+        {#each consentProviders as provider (scopeOf(provider))}
+          <li>
+            <label>
+              <input
+                type="checkbox"
+                checked={selectedScopes.includes(scopeOf(provider))}
+                onchange={(event) => toggleScope(scopeOf(provider), event.currentTarget.checked)}
+              />
+              <span><strong>{provider.label}</strong>{provider.disclosure}</span>
+            </label>
+          </li>
+        {/each}
+      </ul>
+    </div>
     <div class="dialog-actions">
-      <button class="quiet" onclick={closeConsent}>Decide later</button>
-      <button class="quiet" onclick={() => void confirmConsent()}>Keep all off</button>
+      <button class="quiet" aria-label="Decide later" onclick={closeConsent}>
+        <span class="full-copy">Decide later</span>
+        <span class="compact-copy" aria-hidden="true">Later</span>
+      </button>
+      <button class="quiet" aria-label="Keep all off" onclick={() => void confirmConsent()}>
+        <span class="full-copy">Keep all off</span>
+        <span class="compact-copy" aria-hidden="true">Off</span>
+      </button>
       <button
         class="primary"
+        aria-label="Save choices and research"
         disabled={selectedScopes.length === 0}
         onclick={() => void confirmConsent()}
       >
-        Save choices and research
+        <span class="full-copy">Save choices and research</span>
+        <span class="compact-copy" aria-hidden="true">Allow selected</span>
       </button>
     </div>
   </dialog>
@@ -903,10 +950,18 @@
   .consent {
     position: fixed;
     inset: 0;
-    width: min(42rem, calc(100% - 2rem));
-    max-height: min(80dvh, 44rem);
+    width: min(42rem, calc(100% - 1rem));
+    display: grid;
+    block-size: min(
+      calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      44rem
+    );
+    max-block-size: none;
+    box-sizing: border-box;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     margin: auto;
-    padding: var(--space-lg);
+    padding: 0;
+    overflow: hidden;
     border: var(--rule-hair) solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-paper);
@@ -921,14 +976,31 @@
     font-size: var(--text-xs);
     text-transform: uppercase;
   }
-  .consent > p:not(.dialog-label) {
+  .dialog-heading {
+    padding: var(--space-md);
+  }
+  .dialog-heading > p:not(.dialog-label) {
     margin-block-start: var(--space-sm);
     color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .dialog-heading > p:not(.dialog-label) span {
+    display: inline;
+  }
+  .compact-copy {
+    display: none;
+  }
+  .consent-scroll {
+    min-block-size: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--space-md);
+    scrollbar-gutter: stable;
   }
   .consent ul {
     display: grid;
     gap: var(--space-sm);
-    margin-block: var(--space-lg);
+    margin-block: var(--space-sm) var(--space-lg);
     padding: 0;
     list-style: none;
   }
@@ -954,10 +1026,52 @@
     color: var(--color-ink);
   }
   .dialog-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-xs);
+    padding: var(--space-md) max(var(--space-md), env(safe-area-inset-bottom));
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    background: var(--color-paper);
+  }
+  .dialog-actions button {
+    width: 100%;
+  }
+  .dialog-actions .primary {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 18rem) {
+    .consent {
+      width: calc(100% - 0.5rem);
+      block-size: calc(100dvh - 0.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+    .dialog-heading {
+      padding: var(--space-xs);
+    }
+    .dialog-label,
+    .full-copy {
+      display: none;
+    }
+    .dialog-heading > p:not(.dialog-label) .consent-detail {
+      display: none;
+    }
+    .compact-copy {
+      display: inline;
+    }
+    .consent-scroll {
+      padding-inline: var(--space-xs);
+    }
+    .dialog-actions {
+      padding: var(--space-xs) max(var(--space-xs), env(safe-area-inset-bottom));
+    }
+    .dialog-actions button {
+      min-width: 0;
+      padding-inline: var(--space-xs);
+    }
+  }
+  @media (max-height: 18rem) {
+    .dialog-heading > p:not(.dialog-label) {
+      display: none;
+    }
   }
   @media (min-width: 40rem) {
     .query-row {
@@ -966,6 +1080,14 @@
     .source-progress li {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
+    }
+    .dialog-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .dialog-actions button {
+      width: auto;
     }
   }
   @media (pointer: coarse) {

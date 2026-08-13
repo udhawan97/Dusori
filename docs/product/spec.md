@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.12.4 release contract · **Date:** 2026-08-11
+**Status:** v0.13.0 release contract · **Date:** 2026-08-13
 
 ## Product promise
 
@@ -70,7 +70,21 @@ Existing tracked Markdown requires an expected hash. If another editor changed i
 
 Supported source paths are pasted text, local Markdown/text, locally extracted PDF text, URL reference, and explicitly saved research candidate. A PDF never leaves the device; no OCR is included. URL references are not fetched by the hosted app.
 
-Nine keyless providers run from browser or desktop app after consent: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, and npm. The companion can add arXiv, configured Reddit, configured general web search, configured YouTube metadata, and optional AI.
+Eleven keyless providers run from browser or desktop app after consent: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, Europe PMC, OpenAlex, Library of Congress, Crossref, Open Library, and npm. The companion can add arXiv, configured Reddit, configured general web search, configured YouTube metadata, and optional AI.
+
+The question is classified locally before consent or provider selection. General providers remain
+relevant broadly; developer, Microsoft, biomedical, and cultural-heritage providers join only for
+bounded term or phrase matches. Routing never grants consent and never falls back to an unrelated
+allowed specialist. The focused dialog shows relevant undecided providers in one scrolling region,
+while its heading and actions remain visible and the complete catalog stays reachable outside it.
+Ambiguous words such as `virus`, `infection`, `archive`, `office`, `windows`, and `library` do not
+activate a specialist by themselves; contextual phrases and cross-audience near-miss tests keep
+routing fail-closed.
+
+Europe PMC may save returned bibliographic metadata and an abstract labeled **Abstract**; a record
+without an abstract remains a citation reference. Library of Congress results are canonical
+digitized-item catalog references. Dusori does not fetch their collection media, OCR, full text, or
+infer reuse rights.
 
 Every provider has:
 
@@ -125,7 +139,7 @@ The updater has four explicit operations:
 
 Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies both platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
-v0.12.4 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
+v0.13.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 
 ## Explicitly not built
 
@@ -136,7 +150,7 @@ v0.12.4 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Social-feed scraping, access-control bypass, or YouTube media/caption download
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.4
+- Apple notarization or Microsoft Authenticode signing for v0.13.0
 
 ## Trust model
 

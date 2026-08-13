@@ -52,6 +52,86 @@ describe('research provider routing', () => {
     ]);
   });
 
+  it('adds Europe PMC only for a biomedical question', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const health = catalog.select(
+      buildResearchQuery('Malaria vaccines', {
+        title: 'What do clinical trials show about malaria vaccines?',
+      }),
+    );
+    const nearMiss = catalog.select(
+      buildResearchQuery('Error handling', { title: 'Treatment of TypeScript errors' }),
+    );
+
+    expect(health.map((provider) => provider.id)).toContain('europepmc');
+    expect(nearMiss.map((provider) => provider.id)).not.toContain('europepmc');
+  });
+
+  it('does not mistake a computer virus for a biomedical question', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const selected = catalog.select(
+      buildResearchQuery('Computer virus cleanup', {
+        title: 'Remove a computer virus from an old laptop',
+      }),
+    );
+
+    expect(selected.map((provider) => provider.id)).not.toContain('europepmc');
+  });
+
+  it('does not mistake malware infection for a biomedical question', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const selected = catalog.select(
+      buildResearchQuery('Malware infection persistence', {
+        title: 'Analyze malware infection persistence on Linux',
+      }),
+    );
+
+    expect(selected.map((provider) => provider.id)).not.toContain('europepmc');
+  });
+
+  it('adds the Library of Congress only for a cultural-heritage question', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const archives = catalog.select(
+      buildResearchQuery('Civil rights archives', {
+        title: 'Find primary-source photographs from civil rights archives',
+      }),
+    );
+    const broadHistory = catalog.select(
+      buildResearchQuery('History of printing', { title: 'History of the printing press' }),
+    );
+
+    expect(archives.map((provider) => provider.id)).toContain('loc');
+    expect(broadHistory.map((provider) => provider.id)).not.toContain('loc');
+  });
+
+  it.each([
+    ['Archive a deployment poster in the web app', 'Store a poster template in an app archive'],
+    ['Newspaper subscriptions', 'Compare current newspaper subscription prices'],
+  ])(
+    'does not treat unrelated source-format words as cultural heritage: %s',
+    async (topic, title) => {
+      const catalog = await loadResearchProviderCatalog();
+      const selected = catalog.select(buildResearchQuery(topic, { title }));
+
+      expect(selected.map((provider) => provider.id)).not.toContain('loc');
+    },
+  );
+
+  it('routes an explicit Library of Congress question without activating developer catalogs', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const selected = catalog.select(
+      buildResearchQuery('Library of Congress oral histories', {
+        title: 'Find Library of Congress oral histories',
+      }),
+    );
+    const ids = selected.map((provider) => provider.id);
+
+    expect(ids).toContain('loc');
+    expect(ids).not.toContain('github');
+    expect(ids).not.toContain('npm');
+    expect(ids).not.toContain('stackexchange');
+  });
+
   it('adds Microsoft Learn only when the question is about Microsoft technology', async () => {
     const catalog = await loadResearchProviderCatalog();
     const selected = catalog.select(
@@ -59,6 +139,30 @@ describe('research provider routing', () => {
     );
 
     expect(selected.map((provider) => provider.id)).toContain('mslearn');
+  });
+
+  it('does not route ordinary office windows or teams to Microsoft Learn', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const selected = catalog.select(
+      buildResearchQuery('History of office windows', {
+        title: 'How architectural teams changed office windows',
+      }),
+    );
+
+    expect(selected.map((provider) => provider.id)).not.toContain('mslearn');
+  });
+
+  it('recognizes contextual developer and Microsoft product phrases', async () => {
+    const catalog = await loadResearchProviderCatalog();
+    const python = catalog.select(
+      buildResearchQuery('Python tutorial', { title: 'Write a script in Python' }),
+    );
+    const excel = catalog.select(
+      buildResearchQuery('Excel workbook', { title: 'Build an Excel formula' }),
+    );
+
+    expect(python.map((provider) => provider.id)).toContain('github');
+    expect(excel.map((provider) => provider.id)).toContain('mslearn');
   });
 
   it.each(['AI-103', 'AI-901'])(
@@ -76,7 +180,7 @@ describe('research provider routing', () => {
   it('keeps one complete, unique policy record for every provider', async () => {
     const session = await loadResearchProviderCatalog();
 
-    expect(new Set(session.catalog.map((entry) => entry.id)).size).toBe(13);
+    expect(new Set(session.catalog.map((entry) => entry.id)).size).toBe(15);
     for (const entry of session.catalog) {
       expect(entry.label).not.toBe('');
       expect(entry.disclosure).not.toBe('');
@@ -112,14 +216,24 @@ describe('research provider routing', () => {
     expect(selected.map((provider) => provider.id)).toEqual(['wikipedia', 'npm']);
   });
 
-  it('falls back to an allowed specialist when no relevance rule matches', async () => {
+  it('never falls back to an allowed specialist when no relevance rule matches', async () => {
     const session = await loadResearchProviderCatalog();
     const selected = session.select(
       buildResearchQuery('History', { title: 'History of movable type' }),
       new Set(['npm']),
     );
 
-    expect(selected.map((provider) => provider.id)).toEqual(['npm']);
+    expect(selected).toEqual([]);
+  });
+
+  it('does not route an allowed biomedical provider for an unrelated question', async () => {
+    const session = await loadResearchProviderCatalog();
+    const selected = session.select(
+      buildResearchQuery('History', { title: 'History of movable type' }),
+      new Set(['europepmc']),
+    );
+
+    expect(selected).toEqual([]);
   });
 
   it('keeps browser Microsoft Learn usable when companion capability discovery fails', async () => {

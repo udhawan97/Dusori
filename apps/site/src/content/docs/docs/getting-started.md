@@ -10,13 +10,13 @@ sidebar:
 | Build               | Use it when                                                     | Start                                                                                                                                           |
 | ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Browser             | You want the fastest, accountless start                         | [Open Dusori](https://udhawan97.github.io/Dusori/app/)                                                                                          |
-| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.12.4/Dusori_0.12.4_aarch64-aarch64-apple-darwin.dmg)   |
-| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.12.4/Dusori_0.12.4_x64-setup-x86_64-pc-windows-msvc.exe) |
+| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.13.0/Dusori_0.13.0_aarch64-aarch64-apple-darwin.dmg)   |
+| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.13.0/Dusori_0.13.0_x64-setup-x86_64-pc-windows-msvc.exe) |
 | Node companion      | You want browser UI plus local capture and configured providers | `npx @udhawan97/dusori@latest`                                                                                                                  |
 
-The v0.12.4 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
+The v0.13.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
 
-If you installed a v0.12.0 or v0.12.1 desktop build, install v0.12.4 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates work from v0.12.2 onward.
+If you installed a v0.12.0 or v0.12.1 desktop build, install v0.13.0 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates work from v0.12.2 onward.
 
 ## Create the first topic
 
@@ -24,7 +24,7 @@ If you installed a v0.12.0 or v0.12.1 desktop build, install v0.12.4 manually on
 2. Enter a certification such as `Azure AI-102` or a general subject such as `AI fundamentals`.
 3. Choose **Create topic**. The new topic opens at the **Research Desk**.
 4. Enter the question you want answered.
-5. Select one or more providers after reading their disclosures. No request is sent before consent.
+5. Review the providers routed locally for this question, then allow only the ones you want. No request is sent before consent, and the complete catalog remains available below the focused list.
 6. Choose **Research topic**. Dusori searches, deduplicates, ranks, saves up to eight varied sources, reads available text, and builds a quoted brief automatically.
 7. Open **Sources** to read a local copy, retry a blocked page, open the original in your browser, remove a source, or restore one later.
 

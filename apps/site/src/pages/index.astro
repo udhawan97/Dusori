@@ -9,7 +9,7 @@ import {
   projectBasePath,
 } from '../../../../config/site.mjs';
 
-const releaseVersion = '0.12.4';
+const releaseVersion = '0.13.0';
 const appHref = `${appBasePath}/`;
 const docsHref = `${docsBasePath}/`;
 const githubHref = 'https://github.com/udhawan97/Dusori';
@@ -40,7 +40,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     <link rel="canonical" href={hostedProjectUrl} />
     <meta
       name="description"
-      content="Dusori is a private research desk that searches permitted sources, saves a durable evidence trail, and builds an honest local brief."
+      content="Dusori is a private research desk that routes each question to relevant permitted sources, saves a durable evidence trail, and builds an honest local brief."
     />
     <meta property="og:type" content="website" />
     <meta
@@ -49,7 +49,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
     />
     <meta
       property="og:description"
-      content="Ask, search, read, synthesize, and inspect the source trail. No account, no telemetry, ordinary local files."
+      content="Route locally, ask permission, search, read, synthesize, and inspect the source trail. No account, no telemetry, ordinary local files."
     />
     <meta property="og:url" content={hostedProjectUrl} />
     <meta property="og:image" content={socialImageHref} />
@@ -124,8 +124,8 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <p class="eyebrow"><span>v{releaseVersion}</span> Private research desk</p>
           <h1 id="hero-title">Ask a hard question. Follow the evidence.</h1>
           <p class="lede">
-            Dusori searches sources you permit, saves a varied evidence shelf, reads what it
-            legitimately can, and builds one cited brief. Your sources, notes, and map stay local.
+            Dusori chooses relevant sources on your device, asks permission, saves a varied evidence
+            shelf, and builds one cited brief. Your sources, notes, and map stay local.
           </p>
           <div class="actions">
             <a class="button button--primary" href={appHref}
@@ -189,7 +189,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <li>
             <a href="#how"
               ><small>01 · How it works</small><strong
-                >Question → Search/Save → Read → Synthesize</strong
+                >Question → Local route/consent → Search → Brief</strong
               ></a
             >
           </li>
@@ -234,7 +234,8 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
           <li>
             <span>02</span><div>
               <h3>Search and save</h3><p>
-                Dusori runs the providers you allowed and keeps a varied first shelf automatically.
+                Dusori routes locally, asks only about relevant providers, and keeps a varied first
+                shelf automatically.
               </p>
             </div>
           </li>
@@ -329,31 +330,47 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
       <section class="research" aria-labelledby="research-title">
         <header class="section-heading">
           <p class="eyebrow">Research with boundaries</p>
-          <h2 id="research-title">A capable researcher that shows its work.</h2>
-          <p>Each provider starts off. You see what it sends before the first request.</p>
+          <h2 id="research-title">The question shapes the provider shelf.</h2>
+          <p>
+            Each provider starts off. Local routing narrows the choice before the first request.
+          </p>
         </header>
         <div class="research-ledger">
           <article>
-            <span>Works directly</span><h3>Public knowledge</h3><p>
-              Microsoft Learn, Wikipedia, OpenAlex, Crossref, Open Library, GitHub, Stack Overflow,
-              Hacker News, and npm.
+            <span>Always local first</span><h3>Question-shaped consent</h3><p>
+              A bounded on-device routing table chooses relevant rows. It cannot grant permission or
+              fall back to an unrelated specialist.
             </p>
           </article>
           <article>
-            <span>Local companion</span><h3>Broader discovery</h3><p>
-              arXiv, Reddit, general web search, and YouTube metadata through your API key or an
-              optional self-hosted fallback.
+            <span>Works directly</span><h3>Eleven public indexes</h3><p>
+              Broad knowledge, code, books, scholarly work, biomedical literature, and digitized
+              primary-source records—without a provider account or key.
             </p>
           </article>
           <article>
-            <span>Optional</span><h3>AI assistance</h3><p>
-              A running Ollama chat model is self-tested before use, or use your hosted-provider
-              key. Model output is passage-indexed and labeled; deterministic paths remain.
+            <span>Optional expansion</span><h3>Companion and AI</h3><p>
+              Add arXiv, configured web, Reddit, YouTube metadata, or a separately consented local
+              or hosted model. Deterministic research remains useful without them.
             </p>
           </article>
         </div>
+        <div class="specialist-ledger" aria-label="Question-shaped specialist providers">
+          <article>
+            <span>Biomedical question</span>
+            <h3>Europe PMC</h3>
+            <p>
+              Bibliographic metadata and a labeled abstract when the public record supplies one.
+            </p>
+          </article>
+          <article>
+            <span>Archives or primary sources</span>
+            <h3>Library of Congress</h3>
+            <p>Canonical digitized-item catalog references—never an automatic media download.</p>
+          </article>
+        </div>
         <ol class="run-contract" aria-label="One research run contract">
-          <li><span>01</span><strong>Search</strong><small>Only providers allowed here</small></li>
+          <li><span>01</span><strong>Route</strong><small>Local relevance, then consent</small></li>
           <li><span>02</span><strong>Record</strong><small>Found, empty, or failed</small></li>
           <li><span>03</span><strong>Save</strong><small>Each capture commits alone</small></li>
           <li><span>04</span><strong>Read</strong><small>References make no claims</small></li>
@@ -441,7 +458,7 @@ const socialImageHref = `${hostedProjectUrl}og-dusori.png`;
             unsaved work blocks it.
           </p>
           <p>
-            A v0.12.0 or v0.12.1 desktop build needs one manual v0.12.4 install. Both affected
+            A v0.12.0 or v0.12.1 desktop build needs one manual v0.13.0 install. Both affected
             versions open to a launch-time 404, so Settings is inaccessible. Normal in-app updates
             work from v0.12.2 onward.
           </p>

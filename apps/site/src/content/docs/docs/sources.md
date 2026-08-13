@@ -3,13 +3,13 @@ title: Sources and research
 description: Ask one question, keep an honest research trail, and read or remove the sources Dusori finds.
 ---
 
-Dusori’s main job is research. Open **Research**, ask a question in ordinary language, and choose which providers may receive it. Dusori then searches, removes duplicate URLs, ranks, saves a varied shortlist of up to eight sources, reads the text it can obtain legitimately, and builds a source-backed brief. There is no roadmap or quiz prerequisite.
+Dusori’s main job is research. Open **Research** and ask a question in ordinary language. Dusori routes that question locally, asks which relevant providers may receive it, searches only the allowed intersection, removes duplicate URLs, DOIs, and conservative scholarly-title matches, ranks and saves a varied shortlist of up to eight sources, reads the text it can obtain legitimately, and builds a source-backed brief. There is no roadmap or quiz prerequisite.
 
 ## One question, one research run
 
 1. Create or open a topic.
 2. Open **Research** and enter the question you actually want answered.
-3. On the first run, select the providers you permit. Every decision is stored separately on this device and can be reset in Settings.
+3. On the first run, review the focused list routed for this question and select the providers you permit. The full catalog and every decision remain visible; decisions are stored separately on this device and can be reset in Settings.
 4. Choose **Research topic**.
 5. Watch the source list move through Saved, Read, Reference, or Needs browser. When quotable text is available, Dusori opens `Synthesis.md` as the brief.
 
@@ -48,7 +48,7 @@ Saved source text is bounded to 2 MiB. URLs with embedded usernames or passwords
 
 ## Research providers
 
-Nine keyless public providers work without the companion: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, and npm. Broad questions avoid specialist developer catalogs unless their terms are relevant. Allowed providers run together, and one timeout does not discard another provider’s useful results.
+Eleven keyless public providers work without the companion: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, Europe PMC, OpenAlex, Library of Congress, Crossref, Open Library, and npm. Europe PMC is routed only for biomedical terms and can save a returned abstract as readable evidence. Library of Congress is routed only for narrow cultural-heritage terms and saves digitized-item catalog records as browser references. Broad questions avoid specialist catalogs unless their terms are relevant. Allowed providers run together, and one timeout does not discard another provider’s useful results.
 
 The companion can add arXiv, configured general web search, Reddit, and YouTube metadata. See the [provider and legal matrix](../research-providers/) for credentials, egress, and limits.
 

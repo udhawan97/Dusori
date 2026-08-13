@@ -1,6 +1,7 @@
 export type Appearance = 'system' | 'paper' | 'ink' | 'night';
 
 export const appearanceKey = 'dusori-appearance';
+export const appearanceChangeEvent = 'dusori-appearance-change';
 const legacyThemeKey = 'dusori-theme';
 
 export function readAppearance(): Appearance {
@@ -30,6 +31,11 @@ export function applyAppearance(appearance: Appearance): void {
           ? 'dark'
           : 'light'
         : 'dark';
+  window.dispatchEvent(
+    new CustomEvent(appearanceChangeEvent, {
+      detail: { appearance, theme: root.dataset.theme },
+    }),
+  );
 }
 
 export function setAppearance(appearance: Appearance): boolean {
@@ -41,4 +47,15 @@ export function setAppearance(appearance: Appearance): boolean {
   } catch {
     return false;
   }
+}
+
+/** Keep the System choice live for the lifetime of the application shell. */
+export function startSystemAppearanceSync(): () => void {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const sync = (): void => {
+    if (readAppearance() === 'system') applyAppearance('system');
+  };
+  media.addEventListener('change', sync);
+  sync();
+  return () => media.removeEventListener('change', sync);
 }

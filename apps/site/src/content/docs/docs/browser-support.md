@@ -22,7 +22,7 @@ The app needs JavaScript, IndexedDB, Web Crypto, and service workers for the hos
 
 ## Desktop targets
 
-v0.12.4 produces separate artifacts for:
+v0.13.0 produces separate artifacts for:
 
 - macOS 12 or newer on Apple silicon (`aarch64`);
 - 64-bit Windows (`x86_64`, current-user NSIS installer).
@@ -31,8 +31,10 @@ The installers are not Apple-notarized or Microsoft code-signed, so the operatin
 
 ## Network capabilities
 
-All builds can use nine consent-gated browser providers: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, OpenAlex, Crossref, Open Library, and npm. The provider catalog declares their browser origins, and tests require both hosted and desktop content-security policies to permit every declared origin.
+All builds can use eleven consent-gated browser providers: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, Europe PMC, OpenAlex, Library of Congress, Crossref, Open Library, and npm. Routing happens locally before consent, so a biomedical or cultural-heritage specialist receives a query only when its narrow topic rules match and the learner has allowed it. The provider catalog declares browser origins, and tests require both hosted and desktop content-security policies to permit every declared origin.
 
 The companion or desktop sidecar can add arXiv, configured Reddit, YouTube metadata search through a user-supplied `YOUTUBE_API_KEY` with an optional self-hosted `INVIDIOUS_URL` fallback, configured Brave/Tavily/SearXNG web search, and optional Ollama/Anthropic/OpenAI assistance. Provider setup and legal boundaries are in the [provider matrix](../research-providers/).
 
 There is no closed-app research, review scheduler, notification service, or unattended installer.
+
+The **System** appearance follows operating-system light/dark changes while Dusori is open. Explicit Paper, Ink, and Night choices remain fixed until changed.

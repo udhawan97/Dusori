@@ -1,0 +1,30 @@
+{
+  "results": [
+    {
+      "contributor": ["Johnson, David S."],
+      "date": "1962-01-01",
+      "description": ["1 photographic print showing a civil rights march."],
+      "id": "http://www.loc.gov/item/2012649148/",
+      "original_format": ["photo, print, drawing"],
+      "title": "Civil rights demo.",
+      "url": "https://www.loc.gov/item/2012649148/"
+    },
+    {
+      "date": "1930",
+      "description": "Photographs from the papers of civil rights activist Bayard Rustin.",
+      "id": "http://www.loc.gov/item/2019636974/",
+      "original_format": ["photo, print, drawing"],
+      "title": "Bayard Rustin photographs"
+    },
+    {
+      "description": ["A Library blog post, not a collection item."],
+      "id": "https://blogs.loc.gov/picturethis/example/",
+      "title": "Visible resistance",
+      "url": "https://blogs.loc.gov/picturethis/example/"
+    },
+    {
+      "id": "https://example.com/item/not-loc/",
+      "title": "Untrusted item URL"
+    }
+  ]
+}

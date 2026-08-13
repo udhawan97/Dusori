@@ -2,7 +2,12 @@
   import { Moon, Sun } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
-  import { readAppearance, setAppearance, type Appearance } from '$lib/appearance';
+  import {
+    appearanceChangeEvent,
+    readAppearance,
+    setAppearance,
+    type Appearance,
+  } from '$lib/appearance';
 
   type State = 'idle' | 'loading' | 'error' | 'success';
 
@@ -13,14 +18,18 @@
   let isLight = false;
 
   onMount(() => {
-    appearance = readAppearance();
-    isLight = document.documentElement.dataset.theme === 'light';
+    const sync = () => {
+      appearance = readAppearance();
+      isLight = document.documentElement.dataset.theme === 'light';
+    };
+    sync();
+    window.addEventListener(appearanceChangeEvent, sync);
+    return () => window.removeEventListener(appearanceChangeEvent, sync);
   });
 
   function switchTheme(): void {
     appearance = document.documentElement.dataset.theme === 'light' ? 'night' : 'paper';
     setAppearance(appearance);
-    isLight = appearance === 'paper';
   }
 </script>
 

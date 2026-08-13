@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../adapters.js';
+import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import { rankCandidates, selectDiverse, type RankedCandidate } from './rank.js';
 import {
   canonicalUrl,
@@ -38,32 +39,85 @@ export interface RunResearchAgentInput {
 
 const defaultTimeoutMs = 12_000;
 
-function dedupeRankedCandidates(candidates: RankedCandidate[]): RankedCandidate[] {
-  const seen = new Set<string>();
-  return candidates.filter((candidate) => {
-    const key = canonicalUrl(candidate.url);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function doiKey(candidate: RankedCandidate): string | null {
+  const fromMeta = candidate.meta.doi;
+  if (fromMeta && /^10\.\d{4,9}\/\S+$/iu.test(fromMeta)) return fromMeta.toLowerCase();
+  try {
+    const url = new URL(candidate.url);
+    if (url.hostname.toLowerCase() !== 'doi.org') return null;
+    const doi = decodeURIComponent(url.pathname.replace(/^\//u, ''));
+    return /^10\.\d{4,9}\/\S+$/iu.test(doi) ? doi.toLowerCase() : null;
+  } catch {
+    return null;
+  }
 }
 
-async function withTimeout<T>(work: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      work,
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(new Error(`${label} took too long to answer and was skipped.`));
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    // A slow provider's promise keeps running; only the timer has to be released so a run
-    // never holds the process open past its own result.
-    if (timer) clearTimeout(timer);
+function scholarlyTitleKey(candidate: RankedCandidate): string | null {
+  if (candidate.kind !== 'paper') return null;
+  const normalized = candidate.title
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .trim();
+  return normalized.length >= 24 && normalized.split(/\s+/u).length >= 4 ? normalized : null;
+}
+
+interface CandidateGroup {
+  candidate: RankedCandidate;
+  dois: Set<string>;
+  titles: Set<string>;
+  urls: Set<string>;
+}
+
+function returnedEvidenceQuality(candidate: RankedCandidate): number {
+  // An abstract already returned by the search is safer and more useful than a reference whose
+  // later capture may fail or discover that no abstract exists. A snippet is still preferable to
+  // an empty citation; rank remains the tie-breaker because candidates arrive strongest-first.
+  if (candidate.meta._abstract?.trim()) return 2;
+  return candidate.snippet.trim() ? 1 : 0;
+}
+
+function overlaps(left: Set<string>, right: Set<string>): boolean {
+  return [...left].some((value) => right.has(value));
+}
+
+function dedupeRankedCandidates(candidates: RankedCandidate[]): RankedCandidate[] {
+  let groups: CandidateGroup[] = [];
+  for (const candidate of candidates) {
+    const doi = doiKey(candidate);
+    const title = scholarlyTitleKey(candidate);
+    const candidateGroup: CandidateGroup = {
+      candidate,
+      dois: new Set(doi ? [doi] : []),
+      titles: new Set(title ? [title] : []),
+      urls: new Set([canonicalUrl(candidate.url)]),
+    };
+    const matches = groups.filter(
+      (group) =>
+        overlaps(group.urls, candidateGroup.urls) ||
+        overlaps(group.dois, candidateGroup.dois) ||
+        overlaps(group.titles, candidateGroup.titles),
+    );
+    if (matches.length === 0) {
+      groups.push(candidateGroup);
+      continue;
+    }
+
+    const primary = matches[0]!;
+    for (const group of [candidateGroup, ...matches.slice(1)]) {
+      for (const value of group.urls) primary.urls.add(value);
+      for (const value of group.dois) primary.dois.add(value);
+      for (const value of group.titles) primary.titles.add(value);
+      if (returnedEvidenceQuality(group.candidate) > returnedEvidenceQuality(primary.candidate)) {
+        primary.candidate = group.candidate;
+      }
+    }
+    if (matches.length > 1) {
+      groups = groups.filter((group) => group === primary || !matches.includes(group));
+    }
   }
+  return groups.map((group) => group.candidate);
 }
 
 function skipMessage(error: unknown, label: string): string {
@@ -90,7 +144,12 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
 
   const settled = await Promise.allSettled(
     input.providers.map(async (provider) =>
-      withTimeout(provider.search(input.query, fetchImpl), timeoutMs, provider.label),
+      withAbortingFetchTimeout(
+        fetchImpl,
+        timeoutMs,
+        `${provider.label} took too long to answer and was skipped.`,
+        (scopedFetch) => provider.search(input.query, scopedFetch),
+      ),
     ),
   );
 

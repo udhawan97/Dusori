@@ -1,11 +1,11 @@
 ---
 title: Product roadmap
-description: What v0.12.4 ships and what remains explicitly unbuilt.
+description: What v0.13.0 ships and what remains explicitly unbuilt.
 ---
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
-## Shipped in v0.12.4
+## Shipped through v0.13.0
 
 - Research, Sources, Map, and Settings as four predictable destinations
 - One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
@@ -24,6 +24,10 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - One search-to-brief transaction with partial-failure and deterministic-fallback interface tests
 - One capability-aware provider catalog shared by consent, routing, evidence lenses, and CSP parity tests
 - One read-only Today projection and one pure workspace navigation decision module
+- Local, fail-closed question routing that never turns an unrelated allowed provider into fallback egress
+- Consent-gated Europe PMC abstracts for biomedical questions and Library of Congress references for cultural-heritage questions
+- A focused mobile consent sheet with fixed actions, full-catalog visibility, and focus restoration on every close path
+- Live operating-system appearance tracking while **System** is selected
 
 ## Intentionally not built
 
@@ -34,7 +38,7 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.12.4 installers
+- Apple notarization or Microsoft Authenticode signing for v0.13.0 installers
 
 ## Candidates for later releases
 
@@ -43,5 +47,6 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Better offline reading ergonomics and annotation anchors that survive source revisions
 - Reproducible OS code-signing/notarization when an open, sustainable release path is available
 - A recovery UI for invalid machine-owned files that never mutates before showing the proposed repair
+- Model- or dataset-catalog providers such as Hugging Face until a concrete, consentable workflow has stable fixtures and honest evidence boundaries
 
 Candidates are not commitments. A feature becomes shipped only after its behavior, privacy boundary, documentation, tests, and release artifact are verified together.

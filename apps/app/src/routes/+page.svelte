@@ -60,6 +60,7 @@
   import { containTab, modal } from '$lib/actions/modal';
   import { resolveDesktopStorage, startBundledDesktopSession } from '$lib/desktop-platform';
   import { runAutomaticUpdateCheck } from '$lib/app-updates';
+  import { startSystemAppearanceSync } from '$lib/appearance';
   import { wikilinkTarget } from '$lib/markdown';
   import { handleExternalLink, isExternalHttpUrl } from '$lib/open-external';
   import {
@@ -152,6 +153,7 @@
   $: void refreshSavedSourceCount(storage, selectedSlug, artifactRevision);
 
   onMount(() => {
+    const stopAppearanceSync = startSystemAppearanceSync();
     desktopRuntime = '__TAURI_INTERNALS__' in window;
     const desktop = window.matchMedia('(min-width: 60rem)');
     const syncInspector = () => {
@@ -177,6 +179,7 @@
     void registerServiceWorker();
     void connectCompanionFromUrl();
     return () => {
+      stopAppearanceSync();
       desktop.removeEventListener('change', syncInspector);
       window.removeEventListener('popstate', restoreView);
       window.removeEventListener('online', syncOnline);

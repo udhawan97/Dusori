@@ -625,10 +625,23 @@ test('app follows the system and persists an explicit appearance choice', async 
     'dark',
   );
 
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'system');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.getByRole('button', { name: 'Switch to Night appearance' })).toBeVisible();
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('button', { name: 'Switch to Paper appearance' })).toBeVisible();
+
   await page.getByRole('button', { name: 'Switch to Paper appearance' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-appearance', 'paper');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('dusori-appearance'))).toBe('paper');
+
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'paper');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-appearance', 'paper');
@@ -1397,7 +1410,7 @@ test('Research Desk groups provider consent and builds a durable source-backed b
 
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   await expect(disclosure).toBeVisible();
-  await expect(disclosure).toContainText('Each choice is stored separately on this device.');
+  await expect(disclosure).toContainText('Choices stay separately on this device');
   await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
@@ -2452,6 +2465,10 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
     sitePage.getByRole('heading', { name: 'Synthesis — AI Fundamentals' }),
   ).toBeVisible();
   await expect(sitePage.getByRole('article')).toContainText('Assembled on');
+  await studioNavigation.getByRole('button', { name: 'Research', exact: true }).click();
+  await expect(sitePage.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia found.',
+  );
   await sitePage.screenshot({ path: 'test-results/screenshots/app-research.png' });
 
   await studioNavigation.getByRole('button', { name: /^Sources/u }).click();
@@ -2602,7 +2619,7 @@ test.describe('companion flows', () => {
       'Not configured in the local companion',
     );
     await expect(page.locator('.provider-summary')).toContainText(
-      /0 allowed · 0 relevant here · \d+\s+undecided/u,
+      /0 allowed overall · 0 relevant and allowed\s+here · \d+\s+undecided overall/u,
     );
     await expect(page.getByRole('list', { name: 'Provider outcomes' })).toHaveCount(0);
   });
@@ -3094,9 +3111,9 @@ test('a user-requested mobile view change resets scroll and focuses its heading'
     page.getByRole('heading', { name: 'What do you want to understand?' }),
   ).toBeFocused();
   await createTopic(page, { remainInResearch: true });
-  await expect(
-    page.getByRole('heading', { name: 'Ask once. See what the evidence supports.' }),
-  ).toBeFocused();
+  // Topic creation auto-opens the consent sheet. Dismissing it returns focus to the action that
+  // opened it; subsequent primary-navigation changes still orient to their own heading.
+  await expect(page.getByRole('button', { name: 'Research topic' })).toBeFocused();
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
@@ -3173,7 +3190,7 @@ test('postponing the grouped provider disclosure records no decision', async ({ 
 
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   await expect(disclosure).toBeVisible();
-  await expect(disclosure).toContainText('Each choice is stored separately on this device.');
+  await expect(disclosure).toContainText('Choices stay separately on this device');
   expect(await disclosure.getByRole('checkbox').count()).toBeGreaterThan(1);
   await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
   await expect(disclosure.getByRole('checkbox').first()).toBeFocused();
@@ -3182,4 +3199,201 @@ test('postponing the grouped provider disclosure records no decision', async ({ 
   await page.getByRole('button', { name: 'Research topic' }).click();
   await expect(disclosure).toBeVisible();
   await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
+});
+
+test('question-shaped consent keeps actions visible, traps focus, and makes no request before allow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  const providerHosts = new Set([
+    'api.crossref.org',
+    'api.github.com',
+    'api.openalex.org',
+    'api.stackexchange.com',
+    'en.wikipedia.org',
+    'hn.algolia.com',
+    'learn.microsoft.com',
+    'openlibrary.org',
+    'registry.npmjs.org',
+    'www.ebi.ac.uk',
+    'www.loc.gov',
+  ]);
+  const providerRequests: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (providerHosts.has(url.hostname)) providerRequests.push(url.hostname);
+  });
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    await route.fulfill({ contentType: 'application/json', json: { query: { search: [] } } });
+  });
+
+  await createBrowserWorkspace(page);
+  await page
+    .getByLabel('Topic name')
+    .fill('Microsoft TypeScript clinical cultural heritage archives');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+
+  const trigger = page.getByRole('button', { name: 'Research topic' });
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  const actions = disclosure.locator('.dialog-actions');
+  const providerList = disclosure.locator('.consent-scroll');
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure.getByRole('button', { name: 'Decide later' })).toBeVisible();
+  await expect(disclosure.getByRole('button', { name: 'Keep all off' })).toBeVisible();
+  await expect(disclosure.getByRole('button', { name: 'Save choices and research' })).toBeVisible();
+  expect(await disclosure.getByRole('checkbox').count()).toBe(11);
+  const geometry = await disclosure.evaluate((dialog) => {
+    const footer = dialog.querySelector('.dialog-actions')?.getBoundingClientRect();
+    const list = dialog.querySelector('.consent-scroll');
+    return {
+      clientHeight: dialog.clientHeight,
+      footerBottom: footer?.bottom ?? Number.POSITIVE_INFINITY,
+      footerTop: footer?.top ?? Number.NEGATIVE_INFINITY,
+      listClientHeight: list?.clientHeight ?? 0,
+      listScrollHeight: list?.scrollHeight ?? 0,
+      overflowY: getComputedStyle(dialog).overflowY,
+      scrollHeight: dialog.scrollHeight,
+    };
+  });
+  expect(geometry.overflowY).toBe('hidden');
+  expect(geometry.footerTop).toBeGreaterThan(0);
+  expect(geometry.footerBottom).toBeLessThanOrEqual(568);
+  expect(geometry.listScrollHeight).toBeGreaterThan(geometry.listClientHeight);
+  await expect(actions).toBeInViewport();
+  await expect(providerList).toBeInViewport();
+
+  const firstChoice = disclosure.getByRole('checkbox').first();
+  await expect(firstChoice).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(disclosure.getByRole('button', { name: 'Keep all off' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(firstChoice).toBeFocused();
+  expect(providerRequests).toEqual([]);
+
+  await page.mouse.click(2, 2);
+  await expect(disclosure).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(providerRequests).toEqual([]);
+  expect(
+    await page.evaluate(
+      () =>
+        Object.keys(localStorage).filter((key) => key.startsWith('dusori-research-consent:v2:'))
+          .length,
+    ),
+  ).toBe(0);
+
+  await trigger.click();
+  await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
+  await disclosure.getByRole('button', { name: 'Decide later' }).click();
+  await expect(trigger).toBeFocused();
+  expect(providerRequests).toEqual([]);
+
+  await trigger.click();
+  await expect(disclosure).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(disclosure).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(providerRequests).toEqual([]);
+
+  await trigger.click();
+  await disclosure.getByRole('button', { name: 'Keep all off' }).click();
+  await expect(disclosure).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(providerRequests).toEqual([]);
+
+  await page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('dusori-research-consent:v2:')) localStorage.removeItem(key);
+    }
+  });
+  await trigger.click();
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  expect(providerRequests).toEqual([]);
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(disclosure).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(page.getByText(/No relevant sources/u)).toBeVisible();
+  expect(providerRequests).toEqual(['en.wikipedia.org']);
+
+  await page.getByText('Research providers and setup').click();
+  await expect(page.getByRole('list', { name: 'Research provider availability' })).toContainText(
+    'Europe PMC',
+  );
+  await expect(page.getByRole('list', { name: 'Research provider availability' })).toContainText(
+    'Library of Congress',
+  );
+});
+
+test('provider consent reflows for 200% zoom, provider growth, and a shorter dynamic viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await createBrowserWorkspace(page);
+  await page
+    .getByLabel('Topic name')
+    .fill('Microsoft TypeScript clinical cultural heritage archives');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await expect(disclosure).toBeVisible();
+  expect(await disclosure.getByRole('checkbox').count()).toBe(11);
+
+  await disclosure.evaluate((dialog) => {
+    const list = dialog.querySelector('.consent-scroll ul');
+    const template = list?.querySelector('li');
+    if (!list || !template) throw new Error('Consent provider list is unavailable.');
+    for (let index = 0; index < 16; index += 1) {
+      const clone = template.cloneNode(true) as HTMLElement;
+      const label = clone.querySelector('strong');
+      if (label) label.textContent = `Future provider ${index + 1}`;
+      list.append(clone);
+    }
+  });
+
+  // Chromium browser zoom reduces the layout viewport in CSS pixels. 160x284 is the 200%
+  // zoom-equivalent of the audited 320x568 surface, without relying on OS-specific shortcuts.
+  await page.setViewportSize({ width: 160, height: 284 });
+
+  const readGeometry = () =>
+    disclosure.evaluate((dialog) => {
+      const rect = dialog.getBoundingClientRect();
+      const footer = dialog.querySelector('.dialog-actions')?.getBoundingClientRect();
+      const list = dialog.querySelector('.consent-scroll');
+      return {
+        clientHeight: dialog.clientHeight,
+        clientWidth: dialog.clientWidth,
+        dialogBottom: rect.bottom,
+        dialogLeft: rect.left,
+        dialogRight: rect.right,
+        dialogTop: rect.top,
+        footerBottom: footer?.bottom ?? Number.POSITIVE_INFINITY,
+        footerTop: footer?.top ?? Number.NEGATIVE_INFINITY,
+        innerHeight: window.innerHeight,
+        innerWidth: window.innerWidth,
+        listClientHeight: list?.clientHeight ?? 0,
+        listOverflowY: list ? getComputedStyle(list).overflowY : '',
+        listScrollHeight: list?.scrollHeight ?? 0,
+        overflowY: getComputedStyle(dialog).overflowY,
+        scrollHeight: dialog.scrollHeight,
+        scrollWidth: dialog.scrollWidth,
+      };
+    });
+
+  for (const height of [284, 240]) {
+    if (height !== 284) await page.setViewportSize({ width: 160, height });
+    const geometry = await readGeometry();
+    expect(geometry.dialogLeft).toBeGreaterThanOrEqual(0);
+    expect(geometry.dialogRight).toBeLessThanOrEqual(geometry.innerWidth);
+    expect(geometry.dialogTop).toBeGreaterThanOrEqual(0);
+    expect(geometry.dialogBottom).toBeLessThanOrEqual(geometry.innerHeight);
+    expect(geometry.overflowY).toBe('hidden');
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth);
+    expect(geometry.scrollHeight).toBeLessThanOrEqual(geometry.clientHeight);
+    expect(geometry.footerTop).toBeGreaterThan(geometry.dialogTop);
+    expect(geometry.footerBottom).toBeLessThanOrEqual(geometry.dialogBottom);
+    expect(geometry.listOverflowY).toBe('auto');
+    expect(geometry.listClientHeight).toBeGreaterThan(0);
+    expect(geometry.listScrollHeight).toBeGreaterThan(geometry.listClientHeight);
+    await expect(disclosure.locator('.dialog-actions')).toBeInViewport();
+  }
 });

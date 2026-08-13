@@ -113,6 +113,36 @@ describe('runResearchAgent', () => {
     expect(result.skipped[0]?.message).toMatch(/too long/u);
   });
 
+  it('aborts a provider fetch when the search timeout expires', async () => {
+    const { storage, topicSlug } = await workspace();
+    let aborted = false;
+    const provider = stubProvider('slow-fetch', []);
+    provider.search = async (_query, fetchImpl) => {
+      await fetchImpl('https://example.com/slow');
+      return [];
+    };
+    const fetchImpl = ((_input: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          aborted = true;
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      })) as typeof fetch;
+
+    const result = await runResearchAgent({
+      fetchImpl,
+      now,
+      providers: [provider],
+      query,
+      storage,
+      timeoutMs: 10,
+      topicSlug,
+    });
+
+    expect(aborted).toBe(true);
+    expect(result.skipped[0]?.message).toMatch(/too long/iu);
+  });
+
   it('records the run so the next one can tell what is new', async () => {
     const { storage, topicSlug } = await workspace();
     const providers = [
@@ -196,6 +226,80 @@ describe('runResearchAgent', () => {
 
     expect(result.shortlist.map((item) => item.key)).toEqual(['beta:strong']);
     expect((await readResearchFile(storage, topicSlug, now))?.seen).toHaveLength(1);
+    expect(result.run?.providers).toEqual([
+      { count: 1, id: 'alpha', label: 'alpha', outcome: 'found' },
+      { count: 1, id: 'beta', label: 'beta', outcome: 'found' },
+    ]);
+  });
+
+  it('deduplicates scholarly title matches while retaining each provider outcome', async () => {
+    const { storage, topicSlug } = await workspace();
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('alpha', [
+          candidate({
+            key: 'alpha:paper',
+            kind: 'paper',
+            title: 'Retrieval Practice and Durable Clinical Learning',
+            url: 'https://example.com/alpha-paper',
+          }),
+        ]),
+        stubProvider('beta', [
+          candidate({
+            key: 'beta:paper',
+            kind: 'paper',
+            score: 2,
+            title: 'Retrieval practice and durable clinical learning',
+            url: 'https://example.org/beta-paper',
+          }),
+        ]),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.shortlist).toHaveLength(1);
+    expect(result.run?.providers.map((provider) => provider.id)).toEqual(['alpha', 'beta']);
+    expect(result.run?.providers.every((provider) => provider.outcome === 'found')).toBe(true);
+  });
+
+  it('keeps an already-returned abstract over a higher-ranked duplicate reference', async () => {
+    const { storage, topicSlug } = await workspace();
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('reference', [
+          candidate({
+            communityScore: 1_000,
+            key: 'reference:paper',
+            kind: 'paper',
+            meta: { doi: '10.1000/typescript.1' },
+            title: 'TypeScript Generics in Large Software Systems',
+            url: 'https://publisher.example/typescript-generics',
+          }),
+        ]),
+        stubProvider('abstract', [
+          candidate({
+            key: 'abstract:paper',
+            kind: 'paper',
+            meta: {
+              _abstract: 'A complete abstract returned with the search result.',
+              doi: '10.1000/typescript.1',
+            },
+            title: 'TypeScript Generics in Large Software Systems',
+            url: 'https://doi.org/10.1000/typescript.1',
+          }),
+        ]),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.shortlist.map((item) => item.key)).toEqual(['abstract:paper']);
+    expect(result.run?.providers.map((provider) => provider.id)).toEqual(['reference', 'abstract']);
   });
 
   // A failed run is evidence too. Writing nothing used to make "the providers broke" and

@@ -570,6 +570,32 @@ main > section,
 .research-ledger p {
   color: var(--color-muted);
 }
+.specialist-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-block-start: var(--space-lg);
+  border: 1px solid var(--color-marigold);
+}
+.specialist-ledger article {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+}
+.specialist-ledger article + article {
+  border-inline-start: 1px solid var(--color-marigold);
+}
+.specialist-ledger span {
+  color: var(--color-accent-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.specialist-ledger p {
+  max-width: 52ch;
+  color: var(--color-muted);
+}
 .run-contract {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -922,6 +948,13 @@ main > section,
   }
   .run-contract {
     grid-template-columns: 1fr;
+  }
+  .specialist-ledger {
+    grid-template-columns: 1fr;
+  }
+  .specialist-ledger article + article {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-marigold);
   }
   .run-contract li,
   .run-contract li:nth-child(4) {

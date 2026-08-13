@@ -6,6 +6,11 @@
 
 **Decision posture:** borrow proven patterns first; add a dependency only when it closes a measured gap
 
+**Implementation follow-up (2026-08-13):** v0.13.0 implements local question routing, a keyless
+browser Europe PMC adapter, a keyless browser Library of Congress adapter, DOI and conservative
+scholarly-title deduplication, and aborting provider timeouts. The original 2026-08-05 evaluation is
+retained below, with delivery statuses updated where those decisions have now shipped.
+
 ## Executive decision
 
 Dusori does not need a second research application inside it. It already has the right trust
@@ -21,8 +26,12 @@ Delivery status in the checkout reviewed here:
   deduplication, stronger subject relevance, a larger diverse shortlist, truthful evidence/lens
   typing, model discovery plus one structured readiness check, and passage-selected local-AI
   synthesis with verbatim source wording.
-- **Recommended, not implemented by this note:** the deeper SearXNG profile, identifier merging,
-  the full multi-state Ollama model picker, Europe PMC, and any rendered-page fallback.
+- **Implemented in the v0.13.0 follow-up:** Europe PMC behind a narrow biomedical route, Library of
+  Congress behind a narrow cultural-heritage route, fail-closed local provider selection, DOI and
+  conservative scholarly-title deduplication, and real fetch aborts at provider deadlines.
+- **Still recommended, not implemented by this note:** the deeper SearXNG profile, full provenance
+  merging across identifiers, the full multi-state Ollama model picker, and any rendered-page
+  fallback.
 
 The strongest next move is to make these pieces feel like **one research engine**:
 
@@ -46,7 +55,8 @@ appropriate "Google-like" discovery layer; specialized APIs supply higher-qualit
 | SearXNG                     | Keep as optional service; deepen setup | Best fit for one metasearch entry point without scraping Google result pages                      |
 | GPT Researcher, STORM, Vane | Borrow patterns                        | Their planning, progress, and outline ideas fit; their full runtimes duplicate Dusori             |
 | Local Deep Research         | Borrow evaluation/provider patterns    | Strong local-first comparison, but its Python/database application is a second product            |
-| Europe PMC                  | Integrate next, conditionally          | Adds high-quality biomedical reach with identifiers, abstracts, and open-access text              |
+| Europe PMC                  | Integrated in v0.13.0                  | Adds biomedical metadata and abstracts without treating them as full papers                       |
+| Library of Congress         | Integrated in v0.13.0                  | Adds digitized cultural-heritage catalog references without copying item media                    |
 | Citation.js                 | Integrate only for citation export     | Useful format conversion, but no gain to evidence quality                                         |
 | Crawlee                     | Prototype only after measured need     | Best JavaScript rendered-fetch candidate, with substantial browser/security cost                  |
 | Crawl4AI                    | Optional connector/design reference    | Capable, but adds Python/browser operations and a custom attribution-bearing license              |
@@ -85,22 +95,23 @@ before adding a browser crawler.
 "Readable" below means text that may be inspected for claims after capture. It never means the
 whole underlying work unless the row says so.
 
-| Status   | Provider / target lens       | Runs through / configuration                                           | Discovery and readable evidence                                                                      | Canonical identity and limits                                                                       |
-| -------- | ---------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Current  | Microsoft Learn / Docs       | Browser catalog; companion ranked search; no key                       | Catalog or search reference only; an approved page may later use guarded page fetch                  | Module UID when catalog-backed, otherwise final URL; never imply a module page was read             |
-| Current  | Wikipedia / Docs             | Browser; no key                                                        | Search plus MediaWiki plain-text page extract                                                        | Page ID; encyclopedia text is readable but remains one source                                       |
-| Current  | Hacker News / Community      | Browser through the Algolia HN API; no key                             | Search reference only                                                                                | HN object ID; story title/snippet and votes are not article evidence                                |
-| Current  | GitHub / Docs                | Browser GitHub API; no key in the current provider                     | Repository discovery and README extract when available                                               | `owner/repository`; README is project documentation, not proof that code behavior is correct        |
-| Current  | Stack Overflow / Community   | Browser Stack Exchange API; no key, IP quota                           | Question-body extract; answers and the live thread are not captured                                  | Question ID; votes/accepted-answer presence are ranking signals, not evidence from the answer       |
-| Current  | OpenAlex / Academic          | Browser; no key                                                        | Work metadata and reconstructed abstract when available                                              | OpenAlex work ID plus DOI when present; abstract is not the paper                                   |
-| Current  | Crossref / Academic          | Browser public API; no signup; honor returned rate/concurrency headers | Bibliographic metadata and publisher-supplied abstract when present                                  | DOI; label captured text **Abstract**, never full paper                                             |
-| Current  | Open Library / Books         | Browser public Search and Works APIs                                   | Work/edition metadata and catalog/community description; not book text                               | OL work/edition ID plus ISBN when present; description must remain metadata, not synthesis evidence |
-| Current  | npm / Docs                   | Browser registry API; no key                                           | Package metadata and registry README when present                                                    | Package name; README is package documentation, not source-code inspection                           |
-| Current  | arXiv / Academic             | Companion proxy; keyless                                               | Paper metadata and author abstract                                                                   | arXiv ID; abstract is not the paper                                                                 |
-| Current  | Reddit / Community           | Companion; user-created Reddit app credentials                         | Self-post text when present, otherwise reference; replies are excluded                               | Reddit post ID/URL; link posts and discussion-only items are not readable evidence                  |
-| Current  | Web search / Web             | Companion; SearXNG URL or Brave/Tavily key                             | Discovery references only; an individually approved result may later use guarded fetch               | Canonical final URL; snippets are never evidence                                                    |
-| Current  | YouTube / Video              | Companion; YouTube API key or configured self-hosted Invidious         | Metadata/reference only; no media or caption harvesting                                              | YouTube video ID; descriptions, views, and channel metadata are not a transcript                    |
-| Proposed | Europe PMC / Academic-biomed | Companion-first REST adapter; no credential proposed                   | Metadata and abstract; full-text XML only for records explicitly available in the open-access subset | PMID, PMCID, DOI; preserve access-rights and distinguish abstract from open-access full text        |
+| Status  | Provider / target lens       | Runs through / configuration                                           | Discovery and readable evidence                                                        | Canonical identity and limits                                                                       |
+| ------- | ---------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Current | Microsoft Learn / Docs       | Browser catalog; companion ranked search; no key                       | Catalog or search reference only; an approved page may later use guarded page fetch    | Module UID when catalog-backed, otherwise final URL; never imply a module page was read             |
+| Current | Wikipedia / Docs             | Browser; no key                                                        | Search plus MediaWiki plain-text page extract                                          | Page ID; encyclopedia text is readable but remains one source                                       |
+| Current | Hacker News / Community      | Browser through the Algolia HN API; no key                             | Search reference only                                                                  | HN object ID; story title/snippet and votes are not article evidence                                |
+| Current | GitHub / Docs                | Browser GitHub API; no key in the current provider                     | Repository discovery and README extract when available                                 | `owner/repository`; README is project documentation, not proof that code behavior is correct        |
+| Current | Stack Overflow / Community   | Browser Stack Exchange API; no key, IP quota                           | Question-body extract; answers and the live thread are not captured                    | Question ID; votes/accepted-answer presence are ranking signals, not evidence from the answer       |
+| Current | OpenAlex / Academic          | Browser; no key                                                        | Work metadata and reconstructed abstract when available                                | OpenAlex work ID plus DOI when present; abstract is not the paper                                   |
+| Current | Crossref / Academic          | Browser public API; no signup; honor returned rate/concurrency headers | Bibliographic metadata and publisher-supplied abstract when present                    | DOI; label captured text **Abstract**, never full paper                                             |
+| Current | Open Library / Books         | Browser public Search and Works APIs                                   | Work/edition metadata and catalog/community description; not book text                 | OL work/edition ID plus ISBN when present; description must remain metadata, not synthesis evidence |
+| Current | npm / Docs                   | Browser registry API; no key                                           | Package metadata and registry README when present                                      | Package name; README is package documentation, not source-code inspection                           |
+| Current | arXiv / Academic             | Companion proxy; keyless                                               | Paper metadata and author abstract                                                     | arXiv ID; abstract is not the paper                                                                 |
+| Current | Reddit / Community           | Companion; user-created Reddit app credentials                         | Self-post text when present, otherwise reference; replies are excluded                 | Reddit post ID/URL; link posts and discussion-only items are not readable evidence                  |
+| Current | Web search / Web             | Companion; SearXNG URL or Brave/Tavily key                             | Discovery references only; an individually approved result may later use guarded fetch | Canonical final URL; snippets are never evidence                                                    |
+| Current | YouTube / Video              | Companion; YouTube API key or configured self-hosted Invidious         | Metadata/reference only; no media or caption harvesting                                | YouTube video ID; descriptions, views, and channel metadata are not a transcript                    |
+| Current | Europe PMC / Academic-biomed | Browser REST adapter; no credential                                    | Metadata and returned abstract; no full-text follow-up                                 | PMID, PMCID, DOI; preserve identifiers and label captured text as an abstract                       |
+| Current | Library of Congress / Web    | Browser JSON API; no credential                                        | Digitized-item catalog metadata and canonical reference only                           | Canonical `/item/` URL; 20 request starts/minute; rights vary; no media or page-text capture        |
 
 Crossref's public REST pool currently allows access without signup and reports rate/concurrency
 limits in response headers; its documentation asks clients to cache, identify themselves, and back
@@ -381,19 +392,19 @@ update; the app must test live instead of relying on a manifest or model name.
 
 ### P1 — add narrowly scoped source reach
 
-#### 7. Add Europe PMC for biomedical and life-science questions
+#### 7. Europe PMC for biomedical and life-science questions — delivered in v0.13.0
 
 This is the strongest next specialist provider, not a provider to run for every topic. Europe PMC's
 official REST service returns JSON/XML metadata, abstracts, citation links, and open-access full
 text where available. It covers PubMed and additional life-science sources
 ([REST service](https://europepmc.org/RestfulWebService)).
 
-Implementation boundary:
+Implemented boundary:
 
 - route only when biomedical/life-science terms are detected or the user selects that lens;
-- capture abstracts directly and full-text XML only for records marked open access;
-- retain PMID, PMCID, DOI, publication type, and access-rights provenance;
-- apply provider-specific rate limiting and cache responses;
+- capture abstracts directly but do not follow full-text links;
+- retain PMID, PMCID, DOI, author, and publication-date provenance where returned;
+- use one bounded search request and the shared aborting provider deadline;
 - never treat an abstract as the full paper.
 
 For journal-quality context, DOAJ makes its journal and article metadata available under CC0 via
@@ -559,7 +570,8 @@ Build that only after the app behavior is stable; otherwise the skill will encod
    fixed topic corpus.
 5. Add the PDF.js content route and five-state Ollama readiness/model picker; keep the working
    Llama 3.2 path available while Gemma 4 fails its live compatibility probe.
-6. Add Europe PMC behind a biomedical lens.
+6. Keep the delivered Europe PMC and Library of Congress lenses covered by stable fixtures,
+   fail-closed routing tests, CSP parity, and provider-specific request limits.
 7. Prototype one isolated rendered-fetch adapter against a fixture set. Ship it only if it recovers
    enough approved pages to justify browser/runtime and security cost.
 8. Add Citation.js export or MarkItDown import only in response to demonstrated user demand.

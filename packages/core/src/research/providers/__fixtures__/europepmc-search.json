@@ -1,0 +1,28 @@
+{
+  "resultList": {
+    "result": [
+      {
+        "abstractText": "<h4>Background</h4> Retrieval practice improves durable recall in clinical education.",
+        "authorString": "Ada Researcher, Lin Scientist",
+        "citedByCount": 42,
+        "doi": "10.1000/clinical.1",
+        "firstPublicationDate": "2024-03-02",
+        "id": "12345678",
+        "isOpenAccess": "Y",
+        "journalInfo": { "journal": { "title": "Journal of Learning Medicine" } },
+        "pmcid": "PMC123456",
+        "pmid": "12345678",
+        "source": "MED",
+        "title": "Retrieval practice in clinical education"
+      },
+      {
+        "abstractText": null,
+        "authorString": "No Abstract Author",
+        "id": "AGR-2",
+        "isOpenAccess": "N",
+        "source": "AGR",
+        "title": "A metadata-only biomedical record"
+      }
+    ]
+  }
+}

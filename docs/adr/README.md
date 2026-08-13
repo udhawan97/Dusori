@@ -13,3 +13,4 @@
 - [ADR-011: Consent-gated providers and lawful capture limits](011-provider-access-and-lawful-capture.md)
 - [ADR-012: Separated evidence atlas](012-separated-evidence-atlas.md)
 - [ADR-013: Deep workflow boundaries](013-deep-workflow-boundaries.md)
+- [ADR-014: Question-shaped provider routing and consent](014-question-shaped-provider-routing.md)

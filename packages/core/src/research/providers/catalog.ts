@@ -2,8 +2,10 @@ import type { CompanionResearchClient, ResearchCapability } from '../companion.j
 import type { ResearchProvider, ResearchQuery } from '../types.js';
 import { createArxivProvider } from './arxiv.js';
 import { crossrefProvider } from './crossref.js';
+import { europePmcProvider } from './europepmc.js';
 import { githubProvider } from './github.js';
 import { hackerNewsProvider } from './hackernews.js';
+import { libraryOfCongressProvider } from './library-of-congress.js';
 import { createMsLearnProvider, msLearnProvider } from './mslearn.js';
 import { npmProvider } from './npm.js';
 import { openAlexProvider } from './openalex.js';
@@ -17,7 +19,8 @@ import { createYouTubeProvider } from './youtube.js';
 export type ResearchProviderMode = 'browser' | 'companion';
 export type ResearchProviderLens = 'academic' | 'books' | 'community' | 'docs' | 'video' | 'web';
 export type ResearchCapturePolicy = NonNullable<ResearchProvider['capturePolicy']>;
-type ResearchAudience = 'developer' | 'general' | 'microsoft';
+export type ResearchAudience =
+  'biomedical' | 'cultural-heritage' | 'developer' | 'general' | 'microsoft';
 
 interface ProviderRegistration {
   id: string;
@@ -67,48 +70,100 @@ export interface LoadResearchProviderCatalogOptions {
 
 const developerTerms = new Set([
   'api',
-  'app',
-  'azure',
-  'code',
   'coding',
-  'container',
   'css',
-  'database',
   'developer',
   'docker',
-  'framework',
   'git',
   'github',
   'html',
   'javascript',
   'kubernetes',
-  'library',
   'linux',
-  'node',
   'npm',
-  'package',
   'programming',
-  'python',
   'react',
-  'repository',
-  'rust',
   'software',
   'svelte',
   'typescript',
-  'web',
 ]);
 
-const microsoftTerms = new Set([
-  'azure',
-  'entra',
-  'excel',
-  'microsoft',
-  'office',
-  'powerbi',
-  'sharepoint',
-  'teams',
-  'windows',
+const developerPhrases = [
+  /\b(?:build|debug|develop|deploy|program|test)\b.{0,32}\b(?:app|application|code|software|website)\b/iu,
+  /\b(?:app|application|code|software|website)\b.{0,32}\b(?:bug|development|framework|package|repository|runtime)\b/iu,
+  /\bcontainer images?\b/iu,
+  /\bnode(?:\.js|js)\b/iu,
+  /\bpackage managers?\b/iu,
+  /\bpython (?:code|libraries|library|packages?|program(?:ming)?|scripts?|tutorials?)\b/iu,
+  /\b(?:code|program|script) (?:in|with) python\b/iu,
+  /\brust (?:code|crates?|language|program(?:ming)?|tutorials?)\b/iu,
+  /\b(?:code|program) (?:in|with) rust\b/iu,
+  /\bsource code\b/iu,
+  /\bweb (?:apps?|applications?|development|frameworks?)\b/iu,
+];
+
+const microsoftTerms = new Set(['azure', 'entra', 'microsoft', 'powerbi', 'sharepoint']);
+
+const microsoftPhrases = [
+  /\bexcel (?:formulas?|power query|spreadsheets?|vba|workbooks?)\b/iu,
+  /\bmicrosoft (?:365|excel|office|teams|windows)\b/iu,
+  /\boffice 365\b/iu,
+  /\bpower bi\b/iu,
+  /\bvisual studio(?: code)?\b/iu,
+  /\bwindows (?:10|11|server)\b/iu,
+];
+
+// Specialist routing happens entirely on-device. These are intentionally narrow: an ambiguous
+// phrase should leave a provider off rather than turn an allowed specialist into surprise egress.
+const biomedicalTerms = new Set([
+  'anatomy',
+  'biomedical',
+  'cancer',
+  'clinical',
+  'disease',
+  'diseases',
+  'epidemiology',
+  'genome',
+  'genomic',
+  'influenza',
+  'malaria',
+  'medical',
+  'medicine',
+  'neuroscience',
+  'oncology',
+  'pathology',
+  'pharmacology',
+  'physiology',
+  'vaccine',
+  'vaccines',
+  'virology',
 ]);
+
+const biomedicalPhrases = [
+  /\bhealth care\b/iu,
+  /\bpublic health\b/iu,
+  /\bpatient outcomes?\b/iu,
+  /\bclinical trials?\b/iu,
+  /\binfectious diseases?\b/iu,
+  /\b(?:hiv|influenza|sars(?:-cov-2)?|covid-?19)\b/iu,
+  /\b(?:bacterial|clinical|human|medical|respiratory|viral) infections?\b/iu,
+  /\bhospital-acquired infections?\b/iu,
+  /\binfection (?:control|prevention|transmission|treatment)\b/iu,
+  /\b(?:human|animal|plant|respiratory) (?:virus|viruses)\b/iu,
+  /\b(?:virus|viruses) (?:infection|transmission|vaccines?)\b/iu,
+  /\bviral (?:disease|infection|transmission)\b/iu,
+];
+
+const culturalHeritagePhrases = [
+  /\barchival collections?\b/iu,
+  /\bcultural heritage\b/iu,
+  /\bdigitized (?:archives?|collections?|manuscripts?|maps?|newspapers?|photographs?|posters?)\b/iu,
+  /\bhistorical (?:archives?|manuscripts?|maps?|newspapers?|records?|photographs?|posters?)\b/iu,
+  /\blibrary of congress\b/iu,
+  /\bmuseum collections?\b/iu,
+  /\boral histor(?:y|ies)\b/iu,
+  /\bprimary[- ]sources?\b/iu,
+];
 
 const registrations: readonly ProviderRegistration[] = [
   {
@@ -160,12 +215,30 @@ const registrations: readonly ProviderRegistration[] = [
     mode: 'browser',
   },
   {
+    audience: 'biomedical',
+    capturePolicy: 'readable-or-reference',
+    consentLabel: 'Europe PMC',
+    create: () => europePmcProvider,
+    id: 'europepmc',
+    lens: 'academic',
+    mode: 'browser',
+  },
+  {
     audience: 'general',
     capturePolicy: 'readable-or-reference',
     consentLabel: 'OpenAlex',
     create: () => openAlexProvider,
     id: 'openalex',
     lens: 'academic',
+    mode: 'browser',
+  },
+  {
+    audience: 'cultural-heritage',
+    capturePolicy: 'reference-only',
+    consentLabel: 'Library of Congress',
+    create: () => libraryOfCongressProvider,
+    id: 'loc',
+    lens: 'web',
     mode: 'browser',
   },
   {
@@ -262,9 +335,21 @@ function isRelevantProvider(registration: ProviderRegistration, query: ResearchQ
   const hasMicrosoftCertificationCode = /\b(?:AI|AZ|DP|MB|MD|MS|PL|SC)-\d{3}\b/iu.test(
     query.searchText,
   );
-  const isDeveloperQuestion = [...terms].some((term) => developerTerms.has(term));
+  const isDeveloperQuestion =
+    [...terms].some((term) => developerTerms.has(term)) ||
+    developerPhrases.some((phrase) => phrase.test(query.searchText));
   const isMicrosoftQuestion =
-    hasMicrosoftCertificationCode || [...terms].some((term) => microsoftTerms.has(term));
+    hasMicrosoftCertificationCode ||
+    [...terms].some((term) => microsoftTerms.has(term)) ||
+    microsoftPhrases.some((phrase) => phrase.test(query.searchText));
+  const isBiomedicalQuestion =
+    [...terms].some((term) => biomedicalTerms.has(term)) ||
+    biomedicalPhrases.some((phrase) => phrase.test(query.searchText));
+  const isCulturalHeritageQuestion = culturalHeritagePhrases.some((phrase) =>
+    phrase.test(query.searchText),
+  );
+  if (registration.audience === 'biomedical') return isBiomedicalQuestion;
+  if (registration.audience === 'cultural-heritage') return isCulturalHeritageQuestion;
   if (registration.audience === 'microsoft') return isMicrosoftQuestion;
   if (registration.audience === 'developer') return isDeveloperQuestion;
   return registration.audience === 'general';
@@ -382,7 +467,7 @@ export async function loadResearchProviderCatalog(
         const registration = registrationByProvider.get(provider.id);
         return registration ? isRelevantProvider(registration, query) : true;
       });
-      return selected.length > 0 ? selected : allowed;
+      return selected;
     },
   };
 }

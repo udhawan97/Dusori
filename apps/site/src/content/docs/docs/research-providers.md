@@ -5,33 +5,48 @@ description: Provider access, configuration, data sent, capture limits, and thir
 
 Every provider is off until its disclosure is accepted on the device. The disclosure names the host and query data. Provider credentials stay in the local companion environment and are not stored in the workspace.
 
-v0.12.4 uses one provider catalog for the 13 research adapters. The catalog is not a plugin loader;
-it is the tested source of truth for readiness, the exact consent scope, query routing, evidence
-lens, capture policy, and browser origin. Tests require both hosted and desktop content-security
-policies to permit every browser origin declared there. Optional AI remains outside that catalog
-because it has its own consent and payload contract.
+v0.13.0 uses one provider catalog for 15 research adapters: 11 browser adapters and four companion
+adapters. The catalog is not a plugin loader; it is the tested source of truth for readiness, the
+exact consent scope, local query routing, evidence lens, capture policy, and browser origin. Tests
+require both hosted and desktop content-security policies to permit every browser origin declared
+there. Optional AI remains outside that catalog because it has its own consent and payload contract.
 
-| Provider            | Route                | Configuration                                   | What Dusori saves                                                   | Important boundary                                                    |
-| ------------------- | -------------------- | ----------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Microsoft Learn     | Browser or companion | None                                            | Catalog or ranked-search reference; no module-page snapshot         | Microsoft terms apply                                                 |
-| Wikipedia           | Browser              | None                                            | Bounded extract and reference                                       | Wikimedia terms and source license apply                              |
-| Hacker News         | Browser              | None                                            | Public result/reference metadata                                    | Algolia/HN availability applies                                       |
-| GitHub              | Browser              | None for public search path                     | Public repository metadata and bounded published README where found | GitHub rate limits and terms apply                                    |
-| Stack Overflow      | Browser              | None                                            | Public question body and answer metadata from the API               | Stack Exchange terms and content license apply                        |
-| OpenAlex            | Browser              | None                                            | Public metadata and reconstructed abstract where supplied           | OpenAlex source/license metadata still matters                        |
-| Crossref            | Browser              | None                                            | Public scholarly metadata and abstract where supplied               | Publisher and work licenses still apply                               |
-| Open Library        | Browser              | None                                            | Public book metadata and description where supplied                 | Edition and linked-text rights still vary                             |
-| npm                 | Browser              | None                                            | Package metadata and published README                               | Package and registry licenses vary                                    |
-| arXiv               | Companion            | None                                            | Public paper metadata and abstract                                  | Paper licenses vary                                                   |
-| SearXNG             | Companion            | `SEARXNG_URL`                                   | Search references                                                   | You choose and trust the instance                                     |
-| Brave Search        | Companion            | `BRAVE_API_KEY`                                 | Search references                                                   | Your account, quota, and provider terms                               |
-| Tavily              | Companion            | `TAVILY_API_KEY`                                | Search references                                                   | Your account, quota, and provider terms                               |
-| Reddit              | Companion            | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`      | Self-post text or link reference; over-18 results excluded          | Your registered app and Reddit terms                                  |
-| YouTube Data API v3 | Companion            | `YOUTUBE_API_KEY`                               | Video metadata, thumbnail proxy, and a reference                    | Preferred path; your Google project quota and YouTube API terms apply |
-| Invidious fallback  | Companion            | Optional self-hosted `INVIDIOUS_URL`            | Video metadata, thumbnail proxy, and a reference                    | No default or public instance is selected by Dusori                   |
-| Ollama              | Companion            | Running loopback model; `OLLAMA_MODEL` optional | Passage-indexed, model-labeled output after separate consent        | Local model and license vary                                          |
-| Anthropic           | Companion            | `ANTHROPIC_API_KEY`                             | Model-labeled output only after feature consent                     | Your account, quota, and Anthropic terms                              |
-| OpenAI              | Companion            | `OPENAI_API_KEY`                                | Model-labeled output only after feature consent                     | Your account, quota, and OpenAI terms                                 |
+## Question-shaped routing and consent
+
+Routing happens on the device before the consent sheet opens. General providers remain relevant to
+general questions; developer, Microsoft, biomedical, and cultural-heritage providers require their
+own narrow terms or phrases. The result is then intersected with the providers you explicitly
+allowed. Dusori does not send a question to an unrelated allowed provider as a fallback.
+Polysemous words such as `virus`, `infection`, `archive`, `office`, `windows`, and `library` are not
+enough on their own; Dusori prefers a missed specialist to surprise egress.
+
+The consent sheet focuses on undecided providers relevant to the current question. Its actions stay
+visible while the provider list scrolls, including at 320 × 568, a 200%-zoom-equivalent layout, and
+a shorter dynamic viewport with a growth-sized provider list. The complete catalog and every saved
+decision remain visible outside the focused prompt, and every dismissal path returns keyboard focus
+to **Research topic**.
+
+| Provider                         | Route                | Configuration                              | What Dusori saves                                                   | Important boundary                                                               |
+| -------------------------------- | -------------------- | ------------------------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Microsoft Learn                  | Browser or companion | None                                       | Catalog or ranked-search reference; no module-page snapshot         | Microsoft terms apply                                                            |
+| Wikipedia                        | Browser              | None                                       | Bounded extract and reference                                       | Wikimedia terms and source license apply                                         |
+| Hacker News                      | Browser              | None                                       | Public result/reference metadata                                    | Algolia/HN availability applies                                                  |
+| GitHub                           | Browser              | None for public search path                | Public repository metadata and bounded published README where found | GitHub rate limits and terms apply                                               |
+| Stack Overflow                   | Browser              | None                                       | Public question body and answer metadata from the API               | Stack Exchange terms and content license apply                                   |
+| Europe PMC                       | Browser              | None                                       | Returned abstract as readable evidence, otherwise a citation record | Biomedical routing only; abstract is not the full paper; access rights vary      |
+| OpenAlex                         | Browser              | None                                       | Public metadata and reconstructed abstract where supplied           | OpenAlex source/license metadata still matters                                   |
+| Library of Congress              | Browser              | None                                       | Digitized-item catalog metadata and canonical browser reference     | Cultural-heritage routing only; reference-only; rights and 20/min limit apply    |
+| Crossref                         | Browser              | None                                       | Public scholarly metadata and abstract where supplied               | Publisher and work licenses still apply                                          |
+| Open Library                     | Browser              | None                                       | Public book metadata and description where supplied                 | Edition and linked-text rights still vary                                        |
+| npm                              | Browser              | None                                       | Package metadata and published README                               | Package and registry licenses vary                                               |
+| arXiv                            | Companion            | None                                       | Public paper metadata and abstract                                  | Paper licenses vary                                                              |
+| SearXNG / Brave Search / Tavily  | Companion            | Instance URL or corresponding API key      | Search references                                                   | One configured web-search adapter; your instance, account, quota, and terms      |
+| Reddit                           | Companion            | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Self-post text or link reference; over-18 results excluded          | Your registered app and Reddit terms                                             |
+| YouTube API / Invidious fallback | Companion            | API key or optional self-hosted instance   | Video metadata, thumbnail proxy, and a reference                    | One metadata adapter; no media/caption download; no public Invidious is selected |
+
+The configured web-search services share one catalog adapter, as do the YouTube API and Invidious
+fallback. Ollama, Anthropic, and OpenAI are optional synthesis features rather than research
+catalog adapters; their separate consent and payload boundary is described below.
 
 ## Lawful collection rules
 
@@ -61,6 +76,11 @@ A research run asks all relevant, allowed providers concurrently. One timeout or
 recorded and does not discard results from the others. Saving then proceeds source by source: if
 content capture fails, Dusori keeps the URL reference and the failure message; if one save fails,
 the remaining shortlist still proceeds. Only saved readable text can become quoted evidence.
+
+Europe PMC makes one bounded metadata search and never follows returned full-text links. Library of
+Congress accepts only canonical digitized item records, starts no more than 20 requests per minute,
+honors a valid `Retry-After` as local backoff, and does not retry automatically. Provider search and
+capture deadlines abort their underlying fetch instead of leaving network work running.
 
 If separately consented AI synthesis becomes unavailable, Dusori writes the deterministic
 evidence-first brief. If the learner edited the current brief, the refresh becomes a proposal rather

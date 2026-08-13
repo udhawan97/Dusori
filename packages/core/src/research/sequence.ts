@@ -7,6 +7,7 @@ import {
   type AddedSource,
 } from '../sources/import.js';
 import { runResearchAgent, type ResearchRunResult } from './agent.js';
+import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import { writeTopicSynthesis, type WriteSynthesisResult } from './artifacts.js';
 import { readSourcesIntoClaims } from './claims.js';
 import type { RankedCandidate } from './rank.js';
@@ -78,23 +79,12 @@ async function withCaptureTimeout(
   fetchImpl: typeof fetch,
   timeoutMs: number,
 ): Promise<Awaited<ReturnType<ResearchProvider['capture']>>> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      provider.capture(candidate, fetchImpl),
-      new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          reject(
-            new Error(
-              `${provider.label} took too long to read this result. The browser-ready reference was kept.`,
-            ),
-          );
-        }, timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  return withAbortingFetchTimeout(
+    fetchImpl,
+    timeoutMs,
+    `${provider.label} took too long to read this result. The browser-ready reference was kept.`,
+    (scopedFetch) => provider.capture(candidate, scopedFetch),
+  );
 }
 
 function savedStatus(saved: AddedSource, readable: boolean): ResearchSourceOutcomeStatus {
