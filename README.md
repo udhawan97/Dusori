@@ -1,8 +1,4 @@
 <p align="center">
-  <a href="https://udhawan97.github.io/Dusori/app/"><img src="apps/site/public/brand/dusori-app-icon.svg" alt="Dusori app icon with an open ensō, rangoli geometry, and katana on warm paper" width="132"></a>
-</p>
-
-<p align="center">
   <img src="docs/assets/dusori-readme-logo-inverted.svg" alt="Dusori — a private learning studio" width="720">
 </p>
 
