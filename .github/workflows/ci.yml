@@ -37,7 +37,8 @@ jobs:
       - name: Ensure supported browser engines are available
         shell: bash
         run: |
-          installed="$(pnpm exec playwright install --list)"
+          # Playwright returns a non-zero status when a fresh runner has no browser cache yet.
+          installed="$(pnpm exec playwright install --list || true)"
           missing=()
           for browser in chromium webkit firefox; do
             if ! grep -q "$browser" <<<"$installed"; then
