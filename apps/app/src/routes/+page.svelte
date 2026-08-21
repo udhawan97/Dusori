@@ -50,7 +50,11 @@
     type Workspace,
   } from '@dusori/core';
   import { FsaStorageAdapter, pickDirectory, restoreDirectoryHandle } from '@dusori/storage-fsa';
-  import { createOpfsStorage } from '@dusori/storage-opfs';
+  import {
+    BrowserStorageSelectionError,
+    createBrowserStorage,
+    openBrowserStorage,
+  } from '@dusori/storage-opfs';
 
   import {
     isCompanionHealth,
@@ -70,6 +74,7 @@
     type WorkspaceNavigationIntent,
     type WorkspaceNavigationState,
     type WorkspaceView,
+    type GraphMode,
   } from '$lib/workspace-navigation';
   import MarkdownView from '$lib/components/MarkdownView.svelte';
   import CurriculumImporter from '$lib/components/CurriculumImporter.svelte';
@@ -102,9 +107,12 @@
   let editableNote = false;
   let newNoteTitle = '';
   let workspaceView: WorkspaceView = 'note';
+  let graphMode: GraphMode = 'outline';
   let conflict: MarkdownConflict | null = null;
   let busy = false;
   let error = '';
+  let setupErrorElement: HTMLParagraphElement | null = null;
+  let setupErrorTarget: 'browser' | 'folder' | 'import' | null = null;
   let status = '';
   let inspectorOpen = false;
   let mobileNavOpen = false;
@@ -216,7 +224,7 @@
   /** Reflects the open view in the URL so reload, Back and Forward all land where the user was. */
   function syncLocation(replace = false): void {
     const next = workspaceNavigationUrl(
-      { documentPath: notePath, topicSlug: selectedSlug, view: workspaceView },
+      { documentPath: notePath, graphMode, topicSlug: selectedSlug, view: workspaceView },
       location.pathname,
       location.search,
     );
@@ -229,6 +237,7 @@
     return {
       creatingTopic,
       documentPath: notePath,
+      graphMode,
       topicCreationReturnSlug: previousSlug,
       topicSlug: selectedSlug,
       view: workspaceView,
@@ -254,6 +263,7 @@
     previousSlug = decision.state.topicCreationReturnSlug;
     selectedSlug = decision.state.topicSlug;
     workspaceView = decision.state.view;
+    graphMode = decision.state.graphMode;
     notePath = decision.state.documentPath;
     conflict = null;
     inspectorOpen = false;
@@ -274,12 +284,15 @@
       new Set(workspace.topics.map((topic) => topic.slug)),
     );
     if (!restored) return;
-    const { documentPath: path, topicSlug: slug, view } = restored;
+    const { documentPath: path, graphMode: restoredGraphMode, topicSlug: slug, view } = restored;
     const requested = new URLSearchParams(location.search);
     const normalizeLocation =
       requested.get('view') !== view ||
-      (view === 'note' ? requested.get('path') !== path : requested.has('path'));
-    if (view === 'graph') openGraph(false);
+      (view === 'note' ? requested.get('path') !== path : requested.has('path')) ||
+      (view === 'graph'
+        ? requested.get('map') !== (restoredGraphMode === 'visual' ? 'visual' : null)
+        : requested.has('map'));
+    if (view === 'graph') openGraph(false, restoredGraphMode);
     else if (view === 'insights') openInsights(false);
     else if (view === 'research') openResearch(slug, false);
     else if (view === 'today') {
@@ -417,13 +430,15 @@
           return;
         }
       }
-      const adapter = await createOpfsStorage();
-      if (await adapter.read('dusori.json'))
-        await activateStorage(adapter, 'Browser workspace · private', true);
-    } catch {
+      const adapter = await openBrowserStorage();
+      if (adapter) await activateStorage(adapter, 'Browser workspace · private', true);
+    } catch (caught) {
       // Restoration is best-effort. Setup remains available.
       if (desktopRuntime) {
         error = 'Dusori could not open its desktop workspace. Restart the app and try again.';
+      } else if (caught instanceof BrowserStorageSelectionError) {
+        setupErrorTarget = 'browser';
+        error = caught.message;
       }
     } finally {
       workspaceRestoring = false;
@@ -459,11 +474,11 @@
 
   async function createBrowserWorkspace(): Promise<void> {
     await perform(async () => {
-      const adapter = await createOpfsStorage();
+      const adapter = await createBrowserStorage();
       await createWorkspace(adapter, 'My research workspace');
       await activateStorage(adapter, 'Browser workspace · private');
       status = 'Browser workspace created. Nothing was uploaded.';
-    });
+    }, 'browser');
   }
 
   async function connectFolder(): Promise<void> {
@@ -473,7 +488,7 @@
         await createWorkspace(adapter, 'My research workspace');
       await activateStorage(adapter, `Folder · ${adapter.root.name}`);
       status = 'Folder connected. Dusori writes only inside this selected root.';
-    });
+    }, 'folder');
   }
 
   async function openObsidianGuide(): Promise<void> {
@@ -586,8 +601,12 @@
     commitNavigation({ kind: 'open', view: 'settings' }, record);
   }
 
-  function openGraph(record = true): void {
-    commitNavigation({ kind: 'open', view: 'graph' }, record);
+  function openGraph(record = true, mode: GraphMode = 'outline'): void {
+    commitNavigation({ graphMode: mode, kind: 'open', view: 'graph' }, record);
+  }
+
+  function setGraphMode(mode: GraphMode): void {
+    commitNavigation({ graphMode: mode, kind: 'set-graph-mode' }, true, true);
   }
 
   function openInsights(record = true): void {
@@ -895,10 +914,9 @@
     const file = input.files?.[0];
     if (!file) return;
     await perform(async () => {
-      const adapter = storage ?? (await createOpfsStorage());
       const prepared = await prepareWorkspaceImport(await file.arrayBuffer());
       const { fileCount, topicCount, workspaceName } = prepared.preview;
-      const replacing = Boolean(await adapter.read('dusori.json'));
+      const replacing = Boolean(storage && (await storage.read('dusori.json')));
       const confirmed = window.confirm(
         `${replacing ? 'Replace this browser workspace with' : 'Import'} “${workspaceName}”?\n\n` +
           `${topicCount} topic${topicCount === 1 ? '' : 's'} · ${fileCount} files\n\n` +
@@ -909,21 +927,31 @@
           }`,
       );
       if (!confirmed) return;
+      const adapter = storage ?? (await createBrowserStorage());
       await replaceWorkspace(adapter, prepared);
       await activateStorage(adapter, 'Browser workspace · imported');
       status = 'Workspace validated and imported safely.';
-    });
+    }, 'import');
     input.value = '';
   }
 
-  async function perform(action: () => Promise<void>): Promise<void> {
+  async function perform(
+    action: () => Promise<void>,
+    target: 'browser' | 'folder' | 'import' | null = null,
+  ): Promise<void> {
     busy = true;
+    setupErrorTarget = target;
     error = '';
     status = '';
     try {
       await action();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : 'Dusori could not complete that action.';
+      if (target) {
+        await tick();
+        setupErrorElement?.scrollIntoView({ block: 'nearest' });
+        setupErrorElement?.focus();
+      }
     } finally {
       busy = false;
       if (status) scheduleStatusClear(status);
@@ -1041,6 +1069,16 @@
           <button class="primary-button" disabled={busy} onclick={createBrowserWorkspace}>
             {busy ? 'Creating…' : 'Create workspace'}
           </button>
+          {#if error && setupErrorTarget === 'browser'}
+            <p
+              class="message error setup-error"
+              role="alert"
+              tabindex="-1"
+              bind:this={setupErrorElement}
+            >
+              {error}
+            </p>
+          {/if}
         </article>
 
         <article>
@@ -1059,6 +1097,16 @@
           <button class="text-button" disabled={busy} onclick={openObsidianGuide}>
             Use Dusori with Obsidian
           </button>
+          {#if error && setupErrorTarget === 'folder'}
+            <p
+              class="message error setup-error"
+              role="alert"
+              tabindex="-1"
+              bind:this={setupErrorElement}
+            >
+              {error}
+            </p>
+          {/if}
         </article>
       </section>
     {/if}
@@ -1116,14 +1164,26 @@
     {/if}
 
     {#if !desktopRuntime}
-      <label class="import-link" id="workspace-import">
-        <Upload aria-hidden="true" size={17} />
-        Import an exported workspace
-        <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
-      </label>
+      <div class="setup-import">
+        <label class="import-link" id="workspace-import">
+          <Upload aria-hidden="true" size={17} />
+          Import an exported workspace
+          <input type="file" accept=".zip,application/zip" onchange={uploadWorkspace} />
+        </label>
+        {#if error && setupErrorTarget === 'import'}
+          <p
+            class="message error setup-error"
+            role="alert"
+            tabindex="-1"
+            bind:this={setupErrorElement}
+          >
+            {error}
+          </p>
+        {/if}
+      </div>
     {/if}
 
-    {#if error}<p class="message error" role="alert">{error}</p>{/if}
+    {#if error && !setupErrorTarget}<p class="message error" role="alert">{error}</p>{/if}
     <p class="setup-footnote">
       No AI is required. No telemetry or background service runs. Web research starts only after
       provider consent.
@@ -1415,7 +1475,12 @@
             {/if}
           {/if}
         {:else if workspaceView === 'graph' && storage}
-          <KnowledgeGraph {storage} onOpen={(path) => void openGraphDocument(path)} />
+          <KnowledgeGraph
+            {storage}
+            mode={graphMode}
+            onModeChange={setGraphMode}
+            onOpen={(path) => void openGraphDocument(path)}
+          />
         {:else if workspaceView === 'research' && storage && workspace}
           {#key `${selectedSlug}-${learningRevision}`}
             <ResearchWorkspace
@@ -1956,6 +2021,20 @@
     gap: var(--space-xs);
     margin-block-start: var(--space-lg);
     cursor: pointer;
+  }
+
+  .setup-import {
+    margin-block-start: var(--space-lg);
+  }
+
+  .setup-import .import-link {
+    margin-block-start: 0;
+  }
+
+  .setup-error {
+    max-width: 52ch;
+    margin-block: var(--space-sm) 0;
+    outline: none;
   }
 
   .import-link input,

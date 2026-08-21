@@ -1,6 +1,6 @@
 import type { SourceRecord } from './schemas/workspace.js';
 
-export type StorageKind = 'memory' | 'opfs' | 'fsa' | 'companion' | 'tauri';
+export type StorageKind = 'memory' | 'opfs' | 'indexeddb' | 'fsa' | 'companion' | 'tauri';
 
 export interface FileSnapshot {
   content: string;

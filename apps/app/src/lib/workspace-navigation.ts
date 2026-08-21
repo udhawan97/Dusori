@@ -1,16 +1,25 @@
 export type WorkspaceView =
   'graph' | 'insights' | 'note' | 'research' | 'roadmap' | 'settings' | 'sources' | 'today';
+export type GraphMode = 'outline' | 'visual';
 
 export interface WorkspaceNavigationState {
   topicSlug: string;
   view: WorkspaceView;
   documentPath: string;
+  graphMode: GraphMode;
   creatingTopic: boolean;
   topicCreationReturnSlug: string;
 }
 
 export type WorkspaceNavigationIntent =
-  | { kind: 'open'; view: WorkspaceView; topicSlug?: string; documentPath?: string }
+  | {
+      kind: 'open';
+      view: WorkspaceView;
+      topicSlug?: string;
+      documentPath?: string;
+      graphMode?: GraphMode;
+    }
+  | { graphMode: GraphMode; kind: 'set-graph-mode' }
   | { kind: 'start-topic' }
   | { kind: 'cancel-topic' };
 
@@ -55,7 +64,7 @@ function documentTarget(path: string): { path: string; topicSlug: string } | nul
 }
 
 export function workspaceNavigationUrl(
-  state: Pick<WorkspaceNavigationState, 'documentPath' | 'topicSlug' | 'view'>,
+  state: Pick<WorkspaceNavigationState, 'documentPath' | 'graphMode' | 'topicSlug' | 'view'>,
   pathname: string,
   search: string,
 ): string {
@@ -65,6 +74,8 @@ export function workspaceNavigationUrl(
   parameters.set('view', state.view);
   if (state.view === 'note' && state.documentPath) parameters.set('path', state.documentPath);
   else parameters.delete('path');
+  if (state.view === 'graph' && state.graphMode === 'visual') parameters.set('map', 'visual');
+  else parameters.delete('map');
   const query = parameters.toString();
   return `${pathname}${query ? `?${query}` : ''}`;
 }
@@ -73,7 +84,7 @@ export function workspaceNavigationUrl(
 export function parseWorkspaceLocation(
   search: string,
   knownTopics: ReadonlySet<string>,
-): Pick<WorkspaceNavigationState, 'documentPath' | 'topicSlug' | 'view'> | null {
+): Pick<WorkspaceNavigationState, 'documentPath' | 'graphMode' | 'topicSlug' | 'view'> | null {
   const parameters = new URLSearchParams(search);
   const topicSlug = parameters.get('topic') ?? '';
   const requestedView = parameters.get('view');
@@ -87,12 +98,13 @@ export function parseWorkspaceLocation(
   if (view === 'note') {
     const document = documentTarget(requestedPath);
     if (document?.topicSlug !== topicSlug) {
-      return { documentPath: '', topicSlug, view: 'research' };
+      return { documentPath: '', graphMode: 'outline', topicSlug, view: 'research' };
     }
-    return { documentPath: document.path, topicSlug, view };
+    return { documentPath: document.path, graphMode: 'outline', topicSlug, view };
   }
   return {
     documentPath: view === 'roadmap' ? `Topics/${topicSlug}/roadmap.md` : '',
+    graphMode: view === 'graph' && parameters.get('map') === 'visual' ? 'visual' : 'outline',
     topicSlug,
     view,
   };
@@ -108,11 +120,29 @@ export function transitionWorkspaceNavigation(
   environment: WorkspaceNavigationEnvironment,
 ): WorkspaceNavigationDecision {
   let state: WorkspaceNavigationState;
-  if (intent.kind === 'start-topic') {
+  if (intent.kind === 'set-graph-mode') {
+    if (current.view !== 'graph') {
+      return {
+        history: 'none',
+        orient: false,
+        rejected: 'Open the research map before changing its representation.',
+        state: current,
+        url: workspaceNavigationUrl(current, environment.pathname, environment.search),
+      };
+    }
+    state = { ...current, graphMode: intent.graphMode };
+    return {
+      history: environment.history,
+      orient: false,
+      state,
+      url: workspaceNavigationUrl(state, environment.pathname, environment.search),
+    };
+  } else if (intent.kind === 'start-topic') {
     state = {
       ...current,
       creatingTopic: true,
       documentPath: '',
+      graphMode: 'outline',
       topicCreationReturnSlug: current.topicSlug,
       topicSlug: '',
       view: 'research',
@@ -172,6 +202,7 @@ export function transitionWorkspaceNavigation(
           : intent.view === 'note'
             ? (document?.path ?? '')
             : '',
+      graphMode: intent.view === 'graph' ? (intent.graphMode ?? 'outline') : 'outline',
       topicCreationReturnSlug: '',
       topicSlug,
       view: intent.view,

@@ -37,7 +37,10 @@ On a supported Chromium desktop browser:
 
 Dusori writes only inside that approved root. The resulting Markdown and wikilinks work in Obsidian, but Obsidian is never required and no plugin is installed.
 
-Firefox and Safari use the browser workspace plus ZIP import/export. The macOS and Windows desktop apps use the native Tauri storage adapter while preserving the same logical tree and guard rules.
+Firefox and Safari use the browser workspace plus ZIP import/export. The browser workspace prefers
+OPFS and falls back to device-local IndexedDB when OPFS is unavailable; Dusori records that choice
+and fails closed instead of opening an empty second backend. The macOS and Windows desktop apps use
+the native Tauri storage adapter while preserving the same logical tree and guard rules.
 
 Every topic keeps its own source files, manifest, research and review state, and proposal lifecycle, so moving a topic preserves the learning material and its provenance metadata. See [Sources](../sources/) for the capture limits and file contract.
 

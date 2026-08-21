@@ -12,9 +12,12 @@
   } from '@dusori/core';
 
   import { buildGraphAtlas, type GraphAtlas } from '$lib/graph-atlas';
+  import type { GraphMode } from '$lib/workspace-navigation';
 
   export let storage: StorageAdapter;
   export let onOpen: (path: string) => void;
+  export let mode: GraphMode = 'outline';
+  export let onModeChange: (mode: GraphMode) => void = () => undefined;
 
   interface TopicEvidence {
     claims: number;
@@ -30,7 +33,6 @@
   let atlas: GraphAtlas | null = null;
   let loading = true;
   let error = '';
-  let mapMode: 'atlas' | 'outline' = 'outline';
   let artifactQuery = '';
   let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
   let artifactTag = '';
@@ -137,10 +139,10 @@
   </header>
 
   <div class="mode-switch" role="group" aria-label="Map view">
-    <button aria-pressed={mapMode === 'outline'} onclick={() => (mapMode = 'outline')}
+    <button aria-pressed={mode === 'outline'} onclick={() => onModeChange('outline')}
       >Outline</button
     >
-    <button aria-pressed={mapMode === 'atlas'} onclick={() => (mapMode = 'atlas')}
+    <button aria-pressed={mode === 'visual'} onclick={() => onModeChange('visual')}
       >Visual map</button
     >
   </div>
@@ -177,7 +179,7 @@
       </div>
     </dl>
 
-    {#if mapMode === 'atlas'}
+    {#if mode === 'visual'}
       <section class="atlas" aria-label="Workspace evidence atlas">
         <div class="atlas-intro">
           <p class="kicker">Evidence atlas</p>

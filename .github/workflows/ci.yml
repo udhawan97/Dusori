@@ -34,11 +34,18 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm build
-      - name: Ensure Chromium is available
+      - name: Ensure supported browser engines are available
         shell: bash
         run: |
-          if ! pnpm exec playwright install --list | grep -q chromium; then
-            pnpm exec playwright install --with-deps chromium
+          installed="$(pnpm exec playwright install --list)"
+          missing=()
+          for browser in chromium webkit firefox; do
+            if ! grep -q "$browser" <<<"$installed"; then
+              missing+=("$browser")
+            fi
+          done
+          if ((${#missing[@]})); then
+            pnpm exec playwright install --with-deps "${missing[@]}"
           fi
       - run: pnpm test:e2e
       - if: github.event_name == 'push' && github.ref == 'refs/heads/main'

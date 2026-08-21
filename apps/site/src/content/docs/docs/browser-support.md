@@ -14,7 +14,10 @@ description: Supported storage, offline, companion, desktop, and installer behav
 | Loopback companion        | Yes              | Yes where localhost is allowed | No supported path  | Bundled sidecar      | Bundled sidecar      |
 | Signed in-app update feed | No; refresh site | No; refresh site               | No; refresh site   | Yes                  | Yes                  |
 
-¹ Browser storage retention and PWA support vary. Export backups.
+¹ Dusori prefers OPFS when the browser can open it and falls back to a device-local IndexedDB
+workspace when it cannot. The selected backend is recorded and reopened consistently; Dusori will
+not silently substitute an empty backend when recorded storage is unavailable. Browser storage
+retention and PWA support still vary, so export backups.
 
 ² Mobile folder writes are not a reliable atomic-storage contract; ZIP remains the portable path.
 

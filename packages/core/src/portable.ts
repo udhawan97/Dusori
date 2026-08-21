@@ -235,7 +235,15 @@ export async function prepareWorkspaceImport(
   if (archive.byteLength > maxWorkspaceBytes) {
     throw new Error('This workspace archive is larger than 64 MiB.');
   }
-  const zip = await JSZip.loadAsync(archive);
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(archive);
+  } catch (cause) {
+    throw new Error(
+      'This file is not a valid Dusori workspace export. Choose a .zip exported by Dusori and try again.',
+      { cause },
+    );
+  }
   const entries = Object.values(zip.files).filter((entry) => !entry.dir);
   if (entries.length > maxWorkspaceFiles) {
     throw new Error(

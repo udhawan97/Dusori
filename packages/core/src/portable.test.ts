@@ -84,6 +84,12 @@ describe('exportTopic', () => {
 });
 
 describe('workspace archive resource limits', () => {
+  it('translates a corrupt or mislabeled ZIP into product recovery guidance', async () => {
+    await expect(prepareWorkspaceImport(new TextEncoder().encode('not a zip'))).rejects.toThrow(
+      'This file is not a valid Dusori workspace export. Choose a .zip exported by Dusori and try again.',
+    );
+  });
+
   it('rejects a single expanded file before allocating it as imported text', async () => {
     const zip = new JSZip();
     zip.file('oversized.md', 'x'.repeat(9 * 1024 * 1024));

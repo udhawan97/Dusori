@@ -16,5 +16,17 @@ export default defineConfig({
     url: `${previewOrigin}/Dusori/`,
     reuseExistingServer: true,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'webkit-browser-storage',
+      testMatch: /browser-storage\.spec\.ts/u,
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
+      name: 'firefox-browser-storage',
+      testMatch: /browser-storage\.spec\.ts/u,
+      use: { ...devices['Desktop Firefox'] },
+    },
+  ],
 });

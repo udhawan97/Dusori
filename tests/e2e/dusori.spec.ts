@@ -138,6 +138,20 @@ async function createBrowserWorkspace(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+async function makeOpfsUnavailable(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator.storage, 'getDirectory', {
+      configurable: true,
+      value: async () => {
+        throw new DOMException(
+          'The operation failed for an unknown transient reason.',
+          'UnknownError',
+        );
+      },
+    });
+  });
+}
+
 async function createTopic(
   page: Page,
   options: { remainInResearch?: boolean } = {},
@@ -326,6 +340,92 @@ async function applyCurriculum(page: Page): Promise<void> {
   );
   await expect(page.getByRole('heading', { name: 'AI Fundamentals', exact: true })).toBeVisible();
 }
+
+test('a private IndexedDB workspace survives reload when OPFS is unavailable', async ({ page }) => {
+  await makeOpfsUnavailable(page);
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('dusori-browser-storage-backend:v1')))
+    .toBe('indexeddb');
+  await page.reload();
+
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByText('AI Fundamentals', { exact: true }).first()).toBeVisible();
+});
+
+test('the IndexedDB fallback exports and imports a portable workspace', async ({
+  browser,
+  page,
+}) => {
+  await makeOpfsUnavailable(page);
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+  await openInspector(page);
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export workspace' }).click();
+  const archive = await (await downloadPromise).path();
+  expect(archive).not.toBeNull();
+
+  const context = await browser.newContext();
+  const imported = await context.newPage();
+  try {
+    await makeOpfsUnavailable(imported);
+    await imported.goto('/Dusori/app/');
+    imported.once('dialog', (dialog) => dialog.accept());
+    await imported.locator('#workspace-import input[type="file"]').setInputFiles(archive!);
+
+    await expect(imported.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+    await expect(imported.getByText('AI Fundamentals', { exact: true }).first()).toBeVisible();
+    expect(
+      await imported.evaluate(() => localStorage.getItem('dusori-browser-storage-backend:v1')),
+    ).toBe('indexeddb');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a corrupt workspace ZIP stays storage-free and gives focused recovery copy', async ({
+  page,
+}) => {
+  await makeOpfsUnavailable(page);
+  await page.goto('/Dusori/app/');
+
+  await page.locator('#workspace-import input[type="file"]').setInputFiles({
+    buffer: Buffer.from('not a zip', 'utf8'),
+    mimeType: 'application/zip',
+    name: 'broken-workspace.zip',
+  });
+
+  const alert = page.getByRole('alert');
+  await expect(alert).toHaveText(
+    'This file is not a valid Dusori workspace export. Choose a .zip exported by Dusori and try again.',
+  );
+  await expect(alert).toBeFocused();
+  expect(
+    await page.evaluate(() => localStorage.getItem('dusori-browser-storage-backend:v1')),
+  ).toBeNull();
+  await expect(page.getByRole('button', { name: 'Create workspace' })).toBeVisible();
+});
+
+test('browser Back and Forward restore the chosen map representation', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await expect(page).toHaveURL(/view=graph.*map=visual/u);
+
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await page.goForward();
+
+  await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Visual map', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
 
 test('landing, setup, workspace, note, and conflict screens are accessible', async ({ page }) => {
   const cspViolations: string[] = [];

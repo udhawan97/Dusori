@@ -10,6 +10,7 @@ import {
 const current: WorkspaceNavigationState = {
   creatingTopic: false,
   documentPath: '',
+  graphMode: 'outline',
   topicCreationReturnSlug: '',
   topicSlug: 'typescript',
   view: 'research',
@@ -49,7 +50,12 @@ describe('workspace navigation', () => {
         '?topic=typescript&view=note&path=Topics/rust/Notes/ownership.md',
         new Set(['typescript', 'rust']),
       ),
-    ).toEqual({ documentPath: '', topicSlug: 'typescript', view: 'research' });
+    ).toEqual({
+      documentPath: '',
+      graphMode: 'outline',
+      topicSlug: 'typescript',
+      view: 'research',
+    });
   });
 
   it('restores a valid location without creating a history decision', () => {
@@ -57,7 +63,12 @@ describe('workspace navigation', () => {
       '?topic=typescript&view=sources&campaign=kept',
       new Set(['typescript']),
     );
-    expect(restored).toEqual({ documentPath: '', topicSlug: 'typescript', view: 'sources' });
+    expect(restored).toEqual({
+      documentPath: '',
+      graphMode: 'outline',
+      topicSlug: 'typescript',
+      view: 'sources',
+    });
     expect(workspaceNavigationUrl(restored!, '/app/', '?campaign=kept&topic=old&path=old')).toBe(
       '/app/?campaign=kept&topic=typescript&view=sources',
     );
@@ -65,10 +76,53 @@ describe('workspace navigation', () => {
 
   it('restores a global Settings view without requiring a topic', () => {
     const restored = parseWorkspaceLocation('?view=settings&campaign=kept', new Set());
-    expect(restored).toEqual({ documentPath: '', topicSlug: '', view: 'settings' });
+    expect(restored).toEqual({
+      documentPath: '',
+      graphMode: 'outline',
+      topicSlug: '',
+      view: 'settings',
+    });
     expect(workspaceNavigationUrl(restored!, '/app/', '?campaign=kept')).toBe(
       '/app/?campaign=kept&view=settings',
     );
+  });
+
+  it('stores the selected map representation in the graph history entry', () => {
+    const opened = transitionWorkspaceNavigation(
+      current,
+      { kind: 'open', view: 'graph' },
+      environment,
+    );
+    expect(opened.state.graphMode).toBe('outline');
+    expect(opened.url).not.toContain('map=');
+
+    const visual = transitionWorkspaceNavigation(
+      opened.state,
+      { graphMode: 'visual', kind: 'set-graph-mode' },
+      {
+        ...environment,
+        history: 'replace',
+        search: '?token=kept&topic=typescript&view=graph',
+      },
+    );
+    expect(visual.state.graphMode).toBe('visual');
+    expect(visual.url).toBe('/app/?token=kept&topic=typescript&view=graph&map=visual');
+    expect(visual.history).toBe('replace');
+    expect(visual.orient).toBe(false);
+  });
+
+  it('restores Visual map from history while a fresh graph entry defaults to Outline', () => {
+    expect(
+      parseWorkspaceLocation('?topic=typescript&view=graph&map=visual', new Set(['typescript'])),
+    ).toEqual({
+      documentPath: '',
+      graphMode: 'visual',
+      topicSlug: 'typescript',
+      view: 'graph',
+    });
+    expect(
+      parseWorkspaceLocation('?topic=typescript&view=graph', new Set(['typescript'])),
+    ).toMatchObject({ graphMode: 'outline', view: 'graph' });
   });
 
   it.each([
@@ -89,7 +143,12 @@ describe('workspace navigation', () => {
         `?topic=typescript&view=note&path=${encodeURIComponent(documentPath)}`,
         new Set(['typescript']),
       ),
-    ).toEqual({ documentPath: '', topicSlug: 'typescript', view: 'research' });
+    ).toEqual({
+      documentPath: '',
+      graphMode: 'outline',
+      topicSlug: 'typescript',
+      view: 'research',
+    });
   });
 
   it('rejects an explicit topic that disagrees with the note path', () => {
