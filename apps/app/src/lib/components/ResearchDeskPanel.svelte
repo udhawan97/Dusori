@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowUpRight, CircleAlert, Library, Search, ShieldCheck } from '@lucide/svelte';
+  import { ArrowUpRight, CircleAlert, Library, Plus, Search, ShieldCheck } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
 
   import {
@@ -9,6 +9,7 @@
     readResearchFile,
     readSourceManifest,
     runResearchSequence,
+    saveApprovedResearchCandidate,
     type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
@@ -84,6 +85,10 @@
   let runError = '';
   let status = '';
   let showOverflow = false;
+  let savingExtraKey = '';
+  let approvedExtraKeys = new Set<string>();
+  let extraFeedback: Record<string, string> = {};
+  let latestBriefPath = '';
   let autoStarted = false;
   let consentOpen = false;
   let consentProviders: ResearchProvider[] = [];
@@ -93,6 +98,7 @@
   let researchButton: HTMLButtonElement;
 
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
+  $: savingExtra = savingExtraKey.length > 0;
   $: allowedProviders = providersWithConsent(availableProviders, consentRevision, 'allowed');
   $: undecidedProviders = providersWithConsent(availableProviders, consentRevision, 'undecided');
   $: browserSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(question.trim() || topicTitle)}`;
@@ -242,7 +248,7 @@
   }
 
   async function beginResearch(): Promise<void> {
-    if (running || !question.trim()) return;
+    if (running || savingExtra || !question.trim()) return;
     runError = '';
     status = '';
     const relevant = providerSession?.select(currentQuery) ?? availableProviders;
@@ -340,6 +346,10 @@
     stage = 'searching';
     sourceProgress = [];
     showOverflow = false;
+    savingExtraKey = '';
+    approvedExtraKeys = new Set();
+    extraFeedback = {};
+    latestBriefPath = '';
     runError = '';
     try {
       const query = buildResearchQuery(topicTitle, { title: question.trim() });
@@ -387,12 +397,17 @@
       }
       if (result.status === 'brief-ready' && result.synthesis?.status === 'written') {
         stage = 'complete';
+        latestBriefPath = result.synthesis.path;
         status = `Brief assembled from ${result.synthesis.synthesis.claimCount} quoted passages across ${result.synthesis.synthesis.readCount} sources.${
+          result.overflow.length > 0
+            ? ` ${result.overflow.length} more ranked ${result.overflow.length === 1 ? 'result is' : 'results are'} ready for your review.`
+            : ''
+        }${
           result.aiUnavailable
             ? ' AI was unavailable, so the evidence-first fallback was used.'
             : ''
         }`;
-        onSourceSaved(result.synthesis.path);
+        if (result.overflow.length === 0) onSourceSaved(result.synthesis.path);
       } else {
         stage = 'complete';
         status = 'Your edited brief was kept. A refreshed proposal is waiting in Needs attention.';
@@ -412,6 +427,68 @@
     return (
       providers.find((provider) => provider.id === candidate.provider)?.label ?? candidate.provider
     );
+  }
+
+  async function approveExtraCandidate(candidate: RankedCandidate): Promise<void> {
+    if (savingExtra || approvedExtraKeys.has(candidate.key)) return;
+    const provider = providers.find((entry) => entry.id === candidate.provider);
+    if (!provider || !hasConsent(scopeOf(provider))) {
+      extraFeedback = {
+        ...extraFeedback,
+        [candidate.key]:
+          'This provider is no longer allowed or available. Start a new search after updating its choice.',
+      };
+      return;
+    }
+
+    savingExtraKey = candidate.key;
+    extraFeedback = { ...extraFeedback, [candidate.key]: '' };
+    try {
+      const result = await saveApprovedResearchCandidate({
+        candidate,
+        enhanceSynthesis:
+          ai && aiModel && hasConsent('companion-ai')
+            ? (sources) => createAiSynthesisOptions(ai, aiModel, topicTitle, sources)
+            : undefined,
+        fetchImpl: fetch,
+        provider,
+        storage,
+        topicSlug,
+        topicTitle,
+      });
+      await restoreResultState();
+      if (!result.source.record) {
+        extraFeedback = { ...extraFeedback, [candidate.key]: result.source.message };
+        return;
+      }
+
+      approvedExtraKeys = new Set([...approvedExtraKeys, candidate.key]);
+      if (result.synthesis?.status === 'written') latestBriefPath = result.synthesis.path;
+      onSourceSaved();
+      const refreshed =
+        result.synthesis?.status === 'written'
+          ? ' The brief was refreshed.'
+          : result.synthesis?.status === 'conflict'
+            ? ' Your edited brief was kept; a refreshed proposal is waiting in Needs attention.'
+            : '';
+      const aiNote = result.aiUnavailable
+        ? ' AI was unavailable, so the evidence-first fallback was used.'
+        : '';
+      extraFeedback = {
+        ...extraFeedback,
+        [candidate.key]: result.warning
+          ? result.warning
+          : `Added to Sources. ${result.source.message}${refreshed}${aiNote}`,
+      };
+    } catch (caught) {
+      extraFeedback = {
+        ...extraFeedback,
+        [candidate.key]:
+          caught instanceof Error ? caught.message : 'This result could not be added to Sources.',
+      };
+    } finally {
+      savingExtraKey = '';
+    }
   }
 </script>
 
@@ -444,7 +521,11 @@
         disabled={running}
         placeholder="What changed the spread of the printing press?"
       />
-      <button bind:this={researchButton} class="primary" disabled={running || !question.trim()}>
+      <button
+        bind:this={researchButton}
+        class="primary"
+        disabled={running || savingExtra || !question.trim()}
+      >
         <Search aria-hidden="true" size={17} />
         {running ? 'Researching…' : 'Research topic'}
       </button>
@@ -496,6 +577,9 @@
     <p class="error" role="alert"><CircleAlert aria-hidden="true" size={17} /> {runError}</p>
   {/if}
   {#if status}<p class="notice" role="status">{status}</p>{/if}
+  {#if latestBriefPath}
+    <button class="text-action" onclick={() => onSourceSaved(latestBriefPath)}>Open brief</button>
+  {/if}
 
   {#if latestRun}
     <section class="latest-run" aria-label="Latest lookup">
@@ -581,6 +665,10 @@
       {showOverflow ? 'Hide further results' : `Show ${runResult.overflow.length} more results`}
     </button>
     {#if showOverflow}
+      <p class="overflow-intro">
+        Review the remaining ranked results. An additional source is saved only when you approve it
+        here.
+      </p>
       <ul class="overflow" aria-label="Further research results">
         {#each runResult.overflow as candidate (candidate.key)}
           <li>
@@ -588,12 +676,36 @@
             <strong>{candidate.title}</strong>
             {#if candidate.snippet}<MarkdownView content={candidate.snippet} />{/if}
             <p>{candidate.reasons.join(' · ')}</p>
-            <a
-              href={candidate.url}
-              target="_blank"
-              rel="noreferrer"
-              onclick={(event) => void openExternal(event, candidate.url)}>Open original</a
-            >
+            <div class="overflow-actions">
+              <a
+                href={candidate.url}
+                target="_blank"
+                rel="noreferrer"
+                onclick={(event) => void openExternal(event, candidate.url)}>Open original</a
+              >
+              <button
+                class="approve-extra"
+                aria-label={`Approve and add ${candidate.title} to Sources`}
+                disabled={savingExtra || approvedExtraKeys.has(candidate.key)}
+                onclick={() => void approveExtraCandidate(candidate)}
+              >
+                <Plus aria-hidden="true" size={14} />
+                {savingExtraKey === candidate.key
+                  ? 'Adding…'
+                  : approvedExtraKeys.has(candidate.key)
+                    ? 'Added to Sources'
+                    : 'Approve and add'}
+              </button>
+            </div>
+            {#if extraFeedback[candidate.key]}
+              <p
+                class:error-feedback={!approvedExtraKeys.has(candidate.key)}
+                class="extra-feedback"
+                role={approvedExtraKeys.has(candidate.key) ? 'status' : 'alert'}
+              >
+                {extraFeedback[candidate.key]}
+              </p>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -932,6 +1044,11 @@
     color: var(--color-accent-text);
     text-decoration: underline;
   }
+  .overflow-intro {
+    max-width: 58ch;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
   .overflow {
     display: grid;
     gap: var(--space-md);
@@ -946,6 +1063,27 @@
   .overflow p {
     color: var(--color-muted);
     font-size: var(--text-xs);
+  }
+  .overflow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+  .approve-extra {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+  }
+  .approve-extra:disabled {
+    cursor: default;
+  }
+  .overflow .extra-feedback {
+    color: var(--color-success);
+    font-size: var(--text-sm);
+  }
+  .overflow .extra-feedback.error-feedback {
+    color: var(--color-error);
   }
   .consent {
     position: fixed;

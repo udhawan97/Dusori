@@ -60,6 +60,31 @@ export interface RunResearchSequenceInput {
   onProgress?: (progress: ResearchSequenceProgress) => void;
 }
 
+export interface SaveApprovedResearchCandidateInput {
+  storage: StorageAdapter;
+  topicSlug: string;
+  topicTitle: string;
+  /** The exact result the learner approved from a completed research run. */
+  candidate: RankedCandidate;
+  /** The already-consented provider that produced the candidate. */
+  provider: ResearchProvider;
+  fetchImpl?: typeof fetch;
+  now?: Date;
+  timeoutMs?: number;
+  /** Supplied only when the separate AI synthesis scope is already allowed. */
+  enhanceSynthesis?: (sources: SourceRecord[]) => Promise<RenderSynthesisOptions>;
+}
+
+export interface SaveApprovedResearchCandidateResult {
+  source: ResearchSourceOutcome;
+  readCount: number;
+  claimCount: number;
+  aiUnavailable: boolean;
+  synthesis?: WriteSynthesisResult;
+  /** A post-save read or synthesis problem. The approved source itself remains saved. */
+  warning?: string;
+}
+
 const defaultTimeoutMs = 12_000;
 
 function report(
@@ -110,7 +135,7 @@ function savedMessage(saved: AddedSource, readable: boolean, captureFailure: str
 }
 
 async function saveCandidate(
-  input: RunResearchSequenceInput,
+  input: Pick<RunResearchSequenceInput, 'storage' | 'topicSlug'>,
   provider: ResearchProvider,
   candidate: RankedCandidate,
   now: Date,
@@ -187,6 +212,89 @@ async function saveCandidate(
       candidate,
       message: error instanceof Error ? error.message : 'This result could not be saved.',
       status: 'failed',
+    };
+  }
+}
+
+/**
+ * Saves one exact candidate only after the UI has recorded the learner's approval. This function
+ * never searches or broadens provider access: the candidate and its matching, already-consented
+ * provider must both come from the completed run that rendered the approval control.
+ */
+export async function saveApprovedResearchCandidate(
+  input: SaveApprovedResearchCandidateInput,
+): Promise<SaveApprovedResearchCandidateResult> {
+  if (input.candidate.provider !== input.provider.id) {
+    throw new Error('The approved result no longer matches its research provider.');
+  }
+
+  const now = input.now ?? new Date();
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const timeoutMs = input.timeoutMs ?? defaultTimeoutMs;
+  const source = await saveCandidate(
+    input,
+    input.provider,
+    input.candidate,
+    now,
+    fetchImpl,
+    timeoutMs,
+  );
+  if (!source.record) {
+    return { aiUnavailable: false, claimCount: 0, readCount: 0, source };
+  }
+
+  let readCount = 0;
+  let claimCount = 0;
+  try {
+    const read = await readSourcesIntoClaims(input.storage, input.topicSlug, now);
+    readCount = read.read.length;
+    claimCount = read.read.reduce((total, entry) => total + entry.claims, 0);
+  } catch (error) {
+    return {
+      aiUnavailable: false,
+      claimCount,
+      readCount,
+      source,
+      warning:
+        error instanceof Error
+          ? `The source was saved, but its readable text could not be indexed yet: ${error.message}`
+          : 'The source was saved, but its readable text could not be indexed yet.',
+    };
+  }
+
+  if (claimCount === 0) {
+    return { aiUnavailable: false, claimCount, readCount, source };
+  }
+
+  let synthesisOptions: RenderSynthesisOptions = {};
+  let aiUnavailable = false;
+  if (input.enhanceSynthesis) {
+    try {
+      const manifest = await readSourceManifest(input.storage, input.topicSlug, now);
+      synthesisOptions = await input.enhanceSynthesis(manifest.sources);
+    } catch {
+      aiUnavailable = true;
+    }
+  }
+  try {
+    const synthesis = await writeTopicSynthesis(
+      input.storage,
+      input.topicSlug,
+      input.topicTitle,
+      now,
+      synthesisOptions,
+    );
+    return { aiUnavailable, claimCount, readCount, source, synthesis };
+  } catch (error) {
+    return {
+      aiUnavailable,
+      claimCount,
+      readCount,
+      source,
+      warning:
+        error instanceof Error
+          ? `The source was saved, but the brief could not refresh yet: ${error.message}`
+          : 'The source was saved, but the brief could not refresh yet.',
     };
   }
 }

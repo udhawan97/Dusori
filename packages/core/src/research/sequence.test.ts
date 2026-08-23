@@ -5,7 +5,8 @@ import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { readSourceManifest } from '../sources/import.js';
 import { buildResearchQuery } from './plan.js';
-import { runResearchSequence } from './sequence.js';
+import type { RankedCandidate } from './rank.js';
+import { runResearchSequence, saveApprovedResearchCandidate } from './sequence.js';
 import type { ResearchCandidate, ResearchProvider } from './types.js';
 
 const now = new Date('2026-08-11T10:00:00.000Z');
@@ -51,6 +52,22 @@ function provider(
     async search() {
       return [result];
     },
+  };
+}
+
+function approvedCandidate(id = 'docs'): RankedCandidate {
+  return {
+    isNew: false,
+    key: `${id}:generics`,
+    kind: 'docs',
+    meta: {},
+    provider: id,
+    rankScore: 1,
+    reasons: ['matches 2 question terms', 'recognized documentation host'],
+    score: 10,
+    snippet: 'Generic constraints preserve useful relationships between values.',
+    title: `${id} generic constraints`,
+    url: `https://${id}.example/generics`,
   };
 }
 
@@ -218,5 +235,66 @@ describe('runResearchSequence', () => {
 
     expect(result.status).toBe('no-results');
     expect(result.run).toBeNull();
+  });
+});
+
+describe('saveApprovedResearchCandidate', () => {
+  it('saves one approved extra result with provenance and refreshes the brief', async () => {
+    const { storage, topicSlug } = await workspace();
+
+    const result = await saveApprovedResearchCandidate({
+      candidate: approvedCandidate(),
+      now,
+      provider: provider(),
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+
+    expect(result.source.status).toBe('readable');
+    expect(result.claimCount).toBeGreaterThan(0);
+    expect(result.synthesis?.status).toBe('written');
+    const manifest = await readSourceManifest(storage, topicSlug, now);
+    expect(manifest.sources).toHaveLength(1);
+    expect(manifest.sources[0]).toMatchObject({
+      origin: { provider: 'docs' },
+      whySelected: ['matches 2 question terms', 'recognized documentation host'],
+    });
+  });
+
+  it('rejects a candidate that no longer matches the supplied provider', async () => {
+    const { storage, topicSlug } = await workspace();
+
+    await expect(
+      saveApprovedResearchCandidate({
+        candidate: approvedCandidate('other'),
+        now,
+        provider: provider(),
+        storage,
+        topicSlug,
+        topicTitle: 'TypeScript',
+      }),
+    ).rejects.toThrow(/no longer matches/iu);
+    expect((await readSourceManifest(storage, topicSlug, now)).sources).toEqual([]);
+  });
+
+  it('keeps an approved result reference-only when the provider policy requires it', async () => {
+    const { storage, topicSlug } = await workspace();
+
+    const result = await saveApprovedResearchCandidate({
+      candidate: approvedCandidate(),
+      now,
+      provider: provider({ capturePolicy: 'reference-only' }),
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+
+    expect(result.source.status).toBe('reference');
+    expect(result.claimCount).toBe(0);
+    expect(result.synthesis).toBeUndefined();
+    expect((await readSourceManifest(storage, topicSlug, now)).sources[0]?.readState).toBe(
+      'reference',
+    );
   });
 });

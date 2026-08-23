@@ -37,7 +37,7 @@
 Dusori is organized around the question—not around objectives or setup machinery.
 
 1. **Ask.** Enter the topic or question in plain language.
-2. **Route and research.** Dusori chooses relevant providers on your device, asks permission, removes duplicate URLs, and saves a varied shortlist of up to eight sources.
+2. **Route and research.** Dusori chooses relevant providers on your device, asks permission, removes duplicate URLs, and saves a varied first shelf of up to eight sources. You can review and approve additional ranked results individually.
 3. **Read.** Provider extracts and guarded companion fetches become local reading copies; blocked pages stay browser-ready references.
 4. **Synthesize.** Quotable passages become one honest brief with visible gaps and citations.
 5. **See the trail.** Map opens as a searchable Outline; the visual evidence atlas separates every topic into source, note, brief, and update lanes.
@@ -56,7 +56,7 @@ Dusori is organized around the question—not around objectives or setup machine
 | **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or separated evidence atlas.  |
 | **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                      |
 
-The Research Desk adds the ranked shortlist to Sources automatically. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
+The Research Desk adds the ranked first shelf to Sources automatically. Further ranked results stay review-only until you choose **Approve and add** for each one. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
 
 Objectives, review, roadmaps, and certification outline import remain available as optional learning tools under **Settings**. They never gate the question-to-brief workflow.
 

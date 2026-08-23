@@ -70,6 +70,13 @@ Existing tracked Markdown requires an expected hash. If another editor changed i
 
 Supported source paths are pasted text, local Markdown/text, locally extracted PDF text, URL reference, and explicitly saved research candidate. A PDF never leaves the device; no OCR is included. URL references are not fetched by the hosted app.
 
+Each research run saves a diverse first shelf of at most eight ranked candidates. Remaining ranked
+candidates stay visible only in that run and enter Sources one at a time after the learner chooses
+**Approve and add**. Approval captures only that exact candidate through its already-consented
+provider, preserves the same provenance and capture policy, and never broadens provider access.
+If a ready brief and further candidates exist together, Research stays open for review and exposes
+an explicit **Open brief** action; it does not discard the unsaved candidate list by navigating away.
+
 Eleven keyless providers run from browser or desktop app after consent: Microsoft Learn, Wikipedia, Hacker News, GitHub, Stack Overflow, Europe PMC, OpenAlex, Library of Congress, Crossref, Open Library, and npm. The companion can add arXiv, configured Reddit, configured general web search, configured YouTube metadata, and optional AI.
 
 The question is classified locally before consent or provider selection. General providers remain

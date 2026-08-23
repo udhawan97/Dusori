@@ -3,7 +3,7 @@ title: Sources and research
 description: Ask one question, keep an honest research trail, and read or remove the sources Dusori finds.
 ---
 
-Dusori’s main job is research. Open **Research** and ask a question in ordinary language. Dusori routes that question locally, asks which relevant providers may receive it, searches only the allowed intersection, removes duplicate URLs, DOIs, and conservative scholarly-title matches, ranks and saves a varied shortlist of up to eight sources, reads the text it can obtain legitimately, and builds a source-backed brief. There is no roadmap or quiz prerequisite.
+Dusori’s main job is research. Open **Research** and ask a question in ordinary language. Dusori routes that question locally, asks which relevant providers may receive it, searches only the allowed intersection, removes duplicate URLs, DOIs, and conservative scholarly-title matches, ranks and saves a varied first shelf of up to eight sources, reads the text it can obtain legitimately, and builds a source-backed brief. Further ranked results remain available for individual review and approval. There is no roadmap or quiz prerequisite.
 
 ## One question, one research run
 
@@ -11,13 +11,13 @@ Dusori’s main job is research. Open **Research** and ask a question in ordinar
 2. Open **Research** and enter the question you actually want answered.
 3. On the first run, review the focused list routed for this question and select the providers you permit. The full catalog and every decision remain visible; decisions are stored separately on this device and can be reset in Settings.
 4. Choose **Research topic**.
-5. Watch the source list move through Saved, Read, Reference, or Needs browser. When quotable text is available, Dusori opens `Synthesis.md` as the brief.
+5. Watch the source list move through Saved, Read, Reference, or Needs browser. Expand **more results** to review the remainder and choose **Approve and add** for any extra source you want. When extra results await review, **Open brief** takes you to the ready `Synthesis.md`; otherwise Dusori opens it immediately.
 
 The latest query and every provider outcome survive reload. `found`, `empty`, and `failed` are different states: a provider outage is never rewritten as “nothing matched,” and an old brief is not presented as the answer to a new zero-result query.
 
 ## What gets saved
 
-The ranked shortlist is added to **Sources** automatically. Each record retains the URL, provider, capture method, ranking reasons, and reported publisher, author, or date when available.
+The ranked first shelf is added to **Sources** automatically. Further ranked results are not saved until you approve them individually. Every saved record retains the URL, provider, capture method, ranking reasons, and reported publisher, author, or date when available.
 
 - **Readable evidence** contains an abstract, extract, README, pasted text, or local file that Dusori can quote.
 - **Reference** preserves the title and browser URL when the page text was unavailable.

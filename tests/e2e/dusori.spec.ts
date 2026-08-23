@@ -1537,6 +1537,109 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   await expectNoSeriousA11yViolations(page);
 });
 
+test('Research Desk lets the learner approve ranked results beyond the first shelf', async ({
+  page,
+}) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('list') !== 'search') {
+      const pageId = url.searchParams.get('pageids') ?? '0';
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          query: {
+            pages: {
+              [pageId]: {
+                extract:
+                  'Attention mechanisms compare a query with keys and use the resulting weights to combine values. This lets a model connect relevant context while preserving an inspectable source trail. Multiple attention heads can emphasize different relationships in parallel.',
+                pageid: Number(pageId),
+                title: `Attention research source ${pageId}`,
+              },
+            },
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        query: {
+          search: Array.from({ length: 8 }, (_, index) => ({
+            pageid: index + 1,
+            size: 4_000 + index,
+            snippet: `Attention research source ${index + 1} explains attention mechanisms.`,
+            title: `Attention research source ${index + 1}`,
+            wordcount: 500 + index,
+          })),
+        },
+      },
+    });
+  });
+  await page.route('https://api.openalex.org/works**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== '/works') {
+      await route.fulfill({ status: 503, json: { error: 'capture unavailable in fixture' } });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        results: [
+          {
+            abstract_inverted_index: null,
+            authorships: [],
+            cited_by_count: 12,
+            display_name: 'Attention research evidence review',
+            doi: null,
+            id: 'https://openalex.org/W9000',
+            primary_location: null,
+            publication_date: '2025-01-15',
+            publication_year: 2025,
+            type: 'article',
+          },
+        ],
+      },
+    });
+  });
+
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('Attention Research');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('checkbox', { name: /^OpenAlex/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+
+  await expect(page.getByText('Show 1 more results')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open brief' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  expect(
+    JSON.parse(await readWorkspaceFile(page, 'Topics/attention-research/Sources/manifest.json'))
+      .sources,
+  ).toHaveLength(8);
+
+  await page.getByText('Show 1 more results').click();
+  await expect(page.locator('.overflow-intro')).toContainText('saved only when you approve');
+  const furtherResults = page.getByRole('list', { name: 'Further research results' });
+  const approve = furtherResults.getByRole('button', { name: /^Approve and add .+ to Sources$/u });
+  await approve.click();
+
+  await expect(approve).toBeDisabled();
+  await expect(furtherResults).toContainText('Added to Sources');
+  expect(
+    JSON.parse(await readWorkspaceFile(page, 'Topics/attention-research/Sources/manifest.json'))
+      .sources,
+  ).toHaveLength(9);
+  await expect(page.getByRole('list', { name: 'Saved sources' }).getByRole('listitem')).toHaveCount(
+    9,
+  );
+  await expectNoSeriousA11yViolations(page);
+  await page.getByRole('button', { name: 'Open brief' }).click();
+  await expect(page.getByRole('heading', { name: 'Synthesis — Attention Research' })).toBeVisible();
+});
+
 test('Research Desk keeps empty and failed provider outcomes distinct after reload', async ({
   page,
 }) => {

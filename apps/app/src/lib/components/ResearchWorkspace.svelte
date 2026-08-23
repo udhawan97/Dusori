@@ -32,7 +32,7 @@
       <h1 id="research-workspace-title">Ask once. See what the evidence supports.</h1>
       <p class="hero-copy">
         Dusori searches the providers you chose, keeps a varied first shelf, reads the text it can
-        quote, and opens one honest brief. Blocked pages stay useful as browser-ready references.
+        quote, and builds one honest brief. Blocked pages stay useful as browser-ready references.
       </p>
     </div>
   </header>
@@ -73,8 +73,9 @@
   </div>
 
   <p class="trust-line">
-    A research action saves up to eight ranked references. Arbitrary discovered pages are never
-    fetched in the background; full-page reading always names the host first.
+    A research action saves up to eight ranked references. Further results require individual
+    approval; arbitrary discovered pages are never fetched in the background, and full-page reading
+    always names the host first.
   </p>
 </section>
 
