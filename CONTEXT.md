@@ -39,3 +39,7 @@ _Avoid_: Crawl, background search, research session
 **Research provider**:
 A named external discovery capability with its own disclosure, consent scope, availability, run outcome, and bounded capture policy. Availability never implies that a run found evidence.
 _Avoid_: Search engine, integration, data source
+
+**Source-grounded annotation**:
+A learner-owned Markdown note created from a local reading copy. When it begins from a selected passage, it preserves the exact quote, nearest section heading, source path, and source-content fingerprint before the learner adds interpretation. It does not claim that the quote supports a conclusion or silently follow later source revisions.
+_Avoid_: Highlight, generated note, verified claim

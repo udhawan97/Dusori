@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.13.0 release contract · **Date:** 2026-08-13
+**Status:** v0.14.0 release contract · **Date:** 2026-08-24
 
 ## Product promise
 
@@ -101,6 +101,11 @@ Every provider has:
 - a distinct per-run `found`, `empty`, or `failed` outcome;
 - a bounded capture policy and provenance record.
 
+The Sources shelf can be searched locally by title, publisher, provider, author, filename, or host
+and filtered into readable evidence or references. These are transient views over the current
+manifest: they create no index, preference, or hidden completion state. Opening a local reading
+copy keeps the active manifest order visible through previous/next controls.
+
 Availability never substitutes for a run outcome. `research.json` retains the fifty most recent trails, their exact queries, angles, new-result counts, and provider outcomes.
 
 The companion fetches an exact URL only after host confirmation. Each address and redirect is checked against private/reserved ranges, redirects and time are capped, response size is capped at 4 MiB, and the extracted replacement is previewed before a guarded write.
@@ -112,6 +117,12 @@ YouTube discovery prefers the official Data API v3 through an operator-supplied 
 Reading saved sources extracts at most twelve verbatim passages per readable source with heading context. An unreadable reference is reported, not silently treated as evidence.
 
 `Synthesis.md` opens with a concise evidence digest, groups cited passages, marks single-source support as thin, builds a dated timeline when evidence permits, and names open questions and missing lenses. Rebuilds use the proposal protocol. Optional AI may select and order only the quoted passage IDs supplied under a separate disclosure; displayed wording, evidence labels, and citations remain deterministic and verbatim.
+
+A learner may create a source-grounded annotation from the full reading copy or an exact selected
+passage. The resulting ordinary Markdown note records the source path and current content SHA-256;
+a selected quote also records its nearest section heading and exact words. Creating the note is an
+explicit write. Later source revisions never rewrite the saved quote or the learner's annotation,
+and Dusori does not treat an annotation as evidence of understanding or claim support.
 
 `Learning/learn.html` is self-contained, offline, network-free, scoreless, and portable. In-app display uses a sandbox that permits the page’s own script but denies the app origin, workspace storage, and cookies.
 
@@ -146,7 +157,7 @@ The updater has four explicit operations:
 
 Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies both platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
-v0.13.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
+v0.14.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 
 ## Explicitly not built
 
@@ -157,7 +168,7 @@ v0.13.0 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Social-feed scraping, access-control bypass, or YouTube media/caption download
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.13.0
+- Apple notarization or Microsoft Authenticode signing for v0.14.0
 
 ## Trust model
 

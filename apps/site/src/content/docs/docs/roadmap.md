@@ -1,11 +1,11 @@
 ---
 title: Product roadmap
-description: What v0.13.0 ships and what remains explicitly unbuilt.
+description: What v0.14.0 ships and what remains explicitly unbuilt.
 ---
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
-## Shipped through v0.13.0
+## Shipped through v0.14.0
 
 - Research, Sources, Map, and Settings as four predictable destinations
 - One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
@@ -28,6 +28,11 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Consent-gated Europe PMC abstracts for biomedical questions and Library of Congress references for cultural-heritage questions
 - A focused mobile consent sheet with fixed actions, full-catalog visibility, and focus restoration on every close path
 - Live operating-system appearance tracking while **System** is selected
+- Local source-shelf search with separate Evidence and References lenses
+- A previous/next reading trail that keeps shelf position and provenance visible
+- Source-grounded Markdown annotations that preserve an exact selected quote, section, source path,
+  and content fingerprint
+- Fail-closed browser-storage restoration across recorded IndexedDB and OPFS workspaces
 
 ## Intentionally not built
 
@@ -38,13 +43,14 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.13.0 installers
+- Apple notarization or Microsoft Authenticode signing for v0.14.0 installers
 
 ## Candidates for later releases
 
 - Opt-in encrypted device-to-device sync that preserves file ownership
 - More curriculum adapters after each format has stable fixtures and preview-first behavior
-- Better offline reading ergonomics and annotation anchors that survive source revisions
+- Revision-aware re-anchoring and annotation management beyond the preserved quote and context in
+  v0.14.0 notes
 - Reproducible OS code-signing/notarization when an open, sustainable release path is available
 - A recovery UI for invalid machine-owned files that never mutates before showing the proposed repair
 - Model- or dataset-catalog providers such as Hugging Face until a concrete, consentable workflow has stable fixtures and honest evidence boundaries

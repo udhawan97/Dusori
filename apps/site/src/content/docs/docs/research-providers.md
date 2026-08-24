@@ -5,7 +5,7 @@ description: Provider access, configuration, data sent, capture limits, and thir
 
 Every provider is off until its disclosure is accepted on the device. The disclosure names the host and query data. Provider credentials stay in the local companion environment and are not stored in the workspace.
 
-v0.13.0 uses one provider catalog for 15 research adapters: 11 browser adapters and four companion
+v0.14.0 uses one provider catalog for 15 research adapters: 11 browser adapters and four companion
 adapters. The catalog is not a plugin loader; it is the tested source of truth for readiness, the
 exact consent scope, local query routing, evidence lens, capture policy, and browser origin. Tests
 require both hosted and desktop content-security policies to permit every browser origin declared

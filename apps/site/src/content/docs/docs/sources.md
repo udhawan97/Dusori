@@ -33,6 +33,27 @@ If a site blocks automated reading, Dusori keeps the reference and the exact fai
 
 Manually added URL references are not fetched automatically. Consented research providers may return and save readable abstracts, extracts, or READMEs as part of their documented search API.
 
+## Find, read, and annotate saved evidence
+
+The Sources shelf searches locally across source titles, publishers, providers, authors, original
+filenames, and URL hosts. **Evidence** shows local text Dusori can read; **References** shows saved
+URLs that still need readable text. The search and filter are temporary views: they do not write an
+index, preference, or completion state.
+
+Open any local reading copy to enter the Reading room. Previous and next controls follow the active
+source-manifest order and keep the shelf position, evidence state, and provenance in view. Select a
+passage before choosing **Quote selection in a note** to create a learner-owned Markdown note that
+keeps:
+
+- the exact selected words;
+- the nearest section heading, when one exists;
+- the local source path; and
+- the reading copy's current content SHA-256.
+
+Choosing **Annotate in a study note** without a selection creates the same source-linked note without
+inventing a quote. The source link and captured passage are saved by that explicit action before the
+note editor opens. Later source changes never rewrite the saved quote or the learner's commentary.
+
 ## Remove and restore
 
 Choose **Remove from research** to stop a source from contributing to counts, Map, quoted passages, and future briefs. Its local item is retained in a tombstone so **Restore** still works after a relaunch. Removed items do not appear as stray or untracked source files in workspace health.

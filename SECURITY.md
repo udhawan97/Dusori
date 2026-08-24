@@ -33,7 +33,7 @@ Remote source text is data, not instructions. Optional AI egress is separately c
 
 Release builds embed only the updater public key. Private signing material belongs in the protected GitHub `release` environment. The desktop app accepts metadata only from the project’s fixed GitHub Releases `latest.json` endpoint, limits downloads to 512 MiB, verifies the platform artifact signature, and refuses installation when the offered version changed or work is unsaved.
 
-The v0.13.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. Users should download them only from the official GitHub release and verify `SHA256SUMS.txt`. The in-app updater signature is a separate trust mechanism and does not suppress Gatekeeper or SmartScreen warnings.
+The v0.14.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. Users should download them only from the official GitHub release and verify `SHA256SUMS.txt`. The in-app updater signature is a separate trust mechanism and does not suppress Gatekeeper or SmartScreen warnings.
 
 ## Scheduling boundary
 

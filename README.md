@@ -12,15 +12,15 @@
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/app/"><img src="docs/assets/open-dusori.svg" alt="Open Dusori in your browser — no account" width="260"></a>
   &nbsp;
-  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.13.0"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.13.0 for Apple silicon or Windows" width="260"></a>
+  <a href="https://github.com/udhawan97/Dusori/releases/tag/v0.14.0"><img src="docs/assets/download-dusori.svg" alt="Download Dusori v0.14.0 for Apple silicon or Windows" width="260"></a>
   &nbsp;
   <a href="https://udhawan97.github.io/Dusori/docs/getting-started/"><img src="docs/assets/run-dusori-locally.svg" alt="Run Dusori locally with Node.js 24" width="260"></a>
 </p>
 
 <p align="center">
   <a href="https://udhawan97.github.io/Dusori/docs/"><strong>Read the guide</strong></a> ·
-  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-13-0/"><strong>Release notes</strong></a> ·
-  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.13.0/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
+  <a href="https://udhawan97.github.io/Dusori/docs/releases/v0-14-0/"><strong>Release notes</strong></a> ·
+  <a href="https://github.com/udhawan97/Dusori/releases/download/v0.14.0/SHA256SUMS.txt"><strong>Verify checksums</strong></a>
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@ Dusori is organized around the question—not around objectives or setup machine
 
 1. **Ask.** Enter the topic or question in plain language.
 2. **Route and research.** Dusori chooses relevant providers on your device, asks permission, removes duplicate URLs, and saves a varied first shelf of up to eight sources. You can review and approve additional ranked results individually.
-3. **Read.** Provider extracts and guarded companion fetches become local reading copies; blocked pages stay browser-ready references.
+3. **Read.** Search and filter the evidence shelf, then move through local reading copies in order; blocked pages stay browser-ready references.
 4. **Synthesize.** Quotable passages become one honest brief with visible gaps and citations.
 5. **See the trail.** Map opens as a searchable Outline; the visual evidence atlas separates every topic into source, note, brief, and update lanes.
 
@@ -49,12 +49,12 @@ Dusori is organized around the question—not around objectives or setup machine
 
 ## Four places, each with one job
 
-| Place        | What it is for                                                                                     |
-| ------------ | -------------------------------------------------------------------------------------------------- |
-| **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                               |
-| **Sources**  | Read local evidence, open blocked pages in the browser, add your own material, remove, or restore. |
-| **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or separated evidence atlas.  |
-| **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                      |
+| Place        | What it is for                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| **Research** | Ask once; search, rank, save, read, and build a source-backed brief.                                                |
+| **Sources**  | Find, filter, and read local evidence; quote a passage into a source-linked note; add, remove, or restore material. |
+| **Map**      | Follow actual discovered, saved, read, and quoted work in an Outline or separated evidence atlas.                   |
+| **Settings** | Appearance, storage, privacy, provider decisions, import/export, and updates.                                       |
 
 The Research Desk adds the ranked first shelf to Sources automatically. Further ranked results stay review-only until you choose **Approve and add** for each one. Readable provider captures can support claims immediately; URL-only results stay labeled references. A 401, 403, or 429 remains visible and always keeps **Open original** as a browser fallback.
 
@@ -62,7 +62,7 @@ Objectives, review, roadmaps, and certification outline import remain available 
 
 <p align="center">
   <img src="apps/site/public/app-reader.png" alt="Dusori Reading room showing a saved local source and its evidence context" width="920">
-  <br><sub><em>A saved source opens as a local reading copy. The evidence shelf remains one action away.</em></sub>
+  <br><sub><em>The reading trail keeps adjacent sources, evidence state, and passage-to-note context in view.</em></sub>
 </p>
 
 ## Choose how to run it
@@ -70,14 +70,14 @@ Objectives, review, roadmaps, and certification outline import remain available 
 | Choice                    | Best for                                                             | Start                                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Browser**               | Trying Dusori now; installable PWA and offline shell where supported | **[Open Dusori](https://udhawan97.github.io/Dusori/app/)**                                                                                          |
-| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.13.0/Dusori_0.13.0_aarch64-aarch64-apple-darwin.dmg)**   |
-| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.13.0/Dusori_0.13.0_x64-setup-x86_64-pc-windows-msvc.exe)** |
+| **macOS — Apple silicon** | M-series Macs; bundled app and signed in-app updater feed            | **[Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.14.0/Dusori_0.14.0_aarch64-aarch64-apple-darwin.dmg)**   |
+| **Windows — x64**         | 64-bit Windows; bundled app and signed in-app updater feed           | **[Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.14.0/Dusori_0.14.0_x64-setup-x86_64-pc-windows-msvc.exe)** |
 | **Node companion**        | Browser UI plus local page capture and extra providers               | `npx @udhawan97/dusori@latest`                                                                                                                      |
-| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.13.0.zip)**                                                                 |
+| **Source**                | Audit, modify, or build Dusori yourself                              | **[Source ZIP](https://github.com/udhawan97/Dusori/archive/refs/tags/v0.14.0.zip)**                                                                 |
 
-The v0.13.0 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
+The v0.14.0 macOS and Windows installers are open-source release builds, but they are **not Apple-notarized or Microsoft code-signed**. Gatekeeper or SmartScreen may warn on first launch. Verify the asset against `SHA256SUMS.txt` on the release page. The separate in-app update artifacts are cryptographically signed by Dusori’s updater key.
 
-Already installed a v0.12.0 or v0.12.1 desktop build? Install v0.13.0 manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates work from v0.12.2 onward.
+Already installed a v0.12.0 or v0.12.1 desktop build? Install the current v0.14.0 release manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely choose the Apple silicon updater feed. Your workspace is separate from the app bundle and remains in place. Normal in-app updates work from v0.12.2 onward.
 
 ### Local companion
 
@@ -138,8 +138,8 @@ AI is optional. Deterministic ranking, source storage, quoted synthesis structur
 
 ### One run, one inspectable contract
 
-v0.13.0 keeps the search-to-brief transaction behind one tested boundary and makes the provider
-gate question-shaped. A provider can
+v0.14.0 keeps the search-to-brief transaction behind one tested boundary, makes the provider gate
+question-shaped, and extends the same evidence contract through the reading trail. A provider can
 fail without costing results from the others; a capture can fail while its URL and failure record
 remain saved; a local model can disappear while deterministic synthesis still completes; and an
 edited brief still becomes a proposal instead of being overwritten. Provider readiness, consent

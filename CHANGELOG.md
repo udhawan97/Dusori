@@ -4,6 +4,35 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-24
+
+### Reading trail and source review
+
+- Added local source-shelf search across titles, publishers, providers, authors, filenames, and
+  hosts, plus separate All, Evidence, and References lenses. Filtering writes no index or
+  preference file and never changes the shelf.
+- Added previous/next navigation inside the Reading room, with current shelf position, evidence
+  state, and provenance kept beside the local reading copy.
+- Added selection-aware annotations: a learner can carry an exact passage into an ordinary
+  Markdown note with its section heading, source path, and content SHA-256. The note preserves the
+  quoted basis even if the source is later revised.
+- Kept additional ranked research results review-only until the learner chooses **Approve and
+  add**, then refreshed the brief without broadening consent or provider access.
+
+### Recovery and navigation
+
+- Made browser storage restoration fail closed when the recorded IndexedDB or OPFS backend is
+  unavailable, and recovered older browser workspaces without silently opening an empty store.
+- Preserved Research, Sources, Map representation, document paths, and topic creation across URL,
+  reload, Back, and Forward transitions through one navigation decision module.
+- Made clean CI installs tolerate an empty Playwright browser cache before provisioning the
+  required engines.
+
+### Documentation and release
+
+- Synchronized the product contract, README, website, source guide, roadmap, responsive product
+  screenshots, and release notes with the verified v0.14.0 reading and recovery flow.
+
 ## [0.13.0] - 2026-08-13
 
 ### Question-shaped research
@@ -382,7 +411,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/udhawan97/Dusori/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/udhawan97/Dusori/compare/v0.12.4...v0.13.0
 [0.12.4]: https://github.com/udhawan97/Dusori/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/udhawan97/Dusori/compare/v0.12.2...v0.12.3

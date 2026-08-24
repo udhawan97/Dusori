@@ -42,10 +42,12 @@
     replaceWorkspace,
     resolvePendingProposal,
     resolveWikilink,
+    slugify,
     type CompanionAiClient,
     type CompanionResearchClient,
     type MarkdownConflict,
     type ProposalAttentionItem,
+    type SourceRecord,
     type StorageAdapter,
     type Workspace,
   } from '@dusori/core';
@@ -82,6 +84,7 @@
   import LearningInsights from '$lib/components/LearningInsights.svelte';
   import KnowledgeGraph from '$lib/components/KnowledgeGraph.svelte';
   import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
+  import SourceReader from '$lib/components/SourceReader.svelte';
   import AppSettings from '$lib/components/AppSettings.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
@@ -89,6 +92,7 @@
   import TutorPreferences from '$lib/components/TutorPreferences.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
+  import { sourceAnnotationTemplate, type SourcePassage } from '$lib/source-reading';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -141,6 +145,7 @@
   const dismissedCertificationSetups = new SvelteSet<string>();
   let savedSourceCount = 0;
   let sourceCountRequest = 0;
+  let readingSources: SourceRecord[] = [];
 
   const unlockHint = 'Select or create a topic to open these views.';
   // Workspace restoration can normalize the visible URL as soon as the component mounts. Keep
@@ -618,6 +623,21 @@
     const content = (await storage.read(path))?.content ?? '';
     if (!commitNavigation({ documentPath: path, kind: 'open', view: 'note' }, record)) return;
     noteContent = content;
+    await refreshReadingSources(path);
+  }
+
+  async function refreshReadingSources(path: string): Promise<void> {
+    const topicSlug = /^Topics\/([^/]+)\/Sources\/items\//u.exec(path)?.[1] ?? '';
+    if (!storage || !topicSlug) {
+      readingSources = [];
+      return;
+    }
+    try {
+      readingSources = (await readSourceManifest(storage, topicSlug)).sources;
+    } catch {
+      // The document itself remains readable. Workspace health owns invalid manifest recovery.
+      readingSources = [];
+    }
   }
 
   // Delegated from the note sheet rather than from MarkdownView, which also renders research
@@ -722,23 +742,39 @@
     });
   }
 
-  async function annotateCurrentSource(): Promise<void> {
+  async function annotateCurrentSource(passage?: SourcePassage): Promise<void> {
     if (!storage || !selectedSlug || !notePath.includes('/Sources/items/')) return;
     await perform(async () => {
-      const sourceName =
-        noteContent.match(/^#\s+(.+)$/mu)?.[1]?.trim() ??
-        notePath.split('/').at(-1)?.replace(/\.md$/u, '').replaceAll('-', ' ') ??
-        'saved source';
-      const created = await createNote(storage!, selectedSlug, `Notes on ${sourceName}`);
-      const sourceRelativePath = notePath
-        .slice(`Topics/${selectedSlug}/`.length)
-        .replace(/\.md$/u, '');
-      const annotationDraft = `${created.content.trimEnd()}\n\n## Source\n\n[[../${sourceRelativePath}]]\n\n## Annotation\n\n`;
+      const currentSource = readingSources.find((source) => source.path === notePath);
+      if (!currentSource) throw new Error('This reading copy is not in the active source shelf.');
+      const currentSourceFile = await storage!.read(notePath);
+      if (!currentSourceFile) throw new Error('This local reading copy is missing.');
+      const sourceName = noteContent.match(/^#\s+(.+)$/mu)?.[1]?.trim() ?? currentSource.title;
+      const baseTitle = `Notes on ${sourceName}`.slice(0, 160);
+      let title = baseTitle;
+      let suffix = 2;
+      while (await storage!.read(`Topics/${selectedSlug}/Notes/${slugify(title)}.md`)) {
+        const suffixText = ` ${suffix}`;
+        title = `${baseTitle.slice(0, 160 - suffixText.length)}${suffixText}`;
+        suffix += 1;
+      }
+      const createdAt = new Date();
+      const content = sourceAnnotationTemplate({
+        createdAt,
+        ...(passage ? { passage } : {}),
+        source: currentSource,
+        sourceContentHash: currentSourceFile.hash,
+        title,
+        topicSlug: selectedSlug,
+      });
+      const created = await createNote(storage!, selectedSlug, title, createdAt, { content });
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
-      noteDraft = annotationDraft;
+      noteDraft = created.content;
       editingNote = true;
-      status = 'Annotation note created. Add what mattered, then save it locally.';
+      status = passage
+        ? 'Quoted passage and source context saved locally. Add what it changes, then save your note.'
+        : 'Source-linked note created. Add what mattered, then save it locally.';
     });
   }
 
@@ -1445,27 +1481,15 @@
             </section>
           {:else}
             {#if notePath.includes('/Sources/items/')}
-              <article class="reading-room" aria-labelledby="reading-room-title">
-                <header>
-                  <div>
-                    <p class="kicker">Saved source · local reading copy</p>
-                    <h1 id="reading-room-title">Reading room</h1>
-                  </div>
-                  <div class="reading-room-actions">
-                    <button class="primary-button" onclick={() => void annotateCurrentSource()}>
-                      <Pencil aria-hidden="true" size={17} /> Annotate in a study note
-                    </button>
-                    <button class="secondary-button" onclick={() => openSources()}
-                      >All sources</button
-                    >
-                  </div>
-                </header>
-                <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
-                <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
-                <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
-                  <MarkdownView content={noteContent} />
-                </div>
-              </article>
+              <SourceReader
+                content={noteContent}
+                currentPath={notePath}
+                sources={readingSources}
+                onAnnotate={(passage) => void annotateCurrentSource(passage)}
+                onFollowLink={(event) => void followWikilink(event)}
+                onOpenAll={() => openSources()}
+                onOpenSource={(path) => void openGraphDocument(path)}
+              />
             {:else}
               <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
               <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
@@ -2446,45 +2470,6 @@
 
   .sources-studio :global(.source-library) {
     margin-block-start: var(--space-xl);
-  }
-
-  .reading-room {
-    width: min(100%, 62rem);
-    margin-inline: auto;
-    padding: var(--space-xl) var(--page-gutter) var(--space-3xl);
-  }
-
-  .reading-room > header {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: var(--space-lg);
-    padding-block-end: var(--space-lg);
-    border-block-end: var(--rule-hair) solid var(--color-rule);
-  }
-
-  .reading-room h1 {
-    margin-block-start: var(--space-xs);
-    font-size: var(--text-2xl);
-  }
-
-  .reading-room-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-sm);
-    justify-content: flex-end;
-  }
-
-  .reading-room-actions button {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-  }
-
-  .reading-room .note-sheet {
-    width: min(100%, 46rem);
-    padding-inline: 0;
   }
 
   .note-editor {

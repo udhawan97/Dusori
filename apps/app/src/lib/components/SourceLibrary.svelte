@@ -19,6 +19,11 @@
 
   import { createLatestRequestGate } from '$lib/latest-request';
   import { handleExternalLink } from '$lib/open-external';
+  import {
+    filterSavedSources,
+    sourceFilterCounts,
+    type SourceShelfFilter,
+  } from '$lib/source-reading';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
@@ -40,12 +45,27 @@
   let saving = false;
   let error = '';
   let success = '';
+  let sourceQuery = '';
+  let shelfFilter: SourceShelfFilter = 'all';
+  let shelfTopicSlug = '';
+  let addSourceDetails: HTMLDetailsElement;
 
   let fetchingSha = '';
   let upgradeError = '';
   let removingSha = '';
   let restoringSha = '';
   const refreshGate = createLatestRequestGate();
+
+  $: filterCounts = sourceFilterCounts(sources);
+  $: visibleSources = filterSavedSources(sources, sourceQuery, shelfFilter);
+  $: resetShelfForTopic(topicSlug);
+
+  function resetShelfForTopic(slug: string): void {
+    if (slug === shelfTopicSlug) return;
+    shelfTopicSlug = slug;
+    sourceQuery = '';
+    shelfFilter = 'all';
+  }
 
   function hostOf(record: SourceRecord): string {
     try {
@@ -331,6 +351,7 @@
         pastedText = '';
         url = '';
         selectedFile = null;
+        addSourceDetails.open = false;
         onSourceSaved();
       }
     } catch (caught) {
@@ -387,7 +408,7 @@
     >
   </div>
 
-  <details class="add-source-details">
+  <details class="add-source-details" bind:this={addSourceDetails}>
     <summary>Add your own source</summary>
     <form
       onsubmit={(event) => {
@@ -483,6 +504,42 @@
     {/if}
   </div>
 
+  {#if !loading && sources.length > 0}
+    <div class="source-tools">
+      <label for="source-search">Find a saved source</label>
+      <input
+        id="source-search"
+        type="search"
+        bind:value={sourceQuery}
+        placeholder="Title, publisher, provider, or host"
+      />
+      <div class="source-filters" role="group" aria-label="Filter saved sources">
+        <button
+          type="button"
+          aria-pressed={shelfFilter === 'all'}
+          onclick={() => (shelfFilter = 'all')}>All <span>{filterCounts.all}</span></button
+        >
+        <button
+          type="button"
+          aria-pressed={shelfFilter === 'evidence'}
+          onclick={() => (shelfFilter = 'evidence')}
+          >Evidence <span>{filterCounts.evidence}</span></button
+        >
+        <button
+          type="button"
+          aria-pressed={shelfFilter === 'references'}
+          onclick={() => (shelfFilter = 'references')}
+          >References <span>{filterCounts.references}</span></button
+        >
+      </div>
+      <p class="source-results" aria-live="polite">
+        {visibleSources.length === sources.length && !sourceQuery.trim()
+          ? `${sources.length} ${sources.length === 1 ? 'source' : 'sources'} on this shelf.`
+          : `${visibleSources.length} of ${sources.length} sources shown.`}
+      </p>
+    </div>
+  {/if}
+
   {#if loading}
     <p class="source-empty">Reading saved sources…</p>
   {:else if sources.length === 0}
@@ -490,9 +547,14 @@
       <p>No sources yet.</p>
       <span>Add text, a local file, or a URL reference above.</span>
     </div>
+  {:else if visibleSources.length === 0}
+    <div class="source-empty">
+      <p>No sources match this view.</p>
+      <span>Change the search or evidence filter; nothing was removed.</span>
+    </div>
   {:else}
     <ul class="source-list" aria-label="Saved sources">
-      {#each sources as source (source.sha256)}
+      {#each visibleSources as source (source.sha256)}
         <li>
           {#if source.path}
             <button class="source-title" onclick={() => onOpenSource(source.path!)}>
@@ -589,12 +651,15 @@
   .source-feedback {
     order: 2;
   }
-  .source-list,
-  .source-empty {
+  .source-tools {
     order: 3;
   }
-  .removed-sources {
+  .source-list,
+  .source-empty {
     order: 4;
+  }
+  .removed-sources {
+    order: 5;
   }
 
   .source-heading {
@@ -763,6 +828,56 @@
 
   .source-feedback {
     min-height: 1lh;
+  }
+
+  .source-tools {
+    display: grid;
+    gap: var(--space-xs);
+    padding-block: var(--space-md);
+    border-block: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .source-tools label {
+    margin: 0;
+  }
+
+  .source-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .source-filters button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--space-xs);
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-sm);
+  }
+
+  .source-filters button[aria-pressed='true'] {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .source-filters span {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .source-results {
+    min-height: 1lh;
+    margin: 0;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
   }
 
   .source-message {
@@ -942,6 +1057,10 @@
     }
 
     .upgrade-source:hover:not(:disabled) {
+      background: var(--color-paper-2);
+    }
+
+    .source-filters button:hover:not([aria-pressed='true']) {
       background: var(--color-paper-2);
     }
   }

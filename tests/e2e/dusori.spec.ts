@@ -1180,6 +1180,77 @@ test('searches local workspace prose and opens the matching document', async ({ 
   await expectNoSeriousA11yViolations(page);
 });
 
+test('filters the source shelf, follows the reading trail, and anchors a selected quote', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await addPastedSource(page);
+
+  await openSources(page);
+  await page.getByLabel('Source title').fill('Encoding handout');
+  await page
+    .getByLabel('Source text')
+    .fill(
+      '# Encoding handout\n\n## Position\n\nPositional encodings preserve sequence order before attention begins.',
+    );
+  await page.getByRole('button', { name: 'Save source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Encoding handout');
+
+  await openSources(page);
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill('External reading list');
+  await page.getByLabel('Web address').fill('https://example.org/reading-list');
+  await page.getByRole('button', { name: 'Save source' }).click();
+
+  const shelf = page.getByRole('list', { name: 'Saved sources' });
+  await page.getByLabel('Find a saved source').fill('transformer');
+  await expect(shelf.getByRole('listitem')).toHaveCount(1);
+  await expect(shelf).toContainText('Transformer notes');
+  await page.getByLabel('Find a saved source').fill('');
+  await page.getByRole('button', { name: 'References 1' }).click();
+  await expect(shelf.getByRole('listitem')).toHaveCount(1);
+  await expect(shelf).toContainText('External reading list');
+  await page.getByRole('button', { name: 'Evidence 2' }).click();
+  await expect(shelf.getByRole('listitem')).toHaveCount(2);
+  await page.getByRole('button', { name: 'All 3' }).click();
+
+  await shelf.getByRole('button', { name: 'Transformer notes' }).click();
+  const reader = page.getByRole('article', { name: 'Reading room' });
+  await expect(reader.locator('#reading-room-title')).toHaveText('Transformer notes');
+  await reader.getByRole('button', { name: 'Next source: Encoding handout' }).click();
+  await expect(reader.locator('#reading-room-title')).toHaveText('Encoding handout');
+
+  await page.evaluate(() => {
+    const paragraph = [...document.querySelectorAll('.reading-room .markdown p')].find((node) =>
+      node.textContent?.includes('Positional encodings preserve sequence order'),
+    );
+    if (!paragraph) throw new Error('Reading passage not found.');
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+  const quoteAction = reader.getByRole('button', { name: 'Quote selection in a note' });
+  await expect(quoteAction).toBeEnabled();
+  await quoteAction.click();
+
+  const editor = page.getByLabel('Markdown note');
+  await expect(editor).toHaveValue(/> Positional encodings preserve sequence order/u);
+  await expect(editor).toHaveValue(/source_heading: "Position"/u);
+  await page.getByRole('button', { name: 'Save note' }).click();
+  const saved = await waitForWorkspaceFile(
+    page,
+    'Topics/ai-fundamentals/Notes/notes-on-encoding-handout.md',
+  );
+  expect(saved).toContain('[[../Sources/items/');
+  expect(saved).toContain('|Encoding handout]]');
+  expect(saved).toContain('source_content_sha256:');
+  expect(saved).toContain('> Positional encodings preserve sequence order');
+  await expectNoSeriousA11yViolations(page);
+});
+
 test('filters workspace search by a tag written in the source itself', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -1404,6 +1475,7 @@ test('source library stores pasted text and URL references without remote fetchi
   await createTopic(page);
   await addPastedSource(page);
 
+  await openSources(page);
   await page.getByLabel('Source type').selectOption('url');
   await page.getByLabel('Source title').fill('Transformers paper');
   await page.getByLabel('Web address').fill('https://arxiv.org/abs/1706.03762');
@@ -1426,7 +1498,7 @@ test('source library stores pasted text and URL references without remote fetchi
     .getByRole('link', { name: 'https://arxiv.org/abs/1706.03762' });
   await expect(savedOriginal).toHaveAttribute('target', '_blank');
   await expect(savedOriginal).toHaveAttribute('rel', /noopener/u);
-  await expect(page.getByRole('heading', { name: 'Transformers paper' })).toBeVisible();
+  await expect(page.locator('#reading-room-title')).toHaveText('Transformers paper');
 
   const sourceState = await page.evaluate(async () => {
     const origin = await navigator.storage.getDirectory();
@@ -2872,9 +2944,7 @@ test.describe('companion flows', () => {
 
     await page.getByRole('button', { name: 'Read from example.org' }).click();
     await expect(
-      page
-        .getByRole('article', { name: 'Reading room' })
-        .getByRole('heading', { name: 'Attention paper' }),
+      page.getByRole('article', { name: 'Reading room' }).locator('#reading-room-title'),
     ).toBeVisible();
     await expect(page.getByRole('article', { name: 'Reading room' })).toContainText(
       'weigh the other tokens',
