@@ -26,6 +26,7 @@
     type ResearchRunRecord,
     type SourceRecord,
   } from '@dusori/core';
+  import { tick } from 'svelte';
 
   import { wikilinkTarget } from '$lib/markdown';
   import {
@@ -34,6 +35,7 @@
     researchAnswerRun,
     researchRunQuestion,
     researchSourceState,
+    researchThreadPreview,
     researchThreadFilename,
     type ResearchThreadExportInput,
   } from '$lib/research-thread';
@@ -64,6 +66,8 @@
   let showAllSources = false;
   let exporting: ExportKind | '' = '';
   let exportStatus = '';
+  let threadElement: HTMLElement;
+  let documentHeading: HTMLHeadingElement;
 
   $: latestRun = runs.at(-1) ?? null;
   $: answerRun = researchAnswerRun(runs, synthesisRunAt);
@@ -78,6 +82,7 @@
   $: visibleSources = showAllSources ? sources : sources.slice(0, 5);
   $: readCount = sources.filter((source) => evidenceClaims(source).length > 0).length;
   $: claimCount = sources.reduce((total, source) => total + evidenceClaims(source).length, 0);
+  $: answerPreview = researchThreadPreview(synthesisMarkdown);
   $: exportInput = {
     generatedAt,
     outputStyle,
@@ -139,6 +144,20 @@
     if (href && /^https?:\/\//iu.test(href)) onOpenExternal(event, href);
   }
 
+  async function focusThreadTarget(id: string): Promise<void> {
+    const target = threadElement.querySelector<HTMLElement>(`#${id}`);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }
+
+  async function openFullDocument(): Promise<void> {
+    view = 'document';
+    await tick();
+    documentHeading?.focus({ preventScroll: true });
+    documentHeading?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }
+
   function downloadText(content: string, filename: string, mediaType: string): void {
     const url = URL.createObjectURL(new Blob([content], { type: mediaType }));
     const anchor = document.createElement('a');
@@ -198,11 +217,11 @@
   }
 </script>
 
-<section class="research-thread" aria-labelledby="thread-title">
+<section bind:this={threadElement} class="research-thread" aria-labelledby="thread-title">
   <header class="thread-header">
     <div>
       <p class="thread-label"><MessageSquareText aria-hidden="true" size={16} /> Research thread</p>
-      <h2 id="thread-title">One place for the whole investigation.</h2>
+      <h2 id="thread-title" tabindex="-1">One place for the whole investigation.</h2>
       <p>
         Question, lookup receipt, source links, quoted evidence, and the built answer stay together.
       </p>
@@ -219,7 +238,11 @@
       <button type="button" aria-pressed={view === 'thread'} onclick={() => (view = 'thread')}>
         <MessageSquareText aria-hidden="true" size={15} /> Thread
       </button>
-      <button type="button" aria-pressed={view === 'document'} onclick={() => (view = 'document')}>
+      <button
+        type="button"
+        aria-pressed={view === 'document'}
+        onclick={() => void openFullDocument()}
+      >
         <FileText aria-hidden="true" size={15} /> Document
       </button>
     </div>
@@ -264,6 +287,26 @@
   </div>
   <p class="export-status" role="status" aria-live="polite">{exportStatus}</p>
 
+  {#if view === 'thread'}
+    <nav class="thread-index" aria-label="In this thread">
+      <strong>In this thread</strong>
+      <div>
+        <button type="button" onclick={() => void focusThreadTarget('thread-receipt')}
+          >Receipt</button
+        >
+        <button type="button" onclick={() => void focusThreadTarget('thread-sources')}
+          >Sources</button
+        >
+        <button type="button" onclick={() => void focusThreadTarget('thread-answer')}
+          >Answer & gaps</button
+        >
+        <button type="button" onclick={() => void focusThreadTarget('thread-history')}
+          >Updates</button
+        >
+      </div>
+    </nav>
+  {/if}
+
   {#if latestUpdateDidNotReplace && latestRun}
     <p class="update-note" role="status">
       The {displayDate(latestRun.at)} update did not replace this completed answer. Its outcome is preserved
@@ -285,7 +328,7 @@
 
       <li class="message" style="--thread-index: 1">
         <span class="message-avatar" aria-hidden="true"><SearchCheck size={17} /></span>
-        <article>
+        <article id="thread-receipt" tabindex="-1">
           <header>
             <strong>Dusori</strong>
             <span>{answerRun ? displayDate(answerRun.at) : 'Saved research'}</span>
@@ -331,7 +374,7 @@
 
       <li class="message" style="--thread-index: 2">
         <span class="message-avatar" aria-hidden="true"><Library size={17} /></span>
-        <article>
+        <article id="thread-sources" tabindex="-1">
           <header><strong>Sources</strong><span>{sources.length} collected</span></header>
           <p class="message-intro">
             Every item keeps its original link and evidence state. References are not counted as
@@ -400,19 +443,27 @@
 
       <li class="message synthesis-message" style="--thread-index: 3">
         <span class="message-avatar answer" aria-hidden="true"><BookOpen size={17} /></span>
-        <article>
+        <article id="thread-answer" tabindex="-1">
           <header><strong>Built answer</strong><span>{displayDate(generatedAt)}</span></header>
           <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: rendered links retain native keyboard activation) -->
           <!-- svelte-ignore a11y_no_static_element_interactions (the article body delegates link routing only) -->
           <div class="synthesis-body" onclick={followSynthesisLink}>
-            <MarkdownView content={synthesisMarkdown} />
+            <MarkdownView content={answerPreview} />
           </div>
+          <p class="evidence-boundary">
+            <strong>Evidence boundary.</strong> This preview uses quoted passages from {readCount}
+            read {readCount === 1 ? 'source' : 'sources'}. References are not evidence until read;
+            Dusori has not judged whether a quoted claim is true.
+          </p>
+          <button class="open-document" type="button" onclick={() => void openFullDocument()}>
+            <FileText aria-hidden="true" size={15} /> Open full document
+          </button>
         </article>
       </li>
 
       <li class="message" style="--thread-index: 4">
         <span class="message-avatar" aria-hidden="true"><CalendarClock size={17} /></span>
-        <article>
+        <article id="thread-history" tabindex="-1">
           <header><strong>Keep it current</strong><span>Local setting</span></header>
           <label class="refresh-choice">
             <input
@@ -450,7 +501,7 @@
       <header>
         <div>
           <p>Portable Markdown</p>
-          <h3>Built answer</h3>
+          <h3 bind:this={documentHeading} tabindex="-1">Built answer</h3>
         </div>
         <button type="button" onclick={() => onOpenDocument(`Topics/${topicSlug}/Synthesis.md`)}>
           <FileText aria-hidden="true" size={15} /> Open as note
@@ -493,6 +544,42 @@
   .export-status,
   .update-note {
     margin: 0;
+  }
+
+  .thread-index {
+    position: sticky;
+    z-index: var(--z-base);
+    inset-block-start: var(--space-sm);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs) var(--space-md);
+    padding: var(--space-xs) var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    background: color-mix(in srgb, var(--color-paper) 94%, transparent);
+    box-shadow: 0 0.35rem 1rem color-mix(in srgb, var(--color-ink) 8%, transparent);
+    backdrop-filter: blur(0.5rem);
+  }
+
+  .thread-index > strong {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .thread-index > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+  }
+
+  .thread-index button {
+    min-height: 2.35rem;
+    border-color: transparent;
+    color: var(--color-accent-text);
+    font-size: var(--text-xs);
   }
 
   .thread-header h2 {
@@ -728,6 +815,7 @@
 
   .message > article {
     min-width: 0;
+    scroll-margin-block-start: 5rem;
     padding-block-start: var(--space-2xs);
   }
 
@@ -929,6 +1017,26 @@
     color: var(--color-accent-text);
   }
 
+  .evidence-boundary {
+    max-width: 68ch;
+    margin-block-start: var(--space-md) !important;
+    padding-block-start: var(--space-sm);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .evidence-boundary strong {
+    color: var(--color-ink);
+  }
+
+  .open-document {
+    margin-block-start: var(--space-sm);
+    border-color: var(--color-accent-text);
+    color: var(--color-accent-text);
+    font-weight: 700;
+  }
+
   .refresh-choice {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -1008,7 +1116,10 @@
   button:focus-visible,
   summary:focus-visible,
   a:focus-visible,
-  input:focus-visible {
+  input:focus-visible,
+  #thread-title:focus-visible,
+  .message article:focus-visible,
+  .document-view > header h3:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
@@ -1027,6 +1138,21 @@
     .source-links {
       grid-column: auto;
       justify-content: end;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    .thread-index {
+      position: static;
+    }
+
+    .thread-index > div {
+      width: 100%;
+    }
+
+    .thread-index button {
+      flex: 1 1 auto;
+      padding-inline: var(--space-xs);
     }
   }
 

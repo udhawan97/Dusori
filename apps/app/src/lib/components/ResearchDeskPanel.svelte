@@ -55,7 +55,12 @@
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
+  export let initialQuestion = '';
+  export let providerRecoveryReturn = false;
   export let onAutoStartHandled: () => void = () => undefined;
+  export let onProviderRecoveryReturnHandled: () => void = () => undefined;
+  export let onQuestionChange: (question: string) => void = () => undefined;
+  export let onReviewProviderChoices: () => void = () => undefined;
   export let onSourceSaved: (path?: string) => void = () => undefined;
   export let onOpenSources: () => void = () => undefined;
   export let onOpenMap: () => void = () => undefined;
@@ -125,7 +130,9 @@
   let providerAvailability: readonly ResearchProviderCatalogEntry[] = [];
   let providerSession: ResearchProviderSession | null = null;
   let aiModel = '';
-  let question = topicTitle;
+  let question = initialQuestion.trim() || topicTitle;
+  let userQuestionDraft = '';
+  let questionDraftRevision = 0;
   let initializedQuestionTopic = topicTitle ? topicSlug : '';
   let selectedAngleId = 'overview';
   let outputStyle: ResearchOutputStyle = 'brief';
@@ -139,6 +146,7 @@
   let readCount = 0;
   let claimCount = 0;
   let runError = '';
+  let providerChoiceRecovery = false;
   let status = '';
   let showOverflow = false;
   let savingExtraKey = '';
@@ -157,6 +165,7 @@
   let consentRevision = 0;
   let consentDialog: HTMLDialogElement;
   let researchButton: HTMLButtonElement;
+  let deskElement: HTMLElement;
 
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
   $: savingExtra = savingExtraKey.length > 0;
@@ -184,6 +193,9 @@
   });
 
   async function initialize(): Promise<void> {
+    const returningFromProviderRecovery = providerRecoveryReturn;
+    const cachedQuestion = initialQuestion.trim();
+    const draftRevisionAtStart = questionDraftRevision;
     providerSession = await loadResearchProviderCatalog({ companion });
     providers = [...providerSession.providers];
     availableProviders = [...providerSession.availableProviders];
@@ -197,12 +209,28 @@
       }
     }
     const staleRefreshDue = await restoreResultState();
-    if (autoStart && !autoStarted) {
+    const userEditedDuringInitialization = questionDraftRevision !== draftRevisionAtStart;
+    const cachedDraftDiffersFromLatestRun = Boolean(
+      cachedQuestion && cachedQuestion !== question.trim(),
+    );
+    const protectedDraft = userEditedDuringInitialization ? userQuestionDraft : cachedQuestion;
+    const draftProtectionActive = userEditedDuringInitialization || cachedDraftDiffersFromLatestRun;
+    if (returningFromProviderRecovery || draftProtectionActive) {
+      question = protectedDraft;
+      selectedAngleId =
+        researchAngles.find((angle) => visibleAngleQuestion(angle) === protectedDraft)?.id ??
+        'custom';
+      if (returningFromProviderRecovery) onProviderRecoveryReturnHandled();
+    }
+    if (autoStart && !autoStarted && !draftProtectionActive) {
       autoStarted = true;
       onAutoStartHandled();
       await beginResearch();
-    } else if (staleRefreshDue) {
+    } else if (staleRefreshDue && !returningFromProviderRecovery && !draftProtectionActive) {
       await refreshStaleResearch();
+    } else if (autoStart && !autoStarted) {
+      autoStarted = true;
+      onAutoStartHandled();
     }
   }
 
@@ -214,7 +242,7 @@
     if (!slug || !title || initializedQuestionTopic === slug) return;
     initializedQuestionTopic = slug;
     selectedAngleId = 'overview';
-    question = title;
+    question = initialQuestion.trim() || title;
   }
 
   function providersWithConsent(
@@ -405,6 +433,7 @@
     if (allowed.length === 0) {
       status =
         'This thread is due for an update, but none of its matching providers is currently allowed. Update it manually after reviewing provider choices.';
+      providerChoiceRecovery = true;
       return;
     }
     await research(allowed, query);
@@ -433,6 +462,7 @@
   async function beginResearch(): Promise<void> {
     if (running || savingExtra || !question.trim()) return;
     runError = '';
+    providerChoiceRecovery = false;
     status = '';
     const relevant = providerSession?.select(currentQuery) ?? availableProviders;
     const undecided = relevant.filter((provider) => readConsent(scopeOf(provider)) === 'undecided');
@@ -448,9 +478,10 @@
     if (allowed.length === 0) {
       runError =
         'No allowed provider matches this question. Reset a relevant provider decision in Settings or change the question.';
+      providerChoiceRecovery = true;
       return;
     }
-    await research(allowed);
+    await research(allowed, currentQuery, true);
   }
 
   function toggleScope(scope: string, selected: boolean): void {
@@ -463,11 +494,11 @@
     void tick().then(() => queueMicrotask(() => researchButton?.focus()));
   }
 
-  function closeConsent(): void {
+  function closeConsent(restoreFocus = true): void {
     consentOpen = false;
     consentProviders = [];
     selectedScopes = [];
-    restoreResearchFocus();
+    if (restoreFocus) restoreResearchFocus();
   }
 
   async function confirmConsent(): Promise<void> {
@@ -478,7 +509,7 @@
         (selectedScopes.includes(scope) ? grantConsent(scope) : denyConsent(scope)) && stored;
     }
     consentRevision += 1;
-    closeConsent();
+    closeConsent(false);
     if (!stored) {
       runError =
         'This device could not remember the provider choices. Check browser storage and try again.';
@@ -489,10 +520,10 @@
     if (allowed.length === 0) {
       runError =
         'Every relevant provider was kept off. Reset a provider decision in Settings when you want to research.';
+      providerChoiceRecovery = true;
       return;
     }
-    await research(allowed);
-    restoreResearchFocus();
+    await research(allowed, currentQuery, true);
   }
 
   function updateProgress(key: string, update: Partial<SourceProgress>): void {
@@ -525,7 +556,19 @@
     }
   }
 
-  async function research(providerList: ResearchProvider[], query = currentQuery): Promise<void> {
+  async function orientToCompletedThread(): Promise<void> {
+    await tick();
+    const heading = deskElement.querySelector<HTMLElement>('#thread-title');
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }
+
+  async function research(
+    providerList: ResearchProvider[],
+    query = currentQuery,
+    orientOnComplete = false,
+  ): Promise<void> {
     stage = 'searching';
     sourceProgress = [];
     showOverflow = false;
@@ -534,6 +577,7 @@
     extraFeedback = {};
     latestBriefPath = '';
     runError = '';
+    providerChoiceRecovery = false;
     try {
       await setResearchOutputStyle(storage, topicSlug, outputStyle);
       const routedProviders =
@@ -557,6 +601,7 @@
       discoveredCount = result.eligibleCount;
       if (result.status === 'no-results') {
         await restoreResultState();
+        if (orientOnComplete) restoreResearchFocus();
         return;
       }
       readCount = result.readCount;
@@ -581,10 +626,12 @@
             : ''
         }`;
         onSourceSaved();
+        if (orientOnComplete) await orientToCompletedThread();
       } else {
         stage = 'complete';
         status = 'Your edited brief was kept. A refreshed proposal is waiting in Needs attention.';
         onSourceSaved();
+        if (orientOnComplete) await orientToCompletedThread();
       }
     } catch (caught) {
       stage = sourceProgress.length > 0 ? 'needs-reading' : 'idle';
@@ -601,14 +648,21 @@
     if (!angle || running) return;
     selectedAngleId = angle.id;
     question = visibleAngleQuestion(angle);
+    userQuestionDraft = question;
+    questionDraftRevision += 1;
+    onQuestionChange(question);
   }
 
   function visibleAngleQuestion(angle: (typeof researchAngles)[number]): string {
     return angle.suffix ? `${topicTitle}: ${angle.suffix}` : topicTitle;
   }
 
-  function useCustomQuestion(): void {
+  function useCustomQuestion(value: string): void {
+    question = value;
     selectedAngleId = 'custom';
+    userQuestionDraft = question;
+    questionDraftRevision += 1;
+    onQuestionChange(question);
   }
 
   function workflowState(index: number): 'complete' | 'current' | 'blocked' | 'pending' {
@@ -707,7 +761,7 @@
   }
 </script>
 
-<section class="desk" aria-labelledby="research-title" aria-busy={running}>
+<section bind:this={deskElement} class="desk" aria-labelledby="research-title" aria-busy={running}>
   <div class="desk-heading">
     <div>
       <h2 id="research-title">Start with a direction.</h2>
@@ -745,12 +799,12 @@
     <div class="query-row">
       <input
         id="research-question"
-        bind:value={question}
+        value={question}
         required
         maxlength="240"
         disabled={running}
         placeholder="What do you want to understand?"
-        oninput={useCustomQuestion}
+        oninput={(event) => useCustomQuestion(event.currentTarget.value)}
       />
       <button
         bind:this={researchButton}
@@ -832,9 +886,25 @@
   </section>
 
   {#if runError}
-    <p class="error" role="alert"><CircleAlert aria-hidden="true" size={17} /> {runError}</p>
+    <div class="error-with-action">
+      <p class="error" role="alert"><CircleAlert aria-hidden="true" size={17} /> {runError}</p>
+      {#if providerChoiceRecovery}
+        <button class="recovery-action" type="button" onclick={onReviewProviderChoices}>
+          <ShieldCheck aria-hidden="true" size={16} /> Review provider choices
+        </button>
+      {/if}
+    </div>
   {/if}
-  {#if status}<p class="notice" role="status">{status}</p>{/if}
+  {#if status}
+    <div class:message-with-action={providerChoiceRecovery}>
+      <p class="notice" role="status">{status}</p>
+      {#if providerChoiceRecovery}
+        <button class="recovery-action" type="button" onclick={onReviewProviderChoices}>
+          <ShieldCheck aria-hidden="true" size={16} /> Review provider choices
+        </button>
+      {/if}
+    </div>
+  {/if}
   {#if threadReady}
     <ResearchThread
       {topicSlug}
@@ -1058,7 +1128,7 @@
       </ul>
     </div>
     <div class="dialog-actions">
-      <button class="quiet" aria-label="Decide later" onclick={closeConsent}>
+      <button class="quiet" aria-label="Decide later" onclick={() => closeConsent()}>
         <span class="full-copy">Decide later</span>
         <span class="compact-copy" aria-hidden="true">Later</span>
       </button>
@@ -1387,6 +1457,24 @@
     gap: var(--space-xs);
     border-color: var(--color-error);
     color: var(--color-error);
+  }
+  .error-with-action {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-xs);
+  }
+  .message-with-action {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-xs);
+  }
+  .recovery-action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    border-color: var(--color-error);
+    color: var(--color-error);
+    font-weight: 700;
   }
   .notice {
     color: var(--color-ink);

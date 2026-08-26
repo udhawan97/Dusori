@@ -11,11 +11,16 @@
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
+  export let initialQuestion = '';
+  export let providerRecoveryReturn = false;
   export let onAutoStartHandled: () => void = () => undefined;
+  export let onProviderRecoveryReturnHandled: () => void = () => undefined;
   export let onArtifactSaved: () => void = () => undefined;
   export let onOpenSource: (path: string) => void = () => undefined;
   export let onOpenSources: () => void = () => undefined;
   export let onOpenMap: () => void = () => undefined;
+  export let onQuestionChange: (question: string) => void = () => undefined;
+  export let onReviewProviderChoices: () => void = () => undefined;
 
   function handleSourceSaved(path?: string): void {
     onArtifactSaved();
@@ -50,7 +55,12 @@
     {companion}
     {ai}
     {autoStart}
+    {initialQuestion}
+    {providerRecoveryReturn}
     {onAutoStartHandled}
+    {onProviderRecoveryReturnHandled}
+    {onQuestionChange}
+    {onReviewProviderChoices}
     onSourceSaved={handleSourceSaved}
     {onOpenSources}
     {onOpenMap}

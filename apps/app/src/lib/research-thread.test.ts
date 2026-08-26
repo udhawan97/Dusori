@@ -9,6 +9,7 @@ import {
   orderedResearchRuns,
   researchAnswerRun,
   researchSourceState,
+  researchThreadPreview,
   researchThreadFilename,
 } from './research-thread.js';
 
@@ -57,6 +58,17 @@ const input = {
 };
 
 describe('research thread exports', () => {
+  it('builds a bounded channel preview while leaving the full synthesis for document view', () => {
+    const preview = researchThreadPreview(
+      '# Synthesis — Research\n\nAssembled from quoted passages.\n\n## What matters\n\n### Memory\n\n- Spacing improves recall.\n\n## Cross-source coverage\n\nCoverage detail.\n\n## Open questions\n\n- What changes over time?\n\n## What this synthesis is\n\nThe complete evidence warning.',
+    );
+
+    expect(preview).toContain('Spacing improves recall');
+    expect(preview).toContain('What changes over time?');
+    expect(preview).not.toContain('Coverage detail');
+    expect(preview).not.toContain('The complete evidence warning');
+  });
+
   it('keeps the question, receipt, sources, synthesis, and evidence boundary together', () => {
     const markdown = renderResearchThreadMarkdown(input);
 

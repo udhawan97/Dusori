@@ -1720,9 +1720,17 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
   const thread = page.getByRole('region', { name: 'One place for the whole investigation.' });
-  await expect(
-    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
-  ).toBeVisible();
+  const threadHeading = page.getByRole('heading', {
+    name: 'One place for the whole investigation.',
+  });
+  await expect(threadHeading).toBeVisible();
+  await expect(threadHeading).toBeFocused();
+  const threadHeadingBox = await threadHeading.boundingBox();
+  expect(threadHeadingBox).not.toBeNull();
+  expect(threadHeadingBox!.y).toBeGreaterThanOrEqual(0);
+  expect(threadHeadingBox!.y + threadHeadingBox!.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  );
   await expect(
     page.getByRole('list', { name: 'Research thread for AI Fundamentals' }),
   ).toContainText('AI fundamentals');
@@ -1733,6 +1741,29 @@ test('Research Desk groups provider consent and builds a durable source-backed b
     'aria-pressed',
     'true',
   );
+  const threadIndex = page.getByRole('navigation', { name: 'In this thread' });
+  await expect(threadIndex).toBeVisible();
+  await expect(thread).toContainText('Evidence boundary.');
+  for (const [label, target] of [
+    ['Receipt', '#thread-receipt'],
+    ['Sources', '#thread-sources'],
+    ['Answer & gaps', '#thread-answer'],
+    ['Updates', '#thread-history'],
+  ] as const) {
+    await threadIndex.getByRole('button', { name: label, exact: true }).click();
+    const destination = page.locator(target);
+    await expect(destination).toBeFocused();
+    const box = await destination.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeLessThan(page.viewportSize()!.height);
+  }
+  await thread.getByRole('button', { name: 'Open full document' }).click();
+  const documentHeading = page
+    .getByRole('region', { name: 'Research document' })
+    .getByRole('heading', { name: 'Built answer' });
+  await expect(documentHeading).toBeFocused();
+  await page.getByRole('button', { name: 'Thread', exact: true }).click();
 
   const markdownDownload = page.waitForEvent('download');
   await page.getByText('Export', { exact: true }).click();
@@ -1788,12 +1819,24 @@ test('Research Desk groups provider consent and builds a durable source-backed b
     )
     .toBe(true);
 
-  await page.getByRole('button', { name: 'Document' }).click();
+  await page.getByRole('button', { name: 'Document', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Research document' })).toContainText(
     'Synthesis — AI Fundamentals',
   );
   await openSources(page);
-  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('AI fundamentals');
+  const savedSources = page.getByRole('list', { name: 'Saved sources' });
+  await expect(savedSources).toContainText('AI fundamentals');
+  await page.setViewportSize({ width: 320, height: 760 });
+  expect(
+    await savedSources.evaluate((element) => {
+      const viewportWidth = window.innerWidth;
+      return [...element.querySelectorAll<HTMLElement>('*')].every((child) => {
+        const box = child.getBoundingClientRect();
+        return box.right <= viewportWidth + 1 && box.left >= -1;
+      });
+    }),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
   const artifacts = await Promise.all([
     readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
     readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
@@ -1820,20 +1863,221 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   ]) {
     await page.setViewportSize(viewport);
     await expect(thread).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+    ).toBe(true);
     expect(await thread.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
       true,
     );
+    if (viewport.width === 375) {
+      expect(
+        await thread.evaluate((element) => element.getBoundingClientRect().height),
+      ).toBeLessThan(5_000);
+    }
   }
   await expectNoSeriousA11yViolations(page);
+});
+
+test('provider recovery preserves the question and returns without making a request', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('Spaced repetition');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('button', { name: 'Decide later' }).click();
+
+  const exactQuestion = 'How does spaced repetition improve durable learning?';
+  await page.getByLabel('Your question').fill(exactQuestion);
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  await disclosure.getByRole('button', { name: 'Keep all off' }).click();
+  await expect(page.getByRole('alert')).toContainText('Every relevant provider was kept off');
+
+  await page.getByRole('button', { name: 'Review provider choices' }).click();
+  const providerChoicesHeading = page.locator('#provider-choices-title');
+  await expect(providerChoicesHeading).toBeFocused();
+  await expect(page.getByRole('list', { name: 'Saved provider decisions' })).toContainText(
+    'Denied',
+  );
+
+  const resetChoices = page.getByRole('button', { name: 'Reset choice' });
+  while ((await resetChoices.count()) > 0) await resetChoices.first().click();
+  const providerRequests: string[] = [];
+  page.on('request', (request) => {
+    if (/w\/api\.php|api\.github\.com|api\.openalex\.org|api\.crossref\.org/u.test(request.url())) {
+      providerRequests.push(request.url());
+    }
+  });
+  await page.getByRole('button', { name: 'Return to research' }).click();
+  await expect(page.getByLabel('Your question')).toHaveValue(exactQuestion);
+  await expect(disclosure).toBeHidden();
+  await page.waitForTimeout(250);
+  expect(providerRequests).toEqual([]);
+
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  await disclosure.getByRole('button', { name: 'Keep all off' }).click();
+  await page.getByRole('button', { name: 'Review provider choices' }).click();
+  await openSources(page);
+  const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
+  await workspaceNavigation.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Return to research' })).toHaveCount(0);
+});
+
+test('provider recovery keeps an existing draft and suppresses its stale auto-refresh', async ({
+  page,
+}) => {
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    await route.fulfill({
+      contentType: 'application/json',
+      json:
+        url.searchParams.get('list') === 'search'
+          ? {
+              query: {
+                search: [
+                  {
+                    pageid: 1,
+                    size: 5200,
+                    snippet:
+                      'Spaced repetition supports durable learning through scheduled retrieval.',
+                    title: 'Spaced repetition',
+                    wordcount: 620,
+                  },
+                ],
+              },
+            }
+          : {
+              query: {
+                pages: {
+                  '1': {
+                    extract:
+                      'Spaced repetition is a learning technique that schedules reviews over increasing intervals to support durable learning.\n\n== Retrieval practice ==\n\nRetrieval practice uses active recall to strengthen later access more than simply rereading the same material.\n\n== Review timing ==\n\nWell-timed review improves durable learning by adjusting the next interval after each recall attempt.',
+                    pageid: 1,
+                    title: 'Spaced repetition',
+                  },
+                },
+              },
+            },
+    });
+  });
+
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('Spaced repetition');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
+
+  const recoveryQuestion = 'Which retrieval schedule best preserves durable learning?';
+  await page.getByLabel('Your question').fill(recoveryQuestion);
+  await page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('dusori-research-consent:v2:')) localStorage.removeItem(key);
+    }
+  });
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  await disclosure.getByRole('button', { name: 'Keep all off' }).click();
+  await page.getByRole('button', { name: 'Review provider choices' }).click();
+
+  const research = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/spaced-repetition/research.json'),
+  ) as { autoRefresh?: boolean; lastRunAt?: string };
+  research.autoRefresh = true;
+  research.lastRunAt = '2020-01-01T00:00:00.000Z';
+  await writeWorkspaceFile(
+    page,
+    'Topics/spaced-repetition/research.json',
+    `${JSON.stringify(research, null, 2)}\n`,
+  );
+  const resetChoices = page.getByRole('button', { name: 'Reset choice' });
+  while ((await resetChoices.count()) > 0) await resetChoices.first().click();
+  await page.evaluate(() => {
+    localStorage.setItem('dusori-research-consent:v2:wikipedia', 'allowed');
+  });
+
+  const providerRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('en.wikipedia.org/w/api.php')) providerRequests.push(request.url());
+  });
+  await page.getByRole('button', { name: 'Return to research' }).click();
+  await expect(page.getByLabel('Your question')).toHaveValue(recoveryQuestion);
+  await page.waitForTimeout(300);
+  expect(providerRequests).toEqual([]);
+  await expect(page.getByRole('button', { name: 'Review provider choices' })).toHaveCount(0);
+
+  await page.evaluate(() => {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('dusori-research-consent:v2:')) localStorage.removeItem(key);
+    }
+  });
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  await disclosure.getByRole('button', { name: 'Keep all off' }).click();
+  await page.getByRole('button', { name: 'Review provider choices' }).click();
+  const secondResetChoices = page.getByRole('button', { name: 'Reset choice' });
+  while ((await secondResetChoices.count()) > 0) await secondResetChoices.first().click();
+  await page.evaluate(() => {
+    localStorage.setItem('dusori-research-consent:v2:wikipedia', 'allowed');
+  });
+  await openSources(page);
+  await openResearch(page);
+  await expect(page.getByLabel('Your question')).toHaveValue(recoveryQuestion);
+  await page.waitForTimeout(300);
+  expect(providerRequests).toEqual([]);
+});
+
+test('mobile source rows wrap and transient topic status does not follow navigation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 760 });
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+  await expect(page.locator('.mobile-status')).toContainText('Topic created.');
+  await openSources(page);
+  await expect(page.locator('.mobile-status')).toBeHidden();
+
+  const longTitle = `A deliberately long source title about spaced repetition ${'and durable learning '.repeat(8)}`;
+  await page.getByLabel('Source title').fill(longTitle.slice(0, 240));
+  await page
+    .getByLabel('Source text')
+    .fill('Spaced retrieval at increasing intervals can support durable recall.');
+  await page.getByRole('button', { name: 'Save source' }).click();
+  const savedSources = page.getByRole('list', { name: 'Saved sources' });
+  await expect(savedSources).toContainText('A deliberately long source title');
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+  ).toBe(true);
+  expect(
+    await savedSources.evaluate((element) => {
+      const viewportWidth = window.innerWidth;
+      return [...element.querySelectorAll<HTMLElement>('*')].every((child) => {
+        const box = child.getBoundingClientRect();
+        return box.right <= viewportWidth + 1 && box.left >= -1;
+      });
+    }),
+  ).toBe(true);
 });
 
 test('Research Desk restores an exact custom question for manual and stale refreshes', async ({
   page,
 }) => {
   const searched: string[] = [];
+  let delayNextSearch = false;
+  let staleSearchStarted = false;
+  let releaseStaleSearch = (): void => undefined;
+  const staleSearchGate = new Promise<void>((resolve) => {
+    releaseStaleSearch = resolve;
+  });
   await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
     const url = new URL(route.request().url());
     if (url.searchParams.get('list') === 'search') {
+      if (delayNextSearch) {
+        staleSearchStarted = true;
+        await staleSearchGate;
+        delayNextSearch = false;
+      }
       const query = url.searchParams.get('srsearch') ?? '';
       searched.push(query);
       const isCustom = query.includes('How do AI systems support human decisions?');
@@ -1942,8 +2186,21 @@ test('Research Desk restores an exact custom question for manual and stale refre
     `${JSON.stringify(research, null, 2)}\n`,
   );
   const beforeAutomatic = research.runs.length;
+  delayNextSearch = true;
   await page.reload();
   await openResearch(page);
+  await expect.poll(() => staleSearchStarted).toBe(true);
+  const retainedFocus = page.getByRole('button', { name: 'Depth map', exact: true });
+  await retainedFocus.focus();
+  await page.evaluate(() => {
+    window.scrollTo({
+      left: 0,
+      top: Math.min(320, document.documentElement.scrollHeight - innerHeight),
+    });
+  });
+  const retainedScroll = await page.evaluate(() => window.scrollY);
+  expect(retainedScroll).toBeGreaterThan(0);
+  releaseStaleSearch();
   await expect
     .poll(async () => {
       const value = JSON.parse(
@@ -1952,9 +2209,123 @@ test('Research Desk restores an exact custom question for manual and stale refre
       return value.runs.length;
     })
     .toBe(beforeAutomatic + 1);
+  await expect(retainedFocus).toBeFocused();
+  expect(await page.evaluate(() => window.scrollY)).toBe(retainedScroll);
   await expect(disclosure).toBeHidden();
   await expect(page.getByLabel('Your question')).toHaveValue(exactQuestion);
   expect(searched.at(-1)).toContain(exactQuestion);
+});
+
+test.describe('research initialization races', () => {
+  test.use({ serviceWorkers: 'block' });
+
+  test('a question typed during initialization suppresses the older stale refresh', async ({
+    page,
+  }) => {
+    let delayCapabilities = false;
+    let capabilitiesStarted = false;
+    let capabilitiesFinished = false;
+    let releaseCapabilities = (): void => undefined;
+    const capabilitiesGate = new Promise<void>((resolve) => {
+      releaseCapabilities = resolve;
+    });
+    await page.route('**/api/health', async (route) => {
+      await route.fulfill({ headers: { 'cache-control': 'no-store' }, json: companionHealth });
+    });
+    await page.route('**/api/research/capabilities', async (route) => {
+      if (delayCapabilities) {
+        capabilitiesStarted = true;
+        await capabilitiesGate;
+        delayCapabilities = false;
+      }
+      await route.fulfill({ json: companionResearchCapabilities });
+      capabilitiesFinished = true;
+    });
+    await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+      const url = new URL(route.request().url());
+      await route.fulfill({
+        contentType: 'application/json',
+        json:
+          url.searchParams.get('list') === 'search'
+            ? {
+                query: {
+                  search: [
+                    {
+                      pageid: 1,
+                      size: 5200,
+                      snippet:
+                        'Spaced repetition schedules retrieval practice to support durable learning.',
+                      title: 'Spaced repetition',
+                      wordcount: 620,
+                    },
+                  ],
+                },
+              }
+            : {
+                query: {
+                  pages: {
+                    '1': {
+                      extract:
+                        'Spaced repetition schedules reviews over increasing intervals to support durable learning. Retrieval practice uses active recall to strengthen later access. Review timing changes the next interval after each recall attempt.',
+                      pageid: 1,
+                      title: 'Spaced repetition',
+                    },
+                  },
+                },
+              },
+      });
+    });
+
+    await createBrowserWorkspace(page);
+    await expectCompanionConnected(page);
+    await page.getByLabel('Topic name').fill('Spaced repetition');
+    await page.getByRole('button', { name: 'Create topic' }).click();
+    const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+    await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+    await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+    await expect(
+      page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+    ).toBeVisible();
+
+    const research = JSON.parse(
+      await readWorkspaceFile(page, 'Topics/spaced-repetition/research.json'),
+    ) as { autoRefresh?: boolean; lastRunAt?: string; runs: Array<{ at: string }> };
+    research.autoRefresh = true;
+    research.lastRunAt = '2020-01-01T00:00:00.000Z';
+    research.runs[research.runs.length - 1]!.at = '2020-01-01T00:00:00.000Z';
+    await writeWorkspaceFile(
+      page,
+      'Topics/spaced-repetition/research.json',
+      `${JSON.stringify(research, null, 2)}\n`,
+    );
+    const runsBeforeReentry = research.runs.length;
+    await openSources(page);
+
+    const providerRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('en.wikipedia.org/w/api.php'))
+        providerRequests.push(request.url());
+    });
+    capabilitiesFinished = false;
+    delayCapabilities = true;
+    await openResearch(page);
+    await expect.poll(() => capabilitiesStarted).toBe(true);
+    const inFlightQuestion = 'Which practice schedule should I compare next?';
+    await page.getByLabel('Your question').fill(inFlightQuestion);
+    releaseCapabilities();
+    await expect.poll(() => capabilitiesFinished).toBe(true);
+    await page.waitForTimeout(400);
+
+    await expect(page.getByLabel('Your question')).toHaveValue(inFlightQuestion);
+    expect(providerRequests).toEqual([]);
+    expect(
+      (
+        JSON.parse(await readWorkspaceFile(page, 'Topics/spaced-repetition/research.json')) as {
+          runs: unknown[];
+        }
+      ).runs,
+    ).toHaveLength(runsBeforeReentry);
+  });
 });
 
 test('an edited synthesis keeps its original question through update, reload, and export', async ({
@@ -2228,7 +2599,7 @@ test('Research Desk lets the learner approve ranked results beyond the first she
   await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(9);
   await expectNoSeriousA11yViolations(page);
   await openResearch(page);
-  await page.getByRole('button', { name: 'Document' }).click();
+  await page.getByRole('button', { name: 'Document', exact: true }).click();
   await page.getByRole('button', { name: 'Open as note' }).click();
   await expect(page.getByRole('heading', { name: 'Synthesis — Attention Research' })).toBeVisible();
 });

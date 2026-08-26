@@ -53,6 +53,64 @@ function synthesisBody(markdown: string): string {
     .trim();
 }
 
+interface MarkdownSection {
+  heading: string;
+  lines: string[];
+}
+
+function synthesisSections(markdown: string): { intro: string[]; sections: MarkdownSection[] } {
+  const intro: string[] = [];
+  const sections: MarkdownSection[] = [];
+  let current: MarkdownSection | undefined;
+  for (const line of synthesisBody(markdown).split('\n')) {
+    const heading = /^##\s+(.+)$/u.exec(line)?.[1]?.trim();
+    if (heading) {
+      current = { heading, lines: [line] };
+      sections.push(current);
+    } else if (current) current.lines.push(line);
+    else intro.push(line);
+  }
+  return { intro, sections };
+}
+
+function boundedMarkdown(lines: string[], maxNonEmpty: number): string {
+  let nonEmpty = 0;
+  const selected: string[] = [];
+  for (const line of lines) {
+    if (line.trim()) nonEmpty += 1;
+    if (nonEmpty > maxNonEmpty) break;
+    selected.push(line);
+  }
+  return selected.join('\n').trim();
+}
+
+/**
+ * Keeps the thread conversational: a short answer and its live gaps stay in the channel while the
+ * complete, unmodified synthesis remains available in Document view and in every export.
+ */
+export function researchThreadPreview(markdown: string): string {
+  const { intro, sections } = synthesisSections(markdown);
+  const primaryNames = [
+    'What matters',
+    'Key ideas',
+    'Evidence by theme',
+    'Cross-source coverage',
+    'Timeline',
+  ];
+  const primary = primaryNames
+    .map((name) => sections.find((section) => section.heading === name))
+    .find(Boolean);
+  const gaps = sections.find((section) =>
+    ['Open questions', 'Research gaps'].includes(section.heading),
+  );
+  const parts = [
+    boundedMarkdown(intro, 2),
+    primary ? boundedMarkdown(primary.lines, 10) : '',
+    gaps ? boundedMarkdown(gaps.lines, 5) : '',
+  ].filter(Boolean);
+  return parts.join('\n\n').trim() || synthesisBody(markdown);
+}
+
 function networkInertMarkdown(markdown: string): string {
   return markdown.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replace(/!\[/gu, '\\![');
 }

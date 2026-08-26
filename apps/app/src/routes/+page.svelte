@@ -131,6 +131,9 @@
   let artifactRevision = 0;
   let learningRevision = 0;
   let researchAutoStartSlug = '';
+  let providerRecoverySlug = '';
+  let providerRecoveryReturnSlug = '';
+  let researchQuestionDrafts: Record<string, string> = {};
   let obsidianGuideOpen = false;
   let obsidianDialog: HTMLDialogElement;
   let obsidianCloseButton: HTMLButtonElement;
@@ -263,6 +266,13 @@
     if (decision.rejected) {
       status = decision.rejected;
       return false;
+    }
+    if (decision.state.view !== workspaceView && status.startsWith('Topic created.')) {
+      window.clearTimeout(statusTimer);
+      status = '';
+    }
+    if (workspaceView === 'settings' && decision.state.view !== 'settings') {
+      providerRecoverySlug = '';
     }
     stopEditingNote();
     creatingTopic = decision.state.creatingTopic;
@@ -605,6 +615,30 @@
 
   function openSettings(record = true): void {
     commitNavigation({ kind: 'open', view: 'settings' }, record);
+  }
+
+  function rememberResearchQuestion(slug: string, question: string): void {
+    if (!slug || researchQuestionDrafts[slug] === question) return;
+    researchQuestionDrafts = { ...researchQuestionDrafts, [slug]: question };
+  }
+
+  async function reviewProviderChoices(slug: string): Promise<void> {
+    if (!slug) return;
+    providerRecoverySlug = slug;
+    openSettings();
+    await tick();
+    const heading = document.getElementById('provider-choices-title');
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }
+
+  function returnToResearch(): void {
+    const slug = providerRecoverySlug;
+    providerRecoverySlug = '';
+    if (slug) {
+      providerRecoveryReturnSlug = slug;
+      openResearch(slug);
+    }
   }
 
   function openGraph(record = true, mode: GraphMode = 'outline'): void {
@@ -1440,6 +1474,8 @@
           onExportTopic={() => void downloadTopic()}
           onImportWorkspace={(event) => void uploadWorkspace(event)}
           onOpenLegacyLearning={() => void openLearning()}
+          providerRecoveryActive={Boolean(providerRecoverySlug)}
+          onReturnToResearch={returnToResearch}
         />
       {:else if selectedSlug}
         {#if workspaceView === 'sources' && storage}
@@ -1526,7 +1562,14 @@
               companion={companionClient}
               ai={companionAiClient}
               autoStart={researchAutoStartSlug === selectedSlug}
+              initialQuestion={researchQuestionDrafts[selectedSlug] ?? ''}
+              providerRecoveryReturn={providerRecoveryReturnSlug === selectedSlug}
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
+              onProviderRecoveryReturnHandled={() => {
+                if (providerRecoveryReturnSlug === selectedSlug) providerRecoveryReturnSlug = '';
+              }}
+              onQuestionChange={(question) => rememberResearchQuestion(selectedSlug, question)}
+              onReviewProviderChoices={() => void reviewProviderChoices(selectedSlug)}
               onArtifactSaved={refreshArtifacts}
               onOpenSource={(path) => void openGraphDocument(path)}
               onOpenSources={() => openSources()}

@@ -14,6 +14,10 @@ export interface RankedCandidate extends ResearchCandidate {
   requiredSubjectMatches?: number;
   /** Matches to the topic itself, excluding objective or angle words. */
   topicMatches?: number;
+  /** Topic terms present in the title, where even one is a strong relevance signal. */
+  titleTopicMatches?: number;
+  /** Minimum topic matches needed so one incidental word cannot admit an unrelated result. */
+  requiredTopicMatches?: number;
   /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
   aiScore?: number;
   aiNote?: string;
@@ -82,6 +86,20 @@ function matchedSubjectCount(query: ResearchQuery, candidate: ResearchCandidate)
 function matchedTopicCount(query: ResearchQuery, candidate: ResearchCandidate): number {
   const found = words(`${candidate.title} ${candidate.snippet}`);
   return (query.topicTerms ?? []).filter((term) => found.has(term)).length;
+}
+
+function matchedTitleTopicCount(query: ResearchQuery, candidate: ResearchCandidate): number {
+  const found = words(candidate.title);
+  return (query.topicTerms ?? []).filter((term) => found.has(term)).length;
+}
+
+function requiredTopicMatchCount(query: ResearchQuery): number | undefined {
+  if (!query.topicTerms?.length) return undefined;
+  if (query.angleId) return 1;
+  const objectiveWords = words(query.objectiveTitle);
+  return query.topicTerms.some((term) => objectiveWords.has(term))
+    ? Math.min(2, query.topicTerms.length)
+    : undefined;
 }
 
 /** Full credit under a year old, decaying to a floor by five; missing or unusable is neutral. */
@@ -173,7 +191,13 @@ export function rankCandidates(
               subjectMatches: matchedSubjectCount(query, candidate),
             }
           : {}),
-        ...(query.topicTerms?.length ? { topicMatches: matchedTopicCount(query, candidate) } : {}),
+        ...(query.topicTerms?.length
+          ? {
+              requiredTopicMatches: requiredTopicMatchCount(query),
+              titleTopicMatches: matchedTitleTopicCount(query, candidate),
+              topicMatches: matchedTopicCount(query, candidate),
+            }
+          : {}),
         rankScore:
           WEIGHTS.relevance * relevance +
           WEIGHTS.community * community +
@@ -203,6 +227,9 @@ export function selectDiverse(
     if (matches === undefined || required === undefined) return true;
     return matches >= required;
   };
+  const enoughTopicEvidence = (candidate: RankedCandidate): boolean =>
+    enoughMatches(candidate.topicMatches, candidate.requiredTopicMatches) ||
+    (candidate.titleTopicMatches ?? 0) > 0;
   // Diversity is a tie-breaker among relevant material, never a reason to promote or retain an
   // unrelated page in the run's learner-visible result set. Multi-term subjects need two distinct
   // matches so a generic word such as "research" cannot admit an otherwise unrelated result.
@@ -210,7 +237,7 @@ export function selectDiverse(
     (candidate) =>
       (candidate.relevanceMatches ?? 0) > 0 &&
       enoughMatches(candidate.subjectMatches, candidate.requiredSubjectMatches) &&
-      (candidate.topicMatches === undefined || candidate.topicMatches > 0),
+      enoughTopicEvidence(candidate),
   );
   const picked = new Set<string>();
   const kinds = new Set<string>();

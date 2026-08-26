@@ -1026,6 +1026,7 @@
   .source-list [role='listitem'] {
     display: grid;
     gap: var(--space-2xs);
+    min-width: 0;
     padding-block: var(--space-sm);
     border-block-end: var(--rule-hair) solid var(--color-rule);
   }
@@ -1033,6 +1034,7 @@
   .source-reason {
     max-width: 68ch;
     margin: var(--space-2xs) 0;
+    overflow-wrap: anywhere;
     color: var(--color-muted);
     font-size: var(--text-xs);
   }
@@ -1085,12 +1087,12 @@
   .source-list a {
     display: block;
     min-width: 0;
-    overflow: hidden;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     color: var(--color-ink);
     font-size: var(--text-sm);
     font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .source-row-error {
@@ -1101,7 +1103,7 @@
   }
 
   .source-title {
-    width: fit-content;
+    width: 100%;
     min-height: 2.75rem;
     padding: 0;
     border: 0;
@@ -1116,12 +1118,14 @@
   }
 
   .source-list .original-link {
-    width: fit-content;
+    width: max-content;
     font-size: var(--text-xs);
     font-weight: 400;
   }
 
   .source-list span {
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);

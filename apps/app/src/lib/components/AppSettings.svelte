@@ -35,6 +35,8 @@
   export let onExportTopic: () => void;
   export let onImportWorkspace: (event: Event) => void;
   export let onOpenLegacyLearning: () => void = () => undefined;
+  export let providerRecoveryActive = false;
+  export let onReturnToResearch: () => void = () => undefined;
 
   let updateStatus = 'Checking update support…';
   let updatePlatform: UpdatePlatform | null = null;
@@ -262,7 +264,7 @@
     <section aria-labelledby="privacy-title">
       <div class="section-heading">
         <ShieldCheck aria-hidden="true" size={22} strokeWidth={1.5} />
-        <div>
+        <div id="provider-choices-title" tabindex="-1">
           <p class="eyebrow">Privacy</p>
           <h2 id="privacy-title">Network access stays explicit</h2>
         </div>
@@ -289,6 +291,11 @@
         Source providers ask together before the first request, but every decision is stored and
         reset separately. Local search never sends your question away.
       </p>
+      {#if providerRecoveryActive}
+        <button class="return-to-research" type="button" onclick={onReturnToResearch}>
+          Return to research
+        </button>
+      {/if}
       {#if consentDecisions.length > 0}
         <ul class="consent-decisions" aria-label="Saved provider decisions">
           {#each consentDecisions as item (item.scope)}
@@ -667,6 +674,18 @@
     padding: 0;
     border-block-start: var(--rule-hair) solid var(--color-rule);
     list-style: none;
+  }
+
+  .return-to-research {
+    margin-block-start: var(--space-sm);
+    border-color: var(--color-accent-text);
+    color: var(--color-accent-text);
+    font-weight: 700;
+  }
+
+  #provider-choices-title:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 4px;
   }
 
   .consent-decisions li {

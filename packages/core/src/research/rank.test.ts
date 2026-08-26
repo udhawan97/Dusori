@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildResearchQuery } from './plan.js';
 import { rankCandidates, selectDiverse, type RankedCandidate } from './rank.js';
 import type { ResearchCandidate, ResearchQuery } from './types.js';
 
@@ -243,6 +244,53 @@ describe('rankCandidates', () => {
     );
 
     expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
+  });
+
+  it('rejects the durable-power false positive through the planned topic gate', () => {
+    const durableLearningQuery = buildResearchQuery('Spaced repetition', {
+      title: 'How does spaced repetition improve durable learning?',
+    });
+    const ranked = rankCandidates(
+      durableLearningQuery,
+      [
+        candidate({ key: 'relevant', title: 'Spaced repetition improves durable learning' }),
+        candidate({
+          key: 'unrelated',
+          snippet:
+            'Repetition in institutional practice can stabilize durable systems of coordinated power.',
+          title: 'How Does Durable Coordinated Power Emerge?',
+        }),
+      ],
+      { now },
+    );
+
+    expect(pick(ranked, 'unrelated')).toMatchObject({
+      requiredTopicMatches: 2,
+      subjectMatches: 2,
+      titleTopicMatches: 0,
+      topicMatches: 1,
+    });
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
+  });
+
+  it('lets an explicit custom question move beyond the topic label', () => {
+    const customQuery = buildResearchQuery('AI Fundamentals', {
+      title: 'How does attention work?',
+    });
+    const ranked = rankCandidates(
+      customQuery,
+      [
+        candidate({
+          key: 'attention',
+          snippet: 'AI systems use attention to relate each token to its context.',
+          title: 'Attention in machine learning',
+        }),
+      ],
+      { now },
+    );
+
+    expect(pick(ranked, 'attention').requiredTopicMatches).toBeUndefined();
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['attention']);
   });
 
   it('still accepts one match for a single-term subject', () => {

@@ -75,6 +75,15 @@ describe('research query planning', () => {
     expect(query.searchText).toBe('TypeScript How does its compiler preserve type safety?');
   });
 
+  it('keeps question grammar out of the subject gate', () => {
+    const query = buildResearchQuery('Spaced repetition', {
+      title: 'How does spaced repetition improve durable learning?',
+    });
+
+    expect(query.subjectTerms).toEqual(['spaced', 'repetition', 'improve', 'durable', 'learning']);
+    expect(query.subjectTerms).not.toContain('does');
+  });
+
   it('preserves a certification code as a required phrase for ranking', () => {
     const query = buildResearchQuery('AI-901', { title: 'Prepare for AI-901' });
 
