@@ -165,7 +165,7 @@ describe('topic synthesis', () => {
   });
 
   it.each([
-    ['comparison', '## Agreements and tensions'],
+    ['comparison', '## Cross-source coverage'],
     ['timeline', '## Timeline'],
     ['study-guide', '## Check your understanding'],
   ] as const)(
@@ -182,6 +182,11 @@ describe('topic synthesis', () => {
       expect(markdown).toContain(
         '[[def123456789-distributed-practice|Distributed practice review]]',
       );
+      if (outputStyle === 'study-guide') {
+        expect(markdown).toContain('Without looking, explain');
+        expect(markdown).toContain('Then check your answer against [[');
+        expect(markdown).toContain('## Research gaps');
+      }
     },
   );
 });

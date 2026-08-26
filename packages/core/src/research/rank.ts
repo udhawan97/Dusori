@@ -194,8 +194,8 @@ export function selectDiverse(
   ranked: RankedCandidate[],
   limit = 8,
 ): { shortlist: RankedCandidate[]; overflow: RankedCandidate[] } {
-  // Diversity is a tie-breaker among relevant material, never a reason to promote an unrelated
-  // page. Off-topic candidates remain visible in overflow for transparency and manual inspection.
+  // Diversity is a tie-breaker among relevant material, never a reason to promote or retain an
+  // unrelated page in the run's learner-visible result set.
   const eligibleRanked = ranked.filter(
     (candidate) =>
       (candidate.relevanceMatches ?? 0) > 0 &&
@@ -241,7 +241,7 @@ export function selectDiverse(
     }
   }
   return {
-    overflow: ranked.filter((candidate) => !picked.has(candidate.key)),
+    overflow: eligibleRanked.filter((candidate) => !picked.has(candidate.key)),
     shortlist: ranked.filter((candidate) => picked.has(candidate.key)),
   };
 }

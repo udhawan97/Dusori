@@ -47,6 +47,8 @@ export const ResearchRunRecordSchema = z
     angleId: z.string().min(1).max(40).optional(),
     providers: z.array(RunProviderOutcomeSchema).max(24),
     newKeys: z.number().int().nonnegative(),
+    /** Ranked, topic-relevant results retained after eligibility filtering. */
+    eligibleCount: z.number().int().nonnegative().optional(),
   })
   .passthrough();
 
@@ -167,6 +169,8 @@ export interface ResearchRunInput {
   providers: RunProviderOutcome[];
   /** Ranked candidates that survived dedupe; empty on a failed or genuinely empty run. */
   candidates: { key: string; url?: string }[];
+  /** Ranked, topic-relevant results retained after eligibility filtering. */
+  eligibleCount?: number;
 }
 
 export async function recordResearchRun(
@@ -197,6 +201,7 @@ export async function recordResearchRun(
     const record = ResearchRunRecordSchema.parse({
       angleId: run.angleId,
       at,
+      eligibleCount: run.eligibleCount ?? run.candidates.length,
       newKeys,
       providers: run.providers,
       searchText: run.searchText,

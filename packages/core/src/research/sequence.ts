@@ -312,6 +312,7 @@ export async function runResearchSequence(
     return {
       aiUnavailable: false,
       claimCount: 0,
+      eligibleCount: 0,
       overflow: [],
       readCount: 0,
       run: null,

@@ -4,6 +4,7 @@ export * from './artifacts.js';
 export * from './brief.js';
 export * from './claims.js';
 export * from './companion.js';
+export * from './evidence.js';
 export * from './learn-page.js';
 export * from './mission.js';
 export * from './plan.js';

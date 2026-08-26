@@ -246,7 +246,7 @@ describe('selectDiverse', () => {
   it('does not promote an unrelated page merely to add another kind', () => {
     const { shortlist, overflow } = selectDiverse(ranked);
     expect(shortlist.map((item) => item.key)).toEqual(['r1', 'r2', 'r3', 'r4', 'r5']);
-    expect(overflow.map((item) => item.key)).toEqual(['d1']);
+    expect(overflow).toEqual([]);
   });
 
   it('treats candidates without a kind as their own bucket', () => {
@@ -266,7 +266,7 @@ describe('selectDiverse', () => {
   it('honours a custom limit and returns everything else as overflow', () => {
     const { shortlist, overflow } = selectDiverse(ranked, 2);
     expect(shortlist).toHaveLength(2);
-    expect(overflow).toHaveLength(4);
+    expect(overflow).toHaveLength(3);
   });
 
   it('prefers distinct hosts and providers when comparable results exist', () => {

@@ -1308,6 +1308,50 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
   await expectNoSeriousA11yViolations(page);
 });
 
+test('legacy claims on a URL reference never appear as quoted evidence', async ({ page }) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+  await openSources(page);
+  await page.getByLabel('Source type').selectOption('url');
+  await page.getByLabel('Source title').fill('Legacy reference');
+  await page.getByLabel('Web address').fill('https://example.org/legacy-reference');
+  await page.getByRole('button', { name: 'Save source' }).click();
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Legacy reference');
+
+  const manifestPath = 'Topics/ai-fundamentals/Sources/manifest.json';
+  const manifest = JSON.parse(await readWorkspaceFile(page, manifestPath)) as {
+    sources: Array<Record<string, unknown>>;
+  };
+  manifest.sources = manifest.sources.map((source) => ({
+    ...source,
+    claims: [
+      {
+        at: '2026-08-25T12:00:00.000Z',
+        text: 'This legacy value was never read from source text.',
+      },
+    ],
+    readState: 'reference',
+  }));
+  await writeWorkspaceFile(page, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  await page.reload();
+  await openSources(page);
+  const shelfItem = page
+    .locator('.source-list [role="listitem"]')
+    .filter({ hasText: 'Legacy reference' });
+  await expect(shelfItem).toContainText('URL reference');
+  await expect(shelfItem).not.toContainText('quoted');
+
+  await openTodayView(page);
+  const mission = page
+    .getByRole('list', { name: 'Research missions' })
+    .getByRole('listitem')
+    .filter({ hasText: 'AI Fundamentals' })
+    .first();
+  await expect(mission).toContainText('0 read');
+  await expect(mission).not.toContainText('quoted');
+});
+
 test('filters workspace search by a tag written in the source itself', async ({ page }) => {
   await createBrowserWorkspace(page);
   await createTopic(page);
@@ -1346,6 +1390,23 @@ async function readWorkspaceFile(page: Page, path: string): Promise<string> {
     for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
     return (await (await directory.getFileHandle(name)).getFile()).text();
   }, path);
+}
+
+/** Replaces one test workspace file through the same OPFS tree the browser adapter uses. */
+async function writeWorkspaceFile(page: Page, path: string, content: string): Promise<void> {
+  await page.evaluate(
+    async ({ target, value }) => {
+      const origin = await navigator.storage.getDirectory();
+      let directory = await origin.getDirectoryHandle('Dusori');
+      const segments = target.split('/');
+      const name = segments.pop() as string;
+      for (const segment of segments) directory = await directory.getDirectoryHandle(segment);
+      const writable = await (await directory.getFileHandle(name)).createWritable();
+      await writable.write(value);
+      await writable.close();
+    },
+    { target: path, value: content },
+  );
 }
 
 async function waitForWorkspaceFile(page: Page, path: string): Promise<string> {
@@ -1810,6 +1871,82 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
   await expect(latest).toContainText('Why do AI systems fail?');
   await expect(latest).toContainText('Wikipedia failed.');
   await expect(page.getByText(/No older brief is being presented/u)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
+});
+
+test('an off-topic-only lookup cannot reopen an older brief after reload', async ({ page }) => {
+  let returnOffTopic = false;
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('list') === 'search') {
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          query: {
+            search: [
+              returnOffTopic
+                ? {
+                    pageid: 2,
+                    size: 4000,
+                    snippet: 'How irrigation works in dry climates.',
+                    title: 'Irrigation mechanisms',
+                    wordcount: 500,
+                  }
+                : {
+                    pageid: 1,
+                    size: 5200,
+                    snippet: 'An overview of artificial intelligence fundamentals.',
+                    title: 'AI fundamentals',
+                    wordcount: 620,
+                  },
+            ],
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        query: {
+          pages: {
+            '1': {
+              extract:
+                'Artificial intelligence systems perform tasks associated with human intelligence.\n\n== Machine learning ==\n\nMachine learning uses data to fit models.',
+              pageid: 1,
+              title: 'AI fundamentals',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(page.getByRole('heading', { name: 'Synthesis — AI Fundamentals' })).toBeVisible();
+
+  await openResearch(page);
+  returnOffTopic = true;
+  await page.getByLabel('Your question').fill('How does irrigation work?');
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  await expect(page.getByText(/No relevant sources were found/u)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
+  const research = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as { runs: Array<{ eligibleCount?: number }> };
+  expect(research.runs.at(-1)?.eligibleCount).toBe(0);
+
+  await page.reload();
+  await openResearch(page);
+  await expect(page.getByText(/found no relevant sources/u)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
+    'Wikipedia found.',
+  );
   await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
 });
 

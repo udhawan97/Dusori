@@ -86,8 +86,8 @@
       value: 'brief',
     },
     {
-      description: 'Puts agreements, disagreements, and single-source claims first.',
-      label: 'Evidence comparison',
+      description: 'Groups themes by multi-source support and single-source gaps.',
+      label: 'Source coverage',
       value: 'comparison',
     },
     {
@@ -289,6 +289,7 @@
         question = angle ? visibleAngleQuestion(angle) : topicTitle;
       }
       discoveredCount =
+        latestRun?.eligibleCount ??
         latestRun?.providers.reduce((total, provider) => total + provider.count, 0) ??
         manifest.sources.length;
       sourceProgress = manifest.sources.map((record) => ({
@@ -311,7 +312,7 @@
             ? 'The latest lookup failed at every provider. No older brief is being presented as its answer.'
             : failed > 0
               ? 'The latest lookup found no sources; some providers also failed. No older brief is being presented as its answer.'
-              : 'The latest lookup completed, but found no sources. Try a more specific question or search in your browser.';
+              : 'The latest lookup completed, but found no relevant sources. Try a more specific question or search in your browser.';
       } else if (manifest.synthesisStaleAt) {
         stage = 'idle';
         status =
@@ -449,7 +450,7 @@
       });
       runResult = result;
       latestRun = result.run;
-      discoveredCount = result.shortlist.length + result.overflow.length;
+      discoveredCount = result.eligibleCount;
       if (result.status === 'no-results') {
         stage = 'idle';
         const failed = result.skipped.length;

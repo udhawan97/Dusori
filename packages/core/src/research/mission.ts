@@ -1,6 +1,7 @@
 import type { StorageAdapter } from '../adapters.js';
 import type { SourceRecord } from '../schemas/workspace.js';
 import { readSourceManifest } from '../sources/import.js';
+import { evidenceClaims } from './evidence.js';
 import { readResearchFile, type ResearchRunRecord } from './research-file.js';
 import { researchProviderPolicy, type ResearchProviderLens } from './providers/catalog.js';
 
@@ -50,7 +51,7 @@ function emptyLensCounts(): Record<MissionLens, number> {
 
 /** A source counts as read once its local text produced claims. */
 export function isReadSource(source: SourceRecord): boolean {
-  return source.readState === 'read' && (source.claims?.length ?? 0) > 0;
+  return evidenceClaims(source).length > 0;
 }
 
 /**
@@ -72,7 +73,7 @@ export async function deriveMissionOverview(
     for (const source of manifest.sources) {
       if (source.origin) lensCounts[lensFor(source.origin.provider)] += 1;
       if (isReadSource(source)) readSources += 1;
-      claimCount += source.claims?.length ?? 0;
+      claimCount += evidenceClaims(source).length;
     }
   } catch {
     // A missing or invalid manifest is already a Needs attention condition; the mission

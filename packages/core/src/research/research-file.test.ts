@@ -40,6 +40,7 @@ describe('research run ledger', () => {
     expect(file?.runs).toHaveLength(1);
     expect(file?.runs?.[0]).toMatchObject({
       at: now.toISOString(),
+      eligibleCount: 1,
       newKeys: 1,
       providers: [{ count: 1, id: 'wikipedia', label: 'Wikipedia', outcome: 'found' }],
       searchText: 'Spaced repetition learning',
@@ -73,6 +74,7 @@ describe('research run ledger', () => {
       outcome: 'failed',
     });
     expect(file?.runs?.[0]?.newKeys).toBe(0);
+    expect(file?.runs?.[0]?.eligibleCount).toBe(0);
     expect(file?.seen ?? []).toHaveLength(0);
   });
 

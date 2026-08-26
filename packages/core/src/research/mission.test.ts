@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addSource } from '../sources/import.js';
+import { addSource, readSourceManifest } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import {
@@ -89,6 +89,38 @@ describe('mission overview', () => {
     expect(mission.lensCounts.academic).toBe(0);
     expect(mission.lastRunAt).toBe(now.toISOString());
     expect(failedProvidersOnLastRun(mission)).toEqual(['GitHub']);
+  });
+
+  it('does not count legacy claims on a reference-only source as read or quoted', async () => {
+    const storage = await topicStorage();
+    await addSource(storage, {
+      method: 'url',
+      title: 'Legacy reference',
+      topicSlug: slug,
+      url: 'https://example.com/reference',
+    });
+    const manifest = await readSourceManifest(storage, slug, now);
+    await storage.externalWrite(
+      `Topics/${slug}/Sources/manifest.json`,
+      `${JSON.stringify(
+        {
+          ...manifest,
+          sources: manifest.sources.map((source) => ({
+            ...source,
+            claims: [{ at: now.toISOString(), text: 'This was never read.' }],
+            readState: 'reference',
+          })),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    const mission = await deriveMissionOverview(storage, slug, now);
+
+    expect(mission.savedSources).toBe(1);
+    expect(mission.readSources).toBe(0);
+    expect(mission.claimCount).toBe(0);
   });
 
   it('reports mission age in whole days and null when never scanned', async () => {

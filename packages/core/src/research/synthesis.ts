@@ -1,4 +1,5 @@
 import type { SourceClaim, SourceRecord } from '../schemas/workspace.js';
+import { evidenceClaims } from './evidence.js';
 import { lensFor, missionLensLabels, missionLenses } from './mission.js';
 import type { ResearchOutputStyle } from './research-file.js';
 
@@ -103,14 +104,6 @@ function sourceLinkFor(record: SourceRecord): string | undefined {
   if (!record.path) return undefined;
   const name = record.path.split('/').at(-1) ?? '';
   return name.replace(/\.(?:md|txt)$/u, '');
-}
-
-/**
- * The single evidence boundary for synthesis and progress surfaces. A saved reference may retain
- * legacy claim-shaped data, but it cannot support a claim until its text was actually read.
- */
-export function evidenceClaims(record: SourceRecord): NonNullable<SourceRecord['claims']> {
-  return record.readState === 'read' ? (record.claims ?? []) : [];
 }
 
 function normalizeHeading(heading: string): string {
@@ -275,7 +268,7 @@ function appendKeyIdeas(
 }
 
 function appendComparison(lines: string[], synthesis: TopicSynthesis): void {
-  lines.push('## Agreements and tensions', '');
+  lines.push('## Cross-source coverage', '');
   const supported = synthesis.clusters.filter((cluster) => cluster.sourceCount > 1);
   if (supported.length > 0) {
     lines.push('Backed by more than one source:', '');
@@ -330,6 +323,18 @@ function appendQuestions(
   lines.push('');
 }
 
+function appendStudyQuestions(lines: string[], synthesis: TopicSynthesis): void {
+  lines.push('## Check your understanding', '');
+  for (const cluster of synthesis.clusters.slice(0, 5)) {
+    const anchor = cluster.claims[0];
+    if (!anchor) continue;
+    lines.push(
+      `- Without looking, explain “${cluster.heading}” in your own words. Then check your answer against ${citation(anchor)}.`,
+    );
+  }
+  lines.push('');
+}
+
 /**
  * The honest synthesis: evidence passages are verbatim quotes with links back to saved sources.
  * Dusori-generated structure, counts, questions, and coverage notices are labeled as such.
@@ -378,9 +383,10 @@ export function renderSynthesisMarkdown(
     appendQuestions(lines, synthesis);
   } else if (outputStyle === 'study-guide') {
     appendKeyIdeas(lines, synthesis, options, 'Key ideas');
-    appendQuestions(lines, synthesis, 'Check your understanding');
+    appendStudyQuestions(lines, synthesis);
     appendComparison(lines, synthesis);
     appendTimeline(lines, synthesis);
+    appendQuestions(lines, synthesis, 'Research gaps');
   } else {
     appendKeyIdeas(lines, synthesis, options);
     appendComparison(lines, synthesis);

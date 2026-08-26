@@ -2,6 +2,7 @@
   import { AlertTriangle, Check, FilePlus2, RotateCcw, Trash2 } from '@lucide/svelte';
   import {
     addSource,
+    evidenceClaims,
     lensFor,
     maxSourceBytes,
     readSourceManifest,
@@ -414,8 +415,9 @@
             ? 'Readable evidence'
             : 'URL reference';
     const origin = source.publisher ?? source.origin?.provider;
-    const claims = source.claims?.length
-      ? ` · ${source.claims.length} quoted ${source.claims.length === 1 ? 'passage' : 'passages'}`
+    const evidenceCount = evidenceClaims(source).length;
+    const claims = evidenceCount
+      ? ` · ${evidenceCount} quoted ${evidenceCount === 1 ? 'passage' : 'passages'}`
       : '';
     return `${evidence}${origin ? ` · ${origin}` : ''}${claims}${size}`;
   }

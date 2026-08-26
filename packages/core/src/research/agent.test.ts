@@ -195,6 +195,35 @@ describe('runResearchAgent', () => {
 
     expect(result.shortlist).toHaveLength(8);
     expect(result.overflow).toHaveLength(1);
+    expect(result.eligibleCount).toBe(9);
+  });
+
+  it('records zero eligible results when a provider returns only off-topic material', async () => {
+    const { storage, topicSlug } = await workspace();
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('alpha', [
+          candidate({
+            key: 'alpha:irrigation',
+            snippet: 'A detailed explanation of how irrigation works in dry climates.',
+            title: 'How irrigation works',
+          }),
+        ]),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.shortlist).toEqual([]);
+    expect(result.overflow).toEqual([]);
+    expect(result.eligibleCount).toBe(0);
+    expect(result.run?.eligibleCount).toBe(0);
+    expect(result.run?.providers).toEqual([
+      { count: 1, id: 'alpha', label: 'alpha', outcome: 'found' },
+    ]);
+    expect((await readResearchFile(storage, topicSlug, now))?.seen ?? []).toEqual([]);
   });
 
   it('keeps only the strongest copy when providers return the same canonical URL', async () => {

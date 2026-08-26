@@ -18,6 +18,8 @@ export interface SkippedProvider {
 }
 
 export interface ResearchRunResult {
+  /** Ranked, topic-relevant results retained across the shortlist and overflow. */
+  eligibleCount: number;
   shortlist: RankedCandidate[];
   overflow: RankedCandidate[];
   skipped: SkippedProvider[];
@@ -177,6 +179,7 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
   const fresh = await filterResearchSuggestions(input.storage, input.topicSlug, found, now);
   const ranked = dedupeRankedCandidates(rankCandidates(input.query, fresh, { now, seen }));
   const { overflow, shortlist } = selectDiverse(ranked, input.limit);
+  const eligible = [...shortlist, ...overflow];
 
   // The run itself is evidence: a failure trail must survive reload exactly like a success,
   // or "no research found" and "research broke" become indistinguishable after a reload.
@@ -186,7 +189,8 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
     input.topicSlug,
     {
       angleId: input.query.angleId,
-      candidates: ranked.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      candidates: eligible.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+      eligibleCount: eligible.length,
       providers: outcomes,
       searchText: input.query.searchText,
     },
@@ -195,5 +199,5 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
     .then((file): ResearchRunRecord | null => file.runs?.at(-1) ?? null)
     .catch((): null => null);
 
-  return { overflow, run, shortlist, skipped };
+  return { eligibleCount: eligible.length, overflow, run, shortlist, skipped };
 }
