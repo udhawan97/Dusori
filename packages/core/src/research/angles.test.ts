@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { angleById, buildAngleQuery, researchAngles } from './angles.js';
-import { rankCandidates } from './rank.js';
+import { rankCandidates, selectDiverse } from './rank.js';
 import { buildResearchQuery } from './plan.js';
 import type { ResearchCandidate } from './types.js';
 
@@ -58,6 +58,30 @@ describe('research angles', () => {
     );
 
     expect(ranked[0]?.key).toBe('wikipedia:spaced');
+  });
+
+  it('never auto-saves a page that matches only the angle words', () => {
+    const query = buildAngleQuery('Spaced repetition learning', angleById('mechanism')!);
+    const ranked = rankCandidates(
+      query,
+      [
+        candidate({
+          key: 'wikipedia:irrigation',
+          snippet: 'A detailed explanation of how irrigation works in dry climates.',
+          title: 'How irrigation works',
+        }),
+        candidate({
+          key: 'wikipedia:spaced',
+          snippet: 'How spaced repetition works to support learning over time.',
+          title: 'Spaced repetition',
+        }),
+      ],
+      { now },
+    );
+
+    expect(ranked[0]?.topicMatches).toBeGreaterThan(0);
+    expect(ranked.find((item) => item.key === 'wikipedia:irrigation')?.topicMatches).toBe(0);
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['wikipedia:spaced']);
   });
 
   it('keeps roadmap objectives working, scoring their terms below the topic', () => {

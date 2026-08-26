@@ -7,6 +7,8 @@ export interface ResearchQuery {
   terms: string[];
   /** Subject-bearing terms after generic research instructions are removed. */
   subjectTerms?: string[];
+  /** Terms from the topic itself. Automatic capture requires at least one when present. */
+  topicTerms?: string[];
   /** Structured identifiers that must appear together, e.g. `AI-901` as `ai 901`. */
   requiredPhrases?: string[];
   /** Which research angle seeded this query, recorded on the run so a trail stays readable. */

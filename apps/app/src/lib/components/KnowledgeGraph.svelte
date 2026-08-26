@@ -1,9 +1,23 @@
 <script lang="ts">
-  import { AlertCircle, FileText, LoaderCircle, Orbit, Search } from '@lucide/svelte';
+  import {
+    AlertCircle,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    ArrowUp,
+    FileText,
+    LoaderCircle,
+    Minus,
+    Orbit,
+    Plus,
+    RotateCcw,
+    Search,
+  } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
   import {
     buildWorkspaceGraph,
+    evidenceClaims,
     readResearchFile,
     readSourceManifest,
     type StorageAdapter,
@@ -11,7 +25,7 @@
     type WorkspaceGraphNode,
   } from '@dusori/core';
 
-  import { buildGraphAtlas, type GraphAtlas } from '$lib/graph-atlas';
+  import { buildGraphAtlas, type GraphAtlas, type GraphAtlasTopic } from '$lib/graph-atlas';
   import type { GraphMode } from '$lib/workspace-navigation';
 
   export let storage: StorageAdapter;
@@ -37,6 +51,15 @@
   let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
   let artifactTag = '';
   let topicEvidence: TopicEvidence[] = [];
+  let selectedTopicSlug = '';
+  let mapScale = 0.92;
+  let mapTilt = 34;
+  let mapRotation = -8;
+  let mapPanX = 0;
+  let mapPanY = 0;
+  let draggingMap = false;
+  let dragX = 0;
+  let dragY = 0;
 
   function evidenceFor(slug: string): TopicEvidence | undefined {
     return topicEvidence.find((topic) => topic.slug === slug);
@@ -60,6 +83,7 @@
     try {
       graph = await buildWorkspaceGraph(storage);
       atlas = buildGraphAtlas(graph);
+      selectedTopicSlug = atlas.topics[0]?.slug ?? '';
       topicEvidence = await Promise.all(
         atlas.topics.map(async (topic): Promise<TopicEvidence> => {
           try {
@@ -70,7 +94,7 @@
             const latest = research?.runs?.at(-1);
             return {
               claims: manifest.sources.reduce(
-                (total, source) => total + (source.claims?.length ?? 0),
+                (total, source) => total + evidenceClaims(source).length,
                 0,
               ),
               discovered: research?.seen?.length ?? 0,
@@ -78,7 +102,7 @@
                 ? `Last researched ${latest.at.slice(0, 10)}`
                 : 'Not researched yet',
               label: topic.label,
-              read: manifest.sources.filter((source) => (source.claims?.length ?? 0) > 0).length,
+              read: manifest.sources.filter((source) => evidenceClaims(source).length > 0).length,
               saved: manifest.sources.length,
               slug: topic.slug,
             };
@@ -120,6 +144,82 @@
   $: noteCount = graph?.nodes.filter((node) => node.kind === 'note').length ?? 0;
   $: sourceCount = graph?.nodes.filter((node) => node.kind === 'source').length ?? 0;
   $: wikilinkCount = graph?.edges.filter((edge) => edge.kind === 'links').length ?? 0;
+  $: selectedTopic =
+    atlas?.topics.find((topic) => topic.slug === selectedTopicSlug) ?? atlas?.topics[0] ?? null;
+
+  function artifactCount(topic: GraphAtlasTopic): number {
+    return topic.lanes.reduce((total, lane) => total + lane.nodes.length, 0);
+  }
+
+  function evidenceDepth(topic: GraphAtlasTopic): number {
+    const evidence = evidenceFor(topic.slug);
+    return Math.min(
+      3.25,
+      0.25 +
+        (evidence?.saved ?? 0) * 0.16 +
+        (evidence?.read ?? 0) * 0.2 +
+        (evidence?.claims ?? 0) * 0.025,
+    );
+  }
+
+  function selectTopic(slug: string): void {
+    selectedTopicSlug = slug;
+  }
+
+  function changeZoom(delta: number): void {
+    mapScale = Math.min(1.2, Math.max(0.72, Number((mapScale + delta).toFixed(2))));
+  }
+
+  function rotateMap(delta: number): void {
+    mapRotation = Math.max(-28, Math.min(28, mapRotation + delta));
+  }
+
+  function resetMap(): void {
+    mapScale = 0.92;
+    mapTilt = 34;
+    mapRotation = -8;
+    mapPanX = 0;
+    mapPanY = 0;
+  }
+
+  function panMap(deltaX: number, deltaY: number): void {
+    mapPanX = Math.max(-4800, Math.min(4800, mapPanX + deltaX));
+    mapPanY = Math.max(-4800, Math.min(4800, mapPanY + deltaY));
+  }
+
+  function startMapDrag(event: PointerEvent): void {
+    if ((event.target as Element | null)?.closest('button')) return;
+    draggingMap = true;
+    dragX = event.clientX;
+    dragY = event.clientY;
+    if (event.currentTarget instanceof HTMLElement) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  }
+
+  function moveMap(event: PointerEvent): void {
+    if (!draggingMap) return;
+    const deltaX = event.clientX - dragX;
+    const deltaY = event.clientY - dragY;
+    dragX = event.clientX;
+    dragY = event.clientY;
+    if (event.shiftKey) {
+      mapRotation = Math.max(-28, Math.min(28, mapRotation + deltaX * 0.12));
+      mapTilt = Math.max(22, Math.min(58, mapTilt - deltaY * 0.12));
+    } else {
+      panMap(deltaX, deltaY);
+    }
+  }
+
+  function stopMapDrag(event: PointerEvent): void {
+    draggingMap = false;
+    if (
+      event.currentTarget instanceof HTMLElement &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
 </script>
 
 <section class="knowledge-graph" aria-labelledby="graph-title">
@@ -143,7 +243,7 @@
       >Outline</button
     >
     <button aria-pressed={mode === 'visual'} onclick={() => onModeChange('visual')}
-      >Visual map</button
+      >Depth map</button
     >
   </div>
 
@@ -180,52 +280,123 @@
     </dl>
 
     {#if mode === 'visual'}
-      <section class="atlas" aria-label="Workspace evidence atlas">
+      <section class="atlas" aria-label="Interactive research depth map">
         <div class="atlas-intro">
-          <p class="kicker">Evidence atlas</p>
-          <h2>Each topic has its own room.</h2>
-          <p>
-            Sources, notes, briefs, and updates stay in separate lanes. Relationships to another
-            topic are counted below the room instead of crossing through its contents.
-          </p>
+          <div>
+            <p class="kicker">Evidence landscape</p>
+            <h2>See where your research has depth.</h2>
+          </div>
+          <div class="map-controls" role="group" aria-label="Depth map controls">
+            <button type="button" aria-label="Zoom out" onclick={() => changeZoom(-0.08)}>
+              <Minus aria-hidden="true" size={16} />
+            </button>
+            <span aria-live="polite">{Math.round(mapScale * 100)}%</span>
+            <button type="button" aria-label="Zoom in" onclick={() => changeZoom(0.08)}>
+              <Plus aria-hidden="true" size={16} />
+            </button>
+            <button type="button" onclick={() => rotateMap(-8)}>Turn left</button>
+            <button type="button" onclick={() => rotateMap(8)}>Turn right</button>
+            <button type="button" aria-label="Move map left" onclick={() => panMap(-120, 0)}>
+              <ArrowLeft aria-hidden="true" size={16} />
+            </button>
+            <button type="button" aria-label="Move map right" onclick={() => panMap(120, 0)}>
+              <ArrowRight aria-hidden="true" size={16} />
+            </button>
+            <button type="button" aria-label="Move map up" onclick={() => panMap(0, -160)}>
+              <ArrowUp aria-hidden="true" size={16} />
+            </button>
+            <button type="button" aria-label="Move map down" onclick={() => panMap(0, 160)}>
+              <ArrowDown aria-hidden="true" size={16} />
+            </button>
+            <button type="button" aria-label="Reset depth map" onclick={resetMap}>
+              <RotateCcw aria-hidden="true" size={16} /> Reset
+            </button>
+          </div>
         </div>
 
-        <div class="topic-grid">
-          {#each atlas.topics as topic (topic.slug)}
-            {@const evidence = evidenceFor(topic.slug)}
-            <article class="topic-room" aria-labelledby={`atlas-${topic.slug}`}>
-              <div class="room-heading">
+        <p class="map-instruction" id="depth-map-instructions">
+          Drag empty space to pan; Shift-drag tilts and turns. Taller topic islands contain more
+          saved, read, and quoted evidence. Select or focus any topic to inspect its actual files.
+        </p>
+
+        <label class="topic-focus">
+          Focus topic
+          <select bind:value={selectedTopicSlug}>
+            {#each atlas.topics as topic (topic.slug)}
+              <option value={topic.slug}>{topic.label}</option>
+            {/each}
+          </select>
+        </label>
+
+        <div class="depth-layout">
+          <div
+            class="map-frame"
+            class:dragging={draggingMap}
+            aria-label="Rotatable topic landscape"
+            aria-describedby="depth-map-instructions"
+            role="group"
+            onpointerdown={startMapDrag}
+            onpointermove={moveMap}
+            onpointerup={stopMapDrag}
+            onpointercancel={stopMapDrag}
+          >
+            <div
+              class="map-plane"
+              style={`--map-scale: ${mapScale}; --map-tilt: ${mapTilt}deg; --map-rotation: ${mapRotation}deg; --map-pan-x: ${mapPanX}px; --map-pan-y: ${mapPanY}px;`}
+            >
+              {#each atlas.topics as topic, index (topic.slug)}
+                {@const evidence = evidenceFor(topic.slug)}
+                <button
+                  type="button"
+                  class="topic-island"
+                  aria-pressed={selectedTopic?.slug === topic.slug}
+                  aria-label={`${topic.label}, ${artifactCount(topic)} artifacts, ${evidence?.claims ?? 0} quoted passages`}
+                  style={`--depth: ${evidenceDepth(topic)}rem; --side-depth: ${Math.max(0.5, evidenceDepth(topic) * 0.55)}rem; --topic-index: ${index};`}
+                  onclick={() => selectTopic(topic.slug)}
+                >
+                  <span class="island-index">{String(index + 1).padStart(2, '0')}</span>
+                  <strong>{topic.label}</strong>
+                  <small>{artifactCount(topic)} artifacts · {evidence?.claims ?? 0} quotes</small>
+                </button>
+              {/each}
+            </div>
+          </div>
+
+          {#if selectedTopic}
+            {@const selectedEvidence = evidenceFor(selectedTopic.slug)}
+            <aside class="topic-inspector" aria-labelledby={`atlas-${selectedTopic.slug}`}>
+              <div class="inspector-heading">
                 <div>
-                  <p class="room-number">Topic · {topic.slug}</p>
-                  <h3 id={`atlas-${topic.slug}`}>{topic.label}</h3>
+                  <p class="room-number">Selected topic</p>
+                  <h3 id={`atlas-${selectedTopic.slug}`}>{selectedTopic.label}</h3>
                 </div>
-                <small>{evidence?.freshness ?? 'Not researched yet'}</small>
+                <small>{selectedEvidence?.freshness ?? 'Not researched yet'}</small>
               </div>
 
-              <dl class="evidence-spine" aria-label={`${topic.label} research progress`}>
+              <dl class="evidence-spine" aria-label={`${selectedTopic.label} research progress`}>
                 <div>
-                  <dt>Discovered</dt>
-                  <dd>{evidence?.discovered ?? 0}</dd>
+                  <dt>Found</dt>
+                  <dd>{selectedEvidence?.discovered ?? 0}</dd>
                 </div>
                 <div>
                   <dt>Saved</dt>
-                  <dd>{evidence?.saved ?? 0}</dd>
+                  <dd>{selectedEvidence?.saved ?? 0}</dd>
                 </div>
                 <div>
                   <dt>Read</dt>
-                  <dd>{evidence?.read ?? 0}</dd>
+                  <dd>{selectedEvidence?.read ?? 0}</dd>
                 </div>
                 <div>
                   <dt>Quoted</dt>
-                  <dd>{evidence?.claims ?? 0}</dd>
+                  <dd>{selectedEvidence?.claims ?? 0}</dd>
                 </div>
               </dl>
 
-              <div class="lane-grid">
-                {#each topic.lanes as lane (lane.id)}
-                  <section class="lane" aria-labelledby={`${topic.slug}-${lane.id}`}>
+              <div class="inspector-lanes">
+                {#each selectedTopic.lanes as lane (lane.id)}
+                  <section aria-labelledby={`${selectedTopic.slug}-${lane.id}`}>
                     <div class="lane-heading">
-                      <h4 id={`${topic.slug}-${lane.id}`}>{lane.label}</h4>
+                      <h4 id={`${selectedTopic.slug}-${lane.id}`}>{lane.label}</h4>
                       <span>{lane.nodes.length}</span>
                     </div>
                     {#if lane.nodes.length}
@@ -246,19 +417,20 @@
                 {/each}
               </div>
 
-              {#if topic.connections.length}
-                <p class="connections">
-                  <strong>Connects to</strong>
-                  {topic.connections
-                    .map(
-                      (connection) =>
-                        `${connection.label} (${connection.count} ${connection.count === 1 ? 'link' : 'links'})`,
-                    )
-                    .join(' · ')}
-                </p>
+              {#if selectedTopic.connections.length}
+                <div class="connections">
+                  <strong>Connected topics</strong>
+                  <div>
+                    {#each selectedTopic.connections as connection (connection.slug)}
+                      <button type="button" onclick={() => selectTopic(connection.slug)}>
+                        {connection.label} · {connection.count}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
               {/if}
-            </article>
-          {/each}
+            </aside>
+          {/if}
         </div>
 
         {#if atlas.workspace.length}
@@ -349,9 +521,10 @@
 </section>
 
 <style>
-  /* Hallmark · component: research atlas · genre: quiet editorial index · theme: design.md
-   * signature: an evidence spine followed by four named artifact lanes
-   * states: outline · atlas · loading · error · empty · filtered · contrast: pass
+  /* Hallmark · macrostructure: evidence depth landscape · genre: quiet editorial index · theme: design.md
+   * signature: a rotatable evidence landscape with real artifact lanes and inspector
+   * states: outline · depth-map · selected · dragging · loading · error · empty
+   * pre-emit critique: P5 H5 E4 S5 R5 V5 · contrast: pass (40–41) · responsive: pass (49)
    */
   .knowledge-graph {
     min-height: calc(100dvh - 4.5rem);
@@ -393,8 +566,6 @@
   }
 
   header p:last-child,
-  .atlas-intro > p:last-child,
-  .room-heading small,
   .footer-note {
     color: var(--color-muted);
   }
@@ -494,39 +665,6 @@
     font-size: clamp(1.7rem, 3vw, 2.65rem);
   }
 
-  .topic-grid {
-    display: grid;
-    gap: var(--space-2xl);
-    margin-block-start: var(--space-xl);
-  }
-
-  .topic-room {
-    min-width: 0;
-    padding: var(--space-xl);
-    border: var(--rule-hair) solid var(--color-border);
-    border-block-start: 0.28rem solid var(--color-marigold);
-    background: var(--color-paper-raised, var(--color-paper));
-  }
-
-  .room-heading {
-    display: flex;
-    align-items: start;
-    justify-content: space-between;
-    gap: var(--space-md);
-  }
-
-  .room-heading h3 {
-    margin-block-start: 0.2rem;
-    font-size: clamp(1.55rem, 2.4vw, 2.15rem);
-    overflow-wrap: anywhere;
-  }
-
-  .room-heading small {
-    flex: none;
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
-
   .evidence-spine {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -552,19 +690,6 @@
     border-inline-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .lane-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--space-md);
-    margin-block-start: var(--space-lg);
-  }
-
-  .lane {
-    min-width: 0;
-    padding-inline-start: var(--space-sm);
-    border-inline-start: var(--rule-hair) solid var(--color-rule);
-  }
-
   .lane-heading {
     display: flex;
     align-items: baseline;
@@ -585,7 +710,6 @@
     font-size: var(--text-xs);
   }
 
-  .lane ul,
   .workspace-shelf ul,
   .artifact-index ul {
     display: grid;
@@ -595,14 +719,12 @@
     list-style: none;
   }
 
-  .lane li,
   .workspace-shelf li,
   .artifact-index li {
     min-width: 0;
     border-block-start: var(--rule-hair) solid var(--color-rule);
   }
 
-  .lane button,
   .workspace-shelf button,
   .artifact-index li button {
     width: 100%;
@@ -615,20 +737,12 @@
     text-align: start;
   }
 
-  .lane button {
-    display: grid;
-    gap: 0.1rem;
-    padding: var(--space-sm) 0;
-  }
-
-  .lane button span,
   .workspace-shelf button span,
   .artifact-index button span {
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
-  .lane button small,
   .workspace-shelf button small,
   .artifact-index button small {
     color: var(--color-muted);
@@ -637,7 +751,6 @@
     text-transform: uppercase;
   }
 
-  .lane button:hover span,
   .workspace-shelf button:hover span,
   .artifact-index li button:hover span {
     color: var(--color-accent-text);
@@ -756,7 +869,290 @@
   }
 
   .graph-state.error {
-    color: var(--color-danger, #9a2c2c);
+    color: var(--color-accent-text);
+  }
+
+  .atlas-intro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-md) var(--space-xl);
+  }
+
+  .atlas-intro .kicker {
+    grid-column: auto;
+  }
+
+  .atlas-intro h2 {
+    margin-block-start: var(--space-xs);
+  }
+
+  .map-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2xs);
+  }
+
+  .map-controls button,
+  .connections button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2xs);
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
+  .map-controls > span {
+    min-width: 3rem;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-align: center;
+  }
+
+  .map-instruction {
+    max-width: 72ch;
+    margin-block-start: var(--space-md);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .topic-focus {
+    width: min(100%, 28rem);
+    display: grid;
+    gap: var(--space-2xs);
+    margin-block-start: var(--space-md);
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+  }
+
+  .topic-focus select {
+    width: 100%;
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  .topic-focus select:focus-visible {
+    outline-color: var(--color-focus);
+  }
+
+  .topic-focus select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .depth-layout {
+    display: grid;
+    gap: var(--space-xl);
+    margin-block-start: var(--space-lg);
+  }
+
+  .map-frame {
+    position: relative;
+    min-width: 0;
+    min-height: clamp(24rem, 62dvh, 40rem);
+    overflow: hidden;
+    border: var(--rule-hair) solid var(--color-border);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+    cursor: grab;
+    perspective: 72rem;
+    touch-action: none;
+  }
+
+  .map-frame.dragging {
+    cursor: grabbing;
+  }
+
+  .map-plane {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: min(44rem, calc(100% - 2rem));
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 14rem));
+    justify-content: center;
+    gap: var(--space-2xl);
+    padding: var(--space-xl);
+    transform: translate(calc(-50% + var(--map-pan-x)), calc(-50% + var(--map-pan-y)))
+      rotateX(var(--map-tilt)) rotateZ(var(--map-rotation)) scale(var(--map-scale));
+    transform-origin: center;
+    transform-style: preserve-3d;
+    transition: transform 180ms var(--ease-out);
+  }
+
+  .map-frame.dragging .map-plane {
+    transition: none;
+  }
+
+  .topic-island {
+    position: relative;
+    min-width: 0;
+    min-height: 9rem;
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-block-start: 0.22rem solid var(--color-marigold);
+    background: var(--color-paper-raised, var(--color-paper));
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    text-align: start;
+    box-shadow: 0 var(--side-depth) 0 var(--color-rule);
+    transform: translateZ(var(--depth));
+    transform-style: preserve-3d;
+  }
+
+  .topic-island::after {
+    position: absolute;
+    inset: 100% 0 auto;
+    block-size: var(--side-depth);
+    border: var(--rule-hair) solid var(--color-border);
+    border-block-start: 0;
+    background: var(--color-rule);
+    color: var(--color-ink);
+    content: '';
+    transform: rotateX(-90deg);
+    transform-origin: top;
+  }
+
+  .topic-island[aria-pressed='true'] {
+    border-color: var(--color-accent-text);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .topic-island > span,
+  .topic-island > strong,
+  .topic-island > small {
+    position: relative;
+    z-index: 1;
+    display: block;
+  }
+
+  .island-index {
+    color: var(--color-marigold);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .topic-island strong {
+    margin-block-start: var(--space-xs);
+    overflow-wrap: anywhere;
+  }
+
+  .topic-island small {
+    margin-block-start: var(--space-sm);
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+  }
+
+  .topic-island[aria-pressed='true'] small {
+    color: var(--color-paper-2);
+  }
+
+  .topic-inspector {
+    min-width: 0;
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+  }
+
+  .inspector-heading {
+    display: grid;
+    gap: var(--space-xs);
+  }
+
+  .inspector-heading h3 {
+    margin-block-start: var(--space-2xs);
+    font-size: var(--text-lg);
+    overflow-wrap: anywhere;
+  }
+
+  .inspector-heading small {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .inspector-lanes {
+    display: grid;
+    gap: var(--space-md);
+    margin-block-start: var(--space-lg);
+  }
+
+  .inspector-lanes section {
+    min-width: 0;
+  }
+
+  .inspector-lanes ul {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .inspector-lanes li {
+    min-width: 0;
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .inspector-lanes li button {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-sm);
+    align-items: center;
+    min-height: 2.75rem;
+    padding: var(--space-xs) 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    text-align: start;
+  }
+
+  .inspector-lanes li button span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inspector-lanes li button small {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+  }
+
+  .connections {
+    margin-block-start: var(--space-lg);
+  }
+
+  .connections > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-xs);
   }
 
   .spinner :global(svg) {
@@ -786,9 +1182,15 @@
     }
   }
 
-  @media (max-width: 58rem) {
-    .lane-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (min-width: 64rem) {
+    .depth-layout {
+      grid-template-columns: minmax(0, 1.45fr) minmax(18rem, 0.7fr);
+      align-items: start;
+    }
+
+    .topic-inspector {
+      max-height: 40rem;
+      overflow: auto;
     }
   }
 
@@ -822,16 +1224,10 @@
       gap: var(--space-md);
     }
 
-    .topic-room,
     .artifact-index {
       padding: var(--space-md);
     }
 
-    .room-heading {
-      display: grid;
-    }
-
-    .lane-grid,
     .workspace-shelf ul,
     .artifact-index > ul {
       grid-template-columns: 1fr;
@@ -839,6 +1235,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .map-plane {
+      transition-duration: 0.01ms;
+    }
+
     .spinner :global(svg) {
       animation: none;
     }

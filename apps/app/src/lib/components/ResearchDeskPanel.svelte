@@ -1,21 +1,37 @@
 <script lang="ts">
-  import { ArrowUpRight, CircleAlert, Library, Plus, Search, ShieldCheck } from '@lucide/svelte';
+  import {
+    ArrowUpRight,
+    CircleAlert,
+    Library,
+    Plus,
+    Route,
+    Search,
+    ShieldCheck,
+  } from '@lucide/svelte';
   import { onMount, tick } from 'svelte';
 
   import {
+    angleById,
+    buildAngleQuery,
     buildResearchQuery,
+    evidenceClaims,
     isUsableAiCapability,
+    lensFor,
     loadResearchProviderCatalog,
+    missionLensLabels,
     readResearchFile,
     readSourceManifest,
+    researchAngles,
     runResearchSequence,
     saveApprovedResearchCandidate,
+    setResearchOutputStyle,
     type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
     type ResearchProviderCatalogEntry,
     type ResearchProviderSession,
     type ResearchProvider,
+    type ResearchOutputStyle,
     type ResearchRunRecord,
     type ResearchSequenceResult,
     type ResearchSequenceProgress,
@@ -37,6 +53,8 @@
   export let autoStart = false;
   export let onAutoStartHandled: () => void = () => undefined;
   export let onSourceSaved: (path?: string) => void = () => undefined;
+  export let onOpenSources: () => void = () => undefined;
+  export let onOpenMap: () => void = () => undefined;
 
   type Stage =
     | 'idle'
@@ -57,6 +75,36 @@
     message: string;
   }
 
+  const outputStyles: Array<{
+    description: string;
+    label: string;
+    value: ResearchOutputStyle;
+  }> = [
+    {
+      description: 'A balanced brief with key themes, tensions, gaps, and follow-up questions.',
+      label: 'Evidence brief',
+      value: 'brief',
+    },
+    {
+      description: 'Puts agreements, disagreements, and single-source claims first.',
+      label: 'Evidence comparison',
+      value: 'comparison',
+    },
+    {
+      description: 'Leads with dated material and says plainly when the chronology is incomplete.',
+      label: 'Timeline',
+      value: 'timeline',
+    },
+    {
+      description:
+        'Organizes key ideas as a reviewable guide with questions to test understanding.',
+      label: 'Study guide',
+      value: 'study-guide',
+    },
+  ];
+
+  const workflowSteps = ['Find', 'Rank', 'Save', 'Read', 'Build'];
+
   const stageCopy: Record<Stage, string> = {
     complete: 'Brief ready',
     evaluating: 'Evaluating relevance, authority, recency, and variety',
@@ -74,6 +122,9 @@
   let providerSession: ResearchProviderSession | null = null;
   let aiModel = '';
   let question = topicTitle;
+  let initializedQuestionTopic = topicTitle ? topicSlug : '';
+  let selectedAngleId = 'overview';
+  let outputStyle: ResearchOutputStyle = 'brief';
   let stage: Stage = 'idle';
   let runResult: ResearchSequenceResult | null = null;
   let latestRun: ResearchRunRecord | null = null;
@@ -99,16 +150,24 @@
 
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
   $: savingExtra = savingExtraKey.length > 0;
-  $: allowedProviders = providersWithConsent(availableProviders, consentRevision, 'allowed');
-  $: undecidedProviders = providersWithConsent(availableProviders, consentRevision, 'undecided');
-  $: browserSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(question.trim() || topicTitle)}`;
-  $: currentQuery = buildResearchQuery(topicTitle, { title: question.trim() || topicTitle });
+  $: selectedAngle = angleById(selectedAngleId);
+  $: currentQuery = selectedAngle
+    ? buildAngleQuery(topicTitle, selectedAngle)
+    : buildResearchQuery(topicTitle, { title: question.trim() || topicTitle });
+  $: browserSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(currentQuery.searchText)}`;
   $: relevantProviders = providerSession?.select(currentQuery) ?? availableProviders;
-  $: relevantAllowedProviderCount = providersWithConsent(
+  $: relevantAllowedProviders = providersWithConsent(relevantProviders, consentRevision, 'allowed');
+  $: relevantUndecidedProviders = providersWithConsent(
     relevantProviders,
     consentRevision,
-    'allowed',
-  ).length;
+    'undecided',
+  );
+  $: relevantSourceMix = [
+    ...new Set(relevantProviders.map((provider) => missionLensLabels[lensFor(provider.id)])),
+  ];
+  $: outputStyleDescription =
+    outputStyles.find((candidate) => candidate.value === outputStyle)?.description ?? '';
+  $: syncQuestionForTopic(topicSlug, topicTitle);
   onMount(() => {
     void initialize();
   });
@@ -136,6 +195,13 @@
 
   function scopeOf(provider: ResearchProvider): string {
     return provider.consentScope ?? provider.id;
+  }
+
+  function syncQuestionForTopic(slug: string, title: string): void {
+    if (!slug || !title || initializedQuestionTopic === slug) return;
+    initializedQuestionTopic = slug;
+    selectedAngleId = 'overview';
+    question = title;
   }
 
   function providersWithConsent(
@@ -183,7 +249,7 @@
   }
 
   function stateFor(record: SourceRecord): SourceState {
-    if ((record.claims?.length ?? 0) > 0 && record.readState === 'read') return 'read';
+    if (evidenceClaims(record).length > 0) return 'read';
     if (record.fetchState) return 'failed';
     if (record.readState === 'reference') return 'reference';
     return record.readState === 'readable' ? 'readable' : 'duplicate';
@@ -191,8 +257,9 @@
 
   function messageFor(record: SourceRecord): string {
     if (record.fetchMessage) return record.fetchMessage;
-    if ((record.claims?.length ?? 0) > 0) {
-      return `${record.claims?.length ?? 0} quoted ${(record.claims?.length ?? 0) === 1 ? 'passage' : 'passages'}`;
+    const claims = evidenceClaims(record);
+    if (claims.length > 0) {
+      return `${claims.length} quoted ${claims.length === 1 ? 'passage' : 'passages'}`;
     }
     return record.readState === 'reference'
       ? 'Reference saved. Read the original page or paste text before it can support claims.'
@@ -201,17 +268,26 @@
 
   async function restoreResultState(): Promise<void> {
     try {
-      const [manifest, research] = await Promise.all([
+      const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
+      const [manifest, research, synthesis] = await Promise.all([
         readSourceManifest(storage, topicSlug),
         readResearchFile(storage, topicSlug),
+        storage.read(synthesisPath),
       ]);
       savedSources = manifest.sources;
-      readCount = manifest.sources.filter((source) => (source.claims?.length ?? 0) > 0).length;
+      readCount = manifest.sources.filter((source) => evidenceClaims(source).length > 0).length;
       claimCount = manifest.sources.reduce(
-        (total, source) => total + (source.claims?.length ?? 0),
+        (total, source) => total + evidenceClaims(source).length,
         0,
       );
       latestRun = research?.runs?.at(-1) ?? null;
+      latestBriefPath = synthesis && !manifest.synthesisStaleAt ? synthesisPath : '';
+      outputStyle = research?.outputStyle ?? 'brief';
+      if (latestRun?.angleId && angleById(latestRun.angleId)) {
+        selectedAngleId = latestRun.angleId;
+        const angle = angleById(latestRun.angleId);
+        question = angle ? visibleAngleQuestion(angle) : topicTitle;
+      }
       discoveredCount =
         latestRun?.providers.reduce((total, provider) => total + provider.count, 0) ??
         manifest.sources.length;
@@ -224,6 +300,7 @@
         url: record.url ?? '',
       }));
       if (latestRun && discoveredCount === 0) {
+        latestBriefPath = '';
         stage = 'idle';
         const failed = latestRun.providers.filter(
           (provider) => provider.outcome === 'failed',
@@ -352,7 +429,8 @@
     latestBriefPath = '';
     runError = '';
     try {
-      const query = buildResearchQuery(topicTitle, { title: question.trim() });
+      await setResearchOutputStyle(storage, topicSlug, outputStyle);
+      const query = currentQuery;
       const routedProviders =
         providerSession?.select(query, new Set(providerList.map(scopeOf))) ?? providerList;
       const result = await runResearchSequence({
@@ -421,6 +499,48 @@
           : 'Research could not finish. Saved references remain available below.';
       await restoreResultState();
     }
+  }
+
+  function chooseAngle(id: string): void {
+    const angle = angleById(id);
+    if (!angle || running) return;
+    selectedAngleId = angle.id;
+    question = visibleAngleQuestion(angle);
+  }
+
+  function visibleAngleQuestion(angle: (typeof researchAngles)[number]): string {
+    return angle.suffix ? `${topicTitle}: ${angle.suffix}` : topicTitle;
+  }
+
+  function useCustomQuestion(): void {
+    selectedAngleId = 'custom';
+  }
+
+  function workflowState(index: number): 'complete' | 'current' | 'blocked' | 'pending' {
+    const current = {
+      complete: 5,
+      evaluating: 1,
+      idle: -1,
+      'needs-reading': 3,
+      reading: 3,
+      saving: 2,
+      searching: 0,
+      writing: 4,
+    }[stage];
+    if (stage === 'needs-reading' && index === 3) return 'blocked';
+    if (index < current) return 'complete';
+    if (index === current) return 'current';
+    return 'pending';
+  }
+
+  function selectRecommendedProviders(): void {
+    selectedScopes = [...new Set(consentProviders.map(scopeOf))];
+  }
+
+  function providerKind(provider: ResearchProvider): string {
+    return `${missionLensLabels[lensFor(provider.id)]} · ${
+      provider.capturePolicy === 'reference-only' ? 'Reference only' : 'Readable when available'
+    }`;
   }
 
   function providerLabel(candidate: RankedCandidate): string {
@@ -495,14 +615,29 @@
 <section class="desk" aria-labelledby="research-title" aria-busy={running}>
   <div class="desk-heading">
     <div>
-      <h2 id="research-title">Research this topic</h2>
+      <h2 id="research-title">Start with a direction.</h2>
       <p>
-        Ask plainly. Dusori finds, ranks, saves, reads, and assembles what the allowed providers can
-        support.
+        Use a proven angle or ask your own question. Dusori records the route from search to saved
+        evidence.
       </p>
     </div>
-    <Library aria-hidden="true" size={22} strokeWidth={1.5} />
+    <Route aria-hidden="true" size={24} strokeWidth={1.5} />
   </div>
+
+  <fieldset class="angle-picker">
+    <legend>Research direction</legend>
+    <div>
+      {#each researchAngles as angle (angle.id)}
+        <button
+          type="button"
+          aria-pressed={selectedAngleId === angle.id}
+          disabled={running}
+          onclick={() => chooseAngle(angle.id)}>{angle.title}</button
+        >
+      {/each}
+    </div>
+    <p>{selectedAngle?.intent ?? 'A question written in your own words.'}</p>
+  </fieldset>
 
   <form
     class="query"
@@ -511,7 +646,7 @@
       void beginResearch();
     }}
   >
-    <label for="research-question">Question or topic</label>
+    <label for="research-question">Your question</label>
     <div class="query-row">
       <input
         id="research-question"
@@ -519,7 +654,8 @@
         required
         maxlength="240"
         disabled={running}
-        placeholder="What changed the spread of the printing press?"
+        placeholder="What do you want to understand?"
+        oninput={useCustomQuestion}
       />
       <button
         bind:this={researchButton}
@@ -527,19 +663,28 @@
         disabled={running || savingExtra || !question.trim()}
       >
         <Search aria-hidden="true" size={17} />
-        {running ? 'Researching…' : 'Research topic'}
+        {running ? 'Researching…' : 'Research and build'}
       </button>
+    </div>
+    <div class="output-choice">
+      <label for="research-output">Build as</label>
+      <select id="research-output" bind:value={outputStyle} disabled={running}>
+        {#each outputStyles as option (option.value)}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </select>
+      <p>{outputStyleDescription} Saved locally as <code>Synthesis.md</code>.</p>
     </div>
   </form>
 
   <div class="provider-summary">
     <ShieldCheck aria-hidden="true" size={17} />
-    <span
-      >{allowedProviders.length} allowed overall · {relevantAllowedProviderCount} relevant and allowed
-      here · {undecidedProviders.length} undecided overall · {aiModel
-        ? `${aiModel} ready for optional synthesis`
-        : 'AI stays separate'}</span
-    >
+    <span>
+      {relevantProviders.length} research provider{relevantProviders.length === 1 ? '' : 's'} match this
+      direction{relevantSourceMix.length ? ` across ${relevantSourceMix.join(', ')}` : ''}. {relevantAllowedProviders.length}
+      allowed now · {relevantUndecidedProviders.length} need a choice. Results are ranked with relevance,
+      authority, recency, and variety signals.
+    </span>
   </div>
 
   <details class="provider-setup">
@@ -562,16 +707,34 @@
     </ul>
   </details>
 
-  <div class="stage" data-stage={stage} aria-live="polite">
-    <span class="stage-mark" aria-hidden="true"></span>
-    <div>
-      <strong>{stageCopy[stage]}</strong>
+  <section class="research-path" aria-labelledby="research-path-title" aria-live="polite">
+    <div class="path-heading">
+      <div>
+        <p class="eyebrow">Live research path</p>
+        <strong id="research-path-title">{stageCopy[stage]}</strong>
+      </div>
       <span
-        >{discoveredCount} found · {savedSources.length} saved · {readCount} read · {claimCount} quoted
-        passages</span
+        >{discoveredCount} found · {savedSources.length} saved · {readCount} read · {claimCount}
+        quotes</span
       >
     </div>
-  </div>
+    <ol>
+      {#each workflowSteps as step, index (step)}
+        <li data-state={workflowState(index)}>
+          <span aria-hidden="true">{index + 1}</span>
+          <strong>{step}</strong>
+        </li>
+      {/each}
+    </ol>
+    <div class="path-actions">
+      <button type="button" onclick={onOpenSources}>
+        <Library aria-hidden="true" size={16} /> Manage sources
+      </button>
+      <button type="button" onclick={onOpenMap}>
+        <Route aria-hidden="true" size={16} /> Trace connections
+      </button>
+    </div>
+  </section>
 
   {#if runError}
     <p class="error" role="alert"><CircleAlert aria-hidden="true" size={17} /> {runError}</p>
@@ -582,8 +745,8 @@
   {/if}
 
   {#if latestRun}
-    <section class="latest-run" aria-label="Latest lookup">
-      <p><strong>Latest lookup</strong> · {latestRun.searchText}</p>
+    <details class="latest-run" role="region" aria-label="Latest lookup">
+      <summary><strong>Latest lookup</strong> · {latestRun.searchText}</summary>
       <ul class="provider-failures" aria-label="Provider outcomes">
         {#each latestRun.providers as provider (provider.id)}
           <li>
@@ -596,7 +759,7 @@
           </li>
         {/each}
       </ul>
-    </section>
+    </details>
   {:else if runResult?.skipped.length}
     <ul class="provider-failures" aria-label="Provider outcomes">
       {#each runResult.skipped as skipped (skipped.id)}
@@ -606,57 +769,65 @@
   {/if}
 
   {#if sourceProgress.length > 0}
-    <ol class="source-progress" aria-label="Research sources">
-      {#each sourceProgress as source (source.key)}
-        <li data-state={source.state}>
-          <div>
-            <span class="state-label">
-              {source.state === 'read'
-                ? 'Read'
-                : source.state === 'readable'
-                  ? 'Readable'
-                  : source.state === 'reference'
-                    ? 'Reference'
-                    : source.state === 'failed'
-                      ? 'Needs browser'
-                      : source.state === 'duplicate'
-                        ? 'Already saved'
-                        : 'Saving'}
-            </span>
-            <strong>{source.title}</strong>
-            <p>{source.message}</p>
-          </div>
-          {#if source.url}
-            <div class="source-actions">
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noreferrer"
-                onclick={(event) => void openExternal(event, source.url)}
-              >
-                Open original <ArrowUpRight aria-hidden="true" size={14} />
-              </a>
+    <details class="source-results" open={running || stage === 'needs-reading'}>
+      <summary>
+        {sourceProgress.length}
+        {sourceProgress.length === 1 ? 'source' : 'sources'} in this run
+      </summary>
+      <ol class="source-progress" aria-label="Research sources">
+        {#each sourceProgress as source (source.key)}
+          <li data-state={source.state}>
+            <div>
+              <span class="state-label">
+                {source.state === 'read'
+                  ? 'Read'
+                  : source.state === 'readable'
+                    ? 'Readable'
+                    : source.state === 'reference'
+                      ? 'Reference'
+                      : source.state === 'failed'
+                        ? 'Needs browser'
+                        : source.state === 'duplicate'
+                          ? 'Already saved'
+                          : 'Saving'}
+              </span>
+              <strong>{source.title}</strong>
+              <p>{source.message}</p>
             </div>
-          {/if}
-        </li>
-      {/each}
-    </ol>
+            {#if source.url}
+              <div class="source-actions">
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onclick={(event) => void openExternal(event, source.url)}
+                >
+                  Open original <ArrowUpRight aria-hidden="true" size={14} />
+                </a>
+              </div>
+            {/if}
+          </li>
+        {/each}
+      </ol>
+    </details>
   {/if}
 
   {#if stage === 'needs-reading'}
     <div class="next-step">
       <strong>References are useful, but they are not evidence yet.</strong>
       <p>
-        Open Sources to read a page through the local companion, open the original in your browser,
-        or paste text you are allowed to use. The brief refreshes after readable text arrives.
+        Read a page through the local companion, open the original in your browser, or paste text
+        you are allowed to use. The brief refreshes after readable text arrives.
       </p>
-      <a
-        href={browserSearchUrl}
-        target="_blank"
-        rel="noreferrer"
-        onclick={(event) => void openExternal(event, browserSearchUrl)}
-        >Search this question in browser</a
-      >
+      <div class="next-actions">
+        <button type="button" onclick={onOpenSources}>Open Sources</button>
+        <a
+          href={browserSearchUrl}
+          target="_blank"
+          rel="noreferrer"
+          onclick={(event) => void openExternal(event, browserSearchUrl)}>Search in browser</a
+        >
+      </div>
     </div>
   {/if}
 
@@ -736,16 +907,22 @@
       </h2>
       <p id="consent-description">
         <span>
-          Only relevant providers are shown. Choices stay separately on this device; closing records
-          nothing.
+          Only providers relevant to this question are shown. Choices stay separately on this
+          device; closing records nothing.
         </span>
         <span class="consent-detail">
-          The full catalog remains under Research providers and setup. Selected providers receive
-          only this topic and objective. Notes, saved pages, and unrelated files never leave.
+          Selected providers receive only this topic and objective. Notes, saved pages, and
+          unrelated files never leave.
         </span>
       </p>
     </div>
     <div class="consent-scroll">
+      <div class="consent-recommendation">
+        <span>A varied set gives the ranking step more to compare.</span>
+        <button type="button" class="quiet" onclick={selectRecommendedProviders}
+          >Select recommended</button
+        >
+      </div>
       <ul>
         {#each consentProviders as provider (scopeOf(provider))}
           <li>
@@ -755,8 +932,15 @@
                 checked={selectedScopes.includes(scopeOf(provider))}
                 onchange={(event) => toggleScope(scopeOf(provider), event.currentTarget.checked)}
               />
-              <span><strong>{provider.label}</strong>{provider.disclosure}</span>
+              <span>
+                <strong>{provider.label}</strong>
+                <small>{providerKind(provider)}</small>
+              </span>
             </label>
+            <details>
+              <summary>What is shared</summary>
+              <p>{provider.disclosure}</p>
+            </details>
           </li>
         {/each}
       </ul>
@@ -784,8 +968,9 @@
 {/if}
 
 <style>
-  /* Hallmark · component: Research Desk · genre: atmospheric editorial · theme: design.md
-   * states: idle · loading · partial · blocked · complete · contrast: pass
+  /* Hallmark · macrostructure: guided research sequence · genre: atmospheric editorial · theme: design.md
+   * states: idle · loading · partial · blocked · complete · pre-emit critique: P5 H5 E4 S5 R5 V4
+   * contrast: pass (40–41) · honest: pass (46) · tokens: pass (48) · responsive: pass (49)
    */
   .desk {
     display: grid;
@@ -812,13 +997,45 @@
     margin-block-start: var(--space-xs);
     color: var(--color-muted);
   }
+  .angle-picker {
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-md) 0;
+    border: 0;
+    border-block: var(--rule-hair) solid var(--color-rule);
+  }
+  .angle-picker legend,
+  .query > label,
+  .output-choice > label {
+    padding: 0;
+    font-size: var(--text-sm);
+    font-weight: 700;
+  }
+  .angle-picker > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-xs);
+  }
+  .angle-picker button {
+    min-height: 2.35rem;
+    padding-inline: var(--space-sm);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .angle-picker button[aria-pressed='true'] {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .angle-picker p {
+    margin-block-start: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
   .query {
     display: grid;
     gap: var(--space-xs);
-  }
-  .query label {
-    font-size: var(--text-sm);
-    font-weight: 700;
   }
   .query-row {
     display: grid;
@@ -826,11 +1043,13 @@
     gap: var(--space-xs);
   }
   input,
+  select,
   button,
   a {
     font: inherit;
   }
-  input {
+  input,
+  select {
     min-width: 0;
     min-height: 3rem;
     padding-inline: var(--space-md);
@@ -842,6 +1061,7 @@
     color: var(--color-ink);
   }
   input:focus-visible,
+  select:focus-visible,
   button:focus-visible,
   a:focus-visible {
     outline: 2px solid var(--color-focus);
@@ -856,6 +1076,13 @@
     color: var(--color-ink);
     cursor: pointer;
     white-space: nowrap;
+    transition:
+      background-color 180ms var(--ease-out),
+      color 180ms var(--ease-out),
+      transform 100ms var(--ease-out);
+  }
+  button:active {
+    transform: translateY(1px);
   }
   button:disabled {
     cursor: not-allowed;
@@ -870,6 +1097,26 @@
     background: var(--color-ink);
     color: var(--color-paper);
     font-weight: 700;
+  }
+  .output-choice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-2xs) var(--space-sm);
+    align-items: center;
+    margin-block-start: var(--space-sm);
+  }
+  .output-choice select {
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+  }
+  .output-choice p {
+    grid-column: 1 / -1;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .output-choice code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
   }
   .provider-summary {
     display: flex;
@@ -921,36 +1168,100 @@
   .provider-setup small {
     color: var(--color-muted);
   }
-  .stage {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-sm);
-    padding-block: var(--space-sm);
-    border-block: var(--rule-hair) solid var(--color-rule);
-  }
-  .stage-mark {
-    inline-size: 0.65rem;
-    block-size: 0.65rem;
-    margin-block-start: 0.35rem;
-    border-radius: 50%;
-    background: var(--color-marigold);
-    flex: 0 0 auto;
-  }
-  .stage[data-stage='complete'] .stage-mark {
-    background: var(--color-success);
-  }
-  .stage[data-stage='needs-reading'] .stage-mark {
-    background: var(--color-accent);
-  }
-  .stage div {
+  .research-path {
     display: grid;
-    gap: var(--space-2xs);
+    gap: var(--space-md);
     min-width: 0;
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
   }
-  .stage span:last-child {
+  .path-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-xs) var(--space-lg);
+  }
+  .eyebrow {
+    color: var(--color-accent-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .path-heading > span {
     color: var(--color-muted);
     font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
+  }
+  .research-path ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .research-path li {
+    position: relative;
+    display: grid;
+    gap: var(--space-2xs);
+    min-width: 0;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+  .research-path li:not(:last-child)::after {
+    position: absolute;
+    inset-block-start: 0.7rem;
+    inset-inline: 1.7rem 0.25rem;
+    block-size: var(--rule-hair);
+    background: var(--color-rule);
+    content: '';
+  }
+  .research-path li > span {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    inline-size: 1.4rem;
+    block-size: 1.4rem;
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: 50%;
+    background: var(--color-paper-2);
+    font-family: var(--font-mono);
+    place-items: center;
+  }
+  .research-path li[data-state='complete'],
+  .research-path li[data-state='current'] {
+    color: var(--color-ink);
+  }
+  .research-path li[data-state='complete'] > span {
+    border-color: var(--color-success);
+    background: var(--color-success);
+    color: var(--color-paper);
+  }
+  .research-path li[data-state='current'] > span,
+  .research-path li[data-state='blocked'] > span {
+    border-color: var(--color-accent-text);
+    color: var(--color-accent-text);
+  }
+  .research-path li[data-state='blocked'] {
+    color: var(--color-accent-text);
+  }
+  .path-actions,
+  .next-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  .path-actions button,
+  .next-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.35rem;
+    padding-inline: var(--space-sm);
+    font-size: var(--text-sm);
   }
   .error,
   .notice {
@@ -980,6 +1291,20 @@
     gap: var(--space-xs);
     color: var(--color-muted);
     font-size: var(--text-sm);
+  }
+  .latest-run,
+  .source-results {
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    padding-block-start: var(--space-sm);
+  }
+  .latest-run summary,
+  .source-results summary {
+    min-height: 2.75rem;
+    color: var(--color-accent-text);
+    cursor: pointer;
+  }
+  .latest-run .provider-failures {
+    margin-block-start: var(--space-xs);
   }
   .source-progress {
     border-block-start: var(--rule-hair) solid var(--color-rule);
@@ -1036,6 +1361,10 @@
   }
   .next-step p {
     color: var(--color-muted);
+  }
+  .next-actions {
+    align-items: center;
+    margin-block-start: var(--space-xs);
   }
   .text-action {
     justify-self: start;
@@ -1142,6 +1471,25 @@
     padding: 0;
     list-style: none;
   }
+  .consent-recommendation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    padding-block: var(--space-sm);
+    border-block: var(--rule-hair) solid var(--color-rule);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .consent-recommendation button {
+    min-height: 2.35rem;
+    padding-inline: var(--space-sm);
+  }
+  .consent li {
+    padding-block-end: var(--space-sm);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
   .consent label {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -1162,6 +1510,25 @@
   }
   .consent label strong {
     color: var(--color-ink);
+  }
+  .consent label small {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  .consent li > details {
+    margin-inline-start: 2.4rem;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+  .consent li > details summary {
+    min-height: 2rem;
+    color: var(--color-accent-text);
+    cursor: pointer;
+    font-size: var(--text-xs);
+  }
+  .consent li > details p {
+    padding-block-start: var(--space-2xs);
   }
   .dialog-actions {
     display: grid;
@@ -1219,6 +1586,12 @@
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
     }
+    .output-choice {
+      grid-template-columns: auto minmax(14rem, 0.5fr) minmax(16rem, 1fr);
+    }
+    .output-choice p {
+      grid-column: auto;
+    }
     .dialog-actions {
       display: flex;
       flex-wrap: wrap;
@@ -1230,7 +1603,8 @@
   }
   @media (pointer: coarse) {
     button,
-    input {
+    input,
+    select {
       min-height: 3rem;
     }
   }
@@ -1244,8 +1618,8 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    * {
-      scroll-behavior: auto;
+    button {
+      transition-duration: 0.01ms;
     }
   }
 </style>

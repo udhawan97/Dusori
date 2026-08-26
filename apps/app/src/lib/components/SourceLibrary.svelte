@@ -2,6 +2,7 @@
   import { AlertTriangle, Check, FilePlus2, RotateCcw, Trash2 } from '@lucide/svelte';
   import {
     addSource,
+    lensFor,
     maxSourceBytes,
     readSourceManifest,
     readSourcesIntoClaims,
@@ -12,6 +13,7 @@
     writeTopicSynthesis,
     type CompanionFetchError,
     type CompanionResearchClient,
+    type MissionLens,
     type RemovedSource,
     type SourceRecord,
     type StorageAdapter,
@@ -56,8 +58,38 @@
   let restoringSha = '';
   const refreshGate = createLatestRequestGate();
 
+  type SourceGroupId = MissionLens | 'manual';
+  const sourceGroupOrder: readonly SourceGroupId[] = [
+    'academic',
+    'docs',
+    'books',
+    'community',
+    'video',
+    'web',
+    'manual',
+  ];
+  const sourceGroupCopy: Record<SourceGroupId, { description: string; label: string }> = {
+    academic: { description: 'Papers, abstracts, and scholarly indexes', label: 'Academic' },
+    books: { description: 'Books, catalogs, and long-form references', label: 'Books' },
+    community: { description: 'Practitioner discussion and field experience', label: 'Community' },
+    docs: {
+      description: 'Official documentation and primary repositories',
+      label: 'Documentation',
+    },
+    manual: { description: 'Text, files, and links you added yourself', label: 'Your material' },
+    video: { description: 'Talks, lectures, and captioned media', label: 'Video' },
+    web: { description: 'General web references and reporting', label: 'Web' },
+  };
+
   $: filterCounts = sourceFilterCounts(sources);
   $: visibleSources = filterSavedSources(sources, sourceQuery, shelfFilter);
+  $: visibleSourceGroups = sourceGroupOrder
+    .map((id) => ({
+      ...sourceGroupCopy[id],
+      id,
+      sources: visibleSources.filter((source) => sourceGroupFor(source) === id),
+    }))
+    .filter((group) => group.sources.length > 0);
   $: resetShelfForTopic(topicSlug);
 
   function resetShelfForTopic(slug: string): void {
@@ -73,6 +105,10 @@
     } catch {
       return '';
     }
+  }
+
+  function sourceGroupFor(record: SourceRecord): SourceGroupId {
+    return record.origin ? lensFor(record.origin.provider) : 'manual';
   }
 
   function clearFeedback(): void {
@@ -553,49 +589,62 @@
       <span>Change the search or evidence filter; nothing was removed.</span>
     </div>
   {:else}
-    <ul class="source-list" aria-label="Saved sources">
-      {#each visibleSources as source (source.sha256)}
-        <li>
-          {#if source.path}
-            <button class="source-title" onclick={() => onOpenSource(source.path!)}>
-              {source.title}
-            </button>
-          {:else}
-            <strong>{source.title}</strong>
-          {/if}
-          <span>{sourceDetail(source)}</span>
-          {#if source.whySelected?.length}
-            <p class="source-reason">Saved because {source.whySelected.join(' · ')}</p>
-          {/if}
-          {#if source.fetchMessage}
-            <p class="source-row-error" role="status">{source.fetchMessage}</p>
-          {/if}
-          {#if source.url}
-            <a
-              class="original-link"
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-              onclick={(event) => void openExternal(event, source.url!)}>Open original</a
-            >
-          {/if}
-          {#if source.method === 'url' && companion}
-            <button
-              class="upgrade-source"
-              disabled={Boolean(fetchingSha) || saving}
-              onclick={() => void fetchSource(source)}
-            >
-              {fetchingSha === source.sha256 ? 'Reading…' : `Read from ${hostOf(source)}`}
-            </button>
-          {/if}
-          <button
-            class="remove-source"
-            disabled={Boolean(removingSha) || saving}
-            onclick={() => void removeFromResearch(source)}
-          >
-            <Trash2 aria-hidden="true" size={15} />
-            {removingSha === source.sha256 ? 'Removing…' : 'Remove from research'}
-          </button>
+    <ul class="source-groups" aria-label="Saved sources">
+      {#each visibleSourceGroups as group (group.id)}
+        <li class="source-group">
+          <header>
+            <div>
+              <h3 id={`source-group-${group.id}`}>{group.label}</h3>
+              <p>{group.description}</p>
+            </div>
+            <span>{group.sources.length}</span>
+          </header>
+          <div class="source-list" role="list" aria-labelledby={`source-group-${group.id}`}>
+            {#each group.sources as source (source.sha256)}
+              <article role="listitem">
+                {#if source.path}
+                  <button class="source-title" onclick={() => onOpenSource(source.path!)}>
+                    {source.title}
+                  </button>
+                {:else}
+                  <strong>{source.title}</strong>
+                {/if}
+                <span>{sourceDetail(source)}</span>
+                {#if source.whySelected?.length}
+                  <p class="source-reason">Saved because {source.whySelected.join(' · ')}</p>
+                {/if}
+                {#if source.fetchMessage}
+                  <p class="source-row-error" role="status">{source.fetchMessage}</p>
+                {/if}
+                {#if source.url}
+                  <a
+                    class="original-link"
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onclick={(event) => void openExternal(event, source.url!)}>Open original</a
+                  >
+                {/if}
+                {#if source.method === 'url' && companion}
+                  <button
+                    class="upgrade-source"
+                    disabled={Boolean(fetchingSha) || saving}
+                    onclick={() => void fetchSource(source)}
+                  >
+                    {fetchingSha === source.sha256 ? 'Reading…' : `Read from ${hostOf(source)}`}
+                  </button>
+                {/if}
+                <button
+                  class="remove-source"
+                  disabled={Boolean(removingSha) || saving}
+                  onclick={() => void removeFromResearch(source)}
+                >
+                  <Trash2 aria-hidden="true" size={15} />
+                  {removingSha === source.sha256 ? 'Removing…' : 'Remove from research'}
+                </button>
+              </article>
+            {/each}
+          </div>
         </li>
       {/each}
     </ul>
@@ -633,9 +682,9 @@
 </section>
 
 <style>
-  /* Hallmark · component: source library · genre: editorial utility · theme: custom
+  /* Hallmark · macrostructure: grouped evidence shelf · genre: editorial utility · theme: custom
    * states: default · hover · focus · active · disabled · loading · error · success
-   * contrast: pass · pre-emit critique: P5 H5 E5 S5 R5 V4
+   * contrast: pass (40–41) · pre-emit critique: P5 H5 E5 S5 R5 V4 · responsive: pass (49)
    */
   .source-library {
     display: grid;
@@ -654,7 +703,7 @@
   .source-tools {
     order: 3;
   }
-  .source-list,
+  .source-groups,
   .source-empty {
     order: 4;
   }
@@ -921,6 +970,48 @@
     margin-block-start: var(--space-2xs);
   }
 
+  .source-groups {
+    display: grid;
+    gap: var(--space-xl);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .source-group {
+    min-width: 0;
+  }
+
+  .source-group > header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding-block-end: var(--space-xs);
+  }
+
+  .source-group h3,
+  .source-group p {
+    margin: 0;
+  }
+
+  .source-group h3 {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+  }
+
+  .source-group header p {
+    margin-block-start: var(--space-2xs);
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  .source-group header > span {
+    color: var(--color-accent-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
   .source-list {
     display: grid;
     gap: 0;
@@ -930,7 +1021,7 @@
     list-style: none;
   }
 
-  .source-list li {
+  .source-list [role='listitem'] {
     display: grid;
     gap: var(--space-2xs);
     padding-block: var(--space-sm);

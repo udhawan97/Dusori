@@ -1,5 +1,6 @@
 import type { SourceClaim, SourceRecord } from '../schemas/workspace.js';
 import { lensFor, missionLensLabels, missionLenses } from './mission.js';
+import type { ResearchOutputStyle } from './research-file.js';
 
 export interface SynthesisClaim extends SourceClaim {
   sourceTitle: string;
@@ -104,6 +105,14 @@ function sourceLinkFor(record: SourceRecord): string | undefined {
   return name.replace(/\.(?:md|txt)$/u, '');
 }
 
+/**
+ * The single evidence boundary for synthesis and progress surfaces. A saved reference may retain
+ * legacy claim-shaped data, but it cannot support a claim until its text was actually read.
+ */
+export function evidenceClaims(record: SourceRecord): NonNullable<SourceRecord['claims']> {
+  return record.readState === 'read' ? (record.claims ?? []) : [];
+}
+
 function normalizeHeading(heading: string): string {
   return heading.trim().toLowerCase().replace(/\s+/gu, ' ');
 }
@@ -119,7 +128,7 @@ function headingKey(heading: string): string {
 
 function collectClaims(sources: SourceRecord[]): SynthesisClaim[] {
   return sources.flatMap((record) =>
-    (record.claims ?? []).map((claim) => ({
+    evidenceClaims(record).map((claim) => ({
       ...claim,
       sourceLink: sourceLinkFor(record),
       sourcePath: record.path,
@@ -195,7 +204,7 @@ export interface BuildSynthesisInput {
 }
 
 export function buildTopicSynthesis(input: BuildSynthesisInput): TopicSynthesis {
-  const read = input.sources.filter((record) => (record.claims?.length ?? 0) > 0);
+  const read = input.sources.filter((record) => evidenceClaims(record).length > 0);
   const claims = collectClaims(read);
   const clusters = clusterClaims(claims);
   const thinEvidence = clusters.filter((cluster) => cluster.sourceCount === 1);
@@ -218,7 +227,7 @@ export function buildTopicSynthesis(input: BuildSynthesisInput): TopicSynthesis 
     readCount: read.length,
     sourceCount: input.sources.length,
     thinEvidence,
-    timeline: buildTimeline(input.sources),
+    timeline: buildTimeline(read),
     topicTitle: input.topicTitle,
   };
 }
@@ -233,41 +242,11 @@ export interface RenderSynthesisOptions {
   /** Verbatim source passages selected and ordered by an optional model. */
   aiOverview?: string;
   aiModel?: string;
+  /** The learner-selected structure for the durable research artifact. */
+  outputStyle?: ResearchOutputStyle;
 }
 
-/**
- * The honest synthesis: every statement is a quote from a saved source with a link back
- * to it, and the document says outright which ideas only one source supports.
- */
-export function renderSynthesisMarkdown(
-  synthesis: TopicSynthesis,
-  options: RenderSynthesisOptions = {},
-): string {
-  const day = synthesis.generatedAt.slice(0, 10);
-  const lines: string[] = [
-    '---',
-    `title: ${JSON.stringify(`Synthesis — ${synthesis.topicTitle}`)}`,
-    `topic: ${synthesis.topicTitle}`,
-    `created: ${day}`,
-    'generated: synthesis',
-    '---',
-    '',
-    `# Synthesis — ${synthesis.topicTitle}`,
-    '',
-    options.aiModel
-      ? `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). ${options.aiModel} selected the overview passages; every word and citation below comes from your sources, not from the model.`
-      : `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). Every line below is quoted from saved source text.`,
-    '',
-  ];
-
-  if (synthesis.claimCount === 0) {
-    lines.push(
-      'No source has been read into quotable passages yet. Save a source and run “Read these”, then regenerate this synthesis.',
-      '',
-    );
-    return `${lines.join('\n')}`;
-  }
-
+function appendEvidenceDigest(lines: string[], synthesis: TopicSynthesis): void {
   lines.push('## Evidence digest', '');
   for (const cluster of synthesis.clusters.slice(0, 5)) {
     const passageCount = cluster.claims.length;
@@ -275,7 +254,16 @@ export function renderSynthesisMarkdown(
       `- **${cluster.heading}** — ${cluster.sourceCount} ${cluster.sourceCount === 1 ? 'source' : 'sources'} · ${passageCount} ${passageCount === 1 ? 'passage' : 'passages'}`,
     );
   }
-  lines.push('', '## What matters', '');
+  lines.push('');
+}
+
+function appendKeyIdeas(
+  lines: string[],
+  synthesis: TopicSynthesis,
+  options: RenderSynthesisOptions,
+  heading = 'What matters',
+): void {
+  lines.push(`## ${heading}`, '');
   if (options.aiOverview) lines.push(options.aiOverview.trim(), '');
   for (const cluster of synthesis.clusters.slice(0, 5)) {
     lines.push(`### ${cluster.heading}`, '');
@@ -284,7 +272,9 @@ export function renderSynthesisMarkdown(
     }
     lines.push('');
   }
+}
 
+function appendComparison(lines: string[], synthesis: TopicSynthesis): void {
   lines.push('## Agreements and tensions', '');
   const supported = synthesis.clusters.filter((cluster) => cluster.sourceCount > 1);
   if (supported.length > 0) {
@@ -306,21 +296,96 @@ export function renderSynthesisMarkdown(
     }
     lines.push('');
   }
+}
 
-  if (synthesis.timeline.length >= 3) {
-    lines.push('## Timeline', '');
-    for (const entry of synthesis.timeline) {
-      lines.push(
-        `- **${entry.year}** — ${entry.url ? `[${entry.title}](${entry.url})` : entry.title}`,
-      );
-    }
-    lines.push('');
+function appendTimeline(lines: string[], synthesis: TopicSynthesis, always = false): void {
+  if (!always && synthesis.timeline.length < 3) return;
+  lines.push('## Timeline', '');
+  if (synthesis.timeline.length === 0) {
+    lines.push('No saved source carries a usable publication year yet.', '');
+    return;
+  }
+  if (always && synthesis.timeline.length < 3) {
+    lines.push(
+      `Only ${synthesis.timeline.length} dated ${synthesis.timeline.length === 1 ? 'source is' : 'sources are'} saved, so this chronology is incomplete.`,
+      '',
+    );
+  }
+  for (const entry of synthesis.timeline) {
+    lines.push(
+      `- **${entry.year}** — ${entry.url ? `[${entry.title}](${entry.url})` : entry.title}`,
+    );
+  }
+  lines.push('');
+}
+
+function appendQuestions(
+  lines: string[],
+  synthesis: TopicSynthesis,
+  heading = 'Open questions',
+): void {
+  if (synthesis.openQuestions.length === 0) return;
+  lines.push(`## ${heading}`, '');
+  for (const question of synthesis.openQuestions) lines.push(`- ${question}`);
+  lines.push('');
+}
+
+/**
+ * The honest synthesis: evidence passages are verbatim quotes with links back to saved sources.
+ * Dusori-generated structure, counts, questions, and coverage notices are labeled as such.
+ */
+export function renderSynthesisMarkdown(
+  synthesis: TopicSynthesis,
+  options: RenderSynthesisOptions = {},
+): string {
+  const day = synthesis.generatedAt.slice(0, 10);
+  const outputStyle = options.outputStyle ?? 'brief';
+  const lines: string[] = [
+    '---',
+    `title: ${JSON.stringify(`Synthesis — ${synthesis.topicTitle}`)}`,
+    `topic: ${synthesis.topicTitle}`,
+    `created: ${day}`,
+    'generated: synthesis',
+    `structure: ${outputStyle}`,
+    '---',
+    '',
+    `# Synthesis — ${synthesis.topicTitle}`,
+    '',
+    options.aiModel
+      ? `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). ${options.aiModel} produced the overview from bounded saved passages. Quoted bullets remain verbatim and cited; headings, grouping, counts, questions, and gap notices are generated.`
+      : `Assembled on ${day} from ${synthesis.readCount} of ${synthesis.sourceCount} saved sources (${synthesis.claimCount} quoted passages). Quoted bullets are verbatim and cited; headings, grouping, counts, questions, and gap notices are generated locally by Dusori.`,
+    '',
+  ];
+
+  if (synthesis.claimCount === 0) {
+    lines.push(
+      'No source has been read into quotable passages yet. Save a source and run “Read these”, then regenerate this synthesis.',
+      '',
+    );
+    return `${lines.join('\n')}`;
   }
 
-  if (synthesis.openQuestions.length > 0) {
-    lines.push('## Open questions', '');
-    for (const question of synthesis.openQuestions) lines.push(`- ${question}`);
-    lines.push('');
+  appendEvidenceDigest(lines, synthesis);
+  if (outputStyle === 'comparison') {
+    appendComparison(lines, synthesis);
+    appendKeyIdeas(lines, synthesis, options);
+    appendTimeline(lines, synthesis);
+    appendQuestions(lines, synthesis);
+  } else if (outputStyle === 'timeline') {
+    appendTimeline(lines, synthesis, true);
+    appendKeyIdeas(lines, synthesis, options, 'Evidence by theme');
+    appendComparison(lines, synthesis);
+    appendQuestions(lines, synthesis);
+  } else if (outputStyle === 'study-guide') {
+    appendKeyIdeas(lines, synthesis, options, 'Key ideas');
+    appendQuestions(lines, synthesis, 'Check your understanding');
+    appendComparison(lines, synthesis);
+    appendTimeline(lines, synthesis);
+  } else {
+    appendKeyIdeas(lines, synthesis, options);
+    appendComparison(lines, synthesis);
+    appendTimeline(lines, synthesis);
+    appendQuestions(lines, synthesis);
   }
 
   if (synthesis.missingLenses.length > 0) {
@@ -333,7 +398,7 @@ export function renderSynthesisMarkdown(
   lines.push(
     '## What this synthesis is',
     '',
-    'Every passage above is quoted verbatim from saved source text, with a link back to it. Dusori grouped and counted the passages; it did not judge whether they are true. Read the sources before relying on any of this.',
+    'Evidence bullets above are quoted verbatim from saved source text, with a link back to it. A model overview, when present, is generated from bounded saved passages. Dusori generated the headings, grouping, counts, questions, and gap notices; neither Dusori nor the model judged whether the claims are true. Read the sources before relying on any of this.',
     '',
   );
 

@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { Compass, ShieldCheck } from '@lucide/svelte';
+  import { Library, Map } from '@lucide/svelte';
 
   import type { CompanionAiClient, CompanionResearchClient, StorageAdapter } from '@dusori/core';
 
   import ResearchDeskPanel from './ResearchDeskPanel.svelte';
-  import SourceLibrary from './SourceLibrary.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
@@ -15,11 +14,10 @@
   export let onAutoStartHandled: () => void = () => undefined;
   export let onArtifactSaved: () => void = () => undefined;
   export let onOpenSource: (path: string) => void = () => undefined;
-
-  let sourceRevision = 0;
+  export let onOpenSources: () => void = () => undefined;
+  export let onOpenMap: () => void = () => undefined;
 
   function handleSourceSaved(path?: string): void {
-    sourceRevision += 1;
     onArtifactSaved();
     if (path) onOpenSource(path);
   }
@@ -29,71 +27,66 @@
   <header class="research-hero">
     <div>
       <p class="kicker">Research Desk · {topicTitle}</p>
-      <h1 id="research-workspace-title">Ask once. See what the evidence supports.</h1>
+      <h1 id="research-workspace-title">Turn a question into evidence you can keep.</h1>
       <p class="hero-copy">
-        Dusori searches the providers you chose, keeps a varied first shelf, reads the text it can
-        quote, and builds one honest brief. Blocked pages stay useful as browser-ready references.
+        Choose a direction, search research providers, and rank results with relevance and authority
+        signals before saving a cited brief beside its sources. Every step stays visible; nothing is
+        treated as evidence until Dusori can quote it.
       </p>
+    </div>
+    <div class="hero-actions" aria-label="Research workspace shortcuts">
+      <button type="button" onclick={onOpenSources}>
+        <Library aria-hidden="true" size={16} /> Sources
+      </button>
+      <button type="button" onclick={onOpenMap}>
+        <Map aria-hidden="true" size={16} /> Depth map
+      </button>
     </div>
   </header>
 
-  <div class="research-grid">
-    <section class="agent-bay" aria-label="Automatic research">
-      <div class="bay-label">
-        <Compass aria-hidden="true" size={18} />
-        <span>Provider search</span>
-      </div>
-      <ResearchDeskPanel
-        {storage}
-        {topicSlug}
-        {topicTitle}
-        {companion}
-        {ai}
-        {autoStart}
-        {onAutoStartHandled}
-        onSourceSaved={handleSourceSaved}
-      />
-    </section>
+  <ResearchDeskPanel
+    {storage}
+    {topicSlug}
+    {topicTitle}
+    {companion}
+    {ai}
+    {autoStart}
+    {onAutoStartHandled}
+    onSourceSaved={handleSourceSaved}
+    {onOpenSources}
+    {onOpenMap}
+  />
 
-    <aside class="evidence-bay" aria-label="Saved research evidence">
-      <div class="bay-label">
-        <ShieldCheck aria-hidden="true" size={18} />
-        <span>Saved evidence</span>
-      </div>
-      <SourceLibrary
-        {storage}
-        {topicSlug}
-        {topicTitle}
-        {companion}
-        revision={sourceRevision}
-        onSourceSaved={handleSourceSaved}
-        {onOpenSource}
-      />
-    </aside>
-  </div>
-
-  <p class="trust-line">
-    A research action saves up to eight ranked references. Further results require individual
-    approval; arbitrary discovered pages are never fetched in the background, and full-page reading
-    always names the host first.
-  </p>
+  <details class="trust-line">
+    <summary>How Dusori keeps research under your control</summary>
+    <p>
+      Each run saves up to eight ranked references. More results require individual approval;
+      arbitrary pages are never fetched in the background, and full-page reading always names the
+      host first.
+    </p>
+  </details>
 </section>
 
 <style>
+  /* Hallmark · macrostructure: question-led research thread · genre: atmospheric editorial · theme: design.md
+   * signature: one question-led thread with source and depth-map exits · variation: linear-thread + spatial-evidence
+   * states: first-run · configured · running · complete · pre-emit critique: P5 H5 E4 S5 R5 V4
+   * contrast: pass (40–41) · nav: N13 · footer: Ft2 · slop: pass (42–49) · mobile: pass (34, 49–57)
+   */
   .research-workspace {
-    width: min(100%, 72rem);
+    width: min(100%, 66rem);
     margin-inline: auto;
     padding: var(--space-xl) var(--page-gutter) var(--space-3xl);
   }
 
   .research-hero {
-    max-width: 62rem;
+    display: grid;
+    gap: var(--space-md);
     padding-block-end: var(--space-xl);
     border-block-end: var(--rule-hair) solid var(--color-rule);
   }
 
-  .kicker,
-  .bay-label {
+  .kicker {
     color: var(--color-muted);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
@@ -108,7 +101,7 @@
   }
 
   h1 {
-    max-width: 16ch;
+    max-width: 18ch;
     margin-block-start: var(--space-xs);
     font-size: clamp(2.4rem, 6vw, 4.75rem);
     letter-spacing: -0.025em;
@@ -122,103 +115,65 @@
     font-size: var(--text-md);
   }
 
-  .research-grid {
-    display: grid;
-    gap: var(--space-xl);
-    margin-block-start: var(--space-2xl);
-  }
-
-  .agent-bay,
-  .evidence-bay {
-    min-width: 0;
-    padding-block: var(--space-xl);
-  }
-
-  .bay-label {
+  .hero-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-xs);
-    margin-block-end: var(--space-lg);
-    color: var(--color-accent-text);
   }
 
-  .evidence-bay {
-    border-block-start: var(--rule-hair) solid var(--color-rule);
+  .hero-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 2.75rem;
+    padding-inline: var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   .trust-line {
+    margin-block-start: var(--space-xl);
     padding-block-start: var(--space-lg);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
     color: var(--color-muted);
     font-size: var(--text-sm);
   }
 
-  @media (max-width: 32rem) {
-    .research-workspace {
-      padding-block: var(--space-md) var(--space-2xl);
-    }
+  .trust-line summary {
+    min-height: 2.75rem;
+    color: var(--color-accent-text);
+    cursor: pointer;
+    font-weight: 700;
+  }
 
-    .research-hero {
-      padding-block-end: var(--space-md);
-    }
+  .trust-line p {
+    max-width: 70ch;
+    margin: var(--space-xs) 0 0;
+  }
 
-    .research-hero h1 {
-      font-size: 2rem;
-    }
+  .hero-actions button:focus-visible,
+  .trust-line summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
 
-    .hero-copy {
-      display: none;
-    }
-
-    .research-grid {
-      margin-block-start: var(--space-md);
-    }
-
-    .agent-bay,
-    .evidence-bay {
-      padding-block: var(--space-md);
-    }
-
-    .bay-label {
-      margin-block-end: var(--space-sm);
+  @media (hover: hover) and (pointer: fine) {
+    .hero-actions button:hover {
+      background: var(--color-paper-2);
     }
   }
 
-  @media (min-width: 64rem) {
-    .research-workspace {
-      padding-block-start: var(--space-md);
-    }
-
+  @media (min-width: 48rem) {
     .research-hero {
-      padding-block-end: var(--space-md);
-    }
-
-    .research-hero h1 {
-      font-size: 3.4rem;
-    }
-
-    .research-grid {
-      grid-template-columns: minmax(0, 1.55fr) minmax(19rem, 0.75fr);
-      gap: var(--space-xl);
-      margin-block-start: var(--space-md);
-    }
-
-    .agent-bay,
-    .evidence-bay {
-      padding-block: var(--space-md);
-    }
-
-    .bay-label {
-      margin-block-end: var(--space-sm);
-    }
-
-    .agent-bay {
-      padding-inline-end: var(--space-xl);
-    }
-
-    .evidence-bay {
-      padding-inline-start: var(--space-xl);
-      border-block-start: 0;
-      border-inline-start: var(--rule-hair) solid var(--color-rule);
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
     }
   }
 </style>

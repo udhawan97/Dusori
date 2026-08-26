@@ -10,6 +10,8 @@ export interface RankedCandidate extends ResearchCandidate {
   relevanceMatches?: number;
   /** Matches to subject-bearing terms, excluding generic research instructions. */
   subjectMatches?: number;
+  /** Matches to the topic itself, excluding objective or angle words. */
+  topicMatches?: number;
   /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
   aiScore?: number;
   aiNote?: string;
@@ -73,6 +75,11 @@ function matchedTermCount(query: ResearchQuery, candidate: ResearchCandidate): n
 function matchedSubjectCount(query: ResearchQuery, candidate: ResearchCandidate): number {
   const found = words(`${candidate.title} ${candidate.snippet}`);
   return (query.subjectTerms ?? []).filter((term) => found.has(term)).length;
+}
+
+function matchedTopicCount(query: ResearchQuery, candidate: ResearchCandidate): number {
+  const found = words(`${candidate.title} ${candidate.snippet}`);
+  return (query.topicTerms ?? []).filter((term) => found.has(term)).length;
 }
 
 /** Full credit under a year old, decaying to a floor by five; missing or unusable is neutral. */
@@ -161,6 +168,7 @@ export function rankCandidates(
         ...(query.subjectTerms?.length
           ? { subjectMatches: matchedSubjectCount(query, candidate) }
           : {}),
+        ...(query.topicTerms?.length ? { topicMatches: matchedTopicCount(query, candidate) } : {}),
         rankScore:
           WEIGHTS.relevance * relevance +
           WEIGHTS.community * community +
@@ -191,7 +199,8 @@ export function selectDiverse(
   const eligibleRanked = ranked.filter(
     (candidate) =>
       (candidate.relevanceMatches ?? 0) > 0 &&
-      (candidate.subjectMatches === undefined || candidate.subjectMatches > 0),
+      (candidate.subjectMatches === undefined || candidate.subjectMatches > 0) &&
+      (candidate.topicMatches === undefined || candidate.topicMatches > 0),
   );
   const picked = new Set<string>();
   const kinds = new Set<string>();

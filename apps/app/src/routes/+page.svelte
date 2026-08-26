@@ -1376,7 +1376,7 @@
           </p>
           <p class="save-state">Plain Markdown · changes stay local</p>
         </div>
-        {#if selectedSlug}
+        {#if selectedSlug && workspaceView !== 'research'}
           <button class="research-pill" onclick={() => openResearch()}>
             <Search aria-hidden="true" size={16} />
             <span>Research this topic…</span>
@@ -1518,6 +1518,8 @@
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
               onArtifactSaved={refreshArtifacts}
               onOpenSource={(path) => void openGraphDocument(path)}
+              onOpenSources={() => openSources()}
+              onOpenMap={() => openGraph(true, 'visual')}
             />
           {/key}
         {:else if workspaceView === 'insights' && storage && workspace}

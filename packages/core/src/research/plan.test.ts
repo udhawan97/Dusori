@@ -13,6 +13,7 @@ describe('research query planning', () => {
       searchText: 'Azure administration Configure Microsoft Entra ID for the tenant',
       subjectTerms: ['azure', 'administration', 'configure', 'microsoft', 'entra', 'id', 'tenant'],
       terms: ['configure', 'microsoft', 'entra', 'id', 'tenant', 'azure', 'administration'],
+      topicTerms: ['azure', 'administration'],
       topicTitle: 'Azure administration',
     });
   });
@@ -36,6 +37,7 @@ describe('research query planning', () => {
       'fundamentals',
     ]);
     expect(query.subjectTerms).toEqual(['ai', 'fundamentals']);
+    expect(query.topicTerms).toEqual(['ai', 'fundamentals']);
   });
 
   it('never repeats a term the objective already carries', () => {

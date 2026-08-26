@@ -10,6 +10,7 @@ import { TopicStateSchema } from '../schemas/workspace.js';
 import { clearSynthesisStale, readSourceManifest } from '../sources/import.js';
 import { proposedPath, topicRoot } from '../workspace/paths.js';
 import { renderLearnPage } from './learn-page.js';
+import { readResearchFile } from './research-file.js';
 import {
   buildTopicSynthesis,
   renderSynthesisMarkdown,
@@ -61,7 +62,11 @@ export async function writeTopicSynthesis(
   const path = `${root}/${synthesisFileName}`;
   const manifest = await readSourceManifest(storage, topicSlug, now);
   const synthesis = buildTopicSynthesis({ now, sources: manifest.sources, topicTitle });
-  const content = renderSynthesisMarkdown(synthesis, options);
+  const research = await readResearchFile(storage, topicSlug, now).catch(() => null);
+  const content = renderSynthesisMarkdown(synthesis, {
+    outputStyle: research?.outputStyle ?? 'brief',
+    ...options,
+  });
 
   const existing = await storage.read(path);
   if (!existing) {

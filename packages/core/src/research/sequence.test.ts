@@ -28,7 +28,7 @@ function provider(
     provider: id,
     score: 10,
     snippet: 'Generic constraints preserve useful relationships between values.',
-    title: `${id} generic constraints`,
+    title: `${id} TypeScript generic constraints`,
     url: `https://${id}.example/generics`,
   };
   return {
@@ -155,7 +155,7 @@ describe('runResearchSequence', () => {
     expect(result.status).toBe('brief-ready');
     expect(result.aiUnavailable).toBe(true);
     expect((await storage.read(`Topics/${topicSlug}/Synthesis.md`))?.content).toContain(
-      'Every line below is quoted from saved source text.',
+      'Quoted bullets are verbatim and cited',
     );
   });
 

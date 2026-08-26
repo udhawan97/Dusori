@@ -14,6 +14,7 @@ function source(overrides: Partial<SourceRecord>): SourceRecord {
     method: 'url',
     origin: { capturedAt: at, capturedVia: 'api-extract', provider: 'wikipedia' },
     path: 'Topics/t/Sources/items/abc123456789-spaced.md',
+    readState: 'read',
     sha256: 'a'.repeat(64),
     title: 'Spaced repetition',
     url: 'https://en.wikipedia.org/wiki/Spaced_repetition',

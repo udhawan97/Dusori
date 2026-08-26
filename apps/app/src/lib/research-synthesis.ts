@@ -1,4 +1,9 @@
-import type { CompanionAiClient, RenderSynthesisOptions, SourceRecord } from '@dusori/core';
+import {
+  evidenceClaims,
+  type CompanionAiClient,
+  type RenderSynthesisOptions,
+  type SourceRecord,
+} from '@dusori/core';
 
 /**
  * Sends only the bounded passages already quoted from saved sources. Provider consent stays with
@@ -11,7 +16,7 @@ export async function createAiSynthesisOptions(
   sources: SourceRecord[],
 ): Promise<RenderSynthesisOptions> {
   const claims = sources.flatMap((record) =>
-    (record.claims ?? []).map((claim) => ({
+    evidenceClaims(record).map((claim) => ({
       ...(claim.heading === undefined ? {} : { heading: claim.heading }),
       source: record.title,
       text: claim.text,

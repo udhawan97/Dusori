@@ -1,16 +1,17 @@
 {
-  "scannedAt": "2026-08-04",
+  "scannedAt": "2026-08-25",
   "framework": "SvelteKit 5, Astro, and Tauri 2",
   "fonts": ["Shippori Mincho", "Zen Kaku Gothic New", "IBM Plex Mono"],
   "palette": "OKLCH custom properties",
-  "motion": "interaction feedback and graph settle; no animation library",
+  "motion": "interaction feedback, progress-state transitions, and direct-manipulation CSS 3D map; no animation library",
   "spacing": "4-point CSS custom-property scale",
   "preserve": [
-    "atmospheric editorial Learning Studio macrostructure",
+    "atmospheric editorial Research Desk macrostructure",
     "supplied enso, rangoli, and katana identity",
     "near-black, warm paper, vermilion, and marigold palette",
     "existing typography",
-    "existing spacing and motion tokens"
+    "existing spacing and motion tokens",
+    "provider consent and citation-truth boundaries"
   ],
   "sources": [
     "apps/app/package.json",

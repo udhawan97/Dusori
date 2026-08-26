@@ -81,8 +81,9 @@ export function buildResearchQuery(
   // The user's real question is the topic plus the objective. Dusori's own scaffold objectives
   // ("Explain the central mechanism in your own words") name no subject, so an objective-only
   // query matches on filler words and returns unrelated sources.
-  const topicTerms = deriveTerms(topic).filter((term) => !objectiveTerms.includes(term));
-  const subjectTerms = [...new Set([...deriveTerms(topic), ...objectiveTerms])].filter(
+  const allTopicTerms = deriveTerms(topic).filter((term) => !researchInstructionTerms.has(term));
+  const topicTerms = allTopicTerms.filter((term) => !objectiveTerms.includes(term));
+  const subjectTerms = [...new Set([...allTopicTerms, ...objectiveTerms])].filter(
     (term) => !researchInstructionTerms.has(term),
   );
   const searchText = [topic, objectiveTitle === topic ? '' : objectiveTitle]
@@ -95,6 +96,7 @@ export function buildResearchQuery(
     searchText,
     ...(subjectTerms.length ? { subjectTerms } : {}),
     terms: [...objectiveTerms, ...topicTerms],
+    ...(allTopicTerms.length ? { topicTerms: allTopicTerms } : {}),
     topicTitle: topic,
   };
 }

@@ -30,10 +30,14 @@ function words(input: string): Set<string> {
 export function scoreCandidate(query: ResearchQuery, candidate: CandidateScoreInput): number {
   const titleWords = words(candidate.title);
   const summaryWords = words(candidate.summary);
-  return query.terms.reduce(
-    (score, term) => score + (titleWords.has(term) ? 3 : 0) + (summaryWords.has(term) ? 1 : 0),
-    0,
-  );
+  const matches = (terms: string[]): number =>
+    terms.reduce(
+      (score, term) => score + (titleWords.has(term) ? 3 : 0) + (summaryWords.has(term) ? 1 : 0),
+      0,
+    );
+  // Topic matches count twice. Objective/angle words can refine a result, but cannot outweigh
+  // the subject the user actually chose.
+  return matches(query.terms) + matches(query.topicTerms ?? []);
 }
 
 function compareText(left: string, right: string): number {

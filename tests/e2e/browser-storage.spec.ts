@@ -23,6 +23,6 @@ test('the browser workspace survives reload in every supported engine project', 
   if (browserName === 'firefox') expect(backend).toBe('indexeddb');
 
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await expect(page.getByText('Engine storage check', { exact: true }).first()).toBeVisible();
 });

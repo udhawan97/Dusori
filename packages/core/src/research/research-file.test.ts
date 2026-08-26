@@ -7,6 +7,7 @@ import {
   readResearchFile,
   recordResearchRun,
   setAutoRefresh,
+  setResearchOutputStyle,
   type ResearchRunInput,
 } from './research-file.js';
 
@@ -101,6 +102,18 @@ describe('research run ledger', () => {
 
     const file = await readResearchFile(storage, 'spaced-repetition-learning', now);
     expect(file?.autoRefresh).toBe(true);
+    expect(file?.runs).toHaveLength(1);
+    expect(file?.seen).toHaveLength(1);
+  });
+
+  it('stores the synthesis structure without touching the research trail', async () => {
+    const storage = await topicStorage();
+    await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+
+    await setResearchOutputStyle(storage, 'spaced-repetition-learning', 'study-guide', now);
+
+    const file = await readResearchFile(storage, 'spaced-repetition-learning', now);
+    expect(file?.outputStyle).toBe('study-guide');
     expect(file?.runs).toHaveLength(1);
     expect(file?.seen).toHaveLength(1);
   });

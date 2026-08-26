@@ -50,6 +50,9 @@ export const ResearchRunRecordSchema = z
   })
   .passthrough();
 
+export const ResearchOutputStyleSchema = z.enum(['brief', 'comparison', 'timeline', 'study-guide']);
+export type ResearchOutputStyle = z.infer<typeof ResearchOutputStyleSchema>;
+
 export const ResearchFileSchema = z
   .object({
     schemaVersion: z.literal(schemaVersion),
@@ -62,6 +65,8 @@ export const ResearchFileSchema = z
     runs: z.array(ResearchRunRecordSchema).optional(),
     /** Standing permission to re-scan this topic when it is stale and Dusori is opened. */
     autoRefresh: z.boolean().optional(),
+    /** Learner-selected structure for the durable Synthesis.md artifact. */
+    outputStyle: ResearchOutputStyleSchema.optional(),
   })
   .passthrough();
 
@@ -247,6 +252,37 @@ export async function setAutoRefresh(
   }
 
   throw new Error('Research settings changed repeatedly. Try the refresh setting again.');
+}
+
+/** Stores the shape of the next synthesis without changing evidence or run history. */
+export async function setResearchOutputStyle(
+  storage: StorageAdapter,
+  topicSlug: string,
+  outputStyle: ResearchOutputStyle,
+  now = new Date(),
+): Promise<ResearchFile> {
+  const normalizedSlug = topicRoot(topicSlug).slice('Topics/'.length);
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const currentSnapshot = await storage.read(path);
+    const current = currentSnapshot
+      ? await readMachineFile(storage, path, ResearchFileSchema, now)
+      : ResearchFileSchema.parse({ dismissed: [], schemaVersion, topicSlug: normalizedSlug });
+    if (current.outputStyle === outputStyle) return current;
+    const next = ResearchFileSchema.parse({ ...current, outputStyle });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: currentSnapshot?.hash ?? null,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research output settings changed repeatedly. Choose the format again.');
 }
 
 /**

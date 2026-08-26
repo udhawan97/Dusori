@@ -15,6 +15,7 @@ function source(overrides: Partial<SourceRecord>): SourceRecord {
     sha256: 'a'.repeat(64),
     title: 'Spaced repetition',
     url: 'https://en.wikipedia.org/wiki/Spaced_repetition',
+    readState: 'read',
     ...overrides,
   };
 }
@@ -99,7 +100,10 @@ describe('topic synthesis', () => {
     expect(markdown).toContain(
       '“Reviews at increasing intervals counter forgetting.” — [[abc123456789-spaced-repetition|Spaced repetition]]',
     );
-    expect(markdown).toContain('Every line below is quoted from saved source text.');
+    expect(markdown).toContain('Quoted bullets are verbatim and cited');
+    expect(markdown).toContain(
+      'headings, grouping, counts, questions, and gap notices are generated',
+    );
     expect(markdown).toContain('## Evidence digest');
     expect(markdown).toMatch(/\*\*.+\*\* — \d+ sources? · \d+ passages?/u);
     // Nothing may appear that is not traceable: each bullet under What matters carries a citation.
@@ -127,9 +131,10 @@ describe('topic synthesis', () => {
       { aiModel: 'llama3', aiOverview: 'Spacing works because retrieval strengthens memory.' },
     );
 
-    expect(markdown).toContain('llama3 selected the overview passages');
+    expect(markdown).toContain('llama3 produced the overview from bounded saved passages');
     expect(markdown).toContain('Spacing works because retrieval strengthens memory.');
     expect(markdown).toContain('“Distributed practice beats massed practice.”');
+    expect(markdown).toContain('A model overview, when present, is generated');
   });
 
   it('says plainly when nothing has been read yet', () => {
@@ -140,4 +145,43 @@ describe('topic synthesis', () => {
     expect(markdown).toContain('No source has been read into quotable passages yet.');
     expect(markdown).not.toContain('## What matters');
   });
+
+  it('does not treat legacy claims on a reference-only source as read evidence', () => {
+    const referenceWithClaims = source({
+      claims: [{ at, heading: 'Unsafe legacy claim', text: 'This must not enter synthesis.' }],
+      readState: 'reference',
+    });
+    const synthesis = buildTopicSynthesis({
+      now,
+      sources: [referenceWithClaims],
+      topicTitle: 'T',
+    });
+    const markdown = renderSynthesisMarkdown(synthesis);
+
+    expect(synthesis.claimCount).toBe(0);
+    expect(synthesis.readCount).toBe(0);
+    expect(synthesis.timeline).toEqual([]);
+    expect(markdown).not.toContain('This must not enter synthesis.');
+  });
+
+  it.each([
+    ['comparison', '## Agreements and tensions'],
+    ['timeline', '## Timeline'],
+    ['study-guide', '## Check your understanding'],
+  ] as const)(
+    'renders a durable %s structure without dropping citations',
+    (outputStyle, heading) => {
+      const markdown = renderSynthesisMarkdown(
+        buildTopicSynthesis({ now, sources: [wiki, paper, solo], topicTitle: 'T' }),
+        { outputStyle },
+      );
+
+      expect(markdown).toContain(`structure: ${outputStyle}`);
+      expect(markdown).toContain(heading);
+      expect(markdown).toContain('“Distributed practice beats massed practice.”');
+      expect(markdown).toContain(
+        '[[def123456789-distributed-practice|Distributed practice review]]',
+      );
+    },
+  );
 });

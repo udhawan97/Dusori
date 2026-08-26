@@ -53,8 +53,8 @@ export function angleById(id: string): ResearchAngle | null {
 }
 
 /**
- * Builds the query for one angle. The angle's words seed the search but are scored at half
- * weight, so a page about the wrong subject cannot win by matching "how it works".
+ * Builds the query for one angle. The angle's words seed the search, while topic terms receive
+ * double scoring weight and remain mandatory for automatic capture.
  */
 export function buildAngleQuery(topicTitle: string, angle: ResearchAngle): ResearchQuery {
   const query = buildResearchQuery(topicTitle, { title: angle.suffix });

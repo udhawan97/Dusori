@@ -11,6 +11,7 @@ describe('AI synthesis payload', () => {
     const sources = [
       {
         claims: [{ heading: 'Mechanism', text: 'Retrieval strengthens later recall.' }],
+        readState: 'read',
         title: 'Learning study',
       },
     ] as SourceRecord[];
@@ -37,6 +38,22 @@ describe('AI synthesis payload', () => {
     await expect(
       createAiSynthesisOptions(ai, 'gemma4:12b-it-qat', 'Memory', [
         { title: 'Reference' } as SourceRecord,
+      ]),
+    ).resolves.toEqual({});
+    expect(writeSynthesis).not.toHaveBeenCalled();
+  });
+
+  it('does not send legacy claims stored on a reference-only source', async () => {
+    const writeSynthesis = vi.fn();
+    const ai = { writeSynthesis } as unknown as CompanionAiClient;
+
+    await expect(
+      createAiSynthesisOptions(ai, 'gemma4:12b-it-qat', 'Memory', [
+        {
+          claims: [{ heading: 'Legacy', text: 'This text was never read.' }],
+          readState: 'reference',
+          title: 'Reference',
+        } as SourceRecord,
       ]),
     ).resolves.toEqual({});
     expect(writeSynthesis).not.toHaveBeenCalled();

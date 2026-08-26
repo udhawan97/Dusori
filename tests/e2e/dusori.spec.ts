@@ -158,7 +158,7 @@ async function createTopic(
 ): Promise<void> {
   await page.getByLabel('Topic name').fill('AI Fundamentals');
   await page.getByRole('button', { name: 'Create topic' }).click();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   await expect(providerChoices).toBeVisible();
   await providerChoices.getByRole('button', { name: 'Decide later' }).click();
@@ -186,7 +186,7 @@ async function openInspector(page: Page): Promise<void> {
 }
 
 async function openResearch(page: Page): Promise<void> {
-  if (await page.getByRole('heading', { name: 'Research this topic' }).isVisible()) return;
+  if (await page.getByRole('heading', { name: 'Start with a direction.' }).isVisible()) return;
   const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
   await expect
@@ -196,7 +196,7 @@ async function openResearch(page: Page): Promise<void> {
     .toBe(true);
   if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
   await workspaceNavigation.getByRole('button', { name: 'Research', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
 }
 
 async function openSources(page: Page): Promise<void> {
@@ -219,7 +219,7 @@ async function openSources(page: Page): Promise<void> {
   }
 }
 
-async function openGalaxy(page: Page): Promise<void> {
+async function openDepthMap(page: Page): Promise<void> {
   const workspaceNavigation = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   const navigationButton = page.getByRole('button', { name: 'Open workspace navigation' });
   await expect
@@ -229,7 +229,7 @@ async function openGalaxy(page: Page): Promise<void> {
     .toBe(true);
   if (!(await workspaceNavigation.isVisible())) await navigationButton.click();
   await workspaceNavigation.getByRole('button', { name: 'Map', exact: true }).click();
-  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
 }
 
@@ -351,7 +351,7 @@ test('a private IndexedDB workspace survives reload when OPFS is unavailable', a
     .toBe('indexeddb');
   await page.reload();
 
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await expect(page.getByText('AI Fundamentals', { exact: true }).first()).toBeVisible();
 });
 
@@ -376,7 +376,7 @@ test('the IndexedDB fallback exports and imports a portable workspace', async ({
     imported.once('dialog', (dialog) => dialog.accept());
     await imported.locator('#workspace-import input[type="file"]').setInputFiles(archive!);
 
-    await expect(imported.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+    await expect(imported.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
     await expect(imported.getByText('AI Fundamentals', { exact: true }).first()).toBeVisible();
     expect(
       await imported.evaluate(() => localStorage.getItem('dusori-browser-storage-backend:v1')),
@@ -413,15 +413,15 @@ test('browser Back and Forward restore the chosen map representation', async ({ 
   await createBrowserWorkspace(page);
   await createTopic(page, { remainInResearch: true });
   await page.getByRole('button', { name: 'Map', exact: true }).click();
-  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
   await expect(page).toHaveURL(/view=graph.*map=visual/u);
 
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await page.goForward();
 
   await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Visual map', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('button', { name: 'Depth map', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
@@ -774,7 +774,7 @@ test('global Settings reloads without a topic and unsafe note URLs fall back saf
   await page.goto(
     '/Dusori/app/?topic=ai-fundamentals&view=note&path=Topics%2Fai-fundamentals%2F..%2Fdusori.json',
   );
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).not.toBe('note');
 });
 
@@ -867,7 +867,7 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await expect(page.getByRole('heading', { name: 'Research map' })).toBeVisible();
   // The map gets the full workspace while its outline or atlas is open.
   await expect(page.getByRole('complementary', { name: 'Workspace details' })).toBeHidden();
-  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
+  const atlas = page.getByRole('region', { name: 'Interactive research depth map' });
   await expect(page.getByRole('button', { name: 'Outline', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -876,7 +876,7 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
   await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('First look');
-  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
   await expect(atlas).toBeVisible();
   await expect(atlas.getByRole('heading', { name: 'AI Fundamentals' })).toBeVisible();
   await expect(atlas.getByRole('heading', { name: 'Sources', exact: true })).toBeVisible();
@@ -920,12 +920,17 @@ test('visual map separates evidence into readable topic lanes', async ({ page })
   await createTopic(page);
   await addPastedSource(page);
 
-  await openGalaxy(page);
-  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
-  const room = atlas.locator('.topic-room').filter({ hasText: 'AI Fundamentals' });
-  await expect(room).toBeVisible();
-  await expect(room.getByRole('definition')).toHaveCount(4);
-  await expect(room.getByRole('button', { name: /Transformer notes/u })).toBeVisible();
+  await openDepthMap(page);
+  const atlas = page.getByRole('region', { name: 'Interactive research depth map' });
+  const island = atlas.getByRole('button', { name: /AI Fundamentals, .* artifacts/u });
+  await expect(island).toBeVisible();
+  await island.click();
+  await expect(atlas.getByRole('heading', { name: 'AI Fundamentals' })).toBeVisible();
+  await expect(atlas.getByRole('button', { name: /Transformer notes/u })).toBeVisible();
+  const plane = atlas.locator('.map-plane');
+  const initialTransform = await plane.getAttribute('style');
+  await atlas.getByRole('button', { name: 'Turn right' }).click();
+  await expect(plane).not.toHaveAttribute('style', initialTransform ?? '');
   await expect(page.locator('svg.constellation')).toHaveCount(0);
 
   for (const width of [320, 375, 768, 1280]) {
@@ -934,6 +939,57 @@ test('visual map separates evidence into readable topic lanes', async ({ page })
       width,
     );
   }
+  await expectNoSeriousA11yViolations(page);
+});
+
+test('depth map keeps every topic reachable as the workspace grows', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await createBrowserWorkspace(page);
+  await createTopic(page);
+
+  const topicNames = [
+    'AI Fundamentals',
+    'Distributed Systems',
+    'Climate Adaptation',
+    'Cellular Metabolism',
+    'Early Modern History',
+    'Behavioral Economics',
+    'Statistical Inference',
+    'Urban Water Systems',
+  ];
+  for (const topicName of topicNames.slice(1)) {
+    await page.getByRole('button', { name: 'New topic' }).click();
+    await page.getByLabel('Topic name').fill(topicName);
+    await page.getByRole('button', { name: 'Create topic' }).click();
+    const providerChoices = page.getByRole('dialog', {
+      name: 'Choose where this question may go.',
+    });
+    await expect(providerChoices).toBeVisible();
+    await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+    await expect(providerChoices).toBeHidden();
+  }
+
+  await openDepthMap(page);
+  const atlas = page.getByRole('region', { name: 'Interactive research depth map' });
+  const focus = atlas.getByLabel('Focus topic');
+  await expect(focus.locator('option')).toHaveCount(topicNames.length);
+
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: width === 320 ? 812 : 900 });
+    for (const topicName of topicNames) {
+      await focus.selectOption({ label: topicName });
+      await expect(atlas.getByRole('heading', { name: topicName, exact: true })).toBeVisible();
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
+
+  const plane = atlas.locator('.map-plane');
+  const initialTransform = await plane.getAttribute('style');
+  await atlas.getByRole('button', { name: 'Move map up' }).click();
+  await expect(plane).not.toHaveAttribute('style', initialTransform ?? '');
+  await atlas.getByRole('button', { name: 'Reset depth map' }).click();
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -982,8 +1038,8 @@ test('map outline filters artifacts without changing the separated atlas', async
   await expect(documents).toContainText('First look');
   await expect(documents).not.toContainText('AI Fundamentals');
 
-  await page.getByRole('button', { name: 'Visual map', exact: true }).click();
-  const atlas = page.getByRole('region', { name: 'Workspace evidence atlas' });
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
+  const atlas = page.getByRole('region', { name: 'Interactive research depth map' });
   await expect(atlas.getByRole('button', { name: /First look/u })).toBeVisible();
   await expect(atlas.getByRole('button', { name: /AI Fundamentals/u }).first()).toBeVisible();
   await expectNoSeriousA11yViolations(page);
@@ -1204,15 +1260,16 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
   await page.getByRole('button', { name: 'Save source' }).click();
 
   const shelf = page.getByRole('list', { name: 'Saved sources' });
+  const shelfItems = page.locator('.source-list [role="listitem"]');
   await page.getByLabel('Find a saved source').fill('transformer');
-  await expect(shelf.getByRole('listitem')).toHaveCount(1);
+  await expect(shelfItems).toHaveCount(1);
   await expect(shelf).toContainText('Transformer notes');
   await page.getByLabel('Find a saved source').fill('');
   await page.getByRole('button', { name: 'References 1' }).click();
-  await expect(shelf.getByRole('listitem')).toHaveCount(1);
+  await expect(shelfItems).toHaveCount(1);
   await expect(shelf).toContainText('External reading list');
   await page.getByRole('button', { name: 'Evidence 2' }).click();
-  await expect(shelf.getByRole('listitem')).toHaveCount(2);
+  await expect(shelfItems).toHaveCount(2);
   await page.getByRole('button', { name: 'All 3' }).click();
 
   await shelf.getByRole('button', { name: 'Transformer notes' }).click();
@@ -1686,7 +1743,7 @@ test('Research Desk lets the learner approve ranked results beyond the first she
 
   await expect(page.getByText('Show 1 more results')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open brief' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   expect(
     JSON.parse(await readWorkspaceFile(page, 'Topics/attention-research/Sources/manifest.json'))
       .sources,
@@ -1704,10 +1761,10 @@ test('Research Desk lets the learner approve ranked results beyond the first she
     JSON.parse(await readWorkspaceFile(page, 'Topics/attention-research/Sources/manifest.json'))
       .sources,
   ).toHaveLength(9);
-  await expect(page.getByRole('list', { name: 'Saved sources' }).getByRole('listitem')).toHaveCount(
-    9,
-  );
+  await openSources(page);
+  await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(9);
   await expectNoSeriousA11yViolations(page);
+  await openResearch(page);
   await page.getByRole('button', { name: 'Open brief' }).click();
   await expect(page.getByRole('heading', { name: 'Synthesis — Attention Research' })).toBeVisible();
 });
@@ -1729,6 +1786,7 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
   await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
     'Wikipedia empty.',
   );
+  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
   await expect(page.getByText(/(?:No relevant sources|found no sources)/u)).toBeVisible();
 
   await page.reload();
@@ -1739,8 +1797,8 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
 
   await page.unroute(wikipedia);
   await page.route(wikipedia, async (route) => route.abort('internetdisconnected'));
-  await page.getByLabel('Question or topic').fill('Why do AI systems fail?');
-  await page.getByRole('button', { name: 'Research topic' }).click();
+  await page.getByLabel('Your question').fill('Why do AI systems fail?');
+  await page.getByRole('button', { name: 'Research and build' }).click();
   await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
     'Wikipedia failed.',
   );
@@ -1752,6 +1810,7 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
   await expect(latest).toContainText('Why do AI systems fail?');
   await expect(latest).toContainText('Wikipedia failed.');
   await expect(page.getByText(/No older brief is being presented/u)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
 });
 
 // The unit test reads the policy out of `app.html`; this one proves the browser agrees on the
@@ -1987,7 +2046,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
     dialog.accept();
   });
   await page.locator('aside input[type="file"]').setInputFiles(archive!);
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await openSources(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
     'Transformer notes',
@@ -2371,7 +2430,7 @@ test('Today routes a URL-only objective back to Research without fetching it', a
   const research = page.getByRole('button', { name: 'Find sources' });
   await expect(research).toBeVisible();
   await research.click();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'AI Fundamentals' })).toBeHidden();
   expect(remoteRequests).toEqual([]);
   await expectNoSeriousA11yViolations(page);
@@ -2559,7 +2618,7 @@ test('the installed shell reloads and remains usable offline', async ({ page, co
     page.getByRole('heading', { name: 'What do you want to understand?' }),
   ).toBeVisible();
   await createTopic(page, { remainInResearch: true });
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
 });
 
 // Reloading the bare app URL only ever exercised the one navigation key the shell happens to be
@@ -2577,7 +2636,7 @@ test('the installed shell reopens offline at the view it remembered', async ({ p
 
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Dusori Research Desk' })).toBeVisible();
 });
 
@@ -2695,7 +2754,7 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
 
   const studioNavigation = sitePage.getByRole('navigation', { name: 'Dusori Research Desk' });
   await studioNavigation.getByRole('button', { name: 'Research', exact: true }).click();
-  await expect(sitePage.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+  await expect(sitePage.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   await sitePage.route('https://en.wikipedia.org/w/api.php**', async (route) => {
     const url = new URL(route.request().url());
     await route.fulfill({
@@ -2708,7 +2767,7 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
                   {
                     pageid: 1,
                     size: 5200,
-                    snippet: 'How attention relates tokens to the rest of their context.',
+                    snippet: 'How AI attention relates tokens to the rest of their context.',
                     title: 'Attention in machine learning',
                     wordcount: 620,
                   },
@@ -2729,8 +2788,8 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
             },
     });
   });
-  await sitePage.getByLabel('Question or topic').fill('How does attention work?');
-  await sitePage.getByRole('button', { name: 'Research topic' }).click();
+  await sitePage.getByLabel('Your question').fill('How does attention work?');
+  await sitePage.getByRole('button', { name: 'Research and build' }).click();
   const providerDisclosure = sitePage.getByRole('dialog', {
     name: 'Choose where this question may go.',
   });
@@ -2758,8 +2817,10 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
     'aria-pressed',
     'true',
   );
-  await sitePage.getByRole('button', { name: 'Visual map', exact: true }).click();
-  await expect(sitePage.getByRole('region', { name: 'Workspace evidence atlas' })).toBeVisible();
+  await sitePage.getByRole('button', { name: 'Depth map', exact: true }).click();
+  await expect(
+    sitePage.getByRole('region', { name: 'Interactive research depth map' }),
+  ).toBeVisible();
   await sitePage.screenshot({ fullPage: true, path: 'test-results/screenshots/app-map.png' });
   await siteContext.close();
 
@@ -2884,7 +2945,7 @@ test.describe('companion flows', () => {
     await expectCompanionConnected(page);
     await createTopic(page, { remainInResearch: true });
 
-    await expect(page.getByRole('heading', { name: 'Research this topic' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
     await page.getByText('Research providers and setup', { exact: true }).click();
     const availability = page.getByRole('list', { name: 'Research provider availability' });
     await expect(
@@ -2893,8 +2954,9 @@ test.describe('companion flows', () => {
     await expect(availability.getByRole('listitem').filter({ hasText: 'YouTube' })).toContainText(
       'Not configured in the local companion',
     );
+    await expect(page.locator('.provider-summary')).toContainText(/\d+ research providers/u);
     await expect(page.locator('.provider-summary')).toContainText(
-      /0 allowed overall · 0 relevant and allowed\s+here · \d+\s+undecided overall/u,
+      /0\s+allowed now · \d+ need a choice/u,
     );
     await expect(page.getByRole('list', { name: 'Provider outcomes' })).toHaveCount(0);
   });
@@ -2974,7 +3036,9 @@ test.describe('companion flows', () => {
 
     await page.getByRole('button', { name: 'Read from example.org' }).click();
     await expect(page.getByRole('alert')).toContainText('status 401');
-    const source = page.getByRole('listitem').filter({ hasText: 'Attention paper' });
+    const source = page
+      .locator('.source-list [role="listitem"]')
+      .filter({ hasText: 'Attention paper' });
     await expect(source).toContainText(failure);
     await expect(source.getByRole('link', { name: 'Open original' })).toHaveAttribute(
       'href',
@@ -2983,9 +3047,9 @@ test.describe('companion flows', () => {
 
     await page.reload();
     await openSources(page);
-    await expect(page.getByRole('listitem').filter({ hasText: 'Attention paper' })).toContainText(
-      'status 401',
-    );
+    await expect(
+      page.locator('.source-list [role="listitem"]').filter({ hasText: 'Attention paper' }),
+    ).toContainText('status 401');
   });
 
   test('companion launch credentials are consumed and health proves the service contract', async ({
@@ -3044,12 +3108,11 @@ test.describe('companion flows', () => {
     await expect(page.locator('.graph-ledger > div').filter({ hasText: 'Sources' })).toContainText(
       '0',
     );
-    await page.getByRole('button', { name: 'Visual map', exact: true }).click();
-    const room = page
-      .getByRole('region', { name: 'Workspace evidence atlas' })
-      .locator('.topic-room')
-      .filter({ hasText: 'AI Fundamentals' });
-    await expect(room.getByRole('definition').nth(1)).toHaveText('0');
+    await page.getByRole('button', { name: 'Depth map', exact: true }).click();
+    const progress = page.locator(
+      '.evidence-spine[aria-label="AI Fundamentals research progress"]',
+    );
+    await expect(progress.getByRole('definition').nth(1)).toHaveText('0');
 
     await page.reload();
     await openSources(page);
@@ -3089,7 +3152,7 @@ test.describe('companion flows', () => {
               id: 'dQw4w9WgXcQ',
               lengthSeconds: 934,
               publishedAt: '2023-11-14',
-              summary: 'A walk through attention.',
+              summary: 'A walk through attention in AI systems.',
               title: 'How attention works',
               url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
               viewCount: 1_200_000,
@@ -3106,8 +3169,8 @@ test.describe('companion flows', () => {
     await createBrowserWorkspace(page);
     await expectCompanionConnected(page);
     await createTopic(page, { remainInResearch: true });
-    await page.getByLabel('Question or topic').fill('How attention works');
-    await page.getByRole('button', { name: 'Research topic' }).click();
+    await page.getByLabel('Your question').fill('How attention works');
+    await page.getByRole('button', { name: 'Research and build' }).click();
     const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
     for (const checkbox of await disclosure.getByRole('checkbox').all()) {
       const label = await checkbox.evaluate((input) => input.closest('label')?.textContent ?? '');
@@ -3115,13 +3178,14 @@ test.describe('companion flows', () => {
     }
     await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
+    await openSources(page);
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
       'How attention works',
     );
     await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('URL reference');
     const savedVideo = page
-      .getByLabel('Saved research evidence')
-      .getByRole('listitem')
+      .getByRole('region', { name: 'Saved sources' })
+      .locator('.source-list [role="listitem"]')
       .filter({ hasText: 'How attention works' });
     await expect(savedVideo.getByRole('link', { name: 'Open original' })).toHaveAttribute(
       'href',
@@ -3342,10 +3406,10 @@ test('the research view the app opens on shows its first control at desktop and 
     await createBrowserWorkspace(page);
     await createTopic(page, { remainInResearch: true });
 
-    await expectWithinFold(page, page.getByLabel('Question or topic'), 'the research question');
+    await expectWithinFold(page, page.getByLabel('Your question'), 'the research question');
     await expectWithinFold(
       page,
-      page.getByRole('button', { name: 'Research topic' }),
+      page.getByRole('button', { name: 'Research and build' }),
       `the research action at ${width}×${height}`,
     );
 
@@ -3367,7 +3431,7 @@ test('the research view the app opens on shows its first control at desktop and 
 
     // The creation toast lands over that same region. It announces; it must not absorb a click.
     await expect(page.getByText('Topic created.')).toBeVisible();
-    await page.getByRole('button', { name: 'Research topic' }).click();
+    await page.getByRole('button', { name: 'Research and build' }).click();
     await expect(
       page.getByRole('dialog', { name: 'Choose where this question may go.' }),
     ).toBeVisible();
@@ -3386,7 +3450,7 @@ test('a user-requested mobile view change resets scroll and focuses its heading'
   await createTopic(page, { remainInResearch: true });
   // Topic creation auto-opens the consent sheet. Dismissing it returns focus to the action that
   // opened it; subsequent primary-navigation changes still orient to their own heading.
-  await expect(page.getByRole('button', { name: 'Research topic' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Research and build' })).toBeFocused();
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
@@ -3434,7 +3498,7 @@ test('a long topic name truncates its label without crushing its icon', async ({
     .fill('Byzantine Fault Tolerant Consensus Under Partial Synchrony and Adversarial Scheduling');
   await page.getByRole('button', { name: 'Create topic' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Ask once. See what the evidence supports.' }),
+    page.getByRole('heading', { name: 'Turn a question into evidence you can keep.' }),
   ).toBeVisible();
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   if (await disclosure.isVisible()) {
@@ -3469,7 +3533,7 @@ test('postponing the grouped provider disclosure records no decision', async ({ 
   await expect(disclosure.getByRole('checkbox').first()).toBeFocused();
   await disclosure.getByRole('button', { name: 'Decide later' }).click();
 
-  await page.getByRole('button', { name: 'Research topic' }).click();
+  await page.getByRole('button', { name: 'Research and build' }).click();
   await expect(disclosure).toBeVisible();
   await expect(disclosure.getByRole('checkbox').first()).not.toBeChecked();
 });
@@ -3506,7 +3570,7 @@ test('question-shaped consent keeps actions visible, traps focus, and makes no r
     .fill('Microsoft TypeScript clinical cultural heritage archives');
   await page.getByRole('button', { name: 'Create topic' }).click();
 
-  const trigger = page.getByRole('button', { name: 'Research topic' });
+  const trigger = page.getByRole('button', { name: 'Research and build' });
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   const actions = disclosure.locator('.dialog-actions');
   const providerList = disclosure.locator('.consent-scroll');
@@ -3538,7 +3602,7 @@ test('question-shaped consent keeps actions visible, traps focus, and makes no r
   const firstChoice = disclosure.getByRole('checkbox').first();
   await expect(firstChoice).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(disclosure.getByRole('button', { name: 'Keep all off' })).toBeFocused();
+  await expect(disclosure.getByRole('button', { name: 'Select recommended' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(firstChoice).toBeFocused();
   expect(providerRequests).toEqual([]);

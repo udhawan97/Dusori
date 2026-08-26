@@ -5,6 +5,7 @@ import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { writeLearnPage, writeTopicSynthesis } from './artifacts.js';
 import { readSourcesIntoClaims } from './claims.js';
+import { setResearchOutputStyle } from './research-file.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
 const slug = 'spaced-repetition-learning';
@@ -56,6 +57,17 @@ describe('topic synthesis artifact', () => {
 
     expect(again.status).toBe('written');
     expect(await storage.read(`Topics/${slug}/Synthesis.md`)).not.toBeNull();
+  });
+
+  it('uses the output structure stored for the topic', async () => {
+    const storage = await readTopic();
+    await setResearchOutputStyle(storage, slug, 'study-guide', now);
+
+    await writeTopicSynthesis(storage, slug, title, now);
+
+    const file = await storage.read(`Topics/${slug}/Synthesis.md`);
+    expect(file?.content).toContain('structure: study-guide');
+    expect(file?.content).toContain('## Key ideas');
   });
 
   it('never overwrites a synthesis the learner edited, proposing instead', async () => {

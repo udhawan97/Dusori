@@ -48,7 +48,7 @@ describe('research candidate scoring', () => {
 
     const onObjective = scoreCandidate(rich, {
       summary: 'How labelled and unlabelled data train a model.',
-      title: 'Supervised and unsupervised learning',
+      title: 'AI supervised and unsupervised learning',
     });
     const topicOnly = scoreCandidate(rich, {
       summary: 'A general overview.',
