@@ -82,6 +82,11 @@ Use the existing 4-point named scale in `apps/app/src/styles/tokens.css`. Compon
 - `Map` defaults to a searchable Outline and reports discovered, saved, read, quoted, and freshness facts only. It never infers mastery. **Depth map** is an optional rotatable, zoomable CSS-3D evidence landscape with selected-topic isolation, real artifact lanes, and a literal evidence inspector. Its geometry is derived only from saved workspace data.
 - `Settings` owns provider decisions and reset controls, appearance, local/desktop storage, import/export, updates, privacy, and the secondary entry to legacy learning tools.
 - Provider capability (`Ready`, `Setup required`, `Disabled`) stays separate from run outcome (`Found`, `Empty`, `Failed`). Both survive navigation and relaunch.
+- Once `Build` completes, the default result is a single research thread rather than an automatic jump into a separate note. Its fixed message order is question → provider receipt → collected sources → cited answer → update/history controls. A Document view preserves the ordinary `Synthesis.md` reading surface.
+- The exact user-visible question is stored separately from the provider-expanded search payload. Reload, manual update, and scheduled recheck reuse that exact question. A failed or empty update is recorded in history and labeled, but does not erase or impersonate the last completed answer.
+- Every source reply carries its original link, research lens, evidence state, selection reasons when available, and a direct route to its saved copy. Reference-only items never inherit the styling, counts, or language of read evidence.
+- Thread exports are presentation derivatives of the same saved sources, run trail, and synthesis: a network-inert Markdown receipt, a self-contained network-inert HTML document, and the system Print dialog for PDF. Exports retain source links, provider outcomes, generated date, and the evidence-boundary warning; they are never described as workspace backups.
+- **Recheck after seven days** is an explicit topic setting. A due refresh uses only providers already allowed on that device, never opens a new provider-consent prompt automatically, and can be disabled from the thread.
 
 ## What pages MUST share
 

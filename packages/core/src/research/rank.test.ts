@@ -223,6 +223,45 @@ describe('rankCandidates', () => {
 
     expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
   });
+
+  it('requires two distinct matches for a multi-term topic', () => {
+    const multiTermQuery: ResearchQuery = {
+      objectiveTitle: 'Research thread UX',
+      searchText: 'Research thread UX',
+      subjectTerms: ['research', 'thread', 'ux'],
+      terms: ['research', 'thread', 'ux'],
+      topicTerms: ['research', 'thread', 'ux'],
+      topicTitle: 'Research thread UX',
+    };
+    const ranked = rankCandidates(
+      multiTermQuery,
+      [
+        candidate({ key: 'relevant', title: 'UX patterns for research threads' }),
+        candidate({ key: 'weak', snippet: 'A university research project.', title: 'Hypervisor' }),
+      ],
+      { now },
+    );
+
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
+  });
+
+  it('still accepts one match for a single-term subject', () => {
+    const singleTermQuery: ResearchQuery = {
+      objectiveTitle: 'TypeScript',
+      searchText: 'TypeScript',
+      subjectTerms: ['typescript'],
+      terms: ['typescript'],
+      topicTerms: ['typescript'],
+      topicTitle: 'TypeScript',
+    };
+    const ranked = rankCandidates(
+      singleTermQuery,
+      [candidate({ key: 'relevant', title: 'TypeScript handbook' })],
+      { now },
+    );
+
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['relevant']);
+  });
 });
 
 describe('selectDiverse', () => {

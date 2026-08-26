@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { FileSnapshot, WriteOptions } from '../adapters.js';
+import { resolvePendingProposal } from '../conflict/proposal-ledger.js';
+import { acceptMarkdownUpdate } from '../conflict/write-protocol.js';
+import { readSourceManifest } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
-import { readSourceManifest } from '../sources/import.js';
 import { buildResearchQuery } from './plan.js';
 import type { RankedCandidate } from './rank.js';
+import { readResearchFile, resolveResearchSynthesisProposal } from './research-file.js';
 import { runResearchSequence, saveApprovedResearchCandidate } from './sequence.js';
 import type { ResearchCandidate, ResearchProvider } from './types.js';
 
@@ -172,8 +175,9 @@ describe('runResearchSequence', () => {
     const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
     await storage.externalWrite(synthesisPath, '# My own brief\n\nKeep this wording.\n');
 
+    const later = new Date('2026-08-11T11:00:00.000Z');
     const result = await runResearchSequence({
-      now,
+      now: later,
       providers: [provider({ id: 'second-run' })],
       query,
       storage,
@@ -186,6 +190,108 @@ describe('runResearchSequence', () => {
       '# My own brief\n\nKeep this wording.\n',
     );
     expect(result.synthesis).toMatchObject({ status: 'conflict' });
+    const research = JSON.parse(
+      (await storage.read(`Topics/${topicSlug}/research.json`))?.content ?? '{}',
+    ) as {
+      synthesisRunAt?: string;
+      runs?: Array<{ at: string; synthesisOutcome?: string }>;
+    };
+    expect(research.synthesisRunAt).toBe(now.toISOString());
+    expect(research.runs?.map((run) => run.synthesisOutcome)).toEqual(['written', 'proposed']);
+  });
+
+  it('moves synthesis provenance to an accepted proposal run', async () => {
+    const { storage, topicSlug } = await workspace();
+    await runResearchSequence({
+      now,
+      providers: [provider()],
+      query,
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+    const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
+    await storage.externalWrite(synthesisPath, '# My own brief\n\nKeep this wording.\n');
+    const later = new Date('2026-08-11T11:00:00.000Z');
+    const result = await runResearchSequence({
+      now: later,
+      providers: [provider({ id: 'accepted-run' })],
+      query,
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+    if (result.synthesis?.status !== 'conflict') throw new Error('Expected a synthesis conflict.');
+    const proposal = result.synthesis.conflict;
+    const resolvedAt = new Date('2026-08-11T12:00:00.000Z');
+    await acceptMarkdownUpdate(
+      storage,
+      topicSlug,
+      'Synthesis.md',
+      proposal.proposalContent,
+      proposal.currentContentHash,
+      resolvedAt,
+      undefined,
+      proposal.proposalPath,
+    );
+    await resolveResearchSynthesisProposal(
+      storage,
+      topicSlug,
+      proposal.proposalPath,
+      'accepted',
+      resolvedAt,
+    );
+
+    const reloaded = await readResearchFile(storage, topicSlug, resolvedAt);
+    expect(reloaded?.synthesisRunAt).toBe(later.toISOString());
+    expect(reloaded?.runs?.map((run) => run.synthesisOutcome)).toEqual(['written', 'written']);
+    expect(
+      (await readSourceManifest(storage, topicSlug, resolvedAt)).synthesisStaleAt,
+    ).toBeUndefined();
+    expect((await storage.read(synthesisPath))?.content).toBe(proposal.proposalContent);
+  });
+
+  it('records a kept synthesis proposal without claiming it is still pending', async () => {
+    const { storage, topicSlug } = await workspace();
+    await runResearchSequence({
+      now,
+      providers: [provider()],
+      query,
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+    const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
+    const learnerText = '# My own brief\n\nKeep this wording.\n';
+    await storage.externalWrite(synthesisPath, learnerText);
+    const later = new Date('2026-08-11T11:00:00.000Z');
+    const result = await runResearchSequence({
+      now: later,
+      providers: [provider({ id: 'kept-run' })],
+      query,
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+    if (result.synthesis?.status !== 'conflict') throw new Error('Expected a synthesis conflict.');
+    const proposal = result.synthesis.conflict;
+    const resolvedAt = new Date('2026-08-11T12:00:00.000Z');
+    await resolvePendingProposal(storage, topicSlug, proposal.proposalPath, 'kept', resolvedAt);
+    await resolveResearchSynthesisProposal(
+      storage,
+      topicSlug,
+      proposal.proposalPath,
+      'kept',
+      resolvedAt,
+    );
+
+    const reloaded = await readResearchFile(storage, topicSlug, resolvedAt);
+    expect(reloaded?.synthesisRunAt).toBe(now.toISOString());
+    expect(reloaded?.runs?.map((run) => run.synthesisOutcome)).toEqual(['written', 'kept']);
+    expect(
+      (await readSourceManifest(storage, topicSlug, resolvedAt)).synthesisStaleAt,
+    ).toBeDefined();
+    expect((await storage.read(synthesisPath))?.content).toBe(learnerText);
   });
 
   it('continues the shortlist after one source write fails', async () => {

@@ -10,6 +10,7 @@ describe('research query planning', () => {
       }),
     ).toEqual({
       objectiveTitle: 'Configure Microsoft Entra ID for the tenant',
+      questionText: '**Configure** [[Microsoft Entra ID|Microsoft Entra ID]] for the _tenant_',
       searchText: 'Azure administration Configure Microsoft Entra ID for the tenant',
       subjectTerms: ['azure', 'administration', 'configure', 'microsoft', 'entra', 'id', 'tenant'],
       terms: ['configure', 'microsoft', 'entra', 'id', 'tenant', 'azure', 'administration'],
@@ -61,7 +62,17 @@ describe('research query planning', () => {
     });
 
     expect(query.searchText).toBe('History of the printing press');
+    expect(query.questionText).toBe('History of the printing press');
     expect(query.terms).toEqual(['history', 'printing', 'press']);
+  });
+
+  it('keeps the visible question separate from the provider-expanded search text', () => {
+    const query = buildResearchQuery('TypeScript', {
+      title: 'How does its compiler preserve type safety?',
+    });
+
+    expect(query.questionText).toBe('How does its compiler preserve type safety?');
+    expect(query.searchText).toBe('TypeScript How does its compiler preserve type safety?');
   });
 
   it('preserves a certification code as a required phrase for ranking', () => {

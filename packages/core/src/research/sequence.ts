@@ -6,11 +6,12 @@ import {
   recordSourceFetchFailure,
   type AddedSource,
 } from '../sources/import.js';
-import { runResearchAgent, type ResearchRunResult } from './agent.js';
-import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import { writeTopicSynthesis, type WriteSynthesisResult } from './artifacts.js';
+import { runResearchAgent, type ResearchRunResult } from './agent.js';
 import { readSourcesIntoClaims } from './claims.js';
+import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import type { RankedCandidate } from './rank.js';
+import { recordResearchSynthesisOutcome } from './research-file.js';
 import type { RenderSynthesisOptions } from './synthesis.js';
 import { isReadableResearchCapture, type ResearchProvider, type ResearchQuery } from './types.js';
 
@@ -402,6 +403,15 @@ export async function runResearchSequence(
     now,
     synthesisOptions,
   );
+  if (discovery.run) {
+    await recordResearchSynthesisOutcome(
+      input.storage,
+      input.topicSlug,
+      discovery.run.at,
+      synthesis.status === 'written' ? 'written' : 'proposed',
+      now,
+    );
+  }
   return {
     ...discovery,
     aiUnavailable,

@@ -27,11 +27,10 @@
   <header class="research-hero">
     <div>
       <p class="kicker">Research Desk · {topicTitle}</p>
-      <h1 id="research-workspace-title">Turn a question into evidence you can keep.</h1>
+      <h1 id="research-workspace-title">Keep the whole investigation together.</h1>
       <p class="hero-copy">
-        Choose a direction, search research providers, and rank results with relevance and authority
-        signals before saving a cited brief beside its sources. Every step stays visible; nothing is
-        treated as evidence until Dusori can quote it.
+        Ask once, then follow the question, source receipt, cited answer, and update history in one
+        research thread. Nothing is treated as evidence until Dusori can quote it.
       </p>
     </div>
     <div class="hero-actions" aria-label="Research workspace shortcuts">
@@ -68,8 +67,8 @@
 </section>
 
 <style>
-  /* Hallmark · macrostructure: question-led research thread · genre: atmospheric editorial · theme: design.md
-   * signature: one question-led thread with source and depth-map exits · variation: linear-thread + spatial-evidence
+  /* Hallmark · macrostructure: provenance-aware research channel · genre: atmospheric editorial · theme: design.md
+   * signature: one question-led channel with source and depth-map exits · variation: threaded-result + spatial-evidence
    * states: first-run · configured · running · complete · pre-emit critique: P5 H5 E4 S5 R5 V4
    * contrast: pass (40–41) · nav: N13 · footer: Ft2 · slop: pass (42–49) · mobile: pass (34, 49–57)
    */

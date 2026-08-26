@@ -64,5 +64,6 @@ export function buildAngleQuery(topicTitle: string, angle: ResearchAngle): Resea
     // The objective slot holds the angle's own words, so the trail reads as a question
     // about the topic rather than as a bare repetition of the title.
     objectiveTitle: angle.suffix || angle.title,
+    questionText: angle.suffix ? `${query.topicTitle}: ${angle.suffix}` : query.topicTitle,
   };
 }

@@ -6,6 +6,7 @@ import {
   isMissionStale,
   readResearchFile,
   recordResearchRun,
+  recordResearchSynthesisOutcome,
   setAutoRefresh,
   setResearchOutputStyle,
   type ResearchRunInput,
@@ -24,6 +25,7 @@ function run(overrides: Partial<ResearchRunInput> = {}): ResearchRunInput {
   return {
     candidates: [{ key: 'wikipedia:1', url: 'https://en.wikipedia.org/wiki/Spaced_repetition' }],
     providers: [{ count: 1, id: 'wikipedia', label: 'Wikipedia', outcome: 'found' }],
+    questionText: 'How does spaced repetition support learning?',
     searchText: 'Spaced repetition learning',
     ...overrides,
   };
@@ -43,6 +45,7 @@ describe('research run ledger', () => {
       eligibleCount: 1,
       newKeys: 1,
       providers: [{ count: 1, id: 'wikipedia', label: 'Wikipedia', outcome: 'found' }],
+      questionText: 'How does spaced repetition support learning?',
       searchText: 'Spaced repetition learning',
     });
   });
@@ -76,6 +79,35 @@ describe('research run ledger', () => {
     expect(file?.runs?.[0]?.newKeys).toBe(0);
     expect(file?.runs?.[0]?.eligibleCount).toBe(0);
     expect(file?.seen ?? []).toHaveLength(0);
+  });
+
+  it('keeps an edited synthesis bound to its earlier run when a later run only proposes', async () => {
+    const storage = await topicStorage();
+    await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+    await recordResearchSynthesisOutcome(
+      storage,
+      'spaced-repetition-learning',
+      now.toISOString(),
+      'written',
+      now,
+    );
+    const later = new Date('2026-08-02T11:00:00.000Z');
+    await recordResearchRun(
+      storage,
+      'spaced-repetition-learning',
+      run({ questionText: 'Should this answer change?', searchText: 'Should this answer change?' }),
+      later,
+    );
+    const file = await recordResearchSynthesisOutcome(
+      storage,
+      'spaced-repetition-learning',
+      later.toISOString(),
+      'proposed',
+      later,
+    );
+
+    expect(file.synthesisRunAt).toBe(now.toISOString());
+    expect(file.runs?.map((item) => item.synthesisOutcome)).toEqual(['written', 'proposed']);
   });
 
   it('counts only genuinely new keys and keeps first-seen timestamps', async () => {

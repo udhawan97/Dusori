@@ -1660,6 +1660,21 @@ test('source library stores pasted text and URL references without remote fetchi
 test('Research Desk groups provider consent and builds a durable source-backed brief', async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    const state = window as typeof window & { __dusoriPrintCalls?: number };
+    if (window.top === window) {
+      state.__dusoriPrintCalls = 0;
+      window.addEventListener('message', (event) => {
+        if (event.data === 'dusori-test-print') {
+          state.__dusoriPrintCalls = (state.__dusoriPrintCalls ?? 0) + 1;
+        }
+      });
+    }
+    Object.defineProperty(window, 'print', {
+      configurable: true,
+      value: () => window.top?.postMessage('dusori-test-print', '*'),
+    });
+  });
   await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
     const url = new URL(route.request().url());
     await route.fulfill({
@@ -1704,7 +1719,79 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Synthesis — AI Fundamentals' })).toBeVisible();
+  const thread = page.getByRole('region', { name: 'One place for the whole investigation.' });
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('list', { name: 'Research thread for AI Fundamentals' }),
+  ).toContainText('AI fundamentals');
+  await expect(page.getByRole('list', { name: 'Collected research sources' })).toContainText(
+    'Read evidence',
+  );
+  await expect(page.getByRole('button', { name: 'Thread' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  const markdownDownload = page.waitForEvent('download');
+  await page.getByText('Export', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Print / PDF' })).toBeVisible();
+  await page.getByRole('button', { name: 'Markdown' }).click();
+  expect((await markdownDownload).suggestedFilename()).toBe('dusori-research-ai-fundamentals.md');
+  await expect(thread).toContainText('Markdown downloaded.');
+
+  const htmlDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'HTML' }).click();
+  expect((await htmlDownload).suggestedFilename()).toBe('dusori-research-ai-fundamentals.html');
+  await expect(thread).toContainText('HTML downloaded.');
+
+  const beforePrint = await Promise.all([
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
+    readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json'),
+  ]);
+  const requestsDuringPrint: string[] = [];
+  const collectPrintRequests = (request: { url(): string }) =>
+    requestsDuringPrint.push(request.url());
+  page.on('request', collectPrintRequests);
+  await page.getByRole('button', { name: 'Print / PDF' }).click();
+  const printFrame = page.frameLocator('iframe[title="Print AI Fundamentals research thread"]');
+  await expect(printFrame.locator('body')).toContainText('Research thread — AI Fundamentals');
+  await expect(printFrame.locator('body')).toContainText('Read evidence');
+  await expect(printFrame.locator('body')).toContainText('A saved reference is not evidence');
+  await expect(printFrame.locator('a[href="https://en.wikipedia.org/?curid=1"]')).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as typeof window & { __dusoriPrintCalls?: number }).__dusoriPrintCalls ?? 0,
+      ),
+    )
+    .toBe(1);
+  await expect(thread).toContainText('readable derivative');
+  page.off('request', collectPrintRequests);
+  expect(requestsDuringPrint).toEqual([]);
+  expect(
+    await Promise.all([
+      readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+      readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
+      readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json'),
+    ]),
+  ).toEqual(beforePrint);
+
+  await page.getByRole('checkbox', { name: /Recheck after seven days/u }).check();
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'))
+          .autoRefresh,
+    )
+    .toBe(true);
+
+  await page.getByRole('button', { name: 'Document' }).click();
+  await expect(page.getByRole('region', { name: 'Research document' })).toContainText(
+    'Synthesis — AI Fundamentals',
+  );
   await openSources(page);
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('AI fundamentals');
   const artifacts = await Promise.all([
@@ -1718,13 +1805,326 @@ test('Research Desk groups provider consent and builds a durable source-backed b
 
   await page.reload();
   await openResearch(page);
-  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
-    'Wikipedia found.',
-  );
-  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
-    'AI Fundamentals',
-  );
+  await expect(page.getByRole('list', { name: 'Provider receipt' })).toContainText('Wikipedia');
+  await expect(page.getByRole('list', { name: 'Provider receipt' })).toContainText('1 found');
+  await expect(
+    page.getByRole('list', { name: 'Research thread for AI Fundamentals' }),
+  ).toContainText('AI Fundamentals');
+
+  for (const viewport of [
+    { width: 320, height: 760 },
+    { width: 375, height: 812 },
+    { width: 414, height: 896 },
+    { width: 768, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(thread).toBeVisible();
+    expect(await thread.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+      true,
+    );
+  }
   await expectNoSeriousA11yViolations(page);
+});
+
+test('Research Desk restores an exact custom question for manual and stale refreshes', async ({
+  page,
+}) => {
+  const searched: string[] = [];
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('list') === 'search') {
+      const query = url.searchParams.get('srsearch') ?? '';
+      searched.push(query);
+      const isCustom = query.includes('How do AI systems support human decisions?');
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          query: {
+            search: [
+              {
+                pageid: isCustom ? 2 : 1,
+                size: 5200,
+                snippet: isCustom
+                  ? 'AI systems support human decisions with machine learning predictions and review.'
+                  : 'Artificial intelligence fundamentals introduce machine learning and responsible AI.',
+                title: isCustom ? 'Human-centered AI decisions' : 'AI fundamentals',
+                wordcount: 620,
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        query: {
+          pages: {
+            '1': {
+              extract:
+                'Artificial intelligence systems perform tasks associated with human intelligence. Machine learning uses data to fit models.',
+              pageid: 1,
+              title: 'AI fundamentals',
+            },
+            '2': {
+              extract:
+                'AI systems can support human decisions with predictions. Human review remains important for accountability and context.',
+              pageid: 2,
+              title: 'Human-centered AI decisions',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+
+  const exactQuestion = 'How do AI systems support human decisions?';
+  await page.getByLabel('Your question').fill(exactQuestion);
+  await page.getByRole('button', { name: 'Research and build' }).click();
+  const thread = page.getByRole('list', { name: 'Research thread for AI Fundamentals' });
+  await expect(thread.getByText(exactQuestion, { exact: true })).toBeVisible();
+  let research = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as {
+    autoRefresh?: boolean;
+    lastRunAt: string;
+    runs: Array<{ at: string; questionText?: string; searchText: string }>;
+  };
+  expect(research.runs.at(-1)).toMatchObject({
+    questionText: exactQuestion,
+    searchText: `AI Fundamentals ${exactQuestion}`,
+  });
+
+  await page.reload();
+  await openResearch(page);
+  await expect(page.getByLabel('Your question')).toHaveValue(exactQuestion);
+  const beforeManual = research.runs.length;
+  await page.getByRole('button', { name: 'Update research' }).click();
+  await expect
+    .poll(async () => {
+      const value = JSON.parse(
+        await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+      ) as { runs: unknown[] };
+      return value.runs.length;
+    })
+    .toBe(beforeManual + 1);
+  expect(searched.at(-1)).toContain(exactQuestion);
+
+  await page.getByRole('checkbox', { name: /Recheck after seven days/u }).check();
+  await expect
+    .poll(
+      async () =>
+        (
+          JSON.parse(await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json')) as {
+            autoRefresh?: boolean;
+          }
+        ).autoRefresh,
+    )
+    .toBe(true);
+  research = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as typeof research;
+  const oldAt = '2020-01-01T00:00:00.000Z';
+  research.lastRunAt = oldAt;
+  research.runs[research.runs.length - 1]!.at = oldAt;
+  await writeWorkspaceFile(
+    page,
+    'Topics/ai-fundamentals/research.json',
+    `${JSON.stringify(research, null, 2)}\n`,
+  );
+  const beforeAutomatic = research.runs.length;
+  await page.reload();
+  await openResearch(page);
+  await expect
+    .poll(async () => {
+      const value = JSON.parse(
+        await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+      ) as { runs: unknown[] };
+      return value.runs.length;
+    })
+    .toBe(beforeAutomatic + 1);
+  await expect(disclosure).toBeHidden();
+  await expect(page.getByLabel('Your question')).toHaveValue(exactQuestion);
+  expect(searched.at(-1)).toContain(exactQuestion);
+});
+
+test('an edited synthesis keeps its original question through update, reload, and export', async ({
+  page,
+}) => {
+  let searchRun = 0;
+  let returnEmpty = false;
+  await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get('list') === 'search') {
+      if (returnEmpty) {
+        await route.fulfill({ contentType: 'application/json', json: { query: { search: [] } } });
+        return;
+      }
+      searchRun += 1;
+      const updated = searchRun > 1;
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          query: {
+            search: [
+              {
+                pageid: searchRun,
+                size: 5200,
+                snippet: updated
+                  ? 'Artificial intelligence teams use machine learning with human review and accountability.'
+                  : 'Artificial intelligence fundamentals include machine learning concepts.',
+                title: updated ? 'Human review in AI systems' : 'AI fundamentals',
+                wordcount: 620,
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
+    const pageId = url.searchParams.get('pageids') ?? '1';
+    const updated = pageId !== '1';
+    await route.fulfill({
+      contentType: 'application/json',
+      json: {
+        query: {
+          pages: {
+            [pageId]: {
+              extract: updated
+                ? 'Artificial intelligence teams use machine learning systems with human review. Accountability requires people to inspect important decisions and their context.'
+                : 'Artificial intelligence systems perform tasks associated with human intelligence. Machine learning uses data to fit models and make predictions.',
+              pageid: Number(pageId),
+              title: updated ? 'Human review in AI systems' : 'AI fundamentals',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  await createBrowserWorkspace(page);
+  await page.getByLabel('Topic name').fill('AI Fundamentals');
+  await page.getByRole('button', { name: 'Create topic' }).click();
+  const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
+  await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
+  await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
+
+  const synthesisPath = 'Topics/ai-fundamentals/Synthesis.md';
+  const editedSynthesis =
+    '# My edited AI synthesis\n\nThis learner-authored wording must remain the built answer.\n';
+  await writeWorkspaceFile(page, synthesisPath, editedSynthesis);
+  const laterQuestion = 'How does artificial intelligence use machine learning with human review?';
+  await page.getByLabel('Your question').fill(laterQuestion);
+  await page.getByRole('button', { name: 'Update research' }).click();
+  await expect(page.getByText(/did not replace this completed answer/u)).toBeVisible();
+
+  const research = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as {
+    synthesisRunAt?: string;
+    runs: Array<{ at: string; questionText?: string; synthesisOutcome?: string }>;
+  };
+  expect(research.synthesisRunAt).toBe(research.runs[0]?.at);
+  expect(research.runs.map((run) => run.synthesisOutcome)).toEqual(['written', 'proposed']);
+  expect(await readWorkspaceFile(page, synthesisPath)).toBe(editedSynthesis);
+
+  await openTodayView(page);
+  const attention = page.getByRole('list', { name: 'Needs attention' });
+  await attention.getByRole('button', { name: /review proposal for Synthesis/iu }).click();
+  await page.getByRole('button', { name: 'Keep current document' }).click();
+  await openResearch(page);
+  await expect(page.getByText(/proposal is waiting in Needs attention/u)).toHaveCount(0);
+  const keptResearch = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as typeof research;
+  expect(keptResearch.runs.map((run) => run.synthesisOutcome)).toEqual(['written', 'kept']);
+
+  returnEmpty = true;
+  const emptyQuestion = 'What changed in the latest AI review?';
+  await page.getByLabel('Your question').fill(emptyQuestion);
+  await page.getByRole('button', { name: 'Update research' }).click();
+  await expect(page.getByText(/found no relevant sources/u)).toBeVisible();
+  await expect(page.getByText(/did not replace this completed answer/u)).toBeVisible();
+
+  await page.reload();
+  await openResearch(page);
+  const thread = page.getByRole('list', { name: 'Research thread for AI Fundamentals' });
+  await expect(thread.locator('.question')).toHaveText('AI Fundamentals');
+  await expect(page.getByText(/proposal is waiting in Needs attention/u)).toHaveCount(0);
+
+  const markdownDownload = page.waitForEvent('download');
+  await page.getByText('Export', { exact: true }).click();
+  await page.getByRole('button', { name: 'Markdown' }).click();
+  const download = await markdownDownload;
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const markdown = readFileSync(downloadPath!, 'utf8');
+  expect(markdown).toMatch(/## Question\s+AI Fundamentals/u);
+  expect(markdown).toContain(laterQuestion);
+  expect(markdown).toContain(emptyQuestion);
+  expect(markdown).toContain('did not replace the completed answer');
+  expect(markdown).not.toContain('proposal was saved separately');
+  expect(markdown).toContain('This learner-authored wording must remain the built answer.');
+
+  returnEmpty = false;
+  const acceptedQuestion =
+    'How should artificial intelligence teams review machine learning decisions?';
+  await page.getByLabel('Your question').fill(acceptedQuestion);
+  await page.getByRole('button', { name: 'Update research' }).click();
+  await expect(page.locator('.notice')).toContainText('proposal is waiting in Needs attention');
+  await openTodayView(page);
+  await page
+    .getByRole('list', { name: 'Needs attention' })
+    .getByRole('button', { name: /review proposal for Synthesis/iu })
+    .click();
+  await page.getByRole('button', { name: 'Accept this proposal' }).click();
+  await expect(
+    page.getByText('You accepted the proposal. Dusori updated the note and logged that decision.'),
+  ).toBeVisible();
+
+  await page.reload();
+  await openResearch(page);
+  const acceptedResearch = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as typeof research;
+  expect(acceptedResearch.runs.map((run) => run.synthesisOutcome)).toEqual([
+    'written',
+    'kept',
+    undefined,
+    'written',
+  ]);
+  expect(acceptedResearch.synthesisRunAt).toBe(acceptedResearch.runs.at(-1)?.at);
+  expect(acceptedResearch.runs.at(-1)?.synthesisOutcome).toBe('written');
+  const acceptedThread = page.getByRole('list', {
+    name: 'Research thread for AI Fundamentals',
+  });
+  await expect(acceptedThread.locator('.question')).toHaveText(acceptedQuestion);
+  await expect(page.getByText(/proposal is waiting in Needs attention/u)).toHaveCount(0);
+
+  const acceptedDownloadPromise = page.waitForEvent('download');
+  await page.getByText('Export', { exact: true }).click();
+  await page.getByRole('button', { name: 'Markdown' }).click();
+  const acceptedDownloadPath = await (await acceptedDownloadPromise).path();
+  expect(acceptedDownloadPath).not.toBeNull();
+  const acceptedMarkdown = readFileSync(acceptedDownloadPath!, 'utf8');
+  expect(acceptedMarkdown).toMatch(
+    /## Question\s+How should artificial intelligence teams review machine learning decisions\?/u,
+  );
+  expect(acceptedMarkdown).not.toContain(
+    'This learner-authored wording must remain the built answer.',
+  );
 });
 
 test('Research Desk lets the learner approve ranked results beyond the first shelf', async ({
@@ -1803,7 +2203,9 @@ test('Research Desk lets the learner approve ranked results beyond the first she
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
 
   await expect(page.getByText('Show 1 more results')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open brief' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Start with a direction.' })).toBeVisible();
   expect(
     JSON.parse(await readWorkspaceFile(page, 'Topics/attention-research/Sources/manifest.json'))
@@ -1826,7 +2228,8 @@ test('Research Desk lets the learner approve ranked results beyond the first she
   await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(9);
   await expectNoSeriousA11yViolations(page);
   await openResearch(page);
-  await page.getByRole('button', { name: 'Open brief' }).click();
+  await page.getByRole('button', { name: 'Document' }).click();
+  await page.getByRole('button', { name: 'Open as note' }).click();
   await expect(page.getByRole('heading', { name: 'Synthesis — Attention Research' })).toBeVisible();
 });
 
@@ -1847,8 +2250,10 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
   await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
     'Wikipedia empty.',
   );
-  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
-  await expect(page.getByText(/(?:No relevant sources|found no sources)/u)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/(?:no relevant sources|found no sources)/iu)).toBeVisible();
 
   await page.reload();
   await openResearch(page);
@@ -1863,18 +2268,22 @@ test('Research Desk keeps empty and failed provider outcomes distinct after relo
   await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
     'Wikipedia failed.',
   );
-  await expect(page.getByText(/Every provider failed/u)).toBeVisible();
+  await expect(page.getByText(/failed at every provider/iu)).toBeVisible();
 
   await page.reload();
   await openResearch(page);
   const latest = page.getByRole('region', { name: 'Latest lookup' });
   await expect(latest).toContainText('Why do AI systems fail?');
   await expect(latest).toContainText('Wikipedia failed.');
-  await expect(page.getByText(/No older brief is being presented/u)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
+  await expect(page.getByText(/latest lookup failed at every provider/iu)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toHaveCount(0);
 });
 
-test('an off-topic-only lookup cannot reopen an older brief after reload', async ({ page }) => {
+test('an off-topic-only update preserves but does not replace the completed answer', async ({
+  page,
+}) => {
   let returnOffTopic = false;
   await page.route('https://en.wikipedia.org/w/api.php**', async (route) => {
     const url = new URL(route.request().url());
@@ -1928,14 +2337,19 @@ test('an off-topic-only lookup cannot reopen an older brief after reload', async
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   await disclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
-  await expect(page.getByRole('heading', { name: 'Synthesis — AI Fundamentals' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
 
   await openResearch(page);
   returnOffTopic = true;
   await page.getByLabel('Your question').fill('How does irrigation work?');
   await page.getByRole('button', { name: 'Research and build' }).click();
-  await expect(page.getByText(/No relevant sources were found/u)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
+  await expect(page.getByText(/no relevant sources/iu)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
+  await expect(page.getByText(/did not replace this completed answer/u)).toBeVisible();
   const research = JSON.parse(
     await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
   ) as { runs: Array<{ eligibleCount?: number }> };
@@ -1944,10 +2358,20 @@ test('an off-topic-only lookup cannot reopen an older brief after reload', async
   await page.reload();
   await openResearch(page);
   await expect(page.getByText(/found no relevant sources/u)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Latest lookup' })).toContainText(
-    'Wikipedia found.',
-  );
-  await expect(page.getByRole('button', { name: 'Open brief' })).toHaveCount(0);
+  await page.getByText('View research history', { exact: true }).click();
+  const latestTrailRun = page
+    .getByRole('list', { name: 'Research trail runs' })
+    .getByRole('listitem')
+    .filter({ hasText: 'How does irrigation work?' })
+    .first();
+  await expect(latestTrailRun).toContainText('Wikipedia');
+  await expect(latestTrailRun).toContainText('found 1');
+  await expect(
+    page.getByRole('heading', { name: 'One place for the whole investigation.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('list', { name: 'Research thread for AI Fundamentals' }),
+  ).toContainText('AI Fundamentals');
 });
 
 // The unit test reads the policy out of `app.html`; this one proves the browser agrees on the
@@ -2933,13 +3357,12 @@ test('captures the required responsive product surfaces', async ({ browser }) =>
   await providerDisclosure.getByRole('checkbox', { name: /^Wikipedia/u }).check();
   await providerDisclosure.getByRole('button', { name: 'Save choices and research' }).click();
   await expect(
-    sitePage.getByRole('heading', { name: 'Synthesis — AI Fundamentals' }),
+    sitePage.getByRole('heading', { name: 'One place for the whole investigation.' }),
   ).toBeVisible();
-  await expect(sitePage.getByRole('article')).toContainText('Assembled on');
+  await expect(sitePage.locator('article.markdown')).toContainText('Assembled on');
   await studioNavigation.getByRole('button', { name: 'Research', exact: true }).click();
-  await expect(sitePage.getByRole('region', { name: 'Latest lookup' })).toContainText(
-    'Wikipedia found.',
-  );
+  await expect(sitePage.getByRole('list', { name: 'Provider receipt' })).toContainText('Wikipedia');
+  await expect(sitePage.getByRole('list', { name: 'Provider receipt' })).toContainText('1 found');
   await sitePage.screenshot({ path: 'test-results/screenshots/app-research.png' });
 
   await studioNavigation.getByRole('button', { name: /^Sources/u }).click();
@@ -3635,7 +4058,7 @@ test('a long topic name truncates its label without crushing its icon', async ({
     .fill('Byzantine Fault Tolerant Consensus Under Partial Synchrony and Adversarial Scheduling');
   await page.getByRole('button', { name: 'Create topic' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Turn a question into evidence you can keep.' }),
+    page.getByRole('heading', { name: 'Keep the whole investigation together.' }),
   ).toBeVisible();
   const disclosure = page.getByRole('dialog', { name: 'Choose where this question may go.' });
   if (await disclosure.isVisible()) {
@@ -3786,7 +4209,7 @@ test('question-shaped consent keeps actions visible, traps focus, and makes no r
   await disclosure.getByRole('button', { name: 'Save choices and research' }).click();
   await expect(disclosure).toBeHidden();
   await expect(trigger).toBeFocused();
-  await expect(page.getByText(/No relevant sources/u)).toBeVisible();
+  await expect(page.getByText(/no relevant sources/iu)).toBeVisible();
   expect(providerRequests).toEqual(['en.wikipedia.org']);
 
   await page.getByText('Research providers and setup').click();

@@ -10,6 +10,8 @@ export interface RankedCandidate extends ResearchCandidate {
   relevanceMatches?: number;
   /** Matches to subject-bearing terms, excluding generic research instructions. */
   subjectMatches?: number;
+  /** Minimum subject matches needed for eligibility. Angles score extra terms but do not require them. */
+  requiredSubjectMatches?: number;
   /** Matches to the topic itself, excluding objective or angle words. */
   topicMatches?: number;
   /** Set only when an AI provider re-ranked the run; advisory, never a filter. */
@@ -166,7 +168,10 @@ export function rankCandidates(
         isNew: options.seen ? !options.seen.has(candidate.key) : false,
         relevanceMatches: matchedTermCount(query, candidate),
         ...(query.subjectTerms?.length
-          ? { subjectMatches: matchedSubjectCount(query, candidate) }
+          ? {
+              requiredSubjectMatches: query.angleId ? 1 : Math.min(2, query.subjectTerms.length),
+              subjectMatches: matchedSubjectCount(query, candidate),
+            }
           : {}),
         ...(query.topicTerms?.length ? { topicMatches: matchedTopicCount(query, candidate) } : {}),
         rankScore:
@@ -194,12 +199,17 @@ export function selectDiverse(
   ranked: RankedCandidate[],
   limit = 8,
 ): { shortlist: RankedCandidate[]; overflow: RankedCandidate[] } {
+  const enoughMatches = (matches: number | undefined, required: number | undefined): boolean => {
+    if (matches === undefined || required === undefined) return true;
+    return matches >= required;
+  };
   // Diversity is a tie-breaker among relevant material, never a reason to promote or retain an
-  // unrelated page in the run's learner-visible result set.
+  // unrelated page in the run's learner-visible result set. Multi-term subjects need two distinct
+  // matches so a generic word such as "research" cannot admit an otherwise unrelated result.
   const eligibleRanked = ranked.filter(
     (candidate) =>
       (candidate.relevanceMatches ?? 0) > 0 &&
-      (candidate.subjectMatches === undefined || candidate.subjectMatches > 0) &&
+      enoughMatches(candidate.subjectMatches, candidate.requiredSubjectMatches) &&
       (candidate.topicMatches === undefined || candidate.topicMatches > 0),
   );
   const picked = new Set<string>();

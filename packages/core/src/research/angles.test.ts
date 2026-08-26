@@ -26,6 +26,9 @@ describe('research angles', () => {
       const query = buildAngleQuery('Spaced repetition learning', angle);
       expect(query.searchText.startsWith('Spaced repetition learning')).toBe(true);
       expect(query.angleId).toBe(angle.id);
+      expect(query.questionText).toBe(
+        angle.suffix ? `Spaced repetition learning: ${angle.suffix}` : 'Spaced repetition learning',
+      );
       expect(query.terms).toEqual(expect.arrayContaining(['spaced', 'repetition', 'learning']));
     }
   });
@@ -82,6 +85,28 @@ describe('research angles', () => {
     expect(ranked[0]?.topicMatches).toBeGreaterThan(0);
     expect(ranked.find((item) => item.key === 'wikipedia:irrigation')?.topicMatches).toBe(0);
     expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual(['wikipedia:spaced']);
+  });
+
+  it('keeps an authoritative topic result when an angle adds scoring words it does not use', () => {
+    const query = buildAngleQuery('TypeScript', angleById('mechanism')!);
+    const ranked = rankCandidates(
+      query,
+      [
+        candidate({
+          key: 'typescript:compiler-handbook',
+          provider: 'official-docs',
+          snippet: 'The compiler handbook documents the TypeScript language and type system.',
+          title: 'TypeScript compiler handbook',
+          url: 'https://www.typescriptlang.org/docs/handbook/intro.html',
+        }),
+      ],
+      { now },
+    );
+
+    expect(ranked[0]?.requiredSubjectMatches).toBe(1);
+    expect(selectDiverse(ranked).shortlist.map((item) => item.key)).toEqual([
+      'typescript:compiler-handbook',
+    ]);
   });
 
   it('keeps roadmap objectives working, scoring their terms below the topic', () => {

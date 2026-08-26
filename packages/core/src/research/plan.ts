@@ -75,6 +75,7 @@ export function buildResearchQuery(
   topicTitle: string,
   objective: { title: string },
 ): ResearchQuery {
+  const questionText = objective.title.trim() || topicTitle.trim();
   const objectiveTitle = cleanObjectiveTitle(objective.title);
   const topic = cleanObjectiveTitle(topicTitle);
   const objectiveTerms = deriveTerms(objectiveTitle);
@@ -92,6 +93,7 @@ export function buildResearchQuery(
   const phrases = requiredPhrases(searchText);
   return {
     objectiveTitle,
+    ...(questionText ? { questionText } : {}),
     ...(phrases.length ? { requiredPhrases: phrases } : {}),
     searchText,
     ...(subjectTerms.length ? { subjectTerms } : {}),

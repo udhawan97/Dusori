@@ -192,6 +192,7 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
       candidates: eligible.map((candidate) => ({ key: candidate.key, url: candidate.url })),
       eligibleCount: eligible.length,
       providers: outcomes,
+      questionText: input.query.questionText ?? input.query.objectiveTitle,
       searchText: input.query.searchText,
     },
     now,

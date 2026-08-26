@@ -2,11 +2,12 @@
   import { History } from '@lucide/svelte';
 
   import type { ResearchRunRecord } from '@dusori/core';
+  import { orderedResearchRuns, researchRunQuestion } from '$lib/research-thread';
 
   export let runs: ResearchRunRecord[] = [];
 
   let showAll = false;
-  $: visible = showAll ? runs : runs.slice(0, 4);
+  $: visible = orderedResearchRuns(runs, showAll);
 
   function outcomeLabel(outcome: 'empty' | 'failed' | 'found', count: number): string {
     if (outcome === 'found') return `found ${count}`;
@@ -33,7 +34,7 @@
         <li>
           <p class="trail-when">
             <time datetime={run.at}>{run.at.slice(0, 10)} · {run.at.slice(11, 16)}</time>
-            <span class="trail-query">“{run.searchText}”</span>
+            <span class="trail-query">“{researchRunQuestion(run)}”</span>
             {#if run.newKeys > 0}<span class="trail-new">{run.newKeys} new</span>{/if}
           </p>
           {#if run.providers.length > 0}

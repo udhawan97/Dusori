@@ -172,6 +172,7 @@ describe('runResearchAgent', () => {
 
     const file = await readResearchFile(storage, topicSlug, later);
     expect(file?.lastRunAt).toBe(later.toISOString());
+    expect(file?.runs?.at(-1)?.questionText).toBe('Understand generics');
     expect(file?.seen?.map((item) => item.key).sort()).toEqual(['alpha:1', 'alpha:2']);
   });
 

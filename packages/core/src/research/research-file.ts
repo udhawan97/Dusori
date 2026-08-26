@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 import { StorageConflictError, type StorageAdapter } from '../adapters.js';
+import { readProposalLedger } from '../conflict/proposal-ledger.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
+import { clearSynthesisStale } from '../sources/import.js';
 import { topicRoot } from '../workspace/paths.js';
 
 export const DismissedResearchSuggestionSchema = z
@@ -44,11 +46,15 @@ export const ResearchRunRecordSchema = z
   .object({
     at: z.string().datetime(),
     searchText: z.string().min(1).max(400),
+    /** The question shown to the user, separate from the provider-expanded search payload. */
+    questionText: z.string().min(1).max(400).optional(),
     angleId: z.string().min(1).max(40).optional(),
     providers: z.array(RunProviderOutcomeSchema).max(24),
     newKeys: z.number().int().nonnegative(),
     /** Ranked, topic-relevant results retained after eligibility filtering. */
     eligibleCount: z.number().int().nonnegative().optional(),
+    /** Whether this run replaced Synthesis.md or only produced a conflict proposal. */
+    synthesisOutcome: z.enum(['kept', 'proposed', 'written']).optional(),
   })
   .passthrough();
 
@@ -69,6 +75,8 @@ export const ResearchFileSchema = z
     autoRefresh: z.boolean().optional(),
     /** Learner-selected structure for the durable Synthesis.md artifact. */
     outputStyle: ResearchOutputStyleSchema.optional(),
+    /** The run whose answer is currently stored in Synthesis.md. */
+    synthesisRunAt: z.string().datetime().optional(),
   })
   .passthrough();
 
@@ -165,6 +173,7 @@ export async function writeDismissedResearchSuggestion(
 
 export interface ResearchRunInput {
   searchText: string;
+  questionText?: string;
   angleId?: string;
   providers: RunProviderOutcome[];
   /** Ranked candidates that survived dedupe; empty on a failed or genuinely empty run. */
@@ -204,6 +213,7 @@ export async function recordResearchRun(
       eligibleCount: run.eligibleCount ?? run.candidates.length,
       newKeys,
       providers: run.providers,
+      questionText: run.questionText,
       searchText: run.searchText,
     });
     const next = ResearchFileSchema.parse({
@@ -225,6 +235,107 @@ export async function recordResearchRun(
   }
 
   throw new Error('Research run history changed repeatedly. Try running research again.');
+}
+
+function runHasResults(run: ResearchRunRecord): boolean {
+  return (
+    (run.eligibleCount ?? run.providers.reduce((total, provider) => total + provider.count, 0)) > 0
+  );
+}
+
+/**
+ * Durably associates the current Synthesis.md with the run that produced it. A conflict marks
+ * the later run as a non-replacing proposal while retaining the earlier answer association.
+ */
+export async function recordResearchSynthesisOutcome(
+  storage: StorageAdapter,
+  topicSlug: string,
+  runAt: string,
+  outcome: 'kept' | 'proposed' | 'written',
+  now = new Date(),
+): Promise<ResearchFile> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const currentSnapshot = await storage.read(path);
+    if (!currentSnapshot) throw new Error('The research run no longer exists.');
+    const current = await readMachineFile(storage, path, ResearchFileSchema, now);
+    const runs = [...(current.runs ?? [])];
+    let targetIndex = -1;
+    for (let index = runs.length - 1; index >= 0; index -= 1) {
+      if (runs[index]?.at === runAt) {
+        targetIndex = index;
+        break;
+      }
+    }
+    if (targetIndex < 0) throw new Error('The research run no longer exists.');
+
+    runs[targetIndex] = ResearchRunRecordSchema.parse({
+      ...runs[targetIndex],
+      synthesisOutcome: outcome,
+    });
+    let synthesisRunAt = current.synthesisRunAt;
+    if (outcome === 'written') {
+      synthesisRunAt = runAt;
+    } else if (!synthesisRunAt) {
+      // Upgrade older ledgers on the first conflict: the existing synthesis necessarily predates
+      // this proposal, so bind it to the nearest earlier result-bearing run instead of the new one.
+      for (let index = targetIndex - 1; index >= 0; index -= 1) {
+        const prior = runs[index];
+        if (!prior || !runHasResults(prior)) continue;
+        runs[index] = ResearchRunRecordSchema.parse({
+          ...prior,
+          synthesisOutcome: prior.synthesisOutcome ?? 'written',
+        });
+        synthesisRunAt = prior.at;
+        break;
+      }
+    }
+
+    const next = ResearchFileSchema.parse({ ...current, runs, synthesisRunAt });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: currentSnapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research answer provenance changed repeatedly. Try rebuilding it again.');
+}
+
+/** Synchronizes a resolved Synthesis.md conflict with the run that created that proposal. */
+export async function resolveResearchSynthesisProposal(
+  storage: StorageAdapter,
+  topicSlug: string,
+  proposalPath: string,
+  resolution: 'accepted' | 'kept',
+  now = new Date(),
+): Promise<ResearchFile | null> {
+  const ledger = await readProposalLedger(storage, topicSlug);
+  const proposal = ledger.proposals.find((entry) => entry.proposalPath === proposalPath);
+  if (!proposal || proposal.currentPath !== `${topicRoot(topicSlug)}/Synthesis.md`) return null;
+  const research = await readResearchFile(storage, topicSlug, now);
+  if (!research) return null;
+  const producingRun =
+    [...(research.runs ?? [])]
+      .reverse()
+      .find((run) => run.at === proposal.createdAt && run.synthesisOutcome === 'proposed') ??
+    [...(research.runs ?? [])].reverse().find((run) => run.synthesisOutcome === 'proposed');
+  if (!producingRun) return research;
+
+  const next = await recordResearchSynthesisOutcome(
+    storage,
+    topicSlug,
+    producingRun.at,
+    resolution === 'accepted' ? 'written' : 'kept',
+    now,
+  );
+  if (resolution === 'accepted') await clearSynthesisStale(storage, topicSlug, now);
+  return next;
 }
 
 /** How long a mission may sit before an armed topic re-scans itself on open. */

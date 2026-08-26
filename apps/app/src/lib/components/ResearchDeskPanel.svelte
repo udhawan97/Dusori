@@ -15,6 +15,7 @@
     buildAngleQuery,
     buildResearchQuery,
     evidenceClaims,
+    isMissionStale,
     isUsableAiCapability,
     lensFor,
     loadResearchProviderCatalog,
@@ -24,6 +25,7 @@
     researchAngles,
     runResearchSequence,
     saveApprovedResearchCandidate,
+    setAutoRefresh,
     setResearchOutputStyle,
     type CompanionAiClient,
     type CompanionResearchClient,
@@ -43,7 +45,9 @@
   import { denyConsent, grantConsent, hasConsent, readConsent } from '$lib/consent';
   import { openExternalFromDesktop } from '$lib/open-external';
   import { createAiSynthesisOptions } from '$lib/research-synthesis';
+  import { hasLegacyReferenceClaims } from '$lib/research-thread';
   import MarkdownView from './MarkdownView.svelte';
+  import ResearchThread from './ResearchThread.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
@@ -106,14 +110,14 @@
   const workflowSteps = ['Find', 'Rank', 'Save', 'Read', 'Build'];
 
   const stageCopy: Record<Stage, string> = {
-    complete: 'Brief ready',
+    complete: 'Thread ready',
     evaluating: 'Evaluating relevance, authority, recency, and variety',
     idle: 'Ready for a question',
     'needs-reading': 'References found; readable text is still needed',
     reading: 'Reading saved text into quoted passages',
     saving: 'Saving the diverse shortlist',
     searching: 'Searching allowed providers',
-    writing: 'Writing the source-backed brief',
+    writing: 'Building the source-backed answer',
   };
 
   let providers: ResearchProvider[] = [];
@@ -128,6 +132,7 @@
   let stage: Stage = 'idle';
   let runResult: ResearchSequenceResult | null = null;
   let latestRun: ResearchRunRecord | null = null;
+  let researchRuns: ResearchRunRecord[] = [];
   let sourceProgress: SourceProgress[] = [];
   let savedSources: SourceRecord[] = [];
   let discoveredCount = 0;
@@ -140,6 +145,11 @@
   let approvedExtraKeys = new Set<string>();
   let extraFeedback: Record<string, string> = {};
   let latestBriefPath = '';
+  let synthesisMarkdown = '';
+  let synthesisGeneratedAt = '';
+  let synthesisRunAt = '';
+  let autoRefreshEnabled = false;
+  let autoRefreshBusy = false;
   let autoStarted = false;
   let consentOpen = false;
   let consentProviders: ResearchProvider[] = [];
@@ -150,6 +160,7 @@
 
   $: running = ['searching', 'evaluating', 'saving', 'reading', 'writing'].includes(stage);
   $: savingExtra = savingExtraKey.length > 0;
+  $: threadReady = Boolean(latestBriefPath && synthesisMarkdown && claimCount > 0);
   $: selectedAngle = angleById(selectedAngleId);
   $: currentQuery = selectedAngle
     ? buildAngleQuery(topicTitle, selectedAngle)
@@ -185,11 +196,13 @@
         aiModel = '';
       }
     }
-    await restoreResultState();
+    const staleRefreshDue = await restoreResultState();
     if (autoStart && !autoStarted) {
       autoStarted = true;
       onAutoStartHandled();
       await beginResearch();
+    } else if (staleRefreshDue) {
+      await refreshStaleResearch();
     }
   }
 
@@ -266,7 +279,7 @@
       : 'Saved text is ready to inspect.';
   }
 
-  async function restoreResultState(): Promise<void> {
+  async function restoreResultState(): Promise<boolean> {
     try {
       const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
       const [manifest, research, synthesis] = await Promise.all([
@@ -281,12 +294,33 @@
         0,
       );
       latestRun = research?.runs?.at(-1) ?? null;
-      latestBriefPath = synthesis && !manifest.synthesisStaleAt ? synthesisPath : '';
+      researchRuns = research?.runs ?? [];
+      const synthesisRunIndex = researchRuns.findLastIndex(
+        (run) => run.at === research?.synthesisRunAt,
+      );
+      const editedSynthesisWasPreserved =
+        synthesisRunIndex >= 0 &&
+        researchRuns
+          .slice(synthesisRunIndex + 1)
+          .some((run) => run.synthesisOutcome === 'proposed' || run.synthesisOutcome === 'kept');
+      latestBriefPath =
+        synthesis && (!manifest.synthesisStaleAt || editedSynthesisWasPreserved)
+          ? synthesisPath
+          : '';
+      synthesisMarkdown = latestBriefPath ? (synthesis?.content ?? '') : '';
+      synthesisRunAt = research?.synthesisRunAt ?? '';
+      synthesisGeneratedAt = synthesis
+        ? new Date(synthesis.modifiedAt).toISOString()
+        : (latestRun?.at ?? new Date().toISOString());
+      autoRefreshEnabled = research?.autoRefresh ?? false;
       outputStyle = research?.outputStyle ?? 'brief';
       if (latestRun?.angleId && angleById(latestRun.angleId)) {
         selectedAngleId = latestRun.angleId;
         const angle = angleById(latestRun.angleId);
         question = angle ? visibleAngleQuestion(angle) : topicTitle;
+      } else if (latestRun) {
+        selectedAngleId = 'custom';
+        question = questionForRun(latestRun);
       }
       discoveredCount =
         latestRun?.eligibleCount ??
@@ -300,28 +334,99 @@
         title: record.title,
         url: record.url ?? '',
       }));
-      if (latestRun && discoveredCount === 0) {
+      if (hasLegacyReferenceClaims(manifest.sources)) {
         latestBriefPath = '';
+        synthesisMarkdown = '';
+        stage = 'needs-reading';
+        status =
+          'An older reference carried claims without readable evidence. The built answer is hidden until research is rebuilt from read source text.';
+      } else if (manifest.synthesisStaleAt && !editedSynthesisWasPreserved) {
+        synthesisMarkdown = '';
         stage = 'idle';
+        status =
+          'Saved evidence changed, so the previous brief is marked stale. Research again to rebuild it.';
+      } else if (latestRun && discoveredCount === 0) {
+        const previousAnswerVisible = Boolean(
+          latestBriefPath && synthesisMarkdown && claimCount > 0,
+        );
+        stage = previousAnswerVisible ? 'complete' : 'idle';
         const failed = latestRun.providers.filter(
           (provider) => provider.outcome === 'failed',
         ).length;
         const empty = latestRun.providers.filter((provider) => provider.outcome === 'empty').length;
+        const preservation = previousAnswerVisible
+          ? ' The previous completed answer remains visible and is not presented as this update.'
+          : '';
         status =
           failed > 0 && empty === 0
-            ? 'The latest lookup failed at every provider. No older brief is being presented as its answer.'
+            ? `The latest lookup failed at every provider.${preservation}`
             : failed > 0
-              ? 'The latest lookup found no sources; some providers also failed. No older brief is being presented as its answer.'
-              : 'The latest lookup completed, but found no relevant sources. Try a more specific question or search in your browser.';
-      } else if (manifest.synthesisStaleAt) {
-        stage = 'idle';
-        status =
-          'Saved evidence changed, so the previous brief is marked stale. Research again to rebuild it.';
+              ? `The latest lookup found no sources; some providers also failed.${preservation}`
+              : `The latest lookup completed, but found no relevant sources.${preservation} Try a more specific question or search in your browser.`;
       } else if (research?.runs?.length && claimCount === 0 && manifest.sources.length > 0) {
         stage = 'needs-reading';
       } else if (claimCount > 0) stage = 'complete';
+      return isMissionStale(research);
     } catch {
       savedSources = [];
+      researchRuns = [];
+      synthesisMarkdown = '';
+      synthesisGeneratedAt = '';
+      synthesisRunAt = '';
+      latestBriefPath = '';
+      latestRun = null;
+      claimCount = 0;
+      readCount = 0;
+      return false;
+    }
+  }
+
+  function questionForRun(run: ResearchRunRecord): string {
+    if (run.questionText?.trim()) return run.questionText.trim();
+    const topic = topicTitle.trim();
+    if (run.searchText === topic) return topic;
+    const expandedPrefix = `${topic} `;
+    return run.searchText.startsWith(expandedPrefix)
+      ? run.searchText.slice(expandedPrefix.length).trim()
+      : run.searchText;
+  }
+
+  function queryForRun(run: ResearchRunRecord) {
+    const angle = run.angleId ? angleById(run.angleId) : null;
+    return angle
+      ? buildAngleQuery(topicTitle, angle)
+      : buildResearchQuery(topicTitle, { title: questionForRun(run) });
+  }
+
+  async function refreshStaleResearch(): Promise<void> {
+    const query = latestRun ? queryForRun(latestRun) : currentQuery;
+    const relevant = providerSession?.select(query) ?? availableProviders;
+    const allowed = relevant.filter((provider) => hasConsent(scopeOf(provider)));
+    if (allowed.length === 0) {
+      status =
+        'This thread is due for an update, but none of its matching providers is currently allowed. Update it manually after reviewing provider choices.';
+      return;
+    }
+    await research(allowed, query);
+  }
+
+  async function toggleAutoRefresh(enabled: boolean): Promise<void> {
+    if (autoRefreshBusy || running) return;
+    autoRefreshBusy = true;
+    runError = '';
+    try {
+      const research = await setAutoRefresh(storage, topicSlug, enabled);
+      autoRefreshEnabled = research.autoRefresh ?? false;
+      status = autoRefreshEnabled
+        ? 'Dusori will recheck this topic after seven days using only providers already allowed on this device.'
+        : 'Automatic rechecking is off. You can still update this thread whenever you choose.';
+    } catch (caught) {
+      runError =
+        caught instanceof Error
+          ? caught.message
+          : 'The update preference could not be saved. Try again.';
+    } finally {
+      autoRefreshBusy = false;
     }
   }
 
@@ -420,7 +525,7 @@
     }
   }
 
-  async function research(providerList: ResearchProvider[]): Promise<void> {
+  async function research(providerList: ResearchProvider[], query = currentQuery): Promise<void> {
     stage = 'searching';
     sourceProgress = [];
     showOverflow = false;
@@ -431,7 +536,6 @@
     runError = '';
     try {
       await setResearchOutputStyle(storage, topicSlug, outputStyle);
-      const query = currentQuery;
       const routedProviders =
         providerSession?.select(query, new Set(providerList.map(scopeOf))) ?? providerList;
       const result = await runResearchSequence({
@@ -452,19 +556,9 @@
       latestRun = result.run;
       discoveredCount = result.eligibleCount;
       if (result.status === 'no-results') {
-        stage = 'idle';
-        const failed = result.skipped.length;
-        status =
-          routedProviders.length === 0
-            ? 'No allowed provider matches this question. Allow a broader provider or make the question more specific.'
-            : failed > 0 && failed === routedProviders.length
-              ? 'Every provider failed this lookup. Saved research is unchanged.'
-              : failed > 0
-                ? 'No relevant sources were found, and some providers failed. Saved research is unchanged.'
-                : 'No relevant sources were found. Try a more specific question or search in your browser.';
+        await restoreResultState();
         return;
       }
-      onSourceSaved();
       readCount = result.readCount;
       claimCount = result.claimCount;
       await restoreResultState();
@@ -477,7 +571,7 @@
       if (result.status === 'brief-ready' && result.synthesis?.status === 'written') {
         stage = 'complete';
         latestBriefPath = result.synthesis.path;
-        status = `Brief assembled from ${result.synthesis.synthesis.claimCount} quoted passages across ${result.synthesis.synthesis.readCount} sources.${
+        status = `Thread assembled from ${result.synthesis.synthesis.claimCount} quoted passages across ${result.synthesis.synthesis.readCount} sources.${
           result.overflow.length > 0
             ? ` ${result.overflow.length} more ranked ${result.overflow.length === 1 ? 'result is' : 'results are'} ready for your review.`
             : ''
@@ -486,7 +580,7 @@
             ? ' AI was unavailable, so the evidence-first fallback was used.'
             : ''
         }`;
-        if (result.overflow.length === 0) onSourceSaved(result.synthesis.path);
+        onSourceSaved();
       } else {
         stage = 'complete';
         status = 'Your edited brief was kept. A refreshed proposal is waiting in Needs attention.';
@@ -741,13 +835,30 @@
     <p class="error" role="alert"><CircleAlert aria-hidden="true" size={17} /> {runError}</p>
   {/if}
   {#if status}<p class="notice" role="status">{status}</p>{/if}
-  {#if latestBriefPath}
-    <button class="text-action" onclick={() => onSourceSaved(latestBriefPath)}>Open brief</button>
+  {#if threadReady}
+    <ResearchThread
+      {topicSlug}
+      {topicTitle}
+      {synthesisMarkdown}
+      synthesisRunAt={synthesisRunAt || undefined}
+      {outputStyle}
+      sources={savedSources}
+      runs={researchRuns}
+      generatedAt={synthesisGeneratedAt}
+      {autoRefreshEnabled}
+      busy={running || savingExtra || autoRefreshBusy}
+      onUpdate={() => void beginResearch()}
+      onToggleAutoRefresh={(enabled) => void toggleAutoRefresh(enabled)}
+      {onOpenSources}
+      {onOpenMap}
+      onOpenDocument={(path) => onSourceSaved(path)}
+      onOpenExternal={(event, url) => void openExternal(event, url)}
+    />
   {/if}
 
-  {#if latestRun}
+  {#if latestRun && !threadReady}
     <details class="latest-run" role="region" aria-label="Latest lookup">
-      <summary><strong>Latest lookup</strong> · {latestRun.searchText}</summary>
+      <summary><strong>Latest lookup</strong> · {questionForRun(latestRun)}</summary>
       <ul class="provider-failures" aria-label="Provider outcomes">
         {#each latestRun.providers as provider (provider.id)}
           <li>
@@ -769,7 +880,7 @@
     </ul>
   {/if}
 
-  {#if sourceProgress.length > 0}
+  {#if sourceProgress.length > 0 && (!threadReady || running || stage === 'needs-reading')}
     <details class="source-results" open={running || stage === 'needs-reading'}>
       <summary>
         {sourceProgress.length}

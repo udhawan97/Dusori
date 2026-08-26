@@ -41,6 +41,7 @@
     readSourceManifest,
     replaceWorkspace,
     resolvePendingProposal,
+    resolveResearchSynthesisProposal,
     resolveWikilink,
     slugify,
     type CompanionAiClient,
@@ -876,15 +877,23 @@
     if (!storage || !selectedSlug || !conflict) return;
     await perform(async () => {
       const pending = conflict!;
+      const now = new Date();
       await acceptMarkdownUpdate(
         storage!,
         selectedSlug,
         noteRelativePath(pending.currentPath),
         pending.proposalContent,
         pending.currentContentHash,
-        new Date(),
+        now,
         undefined,
         pending.proposalPath,
+      );
+      await resolveResearchSynthesisProposal(
+        storage!,
+        selectedSlug,
+        pending.proposalPath,
+        'accepted',
+        now,
       );
       noteContent = pending.proposalContent;
       conflict = null;
@@ -898,12 +907,14 @@
     if (!storage || !selectedSlug || !conflict) return;
     await perform(async () => {
       const pending = conflict!;
-      await resolvePendingProposal(
+      const now = new Date();
+      await resolvePendingProposal(storage!, selectedSlug, pending.proposalPath, 'kept', now);
+      await resolveResearchSynthesisProposal(
         storage!,
         selectedSlug,
         pending.proposalPath,
         'kept',
-        new Date(),
+        now,
       );
       conflict = null;
       learningRevision += 1;

@@ -1,6 +1,8 @@
 export interface ResearchQuery {
   objectiveTitle: string;
   topicTitle: string;
+  /** The user-visible question, kept separate from the provider-expanded search payload. */
+  questionText?: string;
   /** Exactly what a remote provider receives: the topic followed by the objective. */
   searchText: string;
   /** Objective terms followed by the topic terms it does not already carry. */

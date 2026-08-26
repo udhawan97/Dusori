@@ -1,6 +1,18 @@
 [
   {
     "date": "2026-08-25",
+    "macrostructure": "Provenance-aware research channel",
+    "theme": "custom supplied identity",
+    "theme_axes": "paper-or-nocturne / roman-serif / vermilion-action + marigold-knowledge",
+    "vibe": "quiet asynchronous research conversation with source truth",
+    "enrichment": "threaded question, provider receipt, source replies, cited answer, refresh history, and portable exports",
+    "brief": "Keep completed research, sources, evidence, history, updates, and Markdown HTML Print-PDF exports in one maneuverable thread",
+    "nav": "N13 literal four-destination desk",
+    "footer": "Ft2 compact workspace colophon",
+    "scope": "app"
+  },
+  {
+    "date": "2026-08-25",
     "macrostructure": "Question-led research thread with evidence depth map",
     "theme": "custom supplied identity",
     "theme_axes": "paper-or-nocturne / roman-serif / vermilion-action + marigold-knowledge",
