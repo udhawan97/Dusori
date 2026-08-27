@@ -6,6 +6,18 @@ import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
 import { clearSynthesisStale } from '../sources/import.js';
 import { topicRoot } from '../workspace/paths.js';
+import {
+  ResearchThreadEventSchema,
+  ResearchThreadSchema,
+  boundResearchThreadEvents,
+  maxResearchThreads,
+  researchThreadEventId,
+  researchThreadId,
+  type ResearchThread,
+  type ResearchThreadEvent,
+  type ResearchThreadEventDetails,
+  type ResearchThreadEventInput,
+} from './thread-events.js';
 
 export const DismissedResearchSuggestionSchema = z
   .object({
@@ -55,6 +67,11 @@ export const ResearchRunRecordSchema = z
     eligibleCount: z.number().int().nonnegative().optional(),
     /** Whether this run replaced Synthesis.md or only produced a conflict proposal. */
     synthesisOutcome: z.enum(['kept', 'proposed', 'written']).optional(),
+    /** Stable identity of the user-facing question thread. Missing only on legacy runs. */
+    threadId: z
+      .string()
+      .regex(/^thread-[a-f0-9]{24}$/u)
+      .optional(),
   })
   .passthrough();
 
@@ -77,6 +94,14 @@ export const ResearchFileSchema = z
     outputStyle: ResearchOutputStyleSchema.optional(),
     /** The run whose answer is currently stored in Synthesis.md. */
     synthesisRunAt: z.string().datetime().optional(),
+    /** Additive P0 thread identity. Legacy runs remain outside this collection. */
+    threads: z.array(ResearchThreadSchema).max(maxResearchThreads).optional(),
+    /** Bounded typed activity; discovery and generated artifacts remain distinct from evidence. */
+    events: z.array(ResearchThreadEventSchema).max(500).optional(),
+    activeThreadId: z
+      .string()
+      .regex(/^thread-[a-f0-9]{24}$/u)
+      .optional(),
   })
   .passthrough();
 
@@ -180,6 +205,101 @@ export interface ResearchRunInput {
   candidates: { key: string; url?: string }[];
   /** Ranked, topic-relevant results retained after eligibility filtering. */
   eligibleCount?: number;
+  /** Explicit only for a learner-created follow-up; ordinary refreshes reuse the same thread. */
+  parentThreadId?: string;
+}
+
+function retainedThreads(
+  threads: readonly ResearchThread[],
+  next?: ResearchThread,
+): ResearchThread[] {
+  const merged = next
+    ? [...threads.filter((thread) => thread.threadId !== next.threadId), next]
+    : [...threads];
+  return merged.slice(-maxResearchThreads);
+}
+
+async function eventFor(
+  threadId: string,
+  at: string,
+  details: ResearchThreadEventDetails,
+): Promise<ResearchThreadEvent> {
+  return ResearchThreadEventSchema.parse({
+    ...details,
+    at,
+    eventId: await researchThreadEventId(threadId, at, details),
+    threadId,
+  });
+}
+
+function researchEventAlreadyRecorded(
+  events: readonly ResearchThreadEvent[],
+  input: ResearchThreadEventInput,
+  threadId: string,
+): boolean {
+  return events.some((event) => {
+    if (event.threadId !== threadId || event.type !== input.type) return false;
+    if (event.type === 'export-created' && input.type === 'export-created') {
+      return event.manifestSha256 === input.manifestSha256;
+    }
+    if (event.type === 'quote-added' && input.type === 'quote-added') {
+      return event.notePath === input.notePath && event.quoteSha256 === input.quoteSha256;
+    }
+    if (event.type === 'source-read' && input.type === 'source-read') {
+      return (
+        event.sourceSha256 === input.sourceSha256 &&
+        event.sourceContentSha256 === input.sourceContentSha256 &&
+        event.claimCount === input.claimCount
+      );
+    }
+    if (event.type === 'source-saved' && input.type === 'source-saved') {
+      return event.sourceSha256 === input.sourceSha256 && event.readState === input.readState;
+    }
+    return false;
+  });
+}
+
+/** Records a secondary activity event without inventing a thread for legacy-only topics. */
+export async function recordResearchThreadEvent(
+  storage: StorageAdapter,
+  topicSlug: string,
+  input: ResearchThreadEventInput,
+  now = new Date(),
+  threadId?: string,
+): Promise<ResearchFile | null> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    if (!snapshot) return null;
+    const current = await readMachineFile(storage, path, ResearchFileSchema, now);
+    const targetThreadId = threadId ?? current.activeThreadId;
+    if (
+      !targetThreadId ||
+      !(current.threads ?? []).some((item) => item.threadId === targetThreadId)
+    ) {
+      return current;
+    }
+    const existing = current.events ?? [];
+    if (researchEventAlreadyRecorded(existing, input, targetThreadId)) return current;
+    const event = await eventFor(targetThreadId, now.toISOString(), input);
+    const retainedIds = new Set((current.threads ?? []).map((item) => item.threadId));
+    const next = ResearchFileSchema.parse({
+      ...current,
+      events: boundResearchThreadEvents([...existing, event], retainedIds),
+    });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research activity changed repeatedly. Try the action again.');
 }
 
 export async function recordResearchRun(
@@ -192,12 +312,31 @@ export async function recordResearchRun(
   const path = researchFilePath(topicSlug);
   await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
   const at = now.toISOString();
+  const questionText = (run.questionText ?? run.searchText).trim();
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const currentSnapshot = await storage.read(path);
     const current = currentSnapshot
       ? await readMachineFile(storage, path, ResearchFileSchema, now)
       : ResearchFileSchema.parse({ dismissed: [], schemaVersion, topicSlug: normalizedSlug });
+    const threads = current.threads ?? [];
+    const activeThread = threads.find((thread) => thread.threadId === current.activeThreadId);
+    const reusableThread =
+      !run.parentThreadId && activeThread?.questionText === questionText ? activeThread : undefined;
+    const newThread = reusableThread
+      ? undefined
+      : ResearchThreadSchema.parse({
+          angleId: run.angleId,
+          createdAt: at,
+          outputStyle: current.outputStyle ?? 'brief',
+          parentThreadId: run.parentThreadId,
+          questionText,
+          threadId: await researchThreadId(normalizedSlug, questionText, at),
+        });
+    if (run.parentThreadId && !threads.some((thread) => thread.threadId === run.parentThreadId)) {
+      throw new Error('The parent research thread no longer exists. Start a new question instead.');
+    }
+    const thread = reusableThread ?? newThread!;
     // An already-seen key keeps its original `at`: re-stamping it every run
     // would make nothing ever count as new again.
     const merged = new Map((current.seen ?? []).map((entry) => [entry.key, entry]));
@@ -215,14 +354,42 @@ export async function recordResearchRun(
       providers: run.providers,
       questionText: run.questionText,
       searchText: run.searchText,
+      threadId: thread.threadId,
+    });
+    const nextThreads = retainedThreads(threads, newThread);
+    const retainedIds = new Set(nextThreads.map((item) => item.threadId));
+    const identityEvent = newThread
+      ? await eventFor(thread.threadId, at, {
+          ...(thread.parentThreadId
+            ? { parentThreadId: thread.parentThreadId, type: 'follow-up-created' as const }
+            : { type: 'question-created' as const }),
+          questionText,
+        })
+      : undefined;
+    const runEvent = await eventFor(thread.threadId, at, {
+      eligibleCount: record.eligibleCount ?? 0,
+      providers: record.providers.map(({ count, id, label, outcome }) => ({
+        count,
+        id,
+        label,
+        outcome,
+      })),
+      runAt: at,
+      type: 'research-completed',
     });
     const next = ResearchFileSchema.parse({
       ...current,
+      activeThreadId: thread.threadId,
+      events: boundResearchThreadEvents(
+        [...(current.events ?? []), ...(identityEvent ? [identityEvent] : []), runEvent],
+        retainedIds,
+      ),
       lastRunAt: at,
       runs: [...(current.runs ?? []), record].slice(-maxRunEntries),
       seen: [...merged.values()]
         .sort((left, right) => left.at.localeCompare(right.at))
         .slice(-maxSeenEntries),
+      threads: nextThreads,
     });
     try {
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
@@ -253,9 +420,13 @@ export async function recordResearchSynthesisOutcome(
   runAt: string,
   outcome: 'kept' | 'proposed' | 'written',
   now = new Date(),
+  artifactPath?: string,
 ): Promise<ResearchFile> {
   const path = researchFilePath(topicSlug);
   await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+  const resolvedArtifactPath =
+    artifactPath ?? (outcome === 'written' ? `${topicRoot(topicSlug)}/Synthesis.md` : undefined);
+  const artifact = resolvedArtifactPath ? await storage.read(resolvedArtifactPath) : null;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const currentSnapshot = await storage.read(path);
@@ -293,7 +464,35 @@ export async function recordResearchSynthesisOutcome(
       }
     }
 
-    const next = ResearchFileSchema.parse({ ...current, runs, synthesisRunAt });
+    const targetRun = runs[targetIndex]!;
+    const events = [...(current.events ?? [])];
+    if (targetRun.threadId && outcome !== 'kept') {
+      const artifactFields = {
+        ...(resolvedArtifactPath ? { artifactPath: resolvedArtifactPath } : {}),
+        ...(artifact ? { artifactSha256: artifact.hash } : {}),
+      };
+      events.push(
+        await eventFor(
+          targetRun.threadId,
+          now.toISOString(),
+          outcome === 'written'
+            ? {
+                ...artifactFields,
+                artifactPath: resolvedArtifactPath!,
+                runAt,
+                type: 'synthesis-written',
+              }
+            : { ...artifactFields, runAt, type: 'synthesis-proposed' },
+        ),
+      );
+    }
+    const retainedIds = new Set((current.threads ?? []).map((thread) => thread.threadId));
+    const next = ResearchFileSchema.parse({
+      ...current,
+      events: boundResearchThreadEvents(events, retainedIds),
+      runs,
+      synthesisRunAt,
+    });
     try {
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
         expectedHash: currentSnapshot.hash,
@@ -305,6 +504,23 @@ export async function recordResearchSynthesisOutcome(
   }
 
   throw new Error('Research answer provenance changed repeatedly. Try rebuilding it again.');
+}
+
+/** Associates a later manual rebuild with the newest run in the active stable thread. */
+export async function recordActiveResearchSynthesisOutcome(
+  storage: StorageAdapter,
+  topicSlug: string,
+  outcome: 'proposed' | 'written',
+  now = new Date(),
+  artifactPath?: string,
+): Promise<ResearchFile | null> {
+  const research = await readResearchFile(storage, topicSlug, now);
+  if (!research?.activeThreadId) return research;
+  const run = [...(research.runs ?? [])]
+    .reverse()
+    .find((candidate) => candidate.threadId === research.activeThreadId);
+  if (!run) return research;
+  return recordResearchSynthesisOutcome(storage, topicSlug, run.at, outcome, now, artifactPath);
 }
 
 /** Synchronizes a resolved Synthesis.md conflict with the run that created that proposal. */
@@ -333,6 +549,7 @@ export async function resolveResearchSynthesisProposal(
     producingRun.at,
     resolution === 'accepted' ? 'written' : 'kept',
     now,
+    resolution === 'accepted' ? `${topicRoot(topicSlug)}/Synthesis.md` : proposalPath,
   );
   if (resolution === 'accepted') await clearSynthesisStale(storage, topicSlug, now);
   return next;

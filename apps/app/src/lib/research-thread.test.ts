@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ResearchRunRecord, SourceRecord } from '@dusori/core';
+import type { ResearchRunRecord, SourceRecord, StorageAdapter } from '@dusori/core';
 
 import {
+  buildResearchThreadExportBundle,
   renderResearchThreadHtml,
   renderResearchThreadMarkdown,
   hasLegacyReferenceClaims,
@@ -11,7 +12,10 @@ import {
   researchSourceState,
   researchThreadPreview,
   researchThreadFilename,
+  researchThreadManifestFilename,
 } from './research-thread.js';
+
+const threadId = `thread-${'1'.repeat(24)}`;
 
 const run: ResearchRunRecord = {
   at: '2026-08-25T18:30:00.000Z',
@@ -24,6 +28,7 @@ const run: ResearchRunRecord = {
   questionText: 'How do durable research threads work?',
   searchText: 'How do durable research threads work?',
   synthesisOutcome: 'written',
+  threadId,
 };
 
 function source(overrides: Partial<SourceRecord> = {}): SourceRecord {
@@ -55,9 +60,63 @@ const input = {
   synthesisRunAt: run.at,
   topicSlug: 'research-systems',
   topicTitle: 'Research systems',
+  threadId,
+  threads: [
+    {
+      createdAt: run.at,
+      outputStyle: 'brief' as const,
+      questionText: run.questionText!,
+      threadId,
+    },
+  ],
 };
 
 describe('research thread exports', () => {
+  it('builds a separate manifest from exact local hashes and marks missing files incomplete', async () => {
+    const localSource = source({ path: 'Topics/research-systems/Sources/items/thread.md' });
+    const stored = new Map([
+      ['Topics/research-systems/research.json', 'b'.repeat(64)],
+      ['Topics/research-systems/Synthesis.md', 'c'.repeat(64)],
+      [localSource.path!, 'd'.repeat(64)],
+    ]);
+    const storage = {
+      read: async (path: string) => {
+        const hash = stored.get(path);
+        return hash ? { content: path, hash, modifiedAt: 1, path } : null;
+      },
+    } as StorageAdapter;
+
+    const bundle = await buildResearchThreadExportBundle(
+      storage,
+      { ...input, sources: [localSource] },
+      'markdown',
+      new Date('2026-08-25T19:00:00.000Z'),
+    );
+    expect(bundle.manifest).toMatchObject({
+      complete: true,
+      createdAt: '2026-08-25T19:00:00.000Z',
+      eligibleClaimCount: 1,
+      format: 'markdown',
+      roundTrip: false,
+      thread: { question: run.questionText, threadId },
+    });
+    expect(bundle.manifest.files).toEqual(
+      expect.arrayContaining([{ path: localSource.path, role: 'source', sha256: 'd'.repeat(64) }]),
+    );
+    expect(bundle.manifest.sources[0]?.localContentSha256).toBe('d'.repeat(64));
+    expect(bundle.manifestSha256).toMatch(/^[a-f0-9]{64}$/u);
+
+    stored.delete('Topics/research-systems/Synthesis.md');
+    const incomplete = await buildResearchThreadExportBundle(
+      storage,
+      { ...input, sources: [localSource] },
+      'html',
+      new Date('2026-08-25T19:00:00.000Z'),
+    );
+    expect(incomplete.manifest.complete).toBe(false);
+    expect(incomplete.manifest.omittedPaths).toEqual(['Topics/research-systems/Synthesis.md']);
+  });
+
   it('builds a bounded channel preview while leaving the full synthesis for document view', () => {
     const preview = researchThreadPreview(
       '# Synthesis — Research\n\nAssembled from quoted passages.\n\n## What matters\n\n### Memory\n\n- Spacing improves recall.\n\n## Cross-source coverage\n\nCoverage detail.\n\n## Open questions\n\n- What changes over time?\n\n## What this synthesis is\n\nThe complete evidence warning.',
@@ -266,5 +325,8 @@ describe('research thread exports', () => {
   it('produces stable local filenames', () => {
     expect(researchThreadFilename('AI + Safety', 'md')).toBe('dusori-research-AI-Safety.md');
     expect(researchThreadFilename('', 'html')).toBe('dusori-research-topic.html');
+    expect(researchThreadManifestFilename('AI + Safety')).toBe(
+      'dusori-research-AI-Safety.manifest.json',
+    );
   });
 });

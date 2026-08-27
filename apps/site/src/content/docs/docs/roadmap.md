@@ -5,6 +5,22 @@ description: What v0.14.0 ships and what remains explicitly unbuilt.
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
+## In development after v0.14.0 — not released
+
+- Stable topic-local question-thread identity with optional parent identity for explicit
+  follow-ups; legacy runs stay readable without fabricated IDs
+- A bounded typed activity trail for questions, lookup receipts, source saves/reads, quoted
+  annotations, synthesis writes/proposals, and presentation exports
+- Artifact-linked thread activity that labels provider results as discovery history rather than
+  evidence
+- Markdown, standalone HTML, and user-initiated Print/PDF research packets accompanied by a
+  provenance manifest with local content hashes, omitted-path status, and explicit non-round-trip
+  semantics
+
+The followed-threads inbox remains a later phase. It depends on dedicated migration,
+deletion/redaction, retention tombstone, broken-target, and archive round-trip proof for the new
+event model.
+
 ## Shipped through v0.14.0
 
 - Research, Sources, Map, and Settings as four predictable destinations
@@ -44,6 +60,7 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
 - Apple notarization or Microsoft Authenticode signing for v0.14.0 installers
+- A followed-threads inbox, reply events, or thread deletion/redaction semantics
 
 ## Candidates for later releases
 

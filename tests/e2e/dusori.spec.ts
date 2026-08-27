@@ -1744,6 +1744,15 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   const threadIndex = page.getByRole('navigation', { name: 'In this thread' });
   await expect(threadIndex).toBeVisible();
   await expect(thread).toContainText('Evidence boundary.');
+  await expect(thread.getByRole('list', { name: 'Typed thread activity' })).toContainText(
+    'Question started',
+  );
+  await expect(thread.getByRole('list', { name: 'Typed thread activity' })).toContainText(
+    'Lookup completed',
+  );
+  await expect(thread.getByRole('list', { name: 'Typed thread activity' })).toContainText(
+    'Answer written',
+  );
   for (const [label, target] of [
     ['Receipt', '#thread-receipt'],
     ['Sources', '#thread-sources'],
@@ -1765,20 +1774,35 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   await expect(documentHeading).toBeFocused();
   await page.getByRole('button', { name: 'Thread', exact: true }).click();
 
-  const markdownDownload = page.waitForEvent('download');
+  const markdownDownload = page.waitForEvent('download', (download) =>
+    download.suggestedFilename().endsWith('.md'),
+  );
+  const markdownManifest = page.waitForEvent('download', (download) =>
+    download.suggestedFilename().endsWith('.manifest.json'),
+  );
   await page.getByText('Export', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Print / PDF' })).toBeVisible();
   await page.getByRole('button', { name: 'Markdown' }).click();
   expect((await markdownDownload).suggestedFilename()).toBe('dusori-research-ai-fundamentals.md');
+  expect((await markdownManifest).suggestedFilename()).toBe(
+    'dusori-research-ai-fundamentals.manifest.json',
+  );
   await expect(thread).toContainText('Markdown downloaded.');
 
-  const htmlDownload = page.waitForEvent('download');
+  const htmlDownload = page.waitForEvent('download', (download) =>
+    download.suggestedFilename().endsWith('.html'),
+  );
+  const htmlManifest = page.waitForEvent('download', (download) =>
+    download.suggestedFilename().endsWith('.manifest.json'),
+  );
   await page.getByRole('button', { name: 'HTML' }).click();
   expect((await htmlDownload).suggestedFilename()).toBe('dusori-research-ai-fundamentals.html');
+  expect((await htmlManifest).suggestedFilename()).toBe(
+    'dusori-research-ai-fundamentals.manifest.json',
+  );
   await expect(thread).toContainText('HTML downloaded.');
 
   const beforePrint = await Promise.all([
-    readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
     readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
     readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json'),
   ]);
@@ -1786,7 +1810,13 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   const collectPrintRequests = (request: { url(): string }) =>
     requestsDuringPrint.push(request.url());
   page.on('request', collectPrintRequests);
+  const printManifest = page.waitForEvent('download', (download) =>
+    download.suggestedFilename().endsWith('.manifest.json'),
+  );
   await page.getByRole('button', { name: 'Print / PDF' }).click();
+  expect((await printManifest).suggestedFilename()).toBe(
+    'dusori-research-ai-fundamentals.manifest.json',
+  );
   const printFrame = page.frameLocator('iframe[title="Print AI Fundamentals research thread"]');
   await expect(printFrame.locator('body')).toContainText('Research thread — AI Fundamentals');
   await expect(printFrame.locator('body')).toContainText('Read evidence');
@@ -1804,11 +1834,17 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   expect(requestsDuringPrint).toEqual([]);
   expect(
     await Promise.all([
-      readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
       readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md'),
       readWorkspaceFile(page, 'Topics/ai-fundamentals/Sources/manifest.json'),
     ]),
   ).toEqual(beforePrint);
+  const researchAfterPrint = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as { events?: Array<{ format?: string; type: string }> };
+  expect(researchAfterPrint.events?.at(-1)).toMatchObject({
+    format: 'pdf',
+    type: 'export-created',
+  });
 
   await page.getByRole('checkbox', { name: /Recheck after seven days/u }).check();
   await expect

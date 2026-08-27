@@ -4,6 +4,25 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Durable research-thread foundation
+
+- Added stable topic-local question-thread IDs, optional parent IDs for explicit follow-up
+  questions, and additive legacy handling that keeps older runs under earlier research without
+  inventing identities.
+- Added a bounded typed activity trail for question creation, provider runs, source saves and
+  reads, source-linked quotes, synthesis writes/proposals, and exports. Discovery receipts remain
+  visibly distinct from quoted evidence.
+- Added artifact-linked thread activity in Research and preserved the existing provider-outcome
+  trail for older workspaces.
+- Added a deterministic provenance manifest beside every Markdown, standalone HTML, and
+  user-initiated Print/PDF research packet. Manifests record exact local content hashes, omitted
+  paths, thread identity, evidence counts, and non-round-trip semantics.
+
+### Scope boundary
+
+- A followed-threads inbox, event deletion/redaction, reply events, and retention tombstones remain
+  unbuilt until the new event semantics have dedicated migration and archive round-trip proof.
+
 ## [0.14.0] - 2026-08-24
 
 ### Reading trail and source review

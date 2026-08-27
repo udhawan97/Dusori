@@ -35,6 +35,8 @@
     type ResearchProvider,
     type ResearchOutputStyle,
     type ResearchRunRecord,
+    type ResearchThread as ResearchThreadRecord,
+    type ResearchThreadEvent,
     type ResearchSequenceResult,
     type ResearchSequenceProgress,
     type SourceRecord,
@@ -140,6 +142,9 @@
   let runResult: ResearchSequenceResult | null = null;
   let latestRun: ResearchRunRecord | null = null;
   let researchRuns: ResearchRunRecord[] = [];
+  let researchThreads: ResearchThreadRecord[] = [];
+  let researchEvents: ResearchThreadEvent[] = [];
+  let answeredThreadId = '';
   let sourceProgress: SourceProgress[] = [];
   let savedSources: SourceRecord[] = [];
   let discoveredCount = 0;
@@ -323,6 +328,8 @@
       );
       latestRun = research?.runs?.at(-1) ?? null;
       researchRuns = research?.runs ?? [];
+      researchThreads = research?.threads ?? [];
+      researchEvents = research?.events ?? [];
       const synthesisRunIndex = researchRuns.findLastIndex(
         (run) => run.at === research?.synthesisRunAt,
       );
@@ -337,6 +344,8 @@
           : '';
       synthesisMarkdown = latestBriefPath ? (synthesis?.content ?? '') : '';
       synthesisRunAt = research?.synthesisRunAt ?? '';
+      answeredThreadId =
+        researchRuns.find((run) => run.at === research?.synthesisRunAt)?.threadId ?? '';
       synthesisGeneratedAt = synthesis
         ? new Date(synthesis.modifiedAt).toISOString()
         : (latestRun?.at ?? new Date().toISOString());
@@ -398,6 +407,9 @@
     } catch {
       savedSources = [];
       researchRuns = [];
+      researchThreads = [];
+      researchEvents = [];
+      answeredThreadId = '';
       synthesisMarkdown = '';
       synthesisGeneratedAt = '';
       synthesisRunAt = '';
@@ -582,6 +594,14 @@
       await setResearchOutputStyle(storage, topicSlug, outputStyle);
       const routedProviders =
         providerSession?.select(query, new Set(providerList.map(scopeOf))) ?? providerList;
+      const answeredRun = researchRuns.find((run) => run.at === synthesisRunAt);
+      const visibleQuestion = query.questionText ?? query.objectiveTitle;
+      const parentThreadId =
+        answeredThreadId &&
+        answeredRun &&
+        questionForRun(answeredRun).trim() !== visibleQuestion.trim()
+          ? answeredThreadId
+          : undefined;
       const result = await runResearchSequence({
         enhanceSynthesis:
           ai && aiModel && hasConsent('companion-ai')
@@ -590,6 +610,7 @@
         fetchImpl: fetch,
         limit: 8,
         onProgress: observeResearch,
+        parentThreadId,
         providers: routedProviders,
         query,
         storage,
@@ -609,7 +630,7 @@
       await restoreResultState();
       if (result.status === 'needs-readable-evidence') {
         stage = 'needs-reading';
-        status = `${result.shortlist.length} references saved, but none contains quotable source text yet.`;
+        status = `${result.shortlist.length} references saved, but none contains quotable source text yet.${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
         onSourceSaved();
         return;
       }
@@ -624,12 +645,12 @@
           result.aiUnavailable
             ? ' AI was unavailable, so the evidence-first fallback was used.'
             : ''
-        }`;
+        }${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
         onSourceSaved();
         if (orientOnComplete) await orientToCompletedThread();
       } else {
         stage = 'complete';
-        status = 'Your edited brief was kept. A refreshed proposal is waiting in Needs attention.';
+        status = `Your edited brief was kept. A refreshed proposal is waiting in Needs attention.${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
         onSourceSaved();
         if (orientOnComplete) await orientToCompletedThread();
       }
@@ -914,6 +935,10 @@
       {outputStyle}
       sources={savedSources}
       runs={researchRuns}
+      threads={researchThreads}
+      events={researchEvents}
+      threadId={answeredThreadId || undefined}
+      {storage}
       generatedAt={synthesisGeneratedAt}
       {autoRefreshEnabled}
       busy={running || savingExtra || autoRefreshBusy}

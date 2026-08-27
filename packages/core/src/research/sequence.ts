@@ -11,7 +11,11 @@ import { runResearchAgent, type ResearchRunResult } from './agent.js';
 import { readSourcesIntoClaims } from './claims.js';
 import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import type { RankedCandidate } from './rank.js';
-import { recordResearchSynthesisOutcome } from './research-file.js';
+import {
+  recordActiveResearchSynthesisOutcome,
+  recordResearchSynthesisOutcome,
+  recordResearchThreadEvent,
+} from './research-file.js';
 import type { RenderSynthesisOptions } from './synthesis.js';
 import { isReadableResearchCapture, type ResearchProvider, type ResearchQuery } from './types.js';
 
@@ -42,6 +46,8 @@ export interface ResearchSequenceResult extends ResearchRunResult {
   claimCount: number;
   aiUnavailable: boolean;
   synthesis?: WriteSynthesisResult;
+  /** Research completed, but a secondary typed activity write did not. */
+  activityWarning?: string;
 }
 
 export interface RunResearchSequenceInput {
@@ -56,6 +62,8 @@ export interface RunResearchSequenceInput {
   now?: Date;
   timeoutMs?: number;
   limit?: number;
+  /** Set only when this question is a follow-up to a completed thread. */
+  parentThreadId?: string;
   /** Supplied only after separate AI consent. Failure always falls back deterministically. */
   enhanceSynthesis?: (sources: SourceRecord[]) => Promise<RenderSynthesisOptions>;
   onProgress?: (progress: ResearchSequenceProgress) => void;
@@ -202,9 +210,27 @@ async function saveCandidate(
       );
     }
     const readable = isReadableResearchCapture(capturedVia);
+    let activityWarning = '';
+    if (!saved.deduplicated || saved.restored || saved.upgraded) {
+      try {
+        await recordResearchThreadEvent(
+          input.storage,
+          input.topicSlug,
+          {
+            readState: record.readState,
+            sourcePath: record.path,
+            sourceSha256: record.sha256,
+            type: 'source-saved',
+          },
+          now,
+        );
+      } catch {
+        activityWarning = ' The source was saved, but thread activity could not be updated.';
+      }
+    }
     return {
       candidate,
-      message: savedMessage(saved, readable, captureFailure),
+      message: `${savedMessage(saved, readable, captureFailure)}${activityWarning}`,
       record,
       status: captureFailure ? 'failed' : savedStatus(saved, readable),
     };
@@ -214,6 +240,33 @@ async function saveCandidate(
       message: error instanceof Error ? error.message : 'This result could not be saved.',
       status: 'failed',
     };
+  }
+}
+
+async function recordReadActivity(
+  storage: StorageAdapter,
+  topicSlug: string,
+  read: Awaited<ReturnType<typeof readSourcesIntoClaims>>['read'],
+  now: Date,
+): Promise<string | undefined> {
+  try {
+    for (const source of read) {
+      await recordResearchThreadEvent(
+        storage,
+        topicSlug,
+        {
+          claimCount: source.claims,
+          sourceContentSha256: source.sourceContentSha256,
+          sourcePath: source.path,
+          sourceSha256: source.sourceSha256,
+          type: 'source-read',
+        },
+        now,
+      );
+    }
+    return undefined;
+  } catch {
+    return 'Readable evidence was saved, but thread activity could not be updated.';
   }
 }
 
@@ -246,10 +299,12 @@ export async function saveApprovedResearchCandidate(
 
   let readCount = 0;
   let claimCount = 0;
+  let activityWarning: string | undefined;
   try {
     const read = await readSourcesIntoClaims(input.storage, input.topicSlug, now);
     readCount = read.read.length;
     claimCount = read.read.reduce((total, entry) => total + entry.claims, 0);
+    activityWarning = await recordReadActivity(input.storage, input.topicSlug, read.read, now);
   } catch (error) {
     return {
       aiUnavailable: false,
@@ -264,7 +319,7 @@ export async function saveApprovedResearchCandidate(
   }
 
   if (claimCount === 0) {
-    return { aiUnavailable: false, claimCount, readCount, source };
+    return { aiUnavailable: false, claimCount, readCount, source, warning: activityWarning };
   }
 
   let synthesisOptions: RenderSynthesisOptions = {};
@@ -285,17 +340,28 @@ export async function saveApprovedResearchCandidate(
       now,
       synthesisOptions,
     );
-    return { aiUnavailable, claimCount, readCount, source, synthesis };
+    await recordActiveResearchSynthesisOutcome(
+      input.storage,
+      input.topicSlug,
+      synthesis.status === 'written' ? 'written' : 'proposed',
+      now,
+      synthesis.status === 'written' ? synthesis.path : synthesis.conflict.proposalPath,
+    );
+    return { aiUnavailable, claimCount, readCount, source, synthesis, warning: activityWarning };
   } catch (error) {
     return {
       aiUnavailable,
       claimCount,
       readCount,
       source,
-      warning:
+      warning: [
+        activityWarning,
         error instanceof Error
           ? `The source was saved, but the brief could not refresh yet: ${error.message}`
           : 'The source was saved, but the brief could not refresh yet.',
+      ]
+        .filter(Boolean)
+        .join(' '),
     };
   }
 }
@@ -333,6 +399,7 @@ export async function runResearchSequence(
     limit: input.limit,
     now,
     providers: input.providers,
+    parentThreadId: input.parentThreadId,
     query: input.query,
     storage: input.storage,
     timeoutMs,
@@ -374,6 +441,7 @@ export async function runResearchSequence(
   const read = await readSourcesIntoClaims(input.storage, input.topicSlug, now);
   const readCount = read.read.length;
   const claimCount = read.read.reduce((total, entry) => total + entry.claims, 0);
+  const activityWarning = await recordReadActivity(input.storage, input.topicSlug, read.read, now);
   if (claimCount === 0) {
     return {
       ...discovery,
@@ -382,6 +450,7 @@ export async function runResearchSequence(
       readCount,
       sources,
       status: 'needs-readable-evidence',
+      activityWarning,
     };
   }
 
@@ -410,6 +479,7 @@ export async function runResearchSequence(
       discovery.run.at,
       synthesis.status === 'written' ? 'written' : 'proposed',
       now,
+      synthesis.status === 'written' ? synthesis.path : synthesis.conflict.proposalPath,
     );
   }
   return {
@@ -420,5 +490,6 @@ export async function runResearchSequence(
     sources,
     status: synthesis.status === 'written' ? 'brief-ready' : 'brief-proposed',
     synthesis,
+    activityWarning,
   };
 }

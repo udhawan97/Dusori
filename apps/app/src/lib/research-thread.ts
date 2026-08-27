@@ -1,5 +1,11 @@
-import type { ResearchOutputStyle, ResearchRunRecord, SourceRecord } from '@dusori/core';
-import { evidenceClaims } from '@dusori/core';
+import type {
+  ResearchOutputStyle,
+  ResearchRunRecord,
+  ResearchThread,
+  SourceRecord,
+  StorageAdapter,
+} from '@dusori/core';
+import { evidenceClaims, sha256 } from '@dusori/core';
 
 import { renderMarkdown } from './markdown.js';
 
@@ -12,6 +18,45 @@ export interface ResearchThreadExportInput {
   synthesisRunAt?: string;
   topicSlug: string;
   topicTitle: string;
+  threadId?: string;
+  threads?: ResearchThread[];
+}
+
+export type ResearchThreadExportFormat = 'html' | 'markdown' | 'pdf';
+
+export interface ResearchThreadExportManifest {
+  schemaVersion: 1;
+  kind: 'dusori-research-packet-manifest';
+  complete: boolean;
+  createdAt: string;
+  topic: { slug: string; title: string };
+  thread: {
+    threadId?: string;
+    parentThreadId?: string;
+    question: string;
+  };
+  format: ResearchThreadExportFormat;
+  outputStyle: ResearchOutputStyle;
+  eligibleClaimCount: number;
+  files: Array<{ path: string; role: 'research-ledger' | 'source' | 'synthesis'; sha256: string }>;
+  sources: Array<{
+    title: string;
+    evidenceState: 'Read evidence' | 'Readable text' | 'Reference';
+    localPath?: string;
+    localContentSha256?: string;
+    recordSha256: string;
+    url?: string;
+  }>;
+  omittedPaths: string[];
+  renderer: 'dusori-built-in-research-packet-v1';
+  roundTrip: false;
+}
+
+export interface ResearchThreadExportBundle {
+  content: string;
+  manifest: ResearchThreadExportManifest;
+  manifestJson: string;
+  manifestSha256: string;
 }
 
 function safeHttpUrl(value: string | undefined): string | undefined {
@@ -182,6 +227,11 @@ export function researchThreadFilename(topicSlug: string, extension: 'html' | 'm
   return `dusori-research-${slug}.${extension}`;
 }
 
+export function researchThreadManifestFilename(topicSlug: string): string {
+  const slug = topicSlug.replace(/[^a-z0-9-]+/giu, '-').replace(/^-+|-+$/gu, '') || 'topic';
+  return `dusori-research-${slug}.manifest.json`;
+}
+
 /**
  * Builds a portable thread receipt without upgrading saved references into evidence. Quoted
  * passages live only inside the existing synthesis, whose evidence boundary is enforced in core.
@@ -201,6 +251,7 @@ export function renderResearchThreadMarkdown(input: ResearchThreadExportInput): 
     `topic: ${JSON.stringify(input.topicTitle)}`,
     `generated: ${input.generatedAt}`,
     `structure: ${input.outputStyle}`,
+    ...(input.threadId ? [`thread_id: ${input.threadId}`] : []),
     '---',
     '',
     `# Research thread — ${markdownText(input.topicTitle)}`,
@@ -300,6 +351,84 @@ export function renderResearchThreadMarkdown(input: ResearchThreadExportInput): 
     '',
   );
   return lines.join('\n');
+}
+
+/**
+ * Builds the presentation file and its separate provenance manifest from the same local snapshots.
+ * A missing recorded path makes the manifest incomplete instead of silently omitting the gap.
+ */
+export async function buildResearchThreadExportBundle(
+  storage: StorageAdapter,
+  input: ResearchThreadExportInput,
+  format: ResearchThreadExportFormat,
+  createdAt = new Date(),
+): Promise<ResearchThreadExportBundle> {
+  const content =
+    format === 'markdown'
+      ? renderResearchThreadMarkdown(input)
+      : await renderResearchThreadHtml(input);
+  const requested = new Map<string, 'research-ledger' | 'source' | 'synthesis'>([
+    [`Topics/${input.topicSlug}/research.json`, 'research-ledger'],
+    [`Topics/${input.topicSlug}/Synthesis.md`, 'synthesis'],
+  ]);
+  for (const source of input.sources) {
+    const path = safeTopicPath(source.path, input.topicSlug);
+    if (path) requested.set(path, 'source');
+  }
+
+  const files: ResearchThreadExportManifest['files'] = [];
+  const omittedPaths: string[] = [];
+  for (const [path, role] of requested) {
+    const snapshot = await storage.read(path);
+    if (snapshot) files.push({ path, role, sha256: snapshot.hash });
+    else omittedPaths.push(path);
+  }
+  const fileHashes = new Map(files.map((file) => [file.path, file.sha256]));
+  const answerRun = researchAnswerRun(input.runs, input.synthesisRunAt);
+  const thread = input.threads?.find((candidate) => candidate.threadId === input.threadId);
+  const manifest: ResearchThreadExportManifest = {
+    complete: omittedPaths.length === 0,
+    createdAt: createdAt.toISOString(),
+    eligibleClaimCount: input.sources.reduce(
+      (total, source) => total + evidenceClaims(source).length,
+      0,
+    ),
+    files,
+    format,
+    kind: 'dusori-research-packet-manifest',
+    omittedPaths,
+    outputStyle: input.outputStyle,
+    renderer: 'dusori-built-in-research-packet-v1',
+    roundTrip: false,
+    schemaVersion: 1,
+    sources: input.sources.map((source) => {
+      const localPath = safeTopicPath(source.path, input.topicSlug);
+      return {
+        evidenceState: researchSourceState(source).label,
+        ...(localPath ? { localPath } : {}),
+        ...(localPath && fileHashes.has(localPath)
+          ? { localContentSha256: fileHashes.get(localPath)! }
+          : {}),
+        recordSha256: source.sha256,
+        title: source.title,
+        ...(safeHttpUrl(source.url) ? { url: safeHttpUrl(source.url)! } : {}),
+      };
+    }),
+    thread: {
+      ...(input.threadId ? { threadId: input.threadId } : {}),
+      ...(thread?.parentThreadId ? { parentThreadId: thread.parentThreadId } : {}),
+      question:
+        thread?.questionText ?? (answerRun ? researchRunQuestion(answerRun) : input.topicTitle),
+    },
+    topic: { slug: input.topicSlug, title: input.topicTitle },
+  };
+  const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
+  return {
+    content,
+    manifest,
+    manifestJson,
+    manifestSha256: await sha256(manifestJson),
+  };
 }
 
 function escapeHtml(value: string): string {

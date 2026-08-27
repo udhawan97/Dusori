@@ -22,21 +22,25 @@
     evidenceClaims,
     lensFor,
     missionLensLabels,
+    recordResearchThreadEvent,
     type ResearchOutputStyle,
     type ResearchRunRecord,
+    type ResearchThread as ResearchThreadRecord,
+    type ResearchThreadEvent,
     type SourceRecord,
+    type StorageAdapter,
   } from '@dusori/core';
   import { tick } from 'svelte';
 
   import { wikilinkTarget } from '$lib/markdown';
   import {
-    renderResearchThreadHtml,
-    renderResearchThreadMarkdown,
+    buildResearchThreadExportBundle,
     researchAnswerRun,
     researchRunQuestion,
     researchSourceState,
     researchThreadPreview,
     researchThreadFilename,
+    researchThreadManifestFilename,
     type ResearchThreadExportInput,
   } from '$lib/research-thread';
   import MarkdownView from './MarkdownView.svelte';
@@ -49,6 +53,10 @@
   export let outputStyle: ResearchOutputStyle;
   export let sources: SourceRecord[] = [];
   export let runs: ResearchRunRecord[] = [];
+  export let threads: ResearchThreadRecord[] = [];
+  export let events: ResearchThreadEvent[] = [];
+  export let threadId: string | undefined = undefined;
+  export let storage: StorageAdapter;
   export let generatedAt: string;
   export let autoRefreshEnabled = false;
   export let busy = false;
@@ -83,6 +91,7 @@
   $: readCount = sources.filter((source) => evidenceClaims(source).length > 0).length;
   $: claimCount = sources.reduce((total, source) => total + evidenceClaims(source).length, 0);
   $: answerPreview = researchThreadPreview(synthesisMarkdown);
+  $: threadEvents = threadId ? events.filter((event) => event.threadId === threadId) : [];
   $: exportInput = {
     generatedAt,
     outputStyle,
@@ -92,6 +101,8 @@
     synthesisRunAt,
     topicSlug,
     topicTitle,
+    threadId,
+    threads,
   } satisfies ResearchThreadExportInput;
 
   function displayDate(value: string): string {
@@ -167,24 +178,88 @@
     queueMicrotask(() => URL.revokeObjectURL(url));
   }
 
+  function activityLabel(event: ResearchThreadEvent): string {
+    if (event.type === 'question-created') return 'Question started';
+    if (event.type === 'follow-up-created') return 'Follow-up started';
+    if (event.type === 'research-completed') return 'Lookup completed';
+    if (event.type === 'source-saved') return 'Source saved';
+    if (event.type === 'source-read') return 'Evidence read';
+    if (event.type === 'quote-added') return 'Quote saved';
+    if (event.type === 'synthesis-written') return 'Answer written';
+    if (event.type === 'synthesis-proposed') return 'Answer proposed';
+    return 'Export created';
+  }
+
+  function activityDetail(event: ResearchThreadEvent): string {
+    if (event.type === 'question-created' || event.type === 'follow-up-created') {
+      return event.questionText;
+    }
+    if (event.type === 'research-completed') {
+      const found = event.providers.reduce((total, provider) => total + provider.count, 0);
+      return `${event.eligibleCount} relevant retained · ${found} returned before ranking. This receipt is discovery history, not evidence.`;
+    }
+    if (event.type === 'source-saved') {
+      return event.readState === 'reference'
+        ? 'Reference saved; it cannot support claims until readable text is present.'
+        : 'Local reading copy saved.';
+    }
+    if (event.type === 'source-read') {
+      return `${event.claimCount} quoted ${event.claimCount === 1 ? 'passage' : 'passages'} recorded from this exact local content hash.`;
+    }
+    if (event.type === 'quote-added') return 'Source-linked annotation saved locally.';
+    if (event.type === 'synthesis-written') return 'Synthesis.md was updated from eligible quotes.';
+    if (event.type === 'synthesis-proposed') {
+      return 'Learner edits stayed active; the refreshed answer was saved as a proposal.';
+    }
+    return `${event.format.toUpperCase()} packet and provenance manifest created.`;
+  }
+
+  function activityPath(event: ResearchThreadEvent): string | undefined {
+    if (event.type === 'source-saved' || event.type === 'source-read') return event.sourcePath;
+    if (event.type === 'quote-added') return event.notePath;
+    if (event.type === 'synthesis-written' || event.type === 'synthesis-proposed') {
+      return event.artifactPath;
+    }
+    return undefined;
+  }
+
   async function exportThread(kind: ExportKind): Promise<void> {
     if (exporting) return;
     exporting = kind;
     exportStatus = '';
     try {
+      const bundle = await buildResearchThreadExportBundle(storage, exportInput, kind);
       if (kind === 'markdown') {
         downloadText(
-          renderResearchThreadMarkdown(exportInput),
+          bundle.content,
           researchThreadFilename(topicSlug, 'md'),
           'text/markdown;charset=utf-8',
         );
-        exportStatus = 'Markdown downloaded.';
+        downloadText(
+          bundle.manifestJson,
+          researchThreadManifestFilename(topicSlug),
+          'application/json;charset=utf-8',
+        );
+        exportStatus = 'Markdown downloaded. Provenance manifest downloaded separately.';
       } else {
-        const html = await renderResearchThreadHtml(exportInput);
         if (kind === 'html') {
-          downloadText(html, researchThreadFilename(topicSlug, 'html'), 'text/html;charset=utf-8');
-          exportStatus = 'HTML downloaded.';
+          downloadText(
+            bundle.content,
+            researchThreadFilename(topicSlug, 'html'),
+            'text/html;charset=utf-8',
+          );
+          downloadText(
+            bundle.manifestJson,
+            researchThreadManifestFilename(topicSlug),
+            'application/json;charset=utf-8',
+          );
+          exportStatus = 'HTML downloaded. Provenance manifest downloaded separately.';
         } else {
+          downloadText(
+            bundle.manifestJson,
+            researchThreadManifestFilename(topicSlug),
+            'application/json;charset=utf-8',
+          );
           const frame = document.createElement('iframe');
           frame.title = `Print ${topicTitle} research thread`;
           frame.style.position = 'fixed';
@@ -197,14 +272,25 @@
           document.body.append(frame);
           await new Promise<void>((resolve) => {
             frame.addEventListener('load', () => resolve(), { once: true });
-            frame.srcdoc = html;
+            frame.srcdoc = bundle.content;
           });
           frame.contentWindow?.focus();
           frame.contentWindow?.print();
           window.setTimeout(() => frame.remove(), 30_000);
           exportStatus =
-            'Print dialog opened. Choose Save as PDF for a readable derivative; your local workspace remains the complete record.';
+            'Print dialog opened and the provenance manifest downloaded. Choose Save as PDF for a readable derivative; your local workspace remains the complete record.';
         }
+      }
+      try {
+        await recordResearchThreadEvent(
+          storage,
+          topicSlug,
+          { format: kind, manifestSha256: bundle.manifestSha256, type: 'export-created' },
+          new Date(bundle.manifest.createdAt),
+          threadId,
+        );
+      } catch {
+        exportStatus += ' The export succeeded, but thread activity could not be updated.';
       }
     } catch (caught) {
       exportStatus =
@@ -487,6 +573,30 @@
               ><Map aria-hidden="true" size={15} /> Trace connections</button
             >
           </div>
+          {#if threadEvents.length > 0}
+            <ol class="activity-list" aria-label="Typed thread activity">
+              {#each threadEvents as event (event.eventId)}
+                {@const path = activityPath(event)}
+                <li>
+                  <span>{displayDate(event.at)}</span>
+                  <div>
+                    <strong>{activityLabel(event)}</strong>
+                    <p>{activityDetail(event)}</p>
+                    {#if path}
+                      <button type="button" onclick={() => onOpenDocument(path)}
+                        >Open artifact</button
+                      >
+                    {/if}
+                  </div>
+                </li>
+              {/each}
+            </ol>
+          {:else if runs.some((run) => !run.threadId)}
+            <p class="legacy-activity">
+              Earlier research predates stable thread identity. It stays readable below without an
+              invented question ID or parent link.
+            </p>
+          {/if}
           {#if runs.length > 0}
             <details class="trail-details">
               <summary>View research history</summary>
@@ -1069,6 +1179,56 @@
     margin-block-start: var(--space-sm);
   }
 
+  .activity-list {
+    display: grid;
+    gap: 0;
+    margin: var(--space-lg) 0 0;
+    padding: 0;
+    border-block: var(--rule-hair) solid var(--color-rule);
+    list-style: none;
+  }
+
+  .activity-list > li {
+    display: grid;
+    grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+    gap: var(--space-sm);
+    padding-block: var(--space-sm);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .activity-list > li:last-child {
+    border-block-end: 0;
+  }
+
+  .activity-list > li > span {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .activity-list > li > div {
+    min-width: 0;
+  }
+
+  .activity-list p,
+  .legacy-activity {
+    margin-block-start: var(--space-2xs) !important;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .activity-list button {
+    min-height: 2.35rem;
+    margin-block-start: var(--space-xs);
+    color: var(--color-accent-text);
+    font-size: var(--text-sm);
+  }
+
+  .legacy-activity {
+    max-width: 64ch;
+    margin-block-start: var(--space-md) !important;
+  }
+
   .trail-details {
     margin-block-start: var(--space-md);
     padding-block-start: var(--space-sm);
@@ -1153,6 +1313,11 @@
     .thread-index button {
       flex: 1 1 auto;
       padding-inline: var(--space-xs);
+    }
+
+    .activity-list > li {
+      grid-template-columns: 1fr;
+      gap: var(--space-2xs);
     }
   }
 

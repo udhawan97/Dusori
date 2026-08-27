@@ -7,6 +7,8 @@
     maxSourceBytes,
     readSourceManifest,
     readSourcesIntoClaims,
+    recordActiveResearchSynthesisOutcome,
+    recordResearchThreadEvent,
     recordSourceFetchFailure,
     removeSourceFromResearch,
     restoreSourceToResearch,
@@ -118,6 +120,39 @@
     upgradeError = '';
   }
 
+  async function recordSavedSourceActivity(record: SourceRecord): Promise<string> {
+    try {
+      await recordResearchThreadEvent(storage, topicSlug, {
+        readState: record.readState,
+        sourcePath: record.path,
+        sourceSha256: record.sha256,
+        type: 'source-saved',
+      });
+      return '';
+    } catch {
+      return ' The source was saved, but thread activity could not be updated.';
+    }
+  }
+
+  async function recordReadActivity(
+    read: Awaited<ReturnType<typeof readSourcesIntoClaims>>['read'],
+  ): Promise<string> {
+    try {
+      for (const source of read) {
+        await recordResearchThreadEvent(storage, topicSlug, {
+          claimCount: source.claims,
+          sourceContentSha256: source.sourceContentSha256,
+          sourcePath: source.path,
+          sourceSha256: source.sourceSha256,
+          type: 'source-read',
+        });
+      }
+      return '';
+    } catch {
+      return ' Thread activity could not be updated.';
+    }
+  }
+
   async function openExternal(event: MouseEvent, externalUrl: string): Promise<void> {
     try {
       await handleExternalLink(event, externalUrl);
@@ -173,6 +208,7 @@
           topicSlug,
         });
         upgradeWarning = upgraded.warning ?? '';
+        upgradeWarning += await recordSavedSourceActivity(upgraded.record);
         if (!upgraded.indexed) {
           await refresh().catch(() => undefined);
           success =
@@ -197,13 +233,21 @@
 
       try {
         const read = await readSourcesIntoClaims(storage, topicSlug);
+        const threadWarning = await recordReadActivity(read.read);
         const claims = read.read.reduce((total, entry) => total + entry.claims, 0);
         if (claims > 0) {
           const synthesis = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+          await recordActiveResearchSynthesisOutcome(
+            storage,
+            topicSlug,
+            synthesis.status === 'written' ? 'written' : 'proposed',
+            new Date(),
+            synthesis.status === 'written' ? synthesis.path : synthesis.conflict.proposalPath,
+          );
           success =
             synthesis.status === 'written'
-              ? `Readable text saved from ${hostOf(record)}. The research brief is current.${upgradeWarning ? ` ${upgradeWarning}` : ''}`
-              : `Readable text saved from ${hostOf(record)}. Your edited brief was kept; a refreshed proposal is waiting in Needs attention.${upgradeWarning ? ` ${upgradeWarning}` : ''}`;
+              ? `Readable text saved from ${hostOf(record)}. The research brief is current.${upgradeWarning ? ` ${upgradeWarning}` : ''}${threadWarning}`
+              : `Readable text saved from ${hostOf(record)}. Your edited brief was kept; a refreshed proposal is waiting in Needs attention.${upgradeWarning ? ` ${upgradeWarning}` : ''}${threadWarning}`;
         }
       } catch (caught) {
         upgradeError =
@@ -230,7 +274,16 @@
       onSourceSaved();
       try {
         const read = await readSourcesIntoClaims(storage, topicSlug);
-        if (read.read.length > 0) await writeTopicSynthesis(storage, topicSlug, topicTitle);
+        if (read.read.length > 0) {
+          const synthesis = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+          await recordActiveResearchSynthesisOutcome(
+            storage,
+            topicSlug,
+            synthesis.status === 'written' ? 'written' : 'proposed',
+            new Date(),
+            synthesis.status === 'written' ? synthesis.path : synthesis.conflict.proposalPath,
+          );
+        }
       } catch (caught) {
         upgradeError =
           caught instanceof Error
@@ -258,7 +311,14 @@
       onSourceSaved();
       try {
         await readSourcesIntoClaims(storage, topicSlug);
-        await writeTopicSynthesis(storage, topicSlug, topicTitle);
+        const synthesis = await writeTopicSynthesis(storage, topicSlug, topicTitle);
+        await recordActiveResearchSynthesisOutcome(
+          storage,
+          topicSlug,
+          synthesis.status === 'written' ? 'written' : 'proposed',
+          new Date(),
+          synthesis.status === 'written' ? synthesis.path : synthesis.conflict.proposalPath,
+        );
       } catch (caught) {
         upgradeError =
           caught instanceof Error
@@ -384,6 +444,7 @@
           : 'That source is already in this topic.'
         : `Source added to this topic.${result.warning ? ` ${result.warning}` : ' The activity log was updated.'}`;
       if (!result.deduplicated || result.restored || result.upgraded) {
+        success += await recordSavedSourceActivity(result.record);
         title = '';
         pastedText = '';
         url = '';

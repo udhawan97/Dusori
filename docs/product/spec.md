@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.14.0 release contract · **Date:** 2026-08-24
+**Status:** v0.14.0 release contract plus unreleased thread foundation · **Date:** 2026-08-26
 
 ## Product promise
 
@@ -106,7 +106,19 @@ and filtered into readable evidence or references. These are transient views ove
 manifest: they create no index, preference, or hidden completion state. Opening a local reading
 copy keeps the active manifest order visible through previous/next controls.
 
-Availability never substitutes for a run outcome. `research.json` retains the fifty most recent trails, their exact queries, angles, new-result counts, and provider outcomes.
+Availability never substitutes for a run outcome. `research.json` retains the fifty most recent
+runs, their exact queries, angles, new-result counts, and provider outcomes. Unreleased additive
+fields give each new learner question a stable topic-local thread ID; an explicit follow-up may
+carry a parent ID, while a refresh of the same question reuses its thread. Legacy runs receive no
+invented identity and remain readable as earlier research.
+
+The same machine file holds an allowlisted typed activity trail for question/follow-up creation,
+completed lookups, source saves and reads, source-linked quotes, synthesis writes/proposals, and
+exports. A topic retains at most fifty thread identities and five hundred events within a 256 KiB
+event budget. Compaction removes the oldest non-identity events first and retains the creation event
+for every retained thread. This is bounded research continuity, not a permanent audit ledger.
+Provider outcomes are discovery receipts; only locally read, provenance-bound passages count as
+evidence.
 
 The companion fetches an exact URL only after host confirmation. Each address and redirect is checked against private/reserved ranges, redirects and time are capped, response size is capped at 4 MiB, and the extracted replacement is previewed before a guarded write.
 
@@ -123,6 +135,14 @@ passage. The resulting ordinary Markdown note records the source path and curren
 a selected quote also records its nearest section heading and exact words. Creating the note is an
 explicit write. Later source revisions never rewrite the saved quote or the learner's annotation,
 and Dusori does not treat an annotation as evidence of understanding or claim support.
+
+Research packets are presentation derivatives, not workspace backups or import formats. Markdown
+and standalone, network-inert HTML use the same stored answer and evidence boundary; Print/PDF is
+an explicit learner action over that HTML. Each action also downloads a JSON provenance manifest
+containing the topic/thread identity, output style, eligible claim count, included topic-relative
+paths and exact local content hashes, source states, renderer version, and any omitted paths. The
+manifest marks incomplete output and states `roundTrip: false`. Creating a packet appends only its
+format and manifest hash to the typed thread trail; it performs no network request.
 
 `Learning/learn.html` is self-contained, offline, network-free, scoreless, and portable. In-app display uses a sandbox that permits the page’s own script but denies the app origin, workspace storage, and cookies.
 
@@ -169,6 +189,7 @@ v0.14.0 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
 - Apple notarization or Microsoft Authenticode signing for v0.14.0
+- Followed-thread inbox, reply events, or thread deletion/redaction and retention tombstones
 
 ## Trust model
 

@@ -7,6 +7,7 @@ import {
   readResearchFile,
   recordResearchRun,
   recordResearchSynthesisOutcome,
+  recordResearchThreadEvent,
   setAutoRefresh,
   setResearchOutputStyle,
   type ResearchRunInput,
@@ -48,6 +49,128 @@ describe('research run ledger', () => {
       questionText: 'How does spaced repetition support learning?',
       searchText: 'Spaced repetition learning',
     });
+    expect(file?.threads).toEqual([
+      expect.objectContaining({
+        questionText: 'How does spaced repetition support learning?',
+        threadId: file?.runs?.[0]?.threadId,
+      }),
+    ]);
+    expect(file?.activeThreadId).toBe(file?.runs?.[0]?.threadId);
+    expect(file?.events?.map((event) => event.type)).toEqual([
+      'question-created',
+      'research-completed',
+    ]);
+    expect(file?.events?.[1]).toMatchObject({
+      eligibleCount: 1,
+      providers: [{ count: 1, id: 'wikipedia', label: 'Wikipedia', outcome: 'found' }],
+    });
+  });
+
+  it('reuses a thread for an update and gives an explicit follow-up its own parented identity', async () => {
+    const storage = await topicStorage();
+    const first = await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+    const parentThreadId = first.activeThreadId!;
+    const updateAt = new Date('2026-08-02T11:00:00.000Z');
+    const updated = await recordResearchRun(
+      storage,
+      'spaced-repetition-learning',
+      run({ candidates: [], providers: [] }),
+      updateAt,
+    );
+    expect(updated.threads).toHaveLength(1);
+    expect(updated.runs?.map((item) => item.threadId)).toEqual([parentThreadId, parentThreadId]);
+
+    const followUpAt = new Date('2026-08-02T12:00:00.000Z');
+    const followed = await recordResearchRun(
+      storage,
+      'spaced-repetition-learning',
+      run({
+        candidates: [],
+        parentThreadId,
+        providers: [],
+        questionText: 'Which review interval has the strongest evidence?',
+        searchText: 'Spaced repetition learning strongest review interval evidence',
+      }),
+      followUpAt,
+    );
+    expect(followed.threads).toHaveLength(2);
+    expect(followed.threads?.[1]).toMatchObject({
+      parentThreadId,
+      questionText: 'Which review interval has the strongest evidence?',
+    });
+    expect(followed.events?.at(-2)).toMatchObject({
+      parentThreadId,
+      type: 'follow-up-created',
+    });
+  });
+
+  it('records bounded source, quote, and export activity without duplicating retries', async () => {
+    const storage = await topicStorage();
+    await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+    const sourceSha256 = 'a'.repeat(64);
+    const quoteSha256 = 'b'.repeat(64);
+    const manifestSha256 = 'c'.repeat(64);
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        readState: 'read',
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/source.md',
+        sourceSha256,
+        type: 'source-saved',
+      },
+      now,
+    );
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        readState: 'read',
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/source.md',
+        sourceSha256,
+        type: 'source-saved',
+      },
+      now,
+    );
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        notePath: 'Topics/spaced-repetition-learning/Notes/quote.md',
+        quoteSha256,
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/source.md',
+        sourceSha256,
+        type: 'quote-added',
+      },
+      now,
+    );
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        claimCount: 2,
+        sourceContentSha256: 'd'.repeat(64),
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/source.md',
+        sourceSha256,
+        type: 'source-read',
+      },
+      now,
+    );
+    const file = await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      { format: 'markdown', manifestSha256, type: 'export-created' },
+      now,
+    );
+
+    expect(file?.events?.map((event) => event.type)).toEqual([
+      'question-created',
+      'research-completed',
+      'source-saved',
+      'quote-added',
+      'source-read',
+      'export-created',
+    ]);
   });
 
   it('records a run in which every provider failed, with zero candidates', async () => {
@@ -154,20 +277,31 @@ describe('research run ledger', () => {
 
   it('drops the oldest run beyond fifty', async () => {
     const storage = await topicStorage();
+    let firstThreadId = '';
 
     for (let index = 0; index < 51; index += 1) {
-      await recordResearchRun(
+      const recorded = await recordResearchRun(
         storage,
         'spaced-repetition-learning',
-        run({ candidates: [], providers: [], searchText: `query ${index}` }),
+        run({
+          candidates: [],
+          providers: [],
+          questionText: `question ${index}`,
+          searchText: `query ${index}`,
+        }),
         new Date(now.getTime() + index * 60_000),
       );
+      if (index === 0) firstThreadId = recorded.activeThreadId!;
     }
 
     const file = await readResearchFile(storage, 'spaced-repetition-learning', now);
     expect(file?.runs).toHaveLength(50);
     expect(file?.runs?.[0]?.searchText).toBe('query 1');
     expect(file?.runs?.at(-1)?.searchText).toBe('query 50');
+    expect(file?.threads).toHaveLength(50);
+    expect(file?.threads?.[0]?.questionText).toBe('question 1');
+    expect(file?.events?.some((event) => event.threadId === file?.runs?.[0]?.threadId)).toBe(true);
+    expect(file?.events?.some((event) => event.threadId === firstThreadId)).toBe(false);
   });
 });
 

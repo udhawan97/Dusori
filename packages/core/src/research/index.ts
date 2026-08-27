@@ -13,6 +13,7 @@ export * from './providers/index.js';
 export * from './rank.js';
 export * from './reputation.js';
 export * from './research-file.js';
+export * from './thread-events.js';
 export * from './score.js';
 export * from './sequence.js';
 export * from './suggest.js';

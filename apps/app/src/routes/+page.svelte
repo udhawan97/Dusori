@@ -30,6 +30,8 @@
     createCompanionAiClient,
     createCompanionResearchClient,
     createNote,
+    recordResearchThreadEvent,
+    sha256,
     createTopic,
     createWorkspace,
     exportTopic,
@@ -93,7 +95,11 @@
   import TutorPreferences from '$lib/components/TutorPreferences.svelte';
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
-  import { sourceAnnotationTemplate, type SourcePassage } from '$lib/source-reading';
+  import {
+    normalizeSelectedPassage,
+    sourceAnnotationTemplate,
+    type SourcePassage,
+  } from '$lib/source-reading';
 
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
@@ -803,12 +809,31 @@
         topicSlug: selectedSlug,
       });
       const created = await createNote(storage!, selectedSlug, title, createdAt, { content });
+      let activityWarning = '';
+      if (passage) {
+        try {
+          await recordResearchThreadEvent(
+            storage!,
+            selectedSlug,
+            {
+              notePath: created.path,
+              quoteSha256: await sha256(normalizeSelectedPassage(passage.text)),
+              sourcePath: notePath,
+              sourceSha256: currentSource.sha256,
+              type: 'quote-added',
+            },
+            createdAt,
+          );
+        } catch {
+          activityWarning = ' The quote was saved, but thread activity could not be updated.';
+        }
+      }
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
       editingNote = true;
       status = passage
-        ? 'Quoted passage and source context saved locally. Add what it changes, then save your note.'
+        ? `Quoted passage and source context saved locally. Add what it changes, then save your note.${activityWarning}`
         : 'Source-linked note created. Add what mattered, then save it locally.';
     });
   }

@@ -37,6 +37,8 @@ export interface RunResearchAgentInput {
   now?: Date;
   timeoutMs?: number;
   limit?: number;
+  /** Set only when the learner explicitly asks a follow-up to a completed thread. */
+  parentThreadId?: string;
 }
 
 const defaultTimeoutMs = 12_000;
@@ -192,6 +194,7 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
       candidates: eligible.map((candidate) => ({ key: candidate.key, url: candidate.url })),
       eligibleCount: eligible.length,
       providers: outcomes,
+      parentThreadId: input.parentThreadId,
       questionText: input.query.questionText ?? input.query.objectiveTitle,
       searchText: input.query.searchText,
     },

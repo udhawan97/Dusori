@@ -77,7 +77,13 @@ export function extractClaims(input: ExtractClaimsInput): SourceClaim[] {
 
 export interface ReadSourceResult {
   /** Records that gained claims in this pass. */
-  read: { path: string; title: string; claims: number }[];
+  read: {
+    path: string;
+    title: string;
+    claims: number;
+    sourceSha256: string;
+    sourceContentSha256: string;
+  }[];
   /** Sources whose stored text held no quotable prose — a URL reference, or a stub. */
   unreadable: { title: string; reason: string }[];
 }
@@ -160,7 +166,13 @@ export async function readSourcesIntoClaims(
         } else next.push(record);
         continue;
       }
-      result.read.push({ claims: claims.length, path: record.path, title: record.title });
+      result.read.push({
+        claims: claims.length,
+        path: record.path,
+        sourceContentSha256: file.hash,
+        sourceSha256: record.sha256,
+        title: record.title,
+      });
       const unchanged =
         record.readState === 'read' &&
         record.claims?.length === compatibleClaims.length &&
