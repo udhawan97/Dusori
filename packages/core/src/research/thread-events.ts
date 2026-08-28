@@ -22,7 +22,7 @@ export const ResearchThreadSchema = z
     followedAt: z.string().datetime().optional(),
     redactedAt: z.string().datetime().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const ResearchThreadTombstoneSchema = z
   .object({
@@ -30,7 +30,7 @@ export const ResearchThreadTombstoneSchema = z
     at: z.string().datetime(),
     reason: z.enum(['deleted', 'retention']),
   })
-  .passthrough();
+  .strict();
 
 export const ResearchThreadEventTombstoneSchema = z
   .object({
@@ -39,7 +39,7 @@ export const ResearchThreadEventTombstoneSchema = z
     at: z.string().datetime(),
     reason: z.enum(['compacted', 'thread-deleted']),
   })
-  .passthrough();
+  .strict();
 
 const ResearchThreadEventBaseSchema = z.object({
   eventId: ResearchThreadEventIdSchema,
@@ -54,44 +54,44 @@ const EventProviderOutcomeSchema = z
     outcome: z.enum(['empty', 'failed', 'found']),
     count: z.number().int().nonnegative(),
   })
-  .passthrough();
+  .strict();
 
 export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('question-created'),
     questionText: z.string().min(1).max(400),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('follow-up-created'),
     parentThreadId: ResearchThreadIdSchema,
     questionText: z.string().min(1).max(400),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('research-completed'),
     runAt: z.string().datetime(),
     eligibleCount: z.number().int().nonnegative(),
     providers: z.array(EventProviderOutcomeSchema).max(24),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('source-saved'),
     sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourcePath: z.string().min(1).max(640).optional(),
     readState: z.enum(['read', 'readable', 'reference']).optional(),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('source-read'),
     sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourceContentSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourcePath: z.string().min(1).max(640),
     claimCount: z.number().int().positive().max(12),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('quote-added'),
     sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourcePath: z.string().min(1).max(640),
     notePath: z.string().min(1).max(640),
     quoteSha256: z.string().regex(/^[a-f0-9]{64}$/u),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('note-added'),
     notePath: z.string().min(1).max(640),
@@ -103,7 +103,7 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
     replyToEventId: ResearchThreadEventIdSchema.optional(),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('synthesis-written'),
     runAt: z.string().datetime(),
@@ -112,7 +112,7 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('synthesis-proposed'),
     runAt: z.string().datetime(),
@@ -121,15 +121,15 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('export-created'),
     format: z.enum(['html', 'markdown', 'pdf']),
     manifestSha256: z.string().regex(/^[a-f0-9]{64}$/u),
-  }).passthrough(),
+  }).strict(),
   ResearchThreadEventBaseSchema.extend({
     type: z.literal('thread-redacted'),
-  }).passthrough(),
+  }).strict(),
 ]);
 
 export type ResearchThread = z.infer<typeof ResearchThreadSchema>;
@@ -222,8 +222,12 @@ export async function researchThreadEventId(
   return `event-${(await sha256(`${threadId}\n${at}\n${JSON.stringify(details)}`)).slice(0, 24)}`;
 }
 
-function encodedBytes(value: unknown): number {
+export function researchThreadEventBytes(value: readonly ResearchThreadEvent[]): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+function isIdentityEvent(event: ResearchThreadEvent): boolean {
+  return event.type === 'question-created' || event.type === 'follow-up-created';
 }
 
 function replyTarget(event: ResearchThreadEvent): string | undefined {
@@ -272,23 +276,24 @@ export function boundResearchThreadActivity(
   removedReason: ResearchThreadEventTombstone['reason'] = 'compacted',
 ): BoundedResearchThreadActivity {
   const seen = new Set<string>();
+  const identityThreads = new Set<string>();
   const removed = new Map<string, ResearchThreadEvent>();
   const events = input.filter((event) => {
-    if (!retainedThreadIds.has(event.threadId) || seen.has(event.eventId)) {
+    const duplicateIdentity = isIdentityEvent(event) && identityThreads.has(event.threadId);
+    if (!retainedThreadIds.has(event.threadId) || seen.has(event.eventId) || duplicateIdentity) {
       removed.set(event.eventId, event);
       return false;
     }
     seen.add(event.eventId);
+    if (isIdentityEvent(event)) identityThreads.add(event.threadId);
     return true;
   });
 
   while (
     events.length > maxResearchThreadEvents ||
-    encodedBytes(events) > maxResearchThreadEventBytes
+    researchThreadEventBytes(events) > maxResearchThreadEventBytes
   ) {
-    const removable = events.findIndex(
-      (event) => event.type !== 'question-created' && event.type !== 'follow-up-created',
-    );
+    const removable = events.findIndex((event) => !isIdentityEvent(event));
     if (removable < 0) break;
     const [event] = events.splice(removable, 1);
     if (event) removed.set(event.eventId, event);

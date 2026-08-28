@@ -427,6 +427,11 @@
     onThreadChanged();
   }
 
+  function notifyResearchActivity(): void {
+    onSourceSaved();
+    onThreadChanged();
+  }
+
   function questionForRun(run: ResearchRunRecord): string {
     if (run.questionText?.trim()) return run.questionText.trim();
     const topic = topicTitle.trim();
@@ -628,6 +633,7 @@
       discoveredCount = result.eligibleCount;
       if (result.status === 'no-results') {
         await restoreResultState();
+        onThreadChanged();
         if (orientOnComplete) restoreResearchFocus();
         return;
       }
@@ -637,7 +643,7 @@
       if (result.status === 'needs-readable-evidence') {
         stage = 'needs-reading';
         status = `${result.shortlist.length} references saved, but none contains quotable source text yet.${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
-        onSourceSaved();
+        notifyResearchActivity();
         return;
       }
       if (result.status === 'brief-ready' && result.synthesis?.status === 'written') {
@@ -652,12 +658,12 @@
             ? ' AI was unavailable, so the evidence-first fallback was used.'
             : ''
         }${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
-        onSourceSaved();
+        notifyResearchActivity();
         if (orientOnComplete) await orientToCompletedThread();
       } else {
         stage = 'complete';
         status = `Your edited brief was kept. A refreshed proposal is waiting in Needs attention.${result.activityWarning ? ` ${result.activityWarning}` : ''}`;
-        onSourceSaved();
+        notifyResearchActivity();
         if (orientOnComplete) await orientToCompletedThread();
       }
     } catch (caught) {
@@ -667,6 +673,7 @@
           ? caught.message
           : 'Research could not finish. Saved references remain available below.';
       await restoreResultState();
+      onThreadChanged();
     }
   }
 
@@ -760,7 +767,7 @@
 
       approvedExtraKeys = new Set([...approvedExtraKeys, candidate.key]);
       if (result.synthesis?.status === 'written') latestBriefPath = result.synthesis.path;
-      onSourceSaved();
+      notifyResearchActivity();
       const refreshed =
         result.synthesis?.status === 'written'
           ? ' The brief was refreshed.'

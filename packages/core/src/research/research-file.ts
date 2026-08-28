@@ -12,9 +12,12 @@ import {
   ResearchThreadSchema,
   ResearchThreadTombstoneSchema,
   boundResearchThreadActivity,
+  maxResearchThreadEventBytes,
+  maxResearchThreadEvents,
   maxResearchThreads,
   maxResearchThreadEventTombstones,
   maxResearchThreadTombstones,
+  researchThreadEventBytes,
   researchThreadEventId,
   researchThreadId,
   type ResearchThread,
@@ -102,7 +105,7 @@ export const ResearchFileSchema = z
     /** Additive P0 thread identity. Legacy runs remain outside this collection. */
     threads: z.array(ResearchThreadSchema).max(maxResearchThreads).optional(),
     /** Bounded typed activity; discovery and generated artifacts remain distinct from evidence. */
-    events: z.array(ResearchThreadEventSchema).max(500).optional(),
+    events: z.array(ResearchThreadEventSchema).max(maxResearchThreadEvents).optional(),
     /** Minimal targets retained only while a live event replies to compacted activity. */
     eventTombstones: z
       .array(ResearchThreadEventTombstoneSchema)
@@ -118,7 +121,15 @@ export const ResearchFileSchema = z
       .regex(/^thread-[a-f0-9]{24}$/u)
       .optional(),
   })
-  .passthrough();
+  .passthrough()
+  .superRefine((research, context) => {
+    if (researchThreadEventBytes(research.events ?? []) <= maxResearchThreadEventBytes) return;
+    context.addIssue({
+      code: 'custom',
+      message: 'Research activity exceeds the 256 KiB event budget.',
+      path: ['events'],
+    });
+  });
 
 export type DismissedResearchSuggestion = z.infer<typeof DismissedResearchSuggestionSchema>;
 export type SeenResearchCandidate = z.infer<typeof SeenResearchCandidateSchema>;
@@ -245,11 +256,10 @@ function boundThreadTombstones(
   for (const item of [...existing, ...additions]) {
     if (!liveIds.has(item.threadId)) merged.set(item.threadId, item);
   }
-  const required = [...merged.values()].filter((item) => requiredIds.has(item.threadId));
-  const optional = [...merged.values()]
-    .filter((item) => !requiredIds.has(item.threadId))
-    .sort((left, right) => left.at.localeCompare(right.at));
-  return [...required, ...optional.slice(-(maxResearchThreadTombstones - required.length))];
+  return [...merged.values()]
+    .filter((item) => requiredIds.has(item.threadId))
+    .sort((left, right) => left.at.localeCompare(right.at))
+    .slice(-maxResearchThreadTombstones);
 }
 
 function retainedThreadState(

@@ -360,6 +360,21 @@ describe('research run ledger', () => {
     );
   });
 
+  it('leaves no tombstone when deleting an unreferenced thread', async () => {
+    const storage = await topicStorage();
+    const recorded = await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
+
+    const deleted = await deleteResearchThread(
+      storage,
+      'spaced-repetition-learning',
+      recorded.activeThreadId!,
+      new Date('2026-08-02T12:00:00.000Z'),
+    );
+
+    expect(deleted.threads).toEqual([]);
+    expect(deleted.threadTombstones).toEqual([]);
+  });
+
   it('round-trips followed state, note replies, redaction, and tombstones through a workspace ZIP', async () => {
     const storage = await topicStorage();
     const first = await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
@@ -371,7 +386,7 @@ describe('research run ledger', () => {
       true,
       new Date('2026-08-02T10:05:00.000Z'),
     );
-    await recordResearchRun(
+    const child = await recordResearchRun(
       storage,
       'spaced-repetition-learning',
       run({
@@ -382,6 +397,33 @@ describe('research run ledger', () => {
         searchText: 'Which evidence changed?',
       }),
       new Date('2026-08-02T11:00:00.000Z'),
+    );
+    const childThreadId = child.activeThreadId!;
+    await setResearchThreadFollowed(
+      storage,
+      'spaced-repetition-learning',
+      childThreadId,
+      true,
+      new Date('2026-08-02T11:05:00.000Z'),
+    );
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        notePath: 'Topics/spaced-repetition-learning/Notes/interval-evidence.md',
+        noteSha256: 'b'.repeat(64),
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/interval-evidence.md',
+        sourceSha256: 'a'.repeat(64),
+        type: 'note-added',
+      },
+      new Date('2026-08-02T11:10:00.000Z'),
+      childThreadId,
+    );
+    await redactResearchThread(
+      storage,
+      'spaced-repetition-learning',
+      childThreadId,
+      new Date('2026-08-02T11:15:00.000Z'),
     );
     await deleteResearchThread(
       storage,
@@ -397,6 +439,17 @@ describe('research run ledger', () => {
       expect.objectContaining({ reason: 'deleted', threadId: parentThreadId }),
     );
     expect(file?.threads?.[0]?.parentThreadId).toBe(parentThreadId);
+    expect(file?.threads?.[0]).toMatchObject({
+      followedAt: '2026-08-02T11:05:00.000Z',
+      redactedAt: '2026-08-02T11:15:00.000Z',
+      threadId: childThreadId,
+    });
+    expect(file?.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ noteSha256: 'b'.repeat(64), type: 'note-added' }),
+        expect.objectContaining({ type: 'thread-redacted' }),
+      ]),
+    );
   });
 
   it('records a run in which every provider failed, with zero candidates', async () => {
@@ -511,6 +564,7 @@ describe('research run ledger', () => {
         'spaced-repetition-learning',
         run({
           candidates: [],
+          ...(index === 1 ? { parentThreadId: firstThreadId } : {}),
           providers: [],
           questionText: `question ${index}`,
           searchText: `query ${index}`,

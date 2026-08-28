@@ -1757,6 +1757,8 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   const updatesInbox = page.getByRole('region', { name: 'Followed research' });
   await expect(updatesInbox).toContainText('1 followed');
   await expect(updatesInbox).toContainText('no newer local activity yet');
+  await page.getByRole('button', { name: 'Update research' }).click();
+  await expect(updatesInbox).toContainText('Lookup completed');
   for (const [label, target] of [
     ['Receipt', '#thread-receipt'],
     ['Sources', '#thread-sources'],
@@ -1943,9 +1945,7 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   expect(deletedResearch.threads).toEqual([]);
   expect(deletedResearch.runs).toEqual([]);
   expect(deletedResearch.events).toEqual([]);
-  expect(deletedResearch.threadTombstones).toContainEqual(
-    expect.objectContaining({ reason: 'deleted' }),
-  );
+  expect(deletedResearch.threadTombstones).toEqual([]);
 });
 
 test('provider recovery preserves the question and returns without making a request', async ({

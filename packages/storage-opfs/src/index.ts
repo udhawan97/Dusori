@@ -59,6 +59,29 @@ async function parentAndName(
   return [await directoryAt(root, segments.join('/'), createParent), name];
 }
 
+function isTransientSnapshotError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'NotReadableError';
+}
+
+async function currentFile(handle: FileSystemFileHandle): Promise<File> {
+  let current: File | undefined;
+  let lastError: unknown;
+  // Chromium can briefly expose the preceding OPFS snapshot, or reject a snapshot while a
+  // just-closed writer settles. Two bounded observations let the newer modification win without
+  // adding an unbounded retry loop or weakening expected-hash conflict checks.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const candidate = await handle.getFile();
+      if (!current || candidate.lastModified >= current.lastModified) current = candidate;
+    } catch (error) {
+      if (!isTransientSnapshotError(error)) throw error;
+      lastError = error;
+    }
+  }
+  if (current) return current;
+  throw lastError;
+}
+
 export class OpfsStorageAdapter implements StorageAdapter {
   readonly kind = 'opfs' as const;
 
@@ -95,7 +118,7 @@ export class OpfsStorageAdapter implements StorageAdapter {
     try {
       const [parent, name] = await parentAndName(this.root, normalized);
       const handle = await parent.getFileHandle(name);
-      const file = await handle.getFile();
+      const file = await currentFile(handle);
       const content = await file.text();
       return {
         content,

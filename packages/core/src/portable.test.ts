@@ -97,6 +97,28 @@ describe('workspace archive resource limits', () => {
     );
   });
 
+  it('rejects imported research activity beyond the 256 KiB event budget', async () => {
+    const storage = await twoTopicWorkspace();
+    const threadId = `thread-${'a'.repeat(24)}`;
+    const events = Array.from({ length: 500 }, (_item, index) => ({
+      at: now.toISOString(),
+      eventId: `event-${index.toString(16).padStart(24, '0')}`,
+      questionText: `${index.toString().padStart(3, '0')} ${'x'.repeat(396)}`,
+      threadId,
+      type: 'question-created',
+    }));
+    expect(new TextEncoder().encode(JSON.stringify(events)).byteLength).toBeGreaterThan(256 * 1024);
+    await storage.write(
+      'Topics/cloud-native/research.json',
+      JSON.stringify({ dismissed: [], events, schemaVersion: 1, topicSlug: 'cloud-native' }),
+      { expectedHash: null },
+    );
+
+    await expect(prepareWorkspaceImport(await exportWorkspace(storage))).rejects.toThrow(
+      "The import's research activity is invalid: cloud-native",
+    );
+  });
+
   it('translates a corrupt or mislabeled ZIP into product recovery guidance', async () => {
     await expect(prepareWorkspaceImport(new TextEncoder().encode('not a zip'))).rejects.toThrow(
       'This file is not a valid Dusori workspace export. Choose a .zip exported by Dusori and try again.',
