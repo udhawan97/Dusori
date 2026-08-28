@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { StorageConflictError, type StorageAdapter } from '../adapters.js';
 import { readProposalLedger } from '../conflict/proposal-ledger.js';
-import { readMachineFile } from '../schemas/read-machine-file.js';
+import { preflightMachineFile, readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
 import { clearSynthesisStale } from '../sources/import.js';
 import { topicRoot } from '../workspace/paths.js';
@@ -171,8 +171,20 @@ export async function readResearchFile(
   const root = topicRoot(topicSlug);
   await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
   const path = `${root}/research.json`;
-  if (!(await storage.read(path))) return null;
-  return readMachineFile(storage, path, ResearchFileSchema, now);
+  const first = await preflightMachineFile(storage, path, ResearchFileSchema);
+  if (first.status === 'missing') return null;
+  // A just-closed OPFS writer can leave every observation in the current browser task on the
+  // preceding snapshot. Re-read once in the next task; the later validated ledger is authoritative.
+  await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0));
+  const settled = await preflightMachineFile(storage, path, ResearchFileSchema);
+  if (settled.status === 'missing') return null;
+  if (settled.status === 'invalid') {
+    throw new Error(
+      `Invalid machine file preserved at ${path}. Review it before choosing repair or quarantine.`,
+      { cause: settled.error },
+    );
+  }
+  return settled.data;
 }
 
 export async function writeDismissedResearchSuggestion(
