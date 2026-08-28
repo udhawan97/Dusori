@@ -8,15 +8,20 @@ import { clearSynthesisStale } from '../sources/import.js';
 import { topicRoot } from '../workspace/paths.js';
 import {
   ResearchThreadEventSchema,
+  ResearchThreadEventTombstoneSchema,
   ResearchThreadSchema,
-  boundResearchThreadEvents,
+  ResearchThreadTombstoneSchema,
+  boundResearchThreadActivity,
   maxResearchThreads,
+  maxResearchThreadEventTombstones,
+  maxResearchThreadTombstones,
   researchThreadEventId,
   researchThreadId,
   type ResearchThread,
   type ResearchThreadEvent,
   type ResearchThreadEventDetails,
   type ResearchThreadEventInput,
+  type ResearchThreadTombstone,
 } from './thread-events.js';
 
 export const DismissedResearchSuggestionSchema = z
@@ -98,6 +103,16 @@ export const ResearchFileSchema = z
     threads: z.array(ResearchThreadSchema).max(maxResearchThreads).optional(),
     /** Bounded typed activity; discovery and generated artifacts remain distinct from evidence. */
     events: z.array(ResearchThreadEventSchema).max(500).optional(),
+    /** Minimal targets retained only while a live event replies to compacted activity. */
+    eventTombstones: z
+      .array(ResearchThreadEventTombstoneSchema)
+      .max(maxResearchThreadEventTombstones)
+      .optional(),
+    /** Question-free identity markers for deleted or retention-pruned thread parents. */
+    threadTombstones: z
+      .array(ResearchThreadTombstoneSchema)
+      .max(maxResearchThreadTombstones)
+      .optional(),
     activeThreadId: z
       .string()
       .regex(/^thread-[a-f0-9]{24}$/u)
@@ -209,14 +224,55 @@ export interface ResearchRunInput {
   parentThreadId?: string;
 }
 
-function retainedThreads(
+interface RetainedThreadState {
+  threads: ResearchThread[];
+  threadTombstones: ResearchThreadTombstone[];
+}
+
+function boundThreadTombstones(
   threads: readonly ResearchThread[],
+  existing: readonly ResearchThreadTombstone[],
+  additions: readonly ResearchThreadTombstone[],
+): ResearchThreadTombstone[] {
+  const liveIds = new Set(threads.map((thread) => thread.threadId));
+  const requiredIds = new Set(
+    threads
+      .map((thread) => thread.parentThreadId)
+      .filter((threadId): threadId is string => threadId !== undefined)
+      .filter((threadId) => !liveIds.has(threadId)),
+  );
+  const merged = new Map<string, ResearchThreadTombstone>();
+  for (const item of [...existing, ...additions]) {
+    if (!liveIds.has(item.threadId)) merged.set(item.threadId, item);
+  }
+  const required = [...merged.values()].filter((item) => requiredIds.has(item.threadId));
+  const optional = [...merged.values()]
+    .filter((item) => !requiredIds.has(item.threadId))
+    .sort((left, right) => left.at.localeCompare(right.at));
+  return [...required, ...optional.slice(-(maxResearchThreadTombstones - required.length))];
+}
+
+function retainedThreadState(
+  threads: readonly ResearchThread[],
+  tombstones: readonly ResearchThreadTombstone[],
+  at: string,
   next?: ResearchThread,
-): ResearchThread[] {
+): RetainedThreadState {
   const merged = next
     ? [...threads.filter((thread) => thread.threadId !== next.threadId), next]
     : [...threads];
-  return merged.slice(-maxResearchThreads);
+  const retained = merged.slice(-maxResearchThreads);
+  const removed = merged.slice(0, Math.max(0, merged.length - maxResearchThreads));
+  return {
+    threads: retained,
+    threadTombstones: boundThreadTombstones(
+      retained,
+      tombstones,
+      removed.map((thread) =>
+        ResearchThreadTombstoneSchema.parse({ at, reason: 'retention', threadId: thread.threadId }),
+      ),
+    ),
+  };
 }
 
 async function eventFor(
@@ -244,6 +300,9 @@ function researchEventAlreadyRecorded(
     }
     if (event.type === 'quote-added' && input.type === 'quote-added') {
       return event.notePath === input.notePath && event.quoteSha256 === input.quoteSha256;
+    }
+    if (event.type === 'note-added' && input.type === 'note-added') {
+      return event.notePath === input.notePath && event.noteSha256 === input.noteSha256;
     }
     if (event.type === 'source-read' && input.type === 'source-read') {
       return (
@@ -283,11 +342,34 @@ export async function recordResearchThreadEvent(
     }
     const existing = current.events ?? [];
     if (researchEventAlreadyRecorded(existing, input, targetThreadId)) return current;
-    const event = await eventFor(targetThreadId, now.toISOString(), input);
+    const resolvedInput =
+      input.type === 'note-added' && !input.replyToEventId
+        ? {
+            ...input,
+            ...(() => {
+              const target = [...existing]
+                .reverse()
+                .find(
+                  (event) =>
+                    (event.type === 'source-read' || event.type === 'source-saved') &&
+                    event.sourcePath === input.sourcePath &&
+                    event.sourceSha256 === input.sourceSha256,
+                );
+              return target ? { replyToEventId: target.eventId } : {};
+            })(),
+          }
+        : input;
+    const event = await eventFor(targetThreadId, now.toISOString(), resolvedInput);
     const retainedIds = new Set((current.threads ?? []).map((item) => item.threadId));
+    const activity = boundResearchThreadActivity(
+      [...existing, event],
+      retainedIds,
+      current.eventTombstones ?? [],
+    );
     const next = ResearchFileSchema.parse({
       ...current,
-      events: boundResearchThreadEvents([...existing, event], retainedIds),
+      eventTombstones: activity.eventTombstones,
+      events: activity.events,
     });
     try {
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
@@ -300,6 +382,184 @@ export async function recordResearchThreadEvent(
   }
 
   throw new Error('Research activity changed repeatedly. Try the action again.');
+}
+
+export async function setResearchThreadFollowed(
+  storage: StorageAdapter,
+  topicSlug: string,
+  threadId: string,
+  followed: boolean,
+  now = new Date(),
+): Promise<ResearchFile> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    if (!snapshot) throw new Error('The research thread no longer exists.');
+    const current = await readMachineFile(storage, path, ResearchFileSchema, now);
+    const target = (current.threads ?? []).find((thread) => thread.threadId === threadId);
+    if (!target) throw new Error('The research thread no longer exists.');
+    if (followed === Boolean(target.followedAt)) return current;
+    const threads = (current.threads ?? []).map((thread) => {
+      if (thread.threadId !== threadId) return thread;
+      if (followed) return ResearchThreadSchema.parse({ ...thread, followedAt: now.toISOString() });
+      const { followedAt: _followedAt, ...unfollowed } = thread;
+      void _followedAt;
+      return ResearchThreadSchema.parse(unfollowed);
+    });
+    const next = ResearchFileSchema.parse({ ...current, threads });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research follow state changed repeatedly. Try again.');
+}
+
+const redactedQuestion = 'Redacted question';
+const redactedSearch = 'Redacted research query';
+
+export async function redactResearchThread(
+  storage: StorageAdapter,
+  topicSlug: string,
+  threadId: string,
+  now = new Date(),
+): Promise<ResearchFile> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    if (!snapshot) throw new Error('The research thread no longer exists.');
+    const current = await readMachineFile(storage, path, ResearchFileSchema, now);
+    const target = (current.threads ?? []).find((thread) => thread.threadId === threadId);
+    if (!target) throw new Error('The research thread no longer exists.');
+    if (target.redactedAt) return current;
+    const at = now.toISOString();
+    const threads = (current.threads ?? []).map((thread) =>
+      thread.threadId === threadId
+        ? ResearchThreadSchema.parse({ ...thread, questionText: redactedQuestion, redactedAt: at })
+        : thread,
+    );
+    const runs = (current.runs ?? []).map((run) => {
+      if (run.threadId !== threadId) return run;
+      return ResearchRunRecordSchema.parse({
+        at: run.at,
+        angleId: run.angleId,
+        eligibleCount: run.eligibleCount,
+        newKeys: run.newKeys,
+        providers: run.providers.map(({ count, id, label, outcome }) => ({
+          count,
+          id,
+          label,
+          outcome,
+        })),
+        questionText: redactedQuestion,
+        searchText: redactedSearch,
+        synthesisOutcome: run.synthesisOutcome,
+        threadId: run.threadId,
+      });
+    });
+    const scrubbedEvents = (current.events ?? []).map((event) => {
+      if (event.threadId !== threadId) return event;
+      if (event.type === 'question-created') {
+        return ResearchThreadEventSchema.parse({ ...event, questionText: redactedQuestion });
+      }
+      if (event.type === 'follow-up-created') {
+        return ResearchThreadEventSchema.parse({ ...event, questionText: redactedQuestion });
+      }
+      return event;
+    });
+    scrubbedEvents.push(await eventFor(threadId, at, { type: 'thread-redacted' }));
+    const retainedIds = new Set(threads.map((thread) => thread.threadId));
+    const activity = boundResearchThreadActivity(
+      scrubbedEvents,
+      retainedIds,
+      current.eventTombstones ?? [],
+    );
+    const next = ResearchFileSchema.parse({
+      ...current,
+      eventTombstones: activity.eventTombstones,
+      events: activity.events,
+      runs,
+      threads,
+    });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research redaction changed repeatedly. Try again.');
+}
+
+export async function deleteResearchThread(
+  storage: StorageAdapter,
+  topicSlug: string,
+  threadId: string,
+  now = new Date(),
+): Promise<ResearchFile> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    if (!snapshot) throw new Error('The research thread no longer exists.');
+    const current = await readMachineFile(storage, path, ResearchFileSchema, now);
+    const target = (current.threads ?? []).find((thread) => thread.threadId === threadId);
+    if (!target) throw new Error('The research thread no longer exists.');
+    const at = now.toISOString();
+    const threads = (current.threads ?? []).filter((thread) => thread.threadId !== threadId);
+    const removedRunTimes = new Set(
+      (current.runs ?? []).filter((run) => run.threadId === threadId).map((run) => run.at),
+    );
+    const runs = (current.runs ?? []).filter((run) => run.threadId !== threadId);
+    const retainedIds = new Set(threads.map((thread) => thread.threadId));
+    const activity = boundResearchThreadActivity(
+      current.events ?? [],
+      retainedIds,
+      current.eventTombstones ?? [],
+      'thread-deleted',
+    );
+    const threadTombstones = boundThreadTombstones(threads, current.threadTombstones ?? [], [
+      ResearchThreadTombstoneSchema.parse({ at, reason: 'deleted', threadId }),
+    ]);
+    const next = ResearchFileSchema.parse({
+      ...current,
+      activeThreadId:
+        current.activeThreadId === threadId ? threads.at(-1)?.threadId : current.activeThreadId,
+      eventTombstones: activity.eventTombstones,
+      events: activity.events,
+      lastRunAt: runs.at(-1)?.at,
+      runs,
+      synthesisRunAt:
+        current.synthesisRunAt && removedRunTimes.has(current.synthesisRunAt)
+          ? undefined
+          : current.synthesisRunAt,
+      threadTombstones,
+      threads,
+    });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+
+  throw new Error('Research deletion changed repeatedly. Try again.');
 }
 
 export async function recordResearchRun(
@@ -356,8 +616,8 @@ export async function recordResearchRun(
       searchText: run.searchText,
       threadId: thread.threadId,
     });
-    const nextThreads = retainedThreads(threads, newThread);
-    const retainedIds = new Set(nextThreads.map((item) => item.threadId));
+    const retained = retainedThreadState(threads, current.threadTombstones ?? [], at, newThread);
+    const retainedIds = new Set(retained.threads.map((item) => item.threadId));
     const identityEvent = newThread
       ? await eventFor(thread.threadId, at, {
           ...(thread.parentThreadId
@@ -377,19 +637,23 @@ export async function recordResearchRun(
       runAt: at,
       type: 'research-completed',
     });
+    const activity = boundResearchThreadActivity(
+      [...(current.events ?? []), ...(identityEvent ? [identityEvent] : []), runEvent],
+      retainedIds,
+      current.eventTombstones ?? [],
+    );
     const next = ResearchFileSchema.parse({
       ...current,
       activeThreadId: thread.threadId,
-      events: boundResearchThreadEvents(
-        [...(current.events ?? []), ...(identityEvent ? [identityEvent] : []), runEvent],
-        retainedIds,
-      ),
+      eventTombstones: activity.eventTombstones,
+      events: activity.events,
       lastRunAt: at,
       runs: [...(current.runs ?? []), record].slice(-maxRunEntries),
       seen: [...merged.values()]
         .sort((left, right) => left.at.localeCompare(right.at))
         .slice(-maxSeenEntries),
-      threads: nextThreads,
+      threadTombstones: retained.threadTombstones,
+      threads: retained.threads,
     });
     try {
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
@@ -487,9 +751,15 @@ export async function recordResearchSynthesisOutcome(
       );
     }
     const retainedIds = new Set((current.threads ?? []).map((thread) => thread.threadId));
+    const activity = boundResearchThreadActivity(
+      events,
+      retainedIds,
+      current.eventTombstones ?? [],
+    );
     const next = ResearchFileSchema.parse({
       ...current,
-      events: boundResearchThreadEvents(events, retainedIds),
+      eventTombstones: activity.eventTombstones,
+      events: activity.events,
       runs,
       synthesisRunAt,
     });

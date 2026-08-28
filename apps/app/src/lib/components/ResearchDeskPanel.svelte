@@ -66,6 +66,7 @@
   export let onSourceSaved: (path?: string) => void = () => undefined;
   export let onOpenSources: () => void = () => undefined;
   export let onOpenMap: () => void = () => undefined;
+  export let onThreadChanged: () => void = () => undefined;
 
   type Stage =
     | 'idle'
@@ -419,6 +420,11 @@
       readCount = 0;
       return false;
     }
+  }
+
+  async function refreshThreadState(): Promise<void> {
+    await restoreResultState();
+    onThreadChanged();
   }
 
   function questionForRun(run: ResearchRunRecord): string {
@@ -948,6 +954,7 @@
       {onOpenMap}
       onOpenDocument={(path) => onSourceSaved(path)}
       onOpenExternal={(event, url) => void openExternal(event, url)}
+      onThreadChanged={() => void refreshThreadState()}
     />
   {/if}
 

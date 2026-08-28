@@ -1,13 +1,20 @@
 <script lang="ts">
   import { Library, Map } from '@lucide/svelte';
 
-  import type { CompanionAiClient, CompanionResearchClient, StorageAdapter } from '@dusori/core';
+  import type {
+    CompanionAiClient,
+    CompanionResearchClient,
+    StorageAdapter,
+    Workspace,
+  } from '@dusori/core';
 
   import ResearchDeskPanel from './ResearchDeskPanel.svelte';
+  import ResearchUpdatesInbox from './ResearchUpdatesInbox.svelte';
 
   export let storage: StorageAdapter;
   export let topicSlug: string;
   export let topicTitle: string;
+  export let topics: Workspace['topics'] = [];
   export let companion: CompanionResearchClient | null = null;
   export let ai: CompanionAiClient | null = null;
   export let autoStart = false;
@@ -19,12 +26,19 @@
   export let onOpenSource: (path: string) => void = () => undefined;
   export let onOpenSources: () => void = () => undefined;
   export let onOpenMap: () => void = () => undefined;
+  export let onOpenResearch: (topicSlug: string) => void = () => undefined;
   export let onQuestionChange: (question: string) => void = () => undefined;
   export let onReviewProviderChoices: () => void = () => undefined;
+
+  let inboxRevision = 0;
 
   function handleSourceSaved(path?: string): void {
     onArtifactSaved();
     if (path) onOpenSource(path);
+  }
+
+  function handleThreadChanged(): void {
+    inboxRevision += 1;
   }
 </script>
 
@@ -48,6 +62,14 @@
     </div>
   </header>
 
+  <ResearchUpdatesInbox
+    {storage}
+    {topics}
+    revision={inboxRevision}
+    onOpenTopic={onOpenResearch}
+    onOpenDocument={onOpenSource}
+  />
+
   <ResearchDeskPanel
     {storage}
     {topicSlug}
@@ -64,6 +86,7 @@
     onSourceSaved={handleSourceSaved}
     {onOpenSources}
     {onOpenMap}
+    onThreadChanged={handleThreadChanged}
   />
 
   <details class="trust-line">

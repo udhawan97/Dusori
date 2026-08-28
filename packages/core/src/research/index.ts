@@ -18,3 +18,4 @@ export * from './score.js';
 export * from './sequence.js';
 export * from './suggest.js';
 export * from './types.js';
+export * from './updates.js';

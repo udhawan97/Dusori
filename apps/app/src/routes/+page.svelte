@@ -810,23 +810,24 @@
       });
       const created = await createNote(storage!, selectedSlug, title, createdAt, { content });
       let activityWarning = '';
-      if (passage) {
-        try {
-          await recordResearchThreadEvent(
-            storage!,
-            selectedSlug,
-            {
-              notePath: created.path,
-              quoteSha256: await sha256(normalizeSelectedPassage(passage.text)),
-              sourcePath: notePath,
-              sourceSha256: currentSource.sha256,
-              type: 'quote-added',
-            },
-            createdAt,
-          );
-        } catch {
-          activityWarning = ' The quote was saved, but thread activity could not be updated.';
-        }
+      try {
+        await recordResearchThreadEvent(
+          storage!,
+          selectedSlug,
+          {
+            notePath: created.path,
+            noteSha256: await sha256(created.content),
+            ...(passage
+              ? { quoteSha256: await sha256(normalizeSelectedPassage(passage.text)) }
+              : {}),
+            sourcePath: notePath,
+            sourceSha256: currentSource.sha256,
+            type: 'note-added',
+          },
+          createdAt,
+        );
+      } catch {
+        activityWarning = ' The note was saved, but thread activity could not be updated.';
       }
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
@@ -834,7 +835,7 @@
       editingNote = true;
       status = passage
         ? `Quoted passage and source context saved locally. Add what it changes, then save your note.${activityWarning}`
-        : 'Source-linked note created. Add what mattered, then save it locally.';
+        : `Source-linked note created. Add what mattered, then save it locally.${activityWarning}`;
     });
   }
 
@@ -1584,6 +1585,7 @@
               topicSlug={selectedSlug}
               topicTitle={workspace.topics.find((topic) => topic.slug === selectedSlug)?.title ??
                 selectedSlug}
+              topics={workspace.topics}
               companion={companionClient}
               ai={companionAiClient}
               autoStart={researchAutoStartSlug === selectedSlug}
@@ -1599,6 +1601,7 @@
               onOpenSource={(path) => void openGraphDocument(path)}
               onOpenSources={() => openSources()}
               onOpenMap={() => openGraph(true, 'visual')}
+              onOpenResearch={(slug) => openResearch(slug)}
             />
           {/key}
         {:else if workspaceView === 'insights' && storage && workspace}

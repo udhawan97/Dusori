@@ -16,10 +16,13 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Markdown, standalone HTML, and user-initiated Print/PDF research packets accompanied by a
   provenance manifest with local content hashes, omitted-path status, and explicit non-round-trip
   semantics
-
-The followed-threads inbox remains a later phase. It depends on dedicated migration,
-deletion/redaction, retention tombstone, broken-target, and archive round-trip proof for the new
-event model.
+- Explicit local follow/unfollow and a workspace-wide Updates inbox derived from saved activity,
+  with no provider request, consent change, or refresh side effect
+- Source-linked note/reply events, bounded event compaction, minimal retention/deletion tombstones,
+  and visible missing-target states
+- Question redaction and thread-ledger deletion that preserve saved artifacts and warn that prior
+  archives and presentation packets remain independent copies
+- Import validation and exact workspace ZIP round-trip coverage for the additive thread model
 
 ## Shipped through v0.14.0
 
@@ -60,7 +63,7 @@ event model.
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
 - Apple notarization or Microsoft Authenticode signing for v0.14.0 installers
-- A followed-threads inbox, reply events, or thread deletion/redaction semantics
+- Cloud, multi-user, notification, or unread-state delivery for followed research
 
 ## Candidates for later releases
 

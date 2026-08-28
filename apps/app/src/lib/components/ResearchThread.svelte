@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
     BookOpen,
+    Bell,
+    BellOff,
     CalendarClock,
     ChevronDown,
     Download,
@@ -11,18 +13,23 @@
     Link2,
     Map,
     MessageSquareText,
+    Eraser,
     Printer,
     Quote,
     RefreshCw,
     SearchCheck,
+    Trash2,
     UserRound,
   } from '@lucide/svelte';
 
   import {
     evidenceClaims,
+    deleteResearchThread,
     lensFor,
     missionLensLabels,
+    redactResearchThread,
     recordResearchThreadEvent,
+    setResearchThreadFollowed,
     type ResearchOutputStyle,
     type ResearchRunRecord,
     type ResearchThread as ResearchThreadRecord,
@@ -66,6 +73,7 @@
   export let onOpenMap: () => void = () => undefined;
   export let onOpenDocument: (path: string) => void = () => undefined;
   export let onOpenExternal: (event: MouseEvent, url: string) => void = () => undefined;
+  export let onThreadChanged: () => void = () => undefined;
 
   type ThreadView = 'thread' | 'document';
   type ExportKind = 'html' | 'markdown' | 'pdf';
@@ -74,6 +82,8 @@
   let showAllSources = false;
   let exporting: ExportKind | '' = '';
   let exportStatus = '';
+  let managementStatus = '';
+  let managing = false;
   let threadElement: HTMLElement;
   let documentHeading: HTMLHeadingElement;
 
@@ -92,6 +102,7 @@
   $: claimCount = sources.reduce((total, source) => total + evidenceClaims(source).length, 0);
   $: answerPreview = researchThreadPreview(synthesisMarkdown);
   $: threadEvents = threadId ? events.filter((event) => event.threadId === threadId) : [];
+  $: currentThread = threads.find((thread) => thread.threadId === threadId);
   $: exportInput = {
     generatedAt,
     outputStyle,
@@ -185,15 +196,16 @@
     if (event.type === 'source-saved') return 'Source saved';
     if (event.type === 'source-read') return 'Evidence read';
     if (event.type === 'quote-added') return 'Quote saved';
+    if (event.type === 'note-added') return 'Source note saved';
     if (event.type === 'synthesis-written') return 'Answer written';
     if (event.type === 'synthesis-proposed') return 'Answer proposed';
-    return 'Export created';
+    if (event.type === 'export-created') return 'Export created';
+    return 'Question redacted';
   }
 
   function activityDetail(event: ResearchThreadEvent): string {
-    if (event.type === 'question-created' || event.type === 'follow-up-created') {
-      return event.questionText;
-    }
+    if (event.type === 'question-created') return 'Local thread identity created.';
+    if (event.type === 'follow-up-created') return 'Local child thread linked to its parent.';
     if (event.type === 'research-completed') {
       const found = event.providers.reduce((total, provider) => total + provider.count, 0);
       return `${event.eligibleCount} relevant retained · ${found} returned before ranking. This receipt is discovery history, not evidence.`;
@@ -207,16 +219,24 @@
       return `${event.claimCount} quoted ${event.claimCount === 1 ? 'passage' : 'passages'} recorded from this exact local content hash.`;
     }
     if (event.type === 'quote-added') return 'Source-linked annotation saved locally.';
+    if (event.type === 'note-added') {
+      return event.quoteSha256
+        ? 'Source-linked note saved with an exact quoted passage.'
+        : 'Source-linked note saved as learner interpretation, not evidence.';
+    }
     if (event.type === 'synthesis-written') return 'Synthesis.md was updated from eligible quotes.';
     if (event.type === 'synthesis-proposed') {
       return 'Learner edits stayed active; the refreshed answer was saved as a proposal.';
     }
-    return `${event.format.toUpperCase()} packet and provenance manifest created.`;
+    if (event.type === 'export-created') {
+      return `${event.format.toUpperCase()} packet and provenance manifest created.`;
+    }
+    return 'The stored question and provider query were removed from this local ledger.';
   }
 
   function activityPath(event: ResearchThreadEvent): string | undefined {
     if (event.type === 'source-saved' || event.type === 'source-read') return event.sourcePath;
-    if (event.type === 'quote-added') return event.notePath;
+    if (event.type === 'quote-added' || event.type === 'note-added') return event.notePath;
     if (event.type === 'synthesis-written' || event.type === 'synthesis-proposed') {
       return event.artifactPath;
     }
@@ -289,6 +309,7 @@
           new Date(bundle.manifest.createdAt),
           threadId,
         );
+        onThreadChanged();
       } catch {
         exportStatus += ' The export succeeded, but thread activity could not be updated.';
       }
@@ -299,6 +320,70 @@
           : 'Export failed. Try Markdown or HTML instead.';
     } finally {
       exporting = '';
+    }
+  }
+
+  async function toggleFollowing(): Promise<void> {
+    if (!threadId || !currentThread || managing) return;
+    managing = true;
+    managementStatus = '';
+    try {
+      const followed = !currentThread.followedAt;
+      await setResearchThreadFollowed(storage, topicSlug, threadId, followed);
+      managementStatus = followed
+        ? 'Following locally. Future saved activity will appear in Updates without contacting providers.'
+        : 'Thread removed from Updates. Research and provider settings were not changed.';
+      onThreadChanged();
+    } catch (caught) {
+      managementStatus =
+        caught instanceof Error ? caught.message : 'Follow state could not be updated.';
+    } finally {
+      managing = false;
+    }
+  }
+
+  async function redactQuestion(): Promise<void> {
+    if (!threadId || !currentThread || currentThread.redactedAt || managing) return;
+    if (
+      !window.confirm(
+        'Remove this question and its provider query from the local research ledger? Saved sources, notes, and Synthesis.md stay in place. Previously exported archives and packets are independent copies and will not be changed.',
+      )
+    )
+      return;
+    managing = true;
+    managementStatus = '';
+    try {
+      await redactResearchThread(storage, topicSlug, threadId);
+      managementStatus =
+        'Question redacted from the local ledger. Saved artifacts and earlier exports remain separate copies.';
+      onThreadChanged();
+    } catch (caught) {
+      managementStatus =
+        caught instanceof Error ? caught.message : 'The question was not redacted.';
+    } finally {
+      managing = false;
+    }
+  }
+
+  async function deleteThread(): Promise<void> {
+    if (!threadId || !currentThread || managing) return;
+    if (
+      !window.confirm(
+        'Delete this thread identity, its lookup runs, and owned activity from the local ledger? Saved sources, notes, and Synthesis.md stay in place. This cannot change previously exported archives or packets.',
+      )
+    )
+      return;
+    managing = true;
+    managementStatus = '';
+    try {
+      await deleteResearchThread(storage, topicSlug, threadId);
+      managementStatus =
+        'Thread ledger deleted. Saved artifacts remain, and a question-free tombstone preserves any retained child link.';
+      onThreadChanged();
+    } catch (caught) {
+      managementStatus = caught instanceof Error ? caught.message : 'The thread was not deleted.';
+    } finally {
+      managing = false;
     }
   }
 </script>
@@ -333,6 +418,15 @@
       </button>
     </div>
     <div class="thread-actions">
+      {#if currentThread}
+        <button type="button" disabled={busy || managing} onclick={() => void toggleFollowing()}>
+          {#if currentThread.followedAt}
+            <BellOff aria-hidden="true" size={15} /> Unfollow
+          {:else}
+            <Bell aria-hidden="true" size={15} /> Follow updates
+          {/if}
+        </button>
+      {/if}
       <button type="button" disabled={busy} onclick={onUpdate}>
         <RefreshCw aria-hidden="true" size={15} />
         {busy ? 'Updating…' : 'Update research'}
@@ -369,9 +463,35 @@
           <small>Shareable copies; your local workspace remains the complete record.</small>
         </div>
       </details>
+      {#if currentThread}
+        <details class="manage-menu">
+          <summary
+            ><Eraser aria-hidden="true" size={15} /> Privacy <ChevronDown
+              aria-hidden="true"
+              size={14}
+            /></summary
+          >
+          <div aria-label="Research thread privacy controls">
+            <button
+              type="button"
+              disabled={managing || Boolean(currentThread.redactedAt)}
+              onclick={() => void redactQuestion()}
+            >
+              <Eraser aria-hidden="true" size={15} />
+              {currentThread.redactedAt ? 'Question redacted' : 'Redact question'}
+            </button>
+            <button type="button" disabled={managing} onclick={() => void deleteThread()}>
+              <Trash2 aria-hidden="true" size={15} /> Delete thread ledger
+            </button>
+            <small>Saved sources, notes, the answer, and previous exports remain independent.</small
+            >
+          </div>
+        </details>
+      {/if}
     </div>
   </div>
   <p class="export-status" role="status" aria-live="polite">{exportStatus}</p>
+  <p class="management-status" role="status" aria-live="polite">{managementStatus}</p>
 
   {#if view === 'thread'}
     <nav class="thread-index" aria-label="In this thread">
@@ -652,6 +772,7 @@
   .document-view p,
   .document-view h3,
   .export-status,
+  .management-status,
   .update-note {
     margin: 0;
   }
@@ -695,6 +816,7 @@
   .thread-header h2 {
     max-width: 22ch;
     margin-block-start: var(--space-xs);
+    scroll-margin-block-start: var(--space-sm);
     overflow-wrap: anywhere;
     font-family: var(--font-display);
     font-size: var(--text-xl);
@@ -754,6 +876,7 @@
 
   button,
   .export-menu summary,
+  .manage-menu summary,
   .source-links a {
     min-height: 2.75rem;
     border: var(--rule-hair) solid var(--color-border);
@@ -766,6 +889,7 @@
 
   button,
   .export-menu summary,
+  .manage-menu summary,
   .source-links a {
     display: inline-flex;
     align-items: center;
@@ -777,6 +901,7 @@
 
   button:active,
   .export-menu summary:active,
+  .manage-menu summary:active,
   .source-links a:active {
     transform: translateY(1px);
   }
@@ -803,23 +928,28 @@
     color: var(--color-paper);
   }
 
-  .export-menu {
+  .export-menu,
+  .manage-menu {
     position: relative;
   }
 
-  .export-menu summary {
+  .export-menu summary,
+  .manage-menu summary {
     list-style: none;
   }
 
-  .export-menu summary::-webkit-details-marker {
+  .export-menu summary::-webkit-details-marker,
+  .manage-menu summary::-webkit-details-marker {
     display: none;
   }
 
-  .export-menu[open] summary {
+  .export-menu[open] summary,
+  .manage-menu[open] summary {
     background: var(--color-paper-2);
   }
 
-  .export-menu > div {
+  .export-menu > div,
+  .manage-menu > div {
     position: absolute;
     z-index: var(--z-dropdown);
     inset-block-start: calc(100% + var(--space-xs));
@@ -831,12 +961,14 @@
     background: var(--color-paper);
   }
 
-  .export-menu > div button {
+  .export-menu > div button,
+  .manage-menu > div button {
     justify-content: flex-start;
     border-color: transparent;
   }
 
-  .export-menu > div small {
+  .export-menu > div small,
+  .manage-menu > div small {
     max-width: 20ch;
     padding: var(--space-xs) var(--space-sm);
     border-top: var(--rule-hair) solid var(--color-rule);
@@ -844,7 +976,8 @@
     line-height: 1.35;
   }
 
-  .export-status {
+  .export-status,
+  .management-status {
     min-height: 1.5em;
     color: var(--color-muted);
     font-size: var(--text-sm);

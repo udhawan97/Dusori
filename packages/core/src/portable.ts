@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 
 import type { StorageAdapter } from './adapters.js';
 import { ProposalLedgerSchema } from './conflict/proposal-ledger.js';
+import { ResearchFileSchema } from './research/research-file.js';
 import { SourceManifestSchema, TopicStateSchema, WorkspaceSchema } from './schemas/workspace.js';
 import { normalizeWorkspacePath, topicRoot } from './workspace/paths.js';
 
@@ -118,6 +119,16 @@ function validatePreparedFiles(files: readonly WorkspaceImportFile[]): Workspace
           : undefined;
       if (sourcePath && !byPath.has(sourcePath)) {
         throw new Error(`The import is missing a recorded source file: ${sourcePath}`);
+      }
+    }
+
+    const researchPath = `${root}/research.json`;
+    if (byPath.has(researchPath)) {
+      const researchResult = ResearchFileSchema.safeParse(
+        parseJsonFile(byPath, researchPath, 'research activity'),
+      );
+      if (!researchResult.success || researchResult.data.topicSlug !== topic.slug) {
+        throw new Error(`The import's research activity is invalid: ${topic.slug}`);
       }
     }
 

@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.14.0 release contract plus unreleased thread foundation · **Date:** 2026-08-26
+**Status:** v0.14.0 release contract plus unreleased P0a–P0b thread foundation · **Date:** 2026-08-28
 
 ## Product promise
 
@@ -113,12 +113,28 @@ carry a parent ID, while a refresh of the same question reuses its thread. Legac
 invented identity and remain readable as earlier research.
 
 The same machine file holds an allowlisted typed activity trail for question/follow-up creation,
-completed lookups, source saves and reads, source-linked quotes, synthesis writes/proposals, and
-exports. A topic retains at most fifty thread identities and five hundred events within a 256 KiB
-event budget. Compaction removes the oldest non-identity events first and retains the creation event
-for every retained thread. This is bounded research continuity, not a permanent audit ledger.
-Provider outcomes are discovery receipts; only locally read, provenance-bound passages count as
-evidence.
+completed lookups, source saves and reads, source-linked quote or interpretation notes, synthesis
+writes/proposals, and exports. A topic retains at most fifty thread identities and five hundred
+events within a 256 KiB event budget. Compaction removes the oldest non-identity events first and
+retains the creation event for every retained thread. If a retained note replies to pruned activity,
+only that target's event ID, thread ID, timestamp, and removal reason survive as a tombstone. A
+retained child whose parent is deleted or aged out likewise keeps only a question-free thread
+tombstone. A truly absent target is labeled missing instead of silently repaired. This is bounded
+research continuity, not a permanent audit ledger. Provider outcomes are discovery receipts; only
+locally read, provenance-bound passages count as evidence.
+
+Following a thread is an explicit topic-local timestamp. The Research Updates inbox is a read-only
+workspace projection of post-follow events from those local files. It has no unread/read receipt,
+network call, provider-consent mutation, or refresh side effect. A source-linked note may reply to
+the latest saved/read event for that source; the relationship supplies context and never promotes
+learner interpretation into evidence.
+
+Question redaction replaces the user-facing question and provider-expanded query in the selected
+thread's machine ledger while retaining thread identity, artifact links, and a redaction event.
+Thread deletion removes that identity's runs and owned events and leaves only a minimal tombstone
+when another retained thread requires the parent target. Neither action deletes saved sources,
+notes, or `Synthesis.md`. Previously exported workspace archives and research packets are
+independent copies and cannot be retroactively redacted or deleted.
 
 The companion fetches an exact URL only after host confirmation. Each address and redirect is checked against private/reserved ranges, redirects and time are capped, response size is capped at 4 MiB, and the extracted replacement is previewed before a guarded write.
 
@@ -189,7 +205,7 @@ v0.14.0 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
 - Apple notarization or Microsoft Authenticode signing for v0.14.0
-- Followed-thread inbox, reply events, or thread deletion/redaction and retention tombstones
+- Cloud or multi-user activity delivery, notifications, mentions, reactions, or unread/read state
 
 ## Trust model
 

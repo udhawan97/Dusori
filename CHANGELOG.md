@@ -18,10 +18,19 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
   user-initiated Print/PDF research packet. Manifests record exact local content hashes, omitted
   paths, thread identity, evidence counts, and non-round-trip semantics.
 
-### Scope boundary
+### Local followed-thread updates
 
-- A followed-threads inbox, event deletion/redaction, reply events, and retention tombstones remain
-  unbuilt until the new event semantics have dedicated migration and archive round-trip proof.
+- Added explicit local follow/unfollow controls and a workspace-wide Updates inbox derived only
+  from saved thread activity. Following, viewing, and exporting do not contact providers, grant
+  consent, or enable stale refresh.
+- Added source-linked note events that reply to the source activity they interpret while keeping
+  learner notes separate from eligible quoted evidence.
+- Added additive migration coverage, bounded compaction, missing-target states, minimal thread and
+  event tombstones, research-file archive validation, and exact workspace ZIP round-trip tests.
+- Added question redaction and thread-ledger deletion controls. Redaction removes the stored
+  question and provider query; deletion removes owned runs and events. Saved sources, notes, and
+  `Synthesis.md` remain, and the UI warns that previously exported archives and packets are
+  independent copies that cannot be changed retroactively.
 
 ## [0.14.0] - 2026-08-24
 

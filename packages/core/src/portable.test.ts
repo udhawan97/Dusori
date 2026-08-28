@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 
-import { exportTopic, prepareWorkspaceImport } from './portable.js';
+import { exportTopic, exportWorkspace, prepareWorkspaceImport } from './portable.js';
 import { MemoryStorageAdapter } from './testing/memory-storage.js';
 import { createTopic, createWorkspace } from './workspace/create.js';
 
@@ -84,6 +84,19 @@ describe('exportTopic', () => {
 });
 
 describe('workspace archive resource limits', () => {
+  it('rejects an invalid additive research activity file during archive preflight', async () => {
+    const storage = await twoTopicWorkspace();
+    await storage.write(
+      'Topics/cloud-native/research.json',
+      '{"schemaVersion":1,"topicSlug":"another-topic","dismissed":[]}',
+      { expectedHash: null },
+    );
+
+    await expect(prepareWorkspaceImport(await exportWorkspace(storage))).rejects.toThrow(
+      "The import's research activity is invalid: cloud-native",
+    );
+  });
+
   it('translates a corrupt or mislabeled ZIP into product recovery guidance', async () => {
     await expect(prepareWorkspaceImport(new TextEncoder().encode('not a zip'))).rejects.toThrow(
       'This file is not a valid Dusori workspace export. Choose a .zip exported by Dusori and try again.',

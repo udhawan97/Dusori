@@ -5,6 +5,8 @@ import { sha256 } from '../hash.js';
 export const maxResearchThreads = 50;
 export const maxResearchThreadEvents = 500;
 export const maxResearchThreadEventBytes = 256 * 1024;
+export const maxResearchThreadTombstones = 100;
+export const maxResearchThreadEventTombstones = 500;
 
 export const ResearchThreadIdSchema = z.string().regex(/^thread-[a-f0-9]{24}$/u);
 export const ResearchThreadEventIdSchema = z.string().regex(/^event-[a-f0-9]{24}$/u);
@@ -17,6 +19,25 @@ export const ResearchThreadSchema = z
     angleId: z.string().min(1).max(40).optional(),
     outputStyle: z.enum(['brief', 'comparison', 'timeline', 'study-guide']),
     createdAt: z.string().datetime(),
+    followedAt: z.string().datetime().optional(),
+    redactedAt: z.string().datetime().optional(),
+  })
+  .passthrough();
+
+export const ResearchThreadTombstoneSchema = z
+  .object({
+    threadId: ResearchThreadIdSchema,
+    at: z.string().datetime(),
+    reason: z.enum(['deleted', 'retention']),
+  })
+  .passthrough();
+
+export const ResearchThreadEventTombstoneSchema = z
+  .object({
+    eventId: ResearchThreadEventIdSchema,
+    threadId: ResearchThreadIdSchema,
+    at: z.string().datetime(),
+    reason: z.enum(['compacted', 'thread-deleted']),
   })
   .passthrough();
 
@@ -72,6 +93,18 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
     quoteSha256: z.string().regex(/^[a-f0-9]{64}$/u),
   }).passthrough(),
   ResearchThreadEventBaseSchema.extend({
+    type: z.literal('note-added'),
+    notePath: z.string().min(1).max(640),
+    noteSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+    sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+    sourcePath: z.string().min(1).max(640),
+    quoteSha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    replyToEventId: ResearchThreadEventIdSchema.optional(),
+  }).passthrough(),
+  ResearchThreadEventBaseSchema.extend({
     type: z.literal('synthesis-written'),
     runAt: z.string().datetime(),
     artifactPath: z.string().min(1).max(640),
@@ -94,10 +127,15 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
     format: z.enum(['html', 'markdown', 'pdf']),
     manifestSha256: z.string().regex(/^[a-f0-9]{64}$/u),
   }).passthrough(),
+  ResearchThreadEventBaseSchema.extend({
+    type: z.literal('thread-redacted'),
+  }).passthrough(),
 ]);
 
 export type ResearchThread = z.infer<typeof ResearchThreadSchema>;
+export type ResearchThreadTombstone = z.infer<typeof ResearchThreadTombstoneSchema>;
 export type ResearchThreadEvent = z.infer<typeof ResearchThreadEventSchema>;
+export type ResearchThreadEventTombstone = z.infer<typeof ResearchThreadEventTombstoneSchema>;
 
 export type ResearchThreadEventInput =
   | {
@@ -119,6 +157,15 @@ export type ResearchThreadEventInput =
       sourcePath: string;
       notePath: string;
       quoteSha256: string;
+    }
+  | {
+      type: 'note-added';
+      notePath: string;
+      noteSha256: string;
+      sourceSha256: string;
+      sourcePath: string;
+      quoteSha256?: string;
+      replyToEventId?: string;
     }
   | {
       type: 'export-created';
@@ -156,7 +203,8 @@ export type ResearchThreadEventDetails =
       runAt: string;
       artifactPath?: string;
       artifactSha256?: string;
-    };
+    }
+  | { type: 'thread-redacted' };
 
 export async function researchThreadId(
   topicSlug: string,
@@ -178,18 +226,58 @@ function encodedBytes(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
+function replyTarget(event: ResearchThreadEvent): string | undefined {
+  return event.type === 'note-added' ? event.replyToEventId : undefined;
+}
+
+export type ResearchThreadTargetState = 'available' | 'missing' | 'tombstone';
+
+export function researchThreadParentState(
+  thread: ResearchThread,
+  liveThreadIds: ReadonlySet<string>,
+  tombstones: readonly ResearchThreadTombstone[],
+): ResearchThreadTargetState | undefined {
+  if (!thread.parentThreadId) return undefined;
+  if (liveThreadIds.has(thread.parentThreadId)) return 'available';
+  return tombstones.some((item) => item.threadId === thread.parentThreadId)
+    ? 'tombstone'
+    : 'missing';
+}
+
+export function researchThreadReplyState(
+  event: ResearchThreadEvent,
+  liveEventIds: ReadonlySet<string>,
+  tombstones: readonly ResearchThreadEventTombstone[],
+): ResearchThreadTargetState | undefined {
+  const target = replyTarget(event);
+  if (!target) return undefined;
+  if (liveEventIds.has(target)) return 'available';
+  return tombstones.some((item) => item.eventId === target) ? 'tombstone' : 'missing';
+}
+
+export interface BoundedResearchThreadActivity {
+  events: ResearchThreadEvent[];
+  eventTombstones: ResearchThreadEventTombstone[];
+}
+
 /**
- * Keeps the trail finite without dropping the identity event for a retained thread. P0 events do
- * not reference one another, so removing the oldest non-identity event cannot create a dangling
- * reply. Cross-event tombstones remain a P0b concern before reply links ship.
+ * Keeps the trail finite without dropping retained thread identities. If compaction or thread
+ * deletion removes an event that a retained note replies to, a payload-free tombstone preserves
+ * the distinction between an intentionally removed target and a broken link.
  */
-export function boundResearchThreadEvents(
+export function boundResearchThreadActivity(
   input: readonly ResearchThreadEvent[],
   retainedThreadIds: ReadonlySet<string>,
-): ResearchThreadEvent[] {
+  existingTombstones: readonly ResearchThreadEventTombstone[] = [],
+  removedReason: ResearchThreadEventTombstone['reason'] = 'compacted',
+): BoundedResearchThreadActivity {
   const seen = new Set<string>();
+  const removed = new Map<string, ResearchThreadEvent>();
   const events = input.filter((event) => {
-    if (!retainedThreadIds.has(event.threadId) || seen.has(event.eventId)) return false;
+    if (!retainedThreadIds.has(event.threadId) || seen.has(event.eventId)) {
+      removed.set(event.eventId, event);
+      return false;
+    }
     seen.add(event.eventId);
     return true;
   });
@@ -202,7 +290,42 @@ export function boundResearchThreadEvents(
       (event) => event.type !== 'question-created' && event.type !== 'follow-up-created',
     );
     if (removable < 0) break;
-    events.splice(removable, 1);
+    const [event] = events.splice(removable, 1);
+    if (event) removed.set(event.eventId, event);
   }
-  return events;
+
+  const liveIds = new Set(events.map((event) => event.eventId));
+  const oldTombstones = new Map(existingTombstones.map((item) => [item.eventId, item]));
+  const referencedIds = new Set(
+    events.map(replyTarget).filter((eventId): eventId is string => Boolean(eventId)),
+  );
+  const eventTombstones: ResearchThreadEventTombstone[] = [];
+  for (const eventId of referencedIds) {
+    if (liveIds.has(eventId)) continue;
+    const prior = oldTombstones.get(eventId);
+    const pruned = removed.get(eventId);
+    if (prior) eventTombstones.push(prior);
+    else if (pruned) {
+      eventTombstones.push(
+        ResearchThreadEventTombstoneSchema.parse({
+          at: pruned.at,
+          eventId: pruned.eventId,
+          reason: removedReason,
+          threadId: pruned.threadId,
+        }),
+      );
+    }
+  }
+
+  return {
+    events,
+    eventTombstones: eventTombstones.slice(-maxResearchThreadEventTombstones),
+  };
+}
+
+export function boundResearchThreadEvents(
+  input: readonly ResearchThreadEvent[],
+  retainedThreadIds: ReadonlySet<string>,
+): ResearchThreadEvent[] {
+  return boundResearchThreadActivity(input, retainedThreadIds).events;
 }

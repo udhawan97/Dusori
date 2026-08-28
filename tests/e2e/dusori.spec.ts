@@ -1753,6 +1753,10 @@ test('Research Desk groups provider consent and builds a durable source-backed b
   await expect(thread.getByRole('list', { name: 'Typed thread activity' })).toContainText(
     'Answer written',
   );
+  await thread.getByRole('button', { name: 'Follow updates' }).click();
+  const updatesInbox = page.getByRole('region', { name: 'Followed research' });
+  await expect(updatesInbox).toContainText('1 followed');
+  await expect(updatesInbox).toContainText('no newer local activity yet');
   for (const [label, target] of [
     ['Receipt', '#thread-receipt'],
     ['Sources', '#thread-sources'],
@@ -1788,6 +1792,7 @@ test('Research Desk groups provider consent and builds a durable source-backed b
     'dusori-research-ai-fundamentals.manifest.json',
   );
   await expect(thread).toContainText('Markdown downloaded.');
+  await expect(updatesInbox).toContainText('MARKDOWN export created');
 
   const htmlDownload = page.waitForEvent('download', (download) =>
     download.suggestedFilename().endsWith('.html'),
@@ -1912,6 +1917,35 @@ test('Research Desk groups provider consent and builds a durable source-backed b
     }
   }
   await expectNoSeriousA11yViolations(page);
+
+  await thread.getByText('Privacy', { exact: true }).click();
+  page.once('dialog', (dialog) => dialog.accept());
+  await thread.getByRole('button', { name: 'Redact question' }).click();
+  await expect(thread).toContainText('Question redacted from the local ledger');
+  const redactedResearch = await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json');
+  expect(redactedResearch).not.toContain('"questionText": "AI Fundamentals"');
+  expect(redactedResearch).toContain('"type": "thread-redacted"');
+  expect(await readWorkspaceFile(page, 'Topics/ai-fundamentals/Synthesis.md')).toContain(
+    'AI fundamentals',
+  );
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await thread.getByRole('button', { name: 'Delete thread ledger' }).click();
+  await expect(thread).toContainText('Thread ledger deleted');
+  const deletedResearch = JSON.parse(
+    await readWorkspaceFile(page, 'Topics/ai-fundamentals/research.json'),
+  ) as {
+    events?: unknown[];
+    runs?: unknown[];
+    threadTombstones?: Array<{ reason: string }>;
+    threads?: unknown[];
+  };
+  expect(deletedResearch.threads).toEqual([]);
+  expect(deletedResearch.runs).toEqual([]);
+  expect(deletedResearch.events).toEqual([]);
+  expect(deletedResearch.threadTombstones).toContainEqual(
+    expect.objectContaining({ reason: 'deleted' }),
+  );
 });
 
 test('provider recovery preserves the question and returns without making a request', async ({
