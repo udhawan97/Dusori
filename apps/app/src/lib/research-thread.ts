@@ -2,6 +2,7 @@ import type {
   ResearchOutputStyle,
   ResearchRunRecord,
   ResearchThread,
+  ResearchThreadEvent,
   SourceRecord,
   StorageAdapter,
 } from '@dusori/core';
@@ -193,6 +194,48 @@ export function researchAnswerRun(
   // but once any explicit outcome exists, fail closed instead of guessing which run owns the file.
   if (runs.some((run) => run.synthesisOutcome !== undefined)) return undefined;
   return [...runs].reverse().find(researchRunHasResults) ?? runs.at(-1);
+}
+
+/** Monotonic cursor used to choose between two browser-storage observations of one ledger. */
+export function researchSnapshotCursor(
+  research: {
+    events?: Array<{ at: string }>;
+    lastRunAt?: string;
+    runs?: Array<{ at: string }>;
+    synthesisRunAt?: string;
+  } | null,
+): string {
+  if (!research) return '';
+  return (
+    [
+      research.lastRunAt,
+      research.synthesisRunAt,
+      research.runs?.at(-1)?.at,
+      ...(research.events?.map((event) => event.at) ?? []),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1) ?? ''
+  );
+}
+
+/**
+ * A typed synthesis event is an optional freshness witness. Missing legacy or compacted events do
+ * not invalidate a workspace, but a recorded hash that disagrees with Synthesis.md is stale.
+ */
+export function researchSynthesisArtifactIsCurrent(
+  events: ResearchThreadEvent[],
+  synthesisRunAt: string | undefined,
+  synthesisHash: string | undefined,
+): boolean {
+  if (!synthesisRunAt || !synthesisHash) return true;
+  const event = [...events]
+    .reverse()
+    .find(
+      (candidate): candidate is Extract<ResearchThreadEvent, { type: 'synthesis-written' }> =>
+        candidate.type === 'synthesis-written' && candidate.runAt === synthesisRunAt,
+    );
+  return !event?.artifactSha256 || event.artifactSha256 === synthesisHash;
 }
 
 function proposedRunAfterAnswer(

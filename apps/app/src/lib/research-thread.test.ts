@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ResearchRunRecord, SourceRecord, StorageAdapter } from '@dusori/core';
+import type {
+  ResearchRunRecord,
+  ResearchThreadEvent,
+  SourceRecord,
+  StorageAdapter,
+} from '@dusori/core';
 
 import {
   buildResearchThreadExportBundle,
@@ -9,6 +14,8 @@ import {
   hasLegacyReferenceClaims,
   orderedResearchRuns,
   researchAnswerRun,
+  researchSnapshotCursor,
+  researchSynthesisArtifactIsCurrent,
   researchSourceState,
   researchThreadPreview,
   researchThreadFilename,
@@ -72,6 +79,38 @@ const input = {
 };
 
 describe('research thread exports', () => {
+  it('detects a research snapshot that trails the synthesis artifact it names', () => {
+    const event: ResearchThreadEvent = {
+      artifactPath: 'Topics/research-systems/Synthesis.md',
+      artifactSha256: 'b'.repeat(64),
+      at: '2026-08-25T18:35:00.000Z',
+      eventId: `event-${'2'.repeat(24)}`,
+      runAt: run.at,
+      threadId,
+      type: 'synthesis-written',
+    };
+
+    expect(researchSynthesisArtifactIsCurrent([event], run.at, 'c'.repeat(64))).toBe(false);
+    expect(researchSynthesisArtifactIsCurrent([event], run.at, 'b'.repeat(64))).toBe(true);
+    expect(researchSynthesisArtifactIsCurrent([], run.at, 'c'.repeat(64))).toBe(true);
+  });
+
+  it('orders browser research snapshots by their newest durable activity', () => {
+    const preceding = {
+      events: [{ at: '2026-08-25T18:35:00.000Z' }],
+      lastRunAt: '2026-08-25T18:34:00.000Z',
+    };
+    const current = {
+      events: [{ at: '2026-08-25T18:40:00.000Z' }],
+      lastRunAt: '2026-08-25T18:39:00.000Z',
+    };
+
+    expect(researchSnapshotCursor(current)).toBe('2026-08-25T18:40:00.000Z');
+    expect(researchSnapshotCursor(current).localeCompare(researchSnapshotCursor(preceding))).toBe(
+      1,
+    );
+  });
+
   it('builds a separate manifest from exact local hashes and marks missing files incomplete', async () => {
     const localSource = source({ path: 'Topics/research-systems/Sources/items/thread.md' });
     const stored = new Map([

@@ -47,7 +47,11 @@
   import { denyConsent, grantConsent, hasConsent, readConsent } from '$lib/consent';
   import { openExternalFromDesktop } from '$lib/open-external';
   import { createAiSynthesisOptions } from '$lib/research-synthesis';
-  import { hasLegacyReferenceClaims } from '$lib/research-thread';
+  import {
+    hasLegacyReferenceClaims,
+    researchSnapshotCursor,
+    researchSynthesisArtifactIsCurrent,
+  } from '$lib/research-thread';
   import MarkdownView from './MarkdownView.svelte';
   import ResearchThread from './ResearchThread.svelte';
 
@@ -313,14 +317,45 @@
       : 'Saved text is ready to inspect.';
   }
 
+  async function readResultSnapshot() {
+    const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
+    const [manifest, research, synthesis] = await Promise.all([
+      readSourceManifest(storage, topicSlug),
+      readResearchFile(storage, topicSlug),
+      storage.read(synthesisPath),
+    ]);
+    return { manifest, research, synthesis };
+  }
+
   async function restoreResultState(): Promise<boolean> {
     try {
       const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
-      const [manifest, research, synthesis] = await Promise.all([
-        readSourceManifest(storage, topicSlug),
-        readResearchFile(storage, topicSlug),
-        storage.read(synthesisPath),
-      ]);
+      let snapshot = await readResultSnapshot();
+      if (storage.kind === 'opfs') {
+        // Chromium can expose one preceding snapshot while a page is reopening the OPFS tree.
+        // Compare complete result bundles and keep the one with the newest typed activity.
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 32));
+        const next = await readResultSnapshot();
+        if (researchSnapshotCursor(next.research) >= researchSnapshotCursor(snapshot.research)) {
+          snapshot = next;
+        }
+        if (
+          !researchSynthesisArtifactIsCurrent(
+            snapshot.research?.events ?? [],
+            snapshot.research?.synthesisRunAt,
+            snapshot.synthesis?.hash,
+          )
+        ) {
+          await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 64));
+          const reconciled = await readResultSnapshot();
+          if (
+            researchSnapshotCursor(reconciled.research) >= researchSnapshotCursor(snapshot.research)
+          ) {
+            snapshot = reconciled;
+          }
+        }
+      }
+      const { manifest, research, synthesis } = snapshot;
       savedSources = manifest.sources;
       readCount = manifest.sources.filter((source) => evidenceClaims(source).length > 0).length;
       claimCount = manifest.sources.reduce(

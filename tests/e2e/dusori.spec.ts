@@ -1107,9 +1107,9 @@ test('a workspace can grow past its first topic', async ({ page }) => {
   await page.getByLabel('Topic name').fill('Distributed Systems Consensus Protocols in Practice');
   await page.getByRole('button', { name: 'Create topic' }).click();
   const providerChoices = page.getByRole('dialog', { name: 'Choose where this question may go.' });
-  if (await providerChoices.isVisible()) {
-    await providerChoices.getByRole('button', { name: 'Decide later' }).click();
-  }
+  await expect(providerChoices).toBeVisible();
+  await providerChoices.getByRole('button', { name: 'Decide later' }).click();
+  await expect(providerChoices).toBeHidden();
 
   const rail = page.getByRole('navigation', { name: 'Dusori Research Desk' });
   await expect(rail.getByRole('button', { name: 'AI Fundamentals' })).toBeVisible();
