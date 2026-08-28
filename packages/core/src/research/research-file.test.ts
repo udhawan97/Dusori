@@ -37,38 +37,6 @@ function run(overrides: Partial<ResearchRunInput> = {}): ResearchRunInput {
 }
 
 describe('research run ledger', () => {
-  it('reconciles a preceding research snapshot after the storage task settles', async () => {
-    const storage = await topicStorage();
-    await recordResearchRun(storage, 'spaced-repetition-learning', run(), now);
-    const path = 'Topics/spaced-repetition-learning/research.json';
-    const preceding = await storage.read(path);
-    expect(preceding).not.toBeNull();
-    const currentQuestion = 'Which retrieval interval should I test next?';
-    await recordResearchRun(
-      storage,
-      'spaced-repetition-learning',
-      run({ questionText: currentQuestion, searchText: currentQuestion }),
-      new Date('2026-08-02T11:00:00.000Z'),
-    );
-    const readCurrent = storage.read.bind(storage);
-    let precedingWindow = true;
-    let releaseScheduled = false;
-    storage.read = async (candidatePath) => {
-      if (candidatePath === path && precedingWindow) {
-        if (!releaseScheduled) {
-          releaseScheduled = true;
-          globalThis.setTimeout(() => (precedingWindow = false), 0);
-        }
-        return preceding;
-      }
-      return readCurrent(candidatePath);
-    };
-
-    const file = await readResearchFile(storage, 'spaced-repetition-learning', now);
-
-    expect(file?.runs?.at(-1)?.questionText).toBe(currentQuestion);
-  });
-
   it('reads the additive P0a event model without inventing P0b fields', async () => {
     const storage = await topicStorage();
     const threadId = `thread-${'a'.repeat(24)}`;

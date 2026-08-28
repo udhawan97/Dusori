@@ -151,7 +151,18 @@ export class OpfsStorageAdapter implements StorageAdapter {
     const writable = await handle.createWritable();
     await writable.write(content);
     await writable.close();
-    return (await this.read(normalized))!;
+    const writtenHash = await sha256(content);
+    // Closing an OPFS writer is not enough on every Chromium runner: getFile() may briefly keep
+    // returning the preceding snapshot. A successful write must not resolve until the adapter can
+    // observe the exact bytes it was asked to persist.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const written = await this.read(normalized);
+      if (written?.hash === writtenHash) return written;
+      if (attempt < 2) {
+        await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 16 * (attempt + 1)));
+      }
+    }
+    throw new Error(`Written file did not settle in private browser storage: ${normalized}`);
   }
 }
 

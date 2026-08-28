@@ -4,7 +4,9 @@ import { OpfsStorageAdapter } from './index.js';
 
 function adapterWithSnapshots(snapshots: Array<Error | File>): {
   adapter: OpfsStorageAdapter;
+  close: ReturnType<typeof vi.fn>;
   getFile: ReturnType<typeof vi.fn>;
+  write: ReturnType<typeof vi.fn>;
 } {
   const getFile = vi.fn();
   for (const snapshot of snapshots) {
@@ -13,10 +15,13 @@ function adapterWithSnapshots(snapshots: Array<Error | File>): {
   }
   const fallback = snapshots.findLast((snapshot): snapshot is File => snapshot instanceof File);
   getFile.mockResolvedValue(fallback);
+  const write = vi.fn().mockResolvedValue(undefined);
+  const close = vi.fn().mockResolvedValue(undefined);
+  const createWritable = vi.fn().mockResolvedValue({ close, write });
   const root = {
-    getFileHandle: vi.fn().mockResolvedValue({ getFile }),
+    getFileHandle: vi.fn().mockResolvedValue({ createWritable, getFile }),
   } as unknown as FileSystemDirectoryHandle;
-  return { adapter: new OpfsStorageAdapter(root), getFile };
+  return { adapter: new OpfsStorageAdapter(root), close, getFile, write };
 }
 
 describe('OpfsStorageAdapter snapshot reads', () => {
@@ -65,5 +70,26 @@ describe('OpfsStorageAdapter snapshot reads', () => {
       content: 'current ledger',
       modifiedAt: 20,
     });
+  });
+
+  it('does not resolve a write until the newly written content is observable', async () => {
+    const preceding = new File(['preceding ledger'], 'research.json', { lastModified: 10 });
+    const current = new File(['current ledger'], 'research.json', { lastModified: 20 });
+    const { adapter, close, getFile, write } = adapterWithSnapshots([
+      preceding,
+      preceding,
+      preceding,
+      preceding,
+      current,
+      current,
+    ]);
+
+    await expect(adapter.write('research.json', 'current ledger')).resolves.toMatchObject({
+      content: 'current ledger',
+      modifiedAt: 20,
+    });
+    expect(write).toHaveBeenCalledWith('current ledger');
+    expect(close).toHaveBeenCalledOnce();
+    expect(getFile).toHaveBeenCalledTimes(6);
   });
 });
