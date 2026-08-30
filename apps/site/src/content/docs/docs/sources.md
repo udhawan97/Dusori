@@ -83,6 +83,12 @@ existing consent scope. Research packet manifests carry those bounded receipts. 
 contact DOI, ISBN, or literature resolvers during save or export; a future resolver would require a
 separate disclosed provider action and would cache that consent provenance.
 
+Choose **Edit citation** on a saved source to replace its normalized identifiers or optional journal
+or collection name. Enter one `scheme: value` per line. Dusori validates the complete edit locally,
+preserves earlier provenance, and appends a bounded manual-correction receipt through the guarded
+manifest write. The action does not change source text, evidence eligibility, read state, or brief
+freshness, and it makes no resolver request.
+
 ## Research providers
 
 Eleven keyless public providers work without the companion: Microsoft Learn, English Wikipedia, Hacker News, GitHub, Stack Overflow, Europe PMC, OpenAlex, Library of Congress, Crossref, Open Library, and npm. Europe PMC is routed only for biomedical terms and can save a returned abstract as readable evidence. Library of Congress is routed only for narrow cultural-heritage terms and saves digitized-item catalog records as browser references. Broad questions avoid specialist catalogs unless their terms are relevant. Allowed providers run together, and one timeout does not discard another provider’s useful results.

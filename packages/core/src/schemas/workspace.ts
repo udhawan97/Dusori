@@ -81,6 +81,9 @@ export const CitationProvenanceSchema = z
     }
   });
 
+export const citationOriginProvenanceLimit = 8;
+export const citationManualProvenanceLimit = 8;
+
 export const CitationMetadataSchema = z
   .object({
     schemaVersion: z.literal('dusori-citation-v1'),
@@ -91,7 +94,27 @@ export const CitationMetadataSchema = z
       .string()
       .regex(/^[a-z][a-z0-9-]{0,31}$/u)
       .optional(),
-    provenance: z.array(CitationProvenanceSchema).min(1).max(8),
+    provenance: z
+      .array(CitationProvenanceSchema)
+      .min(1)
+      .max(citationOriginProvenanceLimit + citationManualProvenanceLimit)
+      .superRefine((receipts, context) => {
+        const manualCount = receipts.filter(
+          (receipt) => receipt.method === 'manual-correction',
+        ).length;
+        if (manualCount > citationManualProvenanceLimit) {
+          context.addIssue({
+            code: 'custom',
+            message: `Citation metadata keeps at most ${citationManualProvenanceLimit} manual correction receipts.`,
+          });
+        }
+        if (receipts.length - manualCount > citationOriginProvenanceLimit) {
+          context.addIssue({
+            code: 'custom',
+            message: `Citation metadata keeps at most ${citationOriginProvenanceLimit} origin receipts.`,
+          });
+        }
+      }),
   })
   .passthrough();
 

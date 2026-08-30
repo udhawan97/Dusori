@@ -7,7 +7,7 @@ import {
   type WriteOptions,
 } from '../adapters.js';
 import { exportWorkspace, importWorkspace } from '../portable.js';
-import { SourceRecordSchema } from '../schemas/workspace.js';
+import { CitationMetadataSchema, SourceRecordSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { updateLogPath } from '../workspace/paths.js';
@@ -18,6 +18,7 @@ import {
   recordSourceFetchFailure,
   removeSourceFromResearch,
   restoreSourceToResearch,
+  updateSourceCitationMetadata,
 } from './import.js';
 
 const now = new Date('2026-07-20T15:30:00.000Z');
@@ -162,6 +163,173 @@ describe('local source library', () => {
       'stored this reference without fetching',
     );
     vi.unstubAllGlobals();
+  });
+
+  it('corrects citation metadata locally without changing source or evidence state', async () => {
+    const storage = await topicStorage();
+    const added = await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Transformers paper',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://arxiv.org/abs/1706.03762',
+      },
+      now,
+    );
+    const sourceBefore = await storage.read(added.path);
+    const manifestBefore = await readSourceManifest(storage, 'ai-fundamentals', now);
+
+    const corrected = await updateSourceCitationMetadata(
+      storage,
+      {
+        containerTitle: '  Advances in Neural Information Processing Systems ',
+        identifierLines: 'doi: 10.5555/ATTENTION.2026\narXiv: 1706.03762v2',
+        sha256: added.record.sha256,
+        topicSlug: 'ai-fundamentals',
+      },
+      new Date('2026-08-30T12:00:00.000Z'),
+    );
+
+    expect(corrected.changed).toBe(true);
+    expect(corrected.record).toMatchObject({
+      sha256: added.record.sha256,
+      citation: {
+        schemaVersion: 'dusori-citation-v1',
+        identifiers: [
+          { scheme: 'doi', value: '10.5555/attention.2026' },
+          { scheme: 'arxiv', value: '1706.03762v2' },
+        ],
+        containerTitle: 'Advances in Neural Information Processing Systems',
+        provenance: [
+          expect.objectContaining({ method: 'source-url' }),
+          expect.objectContaining({ method: 'manual-correction' }),
+        ],
+      },
+    });
+    expect(await storage.read(added.path)).toEqual(sourceBefore);
+    const manifestAfter = await readSourceManifest(storage, 'ai-fundamentals', now);
+    expect(manifestAfter.sources[0]?.sha256).toBe(manifestBefore.sources[0]?.sha256);
+    expect(manifestAfter.sources[0]?.readState).toBe(manifestBefore.sources[0]?.readState);
+    expect(manifestAfter.synthesisStaleAt).toBe(manifestBefore.synthesisStaleAt);
+    expect((await storage.read(corrected.updatePath!))?.content).toContain(
+      'Corrected citation metadata',
+    );
+
+    const manifestFileBeforeNoop = await storage.read(manifestPath);
+    const noop = await updateSourceCitationMetadata(
+      storage,
+      {
+        containerTitle: 'Advances in Neural Information Processing Systems',
+        identifierLines: 'DOI: 10.5555/attention.2026\narxiv: 1706.03762v2',
+        sha256: added.record.sha256,
+        topicSlug: 'ai-fundamentals',
+      },
+      new Date('2026-08-30T13:00:00.000Z'),
+    );
+    expect(noop.changed).toBe(false);
+    expect((await storage.read(manifestPath))?.hash).toBe(manifestFileBeforeNoop?.hash);
+  });
+
+  it('keeps a local citation correction when the same URL is enriched again', async () => {
+    const storage = await topicStorage();
+    const added = await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Transformers paper',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://arxiv.org/abs/1706.03762',
+      },
+      now,
+    );
+    await updateSourceCitationMetadata(
+      storage,
+      {
+        containerTitle: 'Correct journal',
+        identifierLines: 'DOI: 10.5555/attention.2026',
+        sha256: added.record.sha256,
+        topicSlug: 'ai-fundamentals',
+      },
+      new Date('2026-08-30T12:00:00.000Z'),
+    );
+
+    const duplicate = await addSource(
+      storage,
+      {
+        method: 'url',
+        provenance: {
+          citation: CitationMetadataSchema.parse({
+            schemaVersion: 'dusori-citation-v1',
+            identifiers: [{ scheme: 'arxiv', value: '1706.03762' }],
+            containerTitle: 'Provider journal',
+            itemType: 'paper',
+            provenance: [
+              {
+                capturedAt: '2026-08-30T13:00:00.000Z',
+                consentScope: 'arxiv-search',
+                method: 'provider-result',
+                provider: 'arxiv',
+              },
+            ],
+          }),
+        },
+        title: 'Transformers paper',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://arxiv.org/abs/1706.03762',
+      },
+      new Date('2026-08-30T13:00:00.000Z'),
+    );
+
+    expect(duplicate.deduplicated).toBe(true);
+    expect(duplicate.record.citation).toMatchObject({
+      identifiers: [{ scheme: 'doi', value: '10.5555/attention.2026' }],
+      containerTitle: 'Correct journal',
+      itemType: 'paper',
+      provenance: expect.arrayContaining([
+        expect.objectContaining({ method: 'manual-correction' }),
+        expect.objectContaining({ method: 'provider-result', provider: 'arxiv' }),
+      ]),
+    });
+  });
+
+  it('rejects invalid manual citation edits before writing the manifest', async () => {
+    const storage = await topicStorage();
+    const added = await addSource(
+      storage,
+      {
+        method: 'url',
+        title: 'Transformers paper',
+        topicSlug: 'ai-fundamentals',
+        url: 'https://arxiv.org/abs/1706.03762',
+      },
+      now,
+    );
+    const before = await storage.read(manifestPath);
+
+    await expect(
+      updateSourceCitationMetadata(storage, {
+        identifierLines: 'DOI: not-a-doi',
+        sha256: added.record.sha256,
+        topicSlug: 'ai-fundamentals',
+      }),
+    ).rejects.toThrow(/not a valid/iu);
+    expect((await storage.read(manifestPath))?.hash).toBe(before?.hash);
+  });
+
+  it('validates every manual citation field before storage I/O', async () => {
+    const storage = await topicStorage();
+    const read = vi.spyOn(storage, 'read');
+
+    await expect(
+      updateSourceCitationMetadata(storage, {
+        containerTitle: 'x'.repeat(201),
+        identifierLines: 'DOI: 10.5555/attention.2026',
+        sha256: 'a'.repeat(64),
+        topicSlug: 'ai-fundamentals',
+      }),
+    ).rejects.toThrow(/200 characters/iu);
+    expect(read).not.toHaveBeenCalled();
   });
 
   it('stores captured research content and upgrades the same URL without duplicating it', async () => {

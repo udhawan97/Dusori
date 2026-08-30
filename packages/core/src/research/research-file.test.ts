@@ -202,6 +202,17 @@ describe('research run ledger', () => {
       },
       now,
     );
+    await recordResearchThreadEvent(
+      storage,
+      'spaced-repetition-learning',
+      {
+        identifierCount: 2,
+        sourcePath: 'Topics/spaced-repetition-learning/Sources/items/source.md',
+        sourceSha256,
+        type: 'source-citation-corrected',
+      },
+      now,
+    );
     const file = await recordResearchThreadEvent(
       storage,
       'spaced-repetition-learning',
@@ -215,6 +226,7 @@ describe('research run ledger', () => {
       'source-saved',
       'quote-added',
       'source-read',
+      'source-citation-corrected',
       'export-created',
     ]);
   });

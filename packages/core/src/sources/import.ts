@@ -1,5 +1,10 @@
 import { StorageConflictError, type StorageAdapter } from '../adapters.js';
-import { citationMetadataFromKnownValues, mergeCitationMetadata } from '../citations/metadata.js';
+import {
+  citationMetadataFromKnownValues,
+  citationMetadataFromManualCorrection,
+  mergeCitationMetadata,
+  parseCitationIdentifierLines,
+} from '../citations/metadata.js';
 import { appendTopicUpdate } from '../conflict/write-protocol.js';
 import { sha256 } from '../hash.js';
 import {
@@ -73,6 +78,14 @@ export interface RemovedSourceResult {
   retainedPath?: string;
   updatePath?: string;
   /** The removal commit succeeded, but a secondary activity-log write did not. */
+  warning?: string;
+}
+
+export interface UpdatedSourceCitationResult {
+  changed: boolean;
+  record: SourceRecord;
+  updatePath?: string;
+  /** The manifest commit succeeded, but the secondary activity log write did not. */
   warning?: string;
 }
 
@@ -553,6 +566,88 @@ export async function restoreSourceToResearch(
     };
   }
   throw new Error('The source manifest changed repeatedly. Try restoring the source again.');
+}
+
+/**
+ * Replaces learner-editable citation fields through the manifest's existing CAS boundary. The
+ * correction is local metadata only: source bytes, evidence claims, and read state are untouched.
+ */
+export async function updateSourceCitationMetadata(
+  storage: StorageAdapter,
+  input: {
+    containerTitle?: string;
+    identifierLines: string;
+    sha256: string;
+    topicSlug: string;
+  },
+  now = new Date(),
+): Promise<UpdatedSourceCitationResult> {
+  const root = topicRoot(input.topicSlug);
+  const manifestPath = `${root}/Sources/manifest.json`;
+  const identifiers = parseCitationIdentifierLines(input.identifierLines);
+  const validatedCitation = citationMetadataFromManualCorrection(undefined, {
+    capturedAt: now,
+    containerTitle: input.containerTitle,
+    identifiers,
+  });
+  await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const manifestFile = await storage.read(manifestPath);
+    if (!manifestFile) throw new Error(`Missing source manifest: ${manifestPath}`);
+    const manifest = parseManifest(manifestFile.content);
+    const record = manifest.sources.find((source) => source.sha256 === input.sha256);
+    if (!record) throw new Error('This source is no longer in the active research library.');
+    const citation = citationMetadataFromManualCorrection(record.citation, {
+      capturedAt: now,
+      containerTitle: validatedCitation.containerTitle,
+      identifiers: validatedCitation.identifiers,
+    });
+    const editableCurrent = {
+      containerTitle: record.citation?.containerTitle,
+      identifiers: record.citation?.identifiers ?? [],
+    };
+    const editableNext = {
+      containerTitle: citation.containerTitle,
+      identifiers: citation.identifiers,
+    };
+    if (JSON.stringify(editableCurrent) === JSON.stringify(editableNext)) {
+      return { changed: false, record };
+    }
+
+    const nextRecord = SourceRecordSchema.parse({ ...record, citation });
+    const nextManifest = SourceManifestSchema.parse({
+      ...manifest,
+      schemaVersion,
+      sources: manifest.sources.map((source) =>
+        source.sha256 === record.sha256 ? nextRecord : source,
+      ),
+    });
+    try {
+      await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+        expectedHash: manifestFile.hash,
+      });
+    } catch (error) {
+      if (error instanceof StorageConflictError) continue;
+      throw error;
+    }
+
+    let updatePath: string | undefined;
+    let warning: string | undefined;
+    try {
+      updatePath = await appendTopicUpdate(
+        storage,
+        input.topicSlug,
+        `- Corrected citation metadata for **${record.title}** locally (${citation.identifiers.length} ${citation.identifiers.length === 1 ? 'identifier' : 'identifiers'}).`,
+        now,
+      );
+    } catch {
+      warning = 'The citation was corrected, but the activity log could not be updated.';
+    }
+    return { changed: true, record: nextRecord, updatePath, warning };
+  }
+
+  throw new Error('The source manifest changed repeatedly. Try saving the citation again.');
 }
 
 export async function recordSourceFetchFailure(

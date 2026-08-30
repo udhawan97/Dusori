@@ -4,6 +4,30 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-30
+
+### Question-first research and evidence navigation
+
+- Reworked Research around one question-first flow with clearer plan, source-review, evidence, and
+  brief stages while retaining consent-gated provider boundaries and deterministic local fallback.
+- Added stable quote locators with normalized fingerprints, bounded context, Unicode-code-point
+  positions, and retained PDF page identity. Changed or ambiguous text now fails closed instead of
+  silently re-anchoring a quote.
+- Added normalized source, note, and thread tags plus explicit learner-authored `supports`,
+  `challenges`, `updates`, `background-for`, and `follow-up-to` relations without moving or copying
+  artifacts.
+- Added readable Map edge explanations and direct jumps to stored sources, annotations, typed
+  research events, and artifacts.
+
+### Local citation correction
+
+- Added a local editor for normalized DOI, ISBN, arXiv, PMID/PMCID, OpenAlex, and Open Library
+  identifiers plus an optional journal or collection name on saved sources.
+- Preserved prior citation provenance and appended a bounded manual-correction receipt without
+  changing source text, evidence eligibility, read state, or synthesis freshness.
+- Validated every identifier before the guarded manifest write, exposed the correction in typed
+  thread activity, and made no resolver or other network request.
+
 ### Citation-ready source identity
 
 - Added additive `dusori-citation-v1` metadata to saved sources, normalizing already-known DOI,
@@ -40,6 +64,11 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
   question and provider query; deletion removes owned runs and events. Saved sources, notes, and
   `Synthesis.md` remain, and the UI warns that previously exported archives and packets are
   independent copies that cannot be changed retroactively.
+
+### Maintenance
+
+- Updated Astro, Starlight, the Anthropic SDK, emnapi runtime, and tsx from their open maintenance
+  branches, regenerating one current lockfile instead of retaining branch-specific lockfile churn.
 
 ## [0.14.0] - 2026-08-24
 
@@ -448,7 +477,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/udhawan97/Dusori/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/udhawan97/Dusori/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/udhawan97/Dusori/compare/v0.12.4...v0.13.0
 [0.12.4]: https://github.com/udhawan97/Dusori/compare/v0.12.3...v0.12.4

@@ -2,6 +2,7 @@
   import { AlertTriangle, Check, FilePlus2, RotateCcw, Trash2 } from '@lucide/svelte';
   import {
     addSource,
+    citationIdentifierLines,
     citationIdentifierText,
     evidenceClaims,
     lensFor,
@@ -14,6 +15,7 @@
     recordSourceFetchFailure,
     removeSourceFromResearch,
     restoreSourceToResearch,
+    updateSourceCitationMetadata,
     upgradeSource,
     writeTopicSynthesis,
     type CompanionFetchError,
@@ -62,6 +64,10 @@
   let upgradeError = '';
   let removingSha = '';
   let restoringSha = '';
+  let editingCitationSha = '';
+  let savingCitationSha = '';
+  let citationIdentifierDraft = '';
+  let citationContainerDraft = '';
   const refreshGate = createLatestRequestGate();
 
   type SourceGroupId = MissionLens | 'manual';
@@ -332,6 +338,57 @@
       error = caught instanceof Error ? caught.message : 'This source could not be restored.';
     } finally {
       restoringSha = '';
+    }
+  }
+
+  function editCitation(record: SourceRecord): void {
+    clearFeedback();
+    editingCitationSha = record.sha256;
+    citationIdentifierDraft = citationIdentifierLines(record.citation?.identifiers ?? []);
+    citationContainerDraft = record.citation?.containerTitle ?? '';
+  }
+
+  function cancelCitationEdit(): void {
+    editingCitationSha = '';
+    citationIdentifierDraft = '';
+    citationContainerDraft = '';
+  }
+
+  async function saveCitation(record: SourceRecord): Promise<void> {
+    if (savingCitationSha) return;
+    savingCitationSha = record.sha256;
+    clearFeedback();
+    try {
+      const result = await updateSourceCitationMetadata(storage, {
+        containerTitle: citationContainerDraft,
+        identifierLines: citationIdentifierDraft,
+        sha256: record.sha256,
+        topicSlug,
+      });
+      if (!result.changed) {
+        success = 'Those citation details are already current.';
+        cancelCitationEdit();
+        return;
+      }
+      let warning = result.warning ? ` ${result.warning}` : '';
+      try {
+        await recordResearchThreadEvent(storage, topicSlug, {
+          identifierCount: result.record.citation!.identifiers.length,
+          sourcePath: result.record.path,
+          sourceSha256: result.record.sha256,
+          type: 'source-citation-corrected',
+        });
+      } catch {
+        warning += ' The citation was saved, but thread activity could not be updated.';
+      }
+      await refresh().catch(() => undefined);
+      success = `Citation details corrected locally. No lookup was made.${warning}`;
+      cancelCitationEdit();
+      onSourceSaved();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : 'The citation details could not be saved.';
+    } finally {
+      savingCitationSha = '';
     }
   }
 
@@ -711,6 +768,64 @@
                   <p class="source-identifiers" aria-label="Citation identifiers">
                     {source.citation.identifiers.map(citationIdentifierText).join(' · ')}
                   </p>
+                {/if}
+                {#if source.citation?.containerTitle}
+                  <p class="source-container">
+                    <span>Journal or collection</span>
+                    {source.citation.containerTitle}
+                  </p>
+                {/if}
+                {#if editingCitationSha === source.sha256}
+                  <form
+                    class="citation-editor"
+                    aria-label={`Edit citation for ${source.title}`}
+                    onsubmit={(event) => {
+                      event.preventDefault();
+                      void saveCitation(source);
+                    }}
+                  >
+                    <label for={`citation-identifiers-${source.sha256}`}>Citation identifiers</label
+                    >
+                    <textarea
+                      id={`citation-identifiers-${source.sha256}`}
+                      bind:value={citationIdentifierDraft}
+                      maxlength="4000"
+                      required
+                      disabled={Boolean(savingCitationSha)}
+                      aria-describedby={`citation-identifiers-help-${source.sha256}`}></textarea>
+                    <p class="field-help" id={`citation-identifiers-help-${source.sha256}`}>
+                      One per line as scheme: value. DOI, ISBN, arXiv, PMID, PMCID, OpenAlex, and
+                      Open Library are supported. Validation is local; Dusori makes no lookup.
+                    </p>
+                    <label for={`citation-container-${source.sha256}`}
+                      >Journal or collection <span class="optional">optional</span></label
+                    >
+                    <input
+                      id={`citation-container-${source.sha256}`}
+                      bind:value={citationContainerDraft}
+                      maxlength="200"
+                      disabled={Boolean(savingCitationSha)}
+                    />
+                    <div class="citation-actions">
+                      <button type="submit" disabled={Boolean(savingCitationSha)}>
+                        {savingCitationSha === source.sha256 ? 'Saving citation…' : 'Save citation'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(savingCitationSha)}
+                        onclick={cancelCitationEdit}>Cancel</button
+                      >
+                    </div>
+                  </form>
+                {:else}
+                  <button
+                    class="edit-citation"
+                    type="button"
+                    disabled={Boolean(savingCitationSha) || saving}
+                    onclick={() => editCitation(source)}
+                  >
+                    {source.citation ? 'Edit citation' : 'Add citation details'}
+                  </button>
                 {/if}
                 {#if source.fetchMessage}
                   <p class="source-row-error" role="status">{source.fetchMessage}</p>
@@ -1158,7 +1273,21 @@
     font-size: var(--text-xs);
   }
 
+  .source-container {
+    margin: var(--space-2xs) 0;
+    overflow-wrap: anywhere;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  .source-container span {
+    margin-inline-end: var(--space-2xs);
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
   .upgrade-source,
+  .edit-citation,
   .remove-source,
   .removed-sources button {
     display: inline-flex;
@@ -1177,6 +1306,46 @@
     font-size: var(--text-xs);
     font-weight: 700;
     white-space: nowrap;
+  }
+
+  .citation-editor {
+    display: grid;
+    gap: var(--space-xs);
+    margin-block: var(--space-xs);
+    padding: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-rule);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-paper) 92%, var(--color-accent) 8%);
+  }
+
+  .citation-editor label {
+    margin: 0;
+  }
+
+  .citation-editor textarea {
+    min-height: 6.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .citation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .citation-actions button {
+    width: fit-content;
+    min-height: 2.75rem;
+    padding-inline: var(--space-sm);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    font-weight: 700;
   }
 
   .remove-source {

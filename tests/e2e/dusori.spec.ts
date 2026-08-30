@@ -1272,7 +1272,10 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
   await page.getByLabel('Find a saved source').fill('transformer');
   await expect(shelfItems).toHaveCount(1);
   await expect(shelf).toContainText('Transformer notes');
-  await page.getByLabel('Find a saved source').fill('');
+  const sourceSearch = page.getByLabel('Find a saved source');
+  await sourceSearch.fill('');
+  await expect(sourceSearch).toHaveValue('');
+  await expect(page.getByText('3 sources on this shelf.')).toBeVisible();
   await page.getByRole('button', { name: 'References 1' }).click();
   await expect(shelfItems).toHaveCount(1);
   await expect(shelf).toContainText('External reading list');
@@ -1627,6 +1630,24 @@ test('source library stores pasted text and URL references without remote fetchi
     .locator('.source-list [role="listitem"]')
     .filter({ hasText: 'Transformers paper' });
   await expect(transformersSource).toContainText('arXiv: 1706.03762');
+  await transformersSource.getByRole('button', { name: 'Edit citation' }).click();
+  await transformersSource
+    .getByRole('textbox', { name: 'Citation identifiers' })
+    .fill('DOI: 10.5555/ATTENTION.2026\narXiv: 1706.03762v2');
+  await transformersSource
+    .getByLabel('Journal or collection optional')
+    .fill('Advances in Neural Information Processing Systems');
+  await transformersSource.getByRole('button', { name: 'Save citation' }).click();
+  await expect(
+    page.getByText('Citation details corrected locally. No lookup was made.'),
+  ).toBeVisible();
+  await expect(transformersSource).toContainText('DOI: 10.5555/attention.2026');
+  await expect(transformersSource).toContainText('arXiv: 1706.03762v2');
+  await expect(transformersSource).toContainText(
+    'Advances in Neural Information Processing Systems',
+  );
+  await page.getByLabel('Find a saved source').fill('10.5555/attention.2026');
+  await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(1);
   await page.getByLabel('Find a saved source').fill('1706.03762');
   await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(1);
   await page.getByLabel('Find a saved source').fill('');
@@ -1672,8 +1693,15 @@ test('source library stores pasted text and URL references without remote fetchi
       expect.objectContaining({ method: 'paste', title: 'Transformer notes' }),
       expect.objectContaining({
         citation: expect.objectContaining({
-          identifiers: [{ scheme: 'arxiv', value: '1706.03762' }],
-          provenance: [expect.objectContaining({ method: 'source-url' })],
+          identifiers: [
+            { scheme: 'doi', value: '10.5555/attention.2026' },
+            { scheme: 'arxiv', value: '1706.03762v2' },
+          ],
+          containerTitle: 'Advances in Neural Information Processing Systems',
+          provenance: [
+            expect.objectContaining({ method: 'source-url' }),
+            expect.objectContaining({ method: 'manual-correction' }),
+          ],
         }),
         method: 'url',
         title: 'Transformers paper',

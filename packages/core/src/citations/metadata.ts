@@ -1,7 +1,10 @@
 import {
+  citationManualProvenanceLimit,
+  citationOriginProvenanceLimit,
   CitationMetadataSchema,
   type CitationIdentifier,
   type CitationMetadata,
+  type CitationProvenance,
 } from '../schemas/workspace.js';
 
 export interface KnownCitationIdentifierInput {
@@ -18,6 +21,12 @@ export interface KnownCitationMetadataInput {
   meta?: Readonly<Record<string, string>>;
   provider?: string;
   url?: string;
+}
+
+export interface ManualCitationMetadataInput {
+  capturedAt: Date;
+  containerTitle?: string;
+  identifiers: readonly KnownCitationIdentifierInput[];
 }
 
 export type KnownCitationValuesInput = Omit<
@@ -106,8 +115,12 @@ export function normalizeCitationIdentifier(
   }
 
   if (scheme === 'pmcid') {
-    const path = urlPath(value, ['ncbi.nlm.nih.gov', 'www.ncbi.nlm.nih.gov']);
-    const pathMatch = /\/pmc\/articles\/(PMC\d+)/iu.exec(path ?? '');
+    const path = urlPath(value, [
+      'ncbi.nlm.nih.gov',
+      'www.ncbi.nlm.nih.gov',
+      'pmc.ncbi.nlm.nih.gov',
+    ]);
+    const pathMatch = /\/(?:pmc\/)?articles\/(PMC\d+)/iu.exec(path ?? '');
     value = (pathMatch?.[1] ?? value.replace(/^pmcid\s*:\s*/iu, '')).toUpperCase();
     return /^PMC[1-9]\d{0,11}$/u.test(value) ? { scheme: 'pmcid', value } : null;
   }
@@ -180,6 +193,61 @@ function dedupeIdentifiers(inputs: readonly KnownCitationIdentifierInput[]): Cit
   });
 }
 
+const supportedIdentifierSchemes = [
+  'DOI',
+  'ISBN',
+  'arXiv',
+  'PMID',
+  'PMCID',
+  'OpenAlex',
+  'Open Library',
+] as const;
+
+function editableScheme(input: string): string {
+  const compact = input
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/gu, '');
+  if (compact === 'openlibrary') return 'openlibrary';
+  if (compact === 'openalex') return 'openalex';
+  return compact;
+}
+
+/** Parses the learner-facing one-identifier-per-line editor without doing any I/O. */
+export function parseCitationIdentifierLines(input: string): CitationIdentifier[] {
+  const lines = input
+    .split(/\r?\n/gu)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    throw new Error('Add at least one citation identifier before saving.');
+  }
+  if (lines.length > 16) {
+    throw new Error('Keep citation metadata to at most 16 identifiers.');
+  }
+
+  const parsed = lines.map((line, index) => {
+    const separator = line.indexOf(':');
+    if (separator <= 0 || !line.slice(separator + 1).trim()) {
+      throw new Error(`Citation line ${index + 1} must use “scheme: value”.`);
+    }
+    const scheme = editableScheme(line.slice(0, separator));
+    const value = line.slice(separator + 1).trim();
+    const identifier = normalizeCitationIdentifier(scheme, value);
+    if (!identifier) {
+      throw new Error(
+        `Citation line ${index + 1} is not a valid ${supportedIdentifierSchemes.join(', ')} identifier.`,
+      );
+    }
+    return identifier;
+  });
+  return dedupeIdentifiers(parsed).slice(0, 16);
+}
+
+export function citationIdentifierLines(identifiers: readonly CitationIdentifier[]): string {
+  return identifiers.map(citationIdentifierText).join('\n');
+}
+
 export function citationIdentifiersFromKnownValues(
   input: KnownCitationValuesInput,
 ): CitationIdentifier[] {
@@ -197,6 +265,24 @@ export function citationIdentifiersFromKnownValues(
 function boundedText(value: string | undefined, maximum: number): string | undefined {
   const text = value?.replace(/\s+/gu, ' ').trim().slice(0, maximum).trim();
   return text || undefined;
+}
+
+function boundedCitationProvenance(receipts: readonly CitationProvenance[]): CitationProvenance[] {
+  const origins = new Map<string, CitationProvenance>();
+  const manualCorrections = new Map<string, CitationProvenance>();
+  for (const receipt of receipts) {
+    if (receipt.method === 'manual-correction') {
+      const key = [receipt.method, receipt.capturedAt].join(':');
+      manualCorrections.set(key, receipt);
+      continue;
+    }
+    const key = [receipt.method, receipt.provider ?? '', receipt.consentScope ?? ''].join(':');
+    if (!origins.has(key)) origins.set(key, receipt);
+  }
+  return [
+    ...[...origins.values()].slice(0, citationOriginProvenanceLimit),
+    ...[...manualCorrections.values()].slice(-citationManualProvenanceLimit),
+  ];
 }
 
 /** Builds citation metadata from values already in memory. This function performs no I/O. */
@@ -225,28 +311,61 @@ export function citationMetadataFromKnownValues(
   });
 }
 
+/** Replaces editable citation fields and appends an explicit local correction receipt. */
+export function citationMetadataFromManualCorrection(
+  current: CitationMetadata | undefined,
+  input: ManualCitationMetadataInput,
+): CitationMetadata {
+  const identifiers = dedupeIdentifiers(input.identifiers).slice(0, 16);
+  if (identifiers.length === 0) {
+    throw new Error('Add at least one valid citation identifier before saving.');
+  }
+  const rawContainerTitle = input.containerTitle?.replace(/\s+/gu, ' ').trim();
+  if (rawContainerTitle && rawContainerTitle.length > 200) {
+    throw new Error('Keep the journal or collection name to 200 characters or fewer.');
+  }
+  const receipt = {
+    capturedAt: input.capturedAt.toISOString(),
+    method: 'manual-correction',
+  } as const;
+  return CitationMetadataSchema.parse({
+    ...current,
+    schemaVersion: 'dusori-citation-v1',
+    identifiers,
+    containerTitle: rawContainerTitle || undefined,
+    provenance: boundedCitationProvenance([...(current?.provenance ?? []), receipt]),
+  });
+}
+
 export function mergeCitationMetadata(
   current: CitationMetadata | undefined,
   incoming: CitationMetadata | undefined,
 ): CitationMetadata | undefined {
   if (!current) return incoming;
   if (!incoming) return current;
-  const provenance = new Map(
-    current.provenance.map((receipt) => [
-      [receipt.method, receipt.provider ?? '', receipt.consentScope ?? ''].join(':'),
-      receipt,
-    ]),
+  const currentWasCorrected = current.provenance.some(
+    (receipt) => receipt.method === 'manual-correction',
   );
-  for (const receipt of incoming.provenance) {
-    const key = [receipt.method, receipt.provider ?? '', receipt.consentScope ?? ''].join(':');
-    if (!provenance.has(key)) provenance.set(key, receipt);
-  }
+  const incomingWasCorrected = incoming.provenance.some(
+    (receipt) => receipt.method === 'manual-correction',
+  );
+  const authoritativeCorrection = currentWasCorrected
+    ? current
+    : incomingWasCorrected
+      ? incoming
+      : undefined;
   return CitationMetadataSchema.parse({
+    ...incoming,
+    ...current,
     schemaVersion: 'dusori-citation-v1',
-    identifiers: dedupeIdentifiers([...current.identifiers, ...incoming.identifiers]).slice(0, 16),
-    containerTitle: incoming.containerTitle ?? current.containerTitle,
+    identifiers:
+      authoritativeCorrection?.identifiers ??
+      dedupeIdentifiers([...current.identifiers, ...incoming.identifiers]).slice(0, 16),
+    containerTitle: authoritativeCorrection
+      ? authoritativeCorrection.containerTitle
+      : (incoming.containerTitle ?? current.containerTitle),
     itemType: incoming.itemType ?? current.itemType,
-    provenance: [...provenance.values()].slice(0, 8),
+    provenance: boundedCitationProvenance([...current.provenance, ...incoming.provenance]),
   });
 }
 

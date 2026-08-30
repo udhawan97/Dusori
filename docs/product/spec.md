@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.14.0 release contract plus unreleased thread, evidence-navigation, and citation-identity work · **Date:** 2026-08-29
+**Status:** v0.15.0 release contract · **Date:** 2026-08-30
 
 ## Product promise
 
@@ -108,6 +108,12 @@ in research packet manifests. Normalization performs no network request, never c
 eligibility, and never promotes catalog metadata into source text. Any resolver call is a separate
 future provider action that must name its consent scope and cache its receipt.
 
+A learner can correct those normalized identifiers and the optional journal or collection on an
+existing source. Dusori validates the complete edit locally before a CAS-protected manifest write,
+preserves earlier citation receipts, and appends a bounded `manual-correction` receipt. The action
+does not contact a resolver or change source bytes, evidence claims, read state, or synthesis
+freshness.
+
 The Sources shelf can be searched locally by title, publisher, provider, author, filename,
 citation identifier, or host and filtered into readable evidence or references. These are
 transient views over the current manifest: they create no index, preference, or hidden completion
@@ -115,14 +121,14 @@ state. Opening a local reading copy keeps the active manifest order visible thro
 controls.
 
 Availability never substitutes for a run outcome. `research.json` retains the fifty most recent
-runs, their exact queries, angles, new-result counts, and provider outcomes. Unreleased additive
+runs, their exact queries, angles, new-result counts, and provider outcomes. Additive
 fields give each new learner question a stable topic-local thread ID; an explicit follow-up may
 carry a parent ID, while a refresh of the same question reuses its thread. Legacy runs receive no
 invented identity and remain readable as earlier research.
 
 The same machine file holds an allowlisted typed activity trail for question/follow-up creation,
-completed lookups, source saves and reads, source-linked quote or interpretation notes, synthesis
-writes/proposals, and exports. A topic retains at most fifty thread identities and five hundred
+completed lookups, source saves and reads, citation corrections, source-linked quote or
+interpretation notes, synthesis writes/proposals, and exports. A topic retains at most fifty thread identities and five hundred
 events within a 256 KiB event budget. Compaction removes the oldest non-identity events first and
 retains the creation event for every retained thread. If a retained note replies to pruned activity,
 only that target's event ID, thread ID, timestamp, and removal reason survive as a tombstone. A
@@ -201,7 +207,7 @@ The updater has four explicit operations:
 
 Automatic-update opt-in covers checks and downloads only and runs from application startup, even if Settings is never opened. Release CI builds from the matching version tag, requires protected signing material, cryptographically verifies both platform signatures, and stages an exact-asset draft with `latest.json` plus `SHA256SUMS.txt`. Publication is a separate, post-download verification step.
 
-v0.14.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
+v0.15.0 OS installers are not Apple-notarized or Microsoft code-signed. Documentation must keep that warning separate from the valid in-app updater signature.
 
 ## Explicitly not built
 
@@ -212,7 +218,7 @@ v0.14.0 OS installers are not Apple-notarized or Microsoft code-signed. Document
 - Social-feed scraping, access-control bypass, or YouTube media/caption download
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.14.0
+- Apple notarization or Microsoft Authenticode signing for v0.15.0
 - Cloud or multi-user activity delivery, notifications, mentions, reactions, or unread/read state
 
 ## Trust model

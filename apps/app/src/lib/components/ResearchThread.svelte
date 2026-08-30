@@ -215,6 +215,7 @@
     if (event.type === 'research-completed') return 'Lookup completed';
     if (event.type === 'source-saved') return 'Source saved';
     if (event.type === 'source-read') return 'Evidence read';
+    if (event.type === 'source-citation-corrected') return 'Citation corrected';
     if (event.type === 'quote-added') return 'Quote saved';
     if (event.type === 'note-added') return 'Source note saved';
     if (event.type === 'synthesis-written') return 'Answer written';
@@ -238,6 +239,9 @@
     if (event.type === 'source-read') {
       return `${event.claimCount} quoted ${event.claimCount === 1 ? 'passage' : 'passages'} recorded from this exact local content hash.`;
     }
+    if (event.type === 'source-citation-corrected') {
+      return `${event.identifierCount} normalized ${event.identifierCount === 1 ? 'identifier' : 'identifiers'} saved locally. No resolver was contacted.`;
+    }
     if (event.type === 'quote-added') return 'Source-linked annotation saved locally.';
     if (event.type === 'note-added') {
       return event.quoteSha256
@@ -255,7 +259,13 @@
   }
 
   function activityPath(event: ResearchThreadEvent): string | undefined {
-    if (event.type === 'source-saved' || event.type === 'source-read') return event.sourcePath;
+    if (
+      event.type === 'source-saved' ||
+      event.type === 'source-read' ||
+      event.type === 'source-citation-corrected'
+    ) {
+      return event.sourcePath;
+    }
     if (event.type === 'quote-added' || event.type === 'note-added') return event.notePath;
     if (event.type === 'synthesis-written' || event.type === 'synthesis-proposed') {
       return event.artifactPath;

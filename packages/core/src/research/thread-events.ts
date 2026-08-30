@@ -92,6 +92,12 @@ export const ResearchThreadEventSchema = z.discriminatedUnion('type', [
     claimCount: z.number().int().positive().max(12),
   }).strict(),
   ResearchThreadEventBaseSchema.extend({
+    type: z.literal('source-citation-corrected'),
+    sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+    sourcePath: z.string().min(1).max(640).optional(),
+    identifierCount: z.number().int().positive().max(16),
+  }).strict(),
+  ResearchThreadEventBaseSchema.extend({
     type: z.literal('quote-added'),
     sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourcePath: z.string().min(1).max(640),
@@ -156,6 +162,12 @@ export type ResearchThreadEventInput =
       sourceContentSha256: string;
       sourcePath: string;
       claimCount: number;
+    }
+  | {
+      type: 'source-citation-corrected';
+      sourceSha256: string;
+      sourcePath?: string;
+      identifierCount: number;
     }
   | {
       type: 'quote-added';

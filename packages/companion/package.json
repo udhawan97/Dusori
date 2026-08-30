@@ -1,6 +1,6 @@
 {
   "name": "@udhawan97/dusori",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Optional loopback-only companion for the Dusori local-first learning app.",
   "license": "Apache-2.0",
   "homepage": "https://udhawan97.github.io/Dusori/docs/getting-started/",
@@ -40,7 +40,7 @@
     "provenance": true
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.115.0",
+    "@anthropic-ai/sdk": "0.120.0",
     "@fastify/cors": "11.3.0",
     "@fastify/static": "10.1.2",
     "@mozilla/readability": "0.6.0",

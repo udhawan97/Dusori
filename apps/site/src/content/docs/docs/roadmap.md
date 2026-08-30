@@ -1,11 +1,11 @@
 ---
 title: Product roadmap
-description: What v0.14.0 ships and what remains explicitly unbuilt.
+description: What v0.15.0 ships and what remains explicitly unbuilt.
 ---
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
-## In development after v0.14.0 — not released
+## Shipped through v0.15.0
 
 - Stable topic-local question-thread identity with optional parent identity for explicit
   follow-ups; legacy runs stay readable without fabricated IDs
@@ -33,8 +33,8 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Additive citation metadata that normalizes already-known DOI, ISBN, arXiv, PMID/PMCID, OpenAlex,
   and Open Library identifiers without network resolution; provider-derived records retain their
   consent scope and packet manifests carry the same bounded provenance
-
-## Shipped through v0.14.0
+- Local citation-metadata correction for normalized identifiers and an optional journal or
+  collection, preserving earlier provenance without resolver calls or evidence-state changes
 
 - Research, Sources, Map, and Settings as four predictable destinations
 - One-action provider search that saves a varied shortlist, reads available text, and writes an evidence-backed brief
@@ -72,7 +72,7 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - OCR for scanned PDFs
 - Single-topic merge import into an existing workspace
 - Arbitrary AI chat that edits workspace files
-- Apple notarization or Microsoft Authenticode signing for v0.14.0 installers
+- Apple notarization or Microsoft Authenticode signing for v0.15.0 installers
 - Cloud, multi-user, notification, or unread-state delivery for followed research
 
 ## Candidates for later releases
@@ -80,8 +80,8 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Opt-in encrypted device-to-device sync that preserves file ownership
 - More curriculum adapters after each format has stable fixtures and preview-first behavior
 - Revision-aware re-anchoring and annotation management beyond the preserved quote and context in
-  v0.14.0 notes
-- Separately consented citation resolver calls and manual citation-metadata correction
+  v0.15.0 notes
+- Separately consented citation resolver calls
 - Reproducible OS code-signing/notarization when an open, sustainable release path is available
 - A recovery UI for invalid machine-owned files that never mutates before showing the proposed repair
 - Model- or dataset-catalog providers such as Hugging Face until a concrete, consentable workflow has stable fixtures and honest evidence boundaries

@@ -10,13 +10,13 @@ sidebar:
 | Build               | Use it when                                                     | Start                                                                                                                                           |
 | ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Browser             | You want the fastest, accountless start                         | [Open Dusori](https://udhawan97.github.io/Dusori/app/)                                                                                          |
-| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.14.0/Dusori_0.14.0_aarch64-aarch64-apple-darwin.dmg)   |
-| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.14.0/Dusori_0.14.0_x64-setup-x86_64-pc-windows-msvc.exe) |
+| macOS Apple silicon | Your Mac has an M-series processor                              | [Download Apple silicon `.dmg`](https://github.com/udhawan97/Dusori/releases/download/v0.15.0/Dusori_0.15.0_aarch64-aarch64-apple-darwin.dmg)   |
+| Windows x64         | You use 64-bit Windows                                          | [Download Windows x64 `.exe`](https://github.com/udhawan97/Dusori/releases/download/v0.15.0/Dusori_0.15.0_x64-setup-x86_64-pc-windows-msvc.exe) |
 | Node companion      | You want browser UI plus local capture and configured providers | `npx @udhawan97/dusori@latest`                                                                                                                  |
 
-The v0.14.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
+The v0.15.0 macOS and Windows installers are not Apple-notarized or Microsoft code-signed. The operating system may warn on first launch. Download only from the Dusori GitHub release and compare it with `SHA256SUMS.txt`. In-app update artifacts use a separate cryptographic updater signature.
 
-If you installed a v0.12.0 or v0.12.1 desktop build, install the current v0.14.0 release manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates work from v0.12.2 onward.
+If you installed a v0.12.0 or v0.12.1 desktop build, install the current v0.15.0 release manually once. Both affected versions open to a launch-time 404, so Settings is inaccessible. The Intel v0.12.0 Mac build also cannot safely select the Apple silicon updater feed. Replacing the application does not remove the separately stored workspace; normal in-app updates work from v0.12.2 onward.
 
 ## Create the first topic
 
