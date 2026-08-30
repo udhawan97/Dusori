@@ -1,4 +1,4 @@
-import { sha256, type SourceRecord } from '@dusori/core';
+import { citationIdentifierText, sha256, type SourceRecord } from '@dusori/core';
 
 export type SourceShelfFilter = 'all' | 'evidence' | 'references';
 
@@ -73,6 +73,7 @@ function searchableSourceText(source: SourceRecord): string {
     host,
     source.originalName,
     ...(source.tags ?? []),
+    ...(source.citation?.identifiers.map(citationIdentifierText) ?? []),
   ]
     .filter(Boolean)
     .join(' ')

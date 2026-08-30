@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../adapters.js';
+import { citationMetadataFromKnownValues } from '../citations/metadata.js';
 import type { SourceRecord } from '../schemas/workspace.js';
 import {
   addSource,
@@ -185,6 +186,16 @@ async function saveCandidate(
         },
         provenance: {
           author: candidate.meta.author ?? candidate.meta.channel ?? candidate.meta.byline,
+          citation: citationMetadataFromKnownValues({
+            candidateKey: candidate.key,
+            capturedAt: now,
+            consentScope: provider.consentScope ?? provider.id,
+            identifiers: candidate.identifiers,
+            itemType: candidate.kind,
+            meta: candidate.meta,
+            provider: provider.id,
+            url: capture.url,
+          }),
           publishedAt: candidate.publishedAt,
           publisher: provider.label,
           readState: isReadableResearchCapture(capturedVia) ? 'readable' : 'reference',

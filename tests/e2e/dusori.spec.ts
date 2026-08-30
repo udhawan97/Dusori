@@ -1623,12 +1623,17 @@ test('source library stores pasted text and URL references without remote fetchi
   await page.getByLabel('Source title').fill('Transformers paper');
   await page.getByLabel('Web address').fill('https://arxiv.org/abs/1706.03762');
   await page.getByRole('button', { name: 'Save source' }).click();
-  await expect(
-    page
-      .getByRole('listitem')
-      .filter({ hasText: 'Transformers paper' })
-      .getByRole('link', { name: 'Open original' }),
-  ).toHaveAttribute('href', 'https://arxiv.org/abs/1706.03762');
+  const transformersSource = page
+    .locator('.source-list [role="listitem"]')
+    .filter({ hasText: 'Transformers paper' });
+  await expect(transformersSource).toContainText('arXiv: 1706.03762');
+  await page.getByLabel('Find a saved source').fill('1706.03762');
+  await expect(page.locator('.source-list [role="listitem"]')).toHaveCount(1);
+  await page.getByLabel('Find a saved source').fill('');
+  await expect(transformersSource.getByRole('link', { name: 'Open original' })).toHaveAttribute(
+    'href',
+    'https://arxiv.org/abs/1706.03762',
+  );
   expect(remoteRequests).toEqual([]);
 
   await page
@@ -1665,7 +1670,14 @@ test('source library stores pasted text and URL references without remote fetchi
   expect(sourceState.manifest.sources).toEqual(
     expect.arrayContaining([
       expect.objectContaining({ method: 'paste', title: 'Transformer notes' }),
-      expect.objectContaining({ method: 'url', title: 'Transformers paper' }),
+      expect.objectContaining({
+        citation: expect.objectContaining({
+          identifiers: [{ scheme: 'arxiv', value: '1706.03762' }],
+          provenance: [expect.objectContaining({ method: 'source-url' })],
+        }),
+        method: 'url',
+        title: 'Transformers paper',
+      }),
     ]),
   );
   expect(sourceState.itemNames).toHaveLength(2);

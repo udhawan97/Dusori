@@ -48,6 +48,8 @@ export interface ResearchCandidate {
   snippet: string;
   score: number;
   meta: Record<string, string>;
+  /** Structured identifiers already returned by this provider; never resolved implicitly. */
+  identifiers?: Array<{ scheme: string; value: string }>;
   kind?: ResearchCandidateKind;
   /** ISO date the artifact itself was published, when the provider reports one. */
   publishedAt?: string;

@@ -168,14 +168,61 @@ describe('research thread exports', () => {
   });
 
   it('keeps the question, receipt, sources, synthesis, and evidence boundary together', () => {
-    const markdown = renderResearchThreadMarkdown(input);
+    const citedSource = source({
+      citation: {
+        schemaVersion: 'dusori-citation-v1',
+        identifiers: [{ scheme: 'doi', value: '10.1000/thread.1' }],
+        provenance: [
+          {
+            capturedAt: '2026-08-25T18:30:00.000Z',
+            consentScope: 'crossref',
+            method: 'provider-result',
+            provider: 'crossref',
+          },
+        ],
+      },
+    });
+    const markdown = renderResearchThreadMarkdown({ ...input, sources: [citedSource] });
 
     expect(markdown).toContain('# Research thread — Research systems');
     expect(markdown).toContain('How do durable research threads work?');
     expect(markdown).toContain('**GitHub** — found 2');
     expect(markdown).toContain('Read evidence · 1 quoted passage');
+    expect(markdown).toContain('Identifiers: DOI: 10\\.1000/thread\\.1');
     expect(markdown).toContain('## Built answer');
     expect(markdown).toContain('A saved reference is not evidence');
+  });
+
+  it('carries normalized identifiers and consent provenance into the packet manifest', async () => {
+    const citedSource = source({
+      citation: {
+        schemaVersion: 'dusori-citation-v1',
+        identifiers: [{ scheme: 'pmid', value: '12345678' }],
+        provenance: [
+          {
+            capturedAt: '2026-08-25T18:30:00.000Z',
+            consentScope: 'europepmc',
+            method: 'provider-result',
+            provider: 'europepmc',
+          },
+        ],
+      },
+    });
+    const storage = { read: async () => null } as unknown as StorageAdapter;
+    const bundle = await buildResearchThreadExportBundle(
+      storage,
+      { ...input, sources: [citedSource] },
+      'markdown',
+      new Date('2026-08-25T19:00:00.000Z'),
+    );
+
+    expect(bundle.manifest.renderer).toBe('dusori-built-in-research-packet-v2');
+    expect(bundle.manifest.sources[0]).toMatchObject({
+      identifiers: [{ scheme: 'pmid', value: '12345678' }],
+      citationProvenance: [
+        { consentScope: 'europepmc', method: 'provider-result', provider: 'europepmc' },
+      ],
+    });
   });
 
   it('never promotes a legacy reference claim into read evidence', () => {

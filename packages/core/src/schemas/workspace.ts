@@ -54,6 +54,47 @@ export const SourceOriginSchema = z
   })
   .passthrough();
 
+export const CitationIdentifierSchema = z
+  .object({
+    scheme: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/u),
+    value: z.string().min(1).max(240),
+  })
+  .passthrough();
+
+export const CitationProvenanceSchema = z
+  .object({
+    capturedAt: z.string().datetime(),
+    consentScope: z.string().min(1).max(80).optional(),
+    method: z.string().regex(/^[a-z][a-z0-9-]{0,31}$/u),
+    provider: z.string().min(1).max(40).optional(),
+  })
+  .passthrough()
+  .superRefine((receipt, context) => {
+    if (
+      (receipt.method === 'provider-result' || receipt.method === 'resolver') &&
+      (!receipt.provider || !receipt.consentScope)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Provider and consent scope are required for remote citation metadata.',
+      });
+    }
+  });
+
+export const CitationMetadataSchema = z
+  .object({
+    schemaVersion: z.literal('dusori-citation-v1'),
+    identifiers: z.array(CitationIdentifierSchema).min(1).max(16),
+    /** Bounded export hints; the source record remains the canonical title/author/date record. */
+    containerTitle: z.string().min(1).max(200).optional(),
+    itemType: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,31}$/u)
+      .optional(),
+    provenance: z.array(CitationProvenanceSchema).min(1).max(8),
+  })
+  .passthrough();
+
 /**
  * One verbatim excerpt from a source's own local text, with where it was found. Never
  * paraphrased and never model-written: a claim the workspace cannot quote is not a claim.
@@ -77,6 +118,7 @@ export const SourceRecordSchema = z
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
     size: z.number().int().nonnegative().optional(),
     title: z.string().min(1).max(160),
+    citation: CitationMetadataSchema.optional(),
     tags: z
       .array(z.string().min(1).max(80))
       .max(24)
@@ -123,6 +165,9 @@ export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type TopicState = z.infer<typeof TopicStateSchema>;
 export type SourceOrigin = z.infer<typeof SourceOriginSchema>;
 export type SourceClaim = z.infer<typeof SourceClaimSchema>;
+export type CitationIdentifier = z.infer<typeof CitationIdentifierSchema>;
+export type CitationProvenance = z.infer<typeof CitationProvenanceSchema>;
+export type CitationMetadata = z.infer<typeof CitationMetadataSchema>;
 export type SourceRecord = z.infer<typeof SourceRecordSchema>;
 export type RemovedSource = z.infer<typeof RemovedSourceSchema>;
 export type SourceManifest = z.infer<typeof SourceManifestSchema>;

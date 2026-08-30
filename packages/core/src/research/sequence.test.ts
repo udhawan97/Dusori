@@ -368,6 +368,33 @@ describe('saveApprovedResearchCandidate', () => {
     });
   });
 
+  it('persists known citation identifiers under the provider consent receipt', async () => {
+    const { storage, topicSlug } = await workspace();
+    const candidate = {
+      ...approvedCandidate('crossref'),
+      key: 'crossref:10.1000/Attention.1',
+      kind: 'paper' as const,
+      meta: { venue: 'Journal of Types' },
+      url: 'https://doi.org/10.1000/Attention.1',
+    };
+
+    await saveApprovedResearchCandidate({
+      candidate,
+      now,
+      provider: provider({ id: 'crossref' }),
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+
+    expect((await readSourceManifest(storage, topicSlug, now)).sources[0]?.citation).toMatchObject({
+      containerTitle: 'Journal of Types',
+      identifiers: [{ scheme: 'doi', value: '10.1000/attention.1' }],
+      itemType: 'paper',
+      provenance: [{ consentScope: 'crossref', method: 'provider-result', provider: 'crossref' }],
+    });
+  });
+
   it('rejects a candidate that no longer matches the supplied provider', async () => {
     const { storage, topicSlug } = await workspace();
 

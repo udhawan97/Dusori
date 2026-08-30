@@ -1,6 +1,6 @@
 # Dusori product specification
 
-**Status:** v0.14.0 release contract plus unreleased P0a–P0b thread foundation · **Date:** 2026-08-28
+**Status:** v0.14.0 release contract plus unreleased thread, evidence-navigation, and citation-identity work · **Date:** 2026-08-29
 
 ## Product promise
 
@@ -101,10 +101,18 @@ Every provider has:
 - a distinct per-run `found`, `empty`, or `failed` outcome;
 - a bounded capture policy and provenance record.
 
-The Sources shelf can be searched locally by title, publisher, provider, author, filename, or host
-and filtered into readable evidence or references. These are transient views over the current
-manifest: they create no index, preference, or hidden completion state. Opening a local reading
-copy keeps the active manifest order visible through previous/next controls.
+When a saved URL or already-consented provider result contains a known DOI, ISBN, arXiv, PMID,
+PMCID, OpenAlex, or Open Library identifier, Dusori stores a normalized `dusori-citation-v1` record
+beside the source. The record retains bounded local-URL or provider/consent provenance and travels
+in research packet manifests. Normalization performs no network request, never changes evidence
+eligibility, and never promotes catalog metadata into source text. Any resolver call is a separate
+future provider action that must name its consent scope and cache its receipt.
+
+The Sources shelf can be searched locally by title, publisher, provider, author, filename,
+citation identifier, or host and filtered into readable evidence or references. These are
+transient views over the current manifest: they create no index, preference, or hidden completion
+state. Opening a local reading copy keeps the active manifest order visible through previous/next
+controls.
 
 Availability never substitutes for a run outcome. `research.json` retains the fifty most recent
 runs, their exact queries, angles, new-result counts, and provider outcomes. Unreleased additive

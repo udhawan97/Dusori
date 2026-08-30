@@ -30,6 +30,9 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Depth-map edge explanations plus direct jumps to stored sources, annotations, events, and artifacts
 - Network-inert standalone HTML rendered from the same research packet as Markdown, with a
   print-specific stylesheet for user-initiated Print/PDF
+- Additive citation metadata that normalizes already-known DOI, ISBN, arXiv, PMID/PMCID, OpenAlex,
+  and Open Library identifiers without network resolution; provider-derived records retain their
+  consent scope and packet manifests carry the same bounded provenance
 
 ## Shipped through v0.14.0
 
@@ -78,6 +81,7 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - More curriculum adapters after each format has stable fixtures and preview-first behavior
 - Revision-aware re-anchoring and annotation management beyond the preserved quote and context in
   v0.14.0 notes
+- Separately consented citation resolver calls and manual citation-metadata correction
 - Reproducible OS code-signing/notarization when an open, sustainable release path is available
 - A recovery UI for invalid machine-owned files that never mutates before showing the proposed repair
 - Model- or dataset-catalog providers such as Hugging Face until a concrete, consentable workflow has stable fixtures and honest evidence boundaries

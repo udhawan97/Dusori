@@ -14,6 +14,7 @@ const SearchDocumentSchema = z.object({
   edition_count: z.number().int().nonnegative().optional(),
   first_publish_year: z.number().int().optional(),
   first_sentence: SentenceSchema.optional(),
+  isbn: z.array(z.string()).optional(),
   key: z.string(),
   subject: z.array(z.string()).optional(),
   title: z.string(),
@@ -53,7 +54,7 @@ export const openLibraryProvider: ResearchProvider = {
   async search(query: ResearchQuery, fetchImpl: typeof fetch): Promise<ResearchCandidate[]> {
     const url = new URL('https://openlibrary.org/search.json');
     url.search = new URLSearchParams({
-      fields: 'key,title,author_name,first_publish_year,edition_count,first_sentence,subject',
+      fields: 'key,title,author_name,first_publish_year,edition_count,first_sentence,subject,isbn',
       limit: '8',
       q: query.searchText,
     }).toString();
@@ -72,6 +73,10 @@ export const openLibraryProvider: ResearchProvider = {
       const snippet = firstSentence || [authors, subjects].filter(Boolean).join(' · ');
       const key = work.key.slice('/works/'.length);
       return {
+        identifiers: [
+          { scheme: 'openlibrary', value: key },
+          ...(work.isbn ?? []).slice(0, 8).map((value) => ({ scheme: 'isbn', value })),
+        ],
         key: `openlibrary:${key}`,
         kind: 'book' as const,
         meta: {

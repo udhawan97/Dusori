@@ -6,7 +6,7 @@ import type {
   SourceRecord,
   StorageAdapter,
 } from '@dusori/core';
-import { evidenceClaims, sha256 } from '@dusori/core';
+import { citationIdentifierText, evidenceClaims, sha256 } from '@dusori/core';
 
 import { renderMarkdown } from './markdown.js';
 
@@ -47,9 +47,16 @@ export interface ResearchThreadExportManifest {
     localContentSha256?: string;
     recordSha256: string;
     url?: string;
+    identifiers?: Array<{ scheme: string; value: string }>;
+    citationProvenance?: Array<{
+      capturedAt: string;
+      consentScope?: string;
+      method: string;
+      provider?: string;
+    }>;
   }>;
   omittedPaths: string[];
-  renderer: 'dusori-built-in-research-packet-v1';
+  renderer: 'dusori-built-in-research-packet-v2';
   roundTrip: false;
 }
 
@@ -356,6 +363,12 @@ export function renderResearchThreadMarkdown(input: ResearchThreadExportInput): 
       .join(' · ');
     lines.push(`### ${markdownLink(source.title, source.url)}`, '', detail, '');
     if (source.author) lines.push(`- Author: ${markdownText(source.author)}`);
+    if (source.citation?.containerTitle)
+      lines.push(`- Container: ${markdownText(source.citation.containerTitle)}`);
+    if (source.citation?.identifiers.length)
+      lines.push(
+        `- Identifiers: ${source.citation.identifiers.map((identifier) => markdownText(citationIdentifierText(identifier))).join('; ')}`,
+      );
     if (source.origin?.provider) lines.push(`- Provider: ${markdownText(source.origin.provider)}`);
     if (source.whySelected?.length)
       lines.push(`- Selected because: ${source.whySelected.map(markdownText).join('; ')}`);
@@ -441,7 +454,7 @@ export async function buildResearchThreadExportBundle(
     kind: 'dusori-research-packet-manifest',
     omittedPaths,
     outputStyle: input.outputStyle,
-    renderer: 'dusori-built-in-research-packet-v1',
+    renderer: 'dusori-built-in-research-packet-v2',
     roundTrip: false,
     schemaVersion: 1,
     sources: input.sources.map((source) => {
@@ -454,6 +467,19 @@ export async function buildResearchThreadExportBundle(
           : {}),
         recordSha256: source.sha256,
         title: source.title,
+        ...(source.citation?.identifiers.length
+          ? { identifiers: source.citation.identifiers.map((identifier) => ({ ...identifier })) }
+          : {}),
+        ...(source.citation?.provenance.length
+          ? {
+              citationProvenance: source.citation.provenance.map((receipt) => ({
+                capturedAt: receipt.capturedAt,
+                ...(receipt.consentScope ? { consentScope: receipt.consentScope } : {}),
+                method: receipt.method,
+                ...(receipt.provider ? { provider: receipt.provider } : {}),
+              })),
+            }
+          : {}),
         ...(safeHttpUrl(source.url) ? { url: safeHttpUrl(source.url)! } : {}),
       };
     }),

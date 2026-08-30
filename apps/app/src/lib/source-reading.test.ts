@@ -25,6 +25,11 @@ const sources: SourceRecord[] = [
     method: 'url',
     path: 'Topics/print/Sources/items/two-catalog.md',
     readState: 'reference',
+    citation: {
+      schemaVersion: 'dusori-citation-v1',
+      identifiers: [{ scheme: 'doi', value: '10.1000/catalog.2' }],
+      provenance: [{ capturedAt: '2026-08-24T12:00:00.000Z', method: 'source-url' }],
+    },
     sha256: 'b'.repeat(64),
     title: 'Catalog record',
     url: 'https://catalog.example.org/item/2',
@@ -35,6 +40,7 @@ describe('source shelf discovery', () => {
   it('filters locally by evidence state and accent-insensitive metadata', () => {
     expect(filterSavedSources(sources, 'musee', 'evidence')).toEqual([sources[0]]);
     expect(filterSavedSources(sources, 'catalog.example.org', 'references')).toEqual([sources[1]]);
+    expect(filterSavedSources(sources, '10.1000/catalog.2', 'references')).toEqual([sources[1]]);
     expect(filterSavedSources(sources, '', 'references')).toEqual([sources[1]]);
   });
 

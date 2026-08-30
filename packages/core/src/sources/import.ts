@@ -1,4 +1,5 @@
 import { StorageConflictError, type StorageAdapter } from '../adapters.js';
+import { citationMetadataFromKnownValues, mergeCitationMetadata } from '../citations/metadata.js';
 import { appendTopicUpdate } from '../conflict/write-protocol.js';
 import { sha256 } from '../hash.js';
 import {
@@ -7,6 +8,7 @@ import {
   TopicStateSchema,
   schemaVersion,
   type SourceManifest,
+  type CitationMetadata,
   type SourceOrigin,
   type SourceRecord,
 } from '../schemas/workspace.js';
@@ -44,6 +46,7 @@ export type AddSourceInput =
 /** What the discovering provider reported about the artifact itself, plus why it ranked. */
 export interface SourceProvenance {
   author?: string;
+  citation?: CitationMetadata;
   publishedAt?: string;
   publisher?: string;
   whySelected?: string[];
@@ -162,6 +165,11 @@ export async function addSource(
   await readMachineFile(storage, `${root}/state.json`, TopicStateSchema, now);
 
   const url = input.method === 'url' ? parseUrl(input.url) : undefined;
+  const citation =
+    input.method === 'url'
+      ? (input.provenance?.citation ??
+        citationMetadataFromKnownValues({ capturedAt: now, url: url! }))
+      : undefined;
   const sourceContent =
     input.method === 'url'
       ? (input.content?.replace(/\r\n?/gu, '\n') ??
@@ -211,6 +219,7 @@ export async function addSource(
         const upgradedRecord = SourceRecordSchema.parse({
           ...preserved,
           author: provenance?.author ?? duplicate.author,
+          citation: mergeCitationMetadata(duplicate.citation, citation),
           fetchedAt: now.toISOString(),
           mediaType: 'text/markdown',
           origin: input.origin ?? duplicate.origin,
@@ -260,6 +269,26 @@ export async function addSource(
           warning,
         };
       }
+      const mergedCitation = mergeCitationMetadata(duplicate.citation, citation);
+      if (mergedCitation && JSON.stringify(mergedCitation) !== JSON.stringify(duplicate.citation)) {
+        const enrichedRecord = SourceRecordSchema.parse({ ...duplicate, citation: mergedCitation });
+        const nextManifest = SourceManifestSchema.parse({
+          ...manifest,
+          schemaVersion,
+          sources: manifest.sources.map((source) =>
+            source === duplicate ? enrichedRecord : source,
+          ),
+        });
+        try {
+          await storage.write(manifestPath, `${JSON.stringify(nextManifest, null, 2)}\n`, {
+            expectedHash: manifestFile.hash,
+          });
+        } catch (error) {
+          if (error instanceof StorageConflictError) continue;
+          throw error;
+        }
+        return { deduplicated: true, path: duplicate.path ?? path, record: enrichedRecord };
+      }
       return { deduplicated: true, path: duplicate.path ?? path, record: duplicate };
     }
 
@@ -291,6 +320,7 @@ export async function addSource(
         restoredRecord = SourceRecordSchema.parse({
           ...preserved,
           author: provenance?.author,
+          citation: mergeCitationMetadata(removed.record.citation, citation),
           fetchedAt: now.toISOString(),
           mediaType: 'text/markdown',
           origin: input.origin,
@@ -355,6 +385,7 @@ export async function addSource(
     const provenance = input.method === 'url' ? input.provenance : undefined;
     const record = SourceRecordSchema.parse({
       author: provenance?.author,
+      citation,
       fetchedAt: now.toISOString(),
       mediaType: input.method === 'url' ? 'text/markdown' : (input.mediaType ?? 'text/plain'),
       method: input.method,

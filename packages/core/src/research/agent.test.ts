@@ -332,6 +332,42 @@ describe('runResearchAgent', () => {
     expect(result.run?.providers.map((provider) => provider.id)).toEqual(['reference', 'abstract']);
   });
 
+  it('deduplicates across structured persistent identifiers before selection', async () => {
+    const { storage, topicSlug } = await workspace();
+    const result = await runResearchAgent({
+      now,
+      providers: [
+        stubProvider('biomed-one', [
+          candidate({
+            identifiers: [{ scheme: 'pmid', value: '12345678' }],
+            key: 'biomed-one:first',
+            kind: 'paper',
+            title: 'TypeScript generic constraints in medical records',
+            url: 'https://example.com/first',
+          }),
+        ]),
+        stubProvider('biomed-two', [
+          candidate({
+            key: 'biomed-two:second',
+            kind: 'paper',
+            meta: { pmid: 'PMID: 12345678' },
+            title: 'Why generic constraints matter for TypeScript medical software',
+            url: 'https://example.org/second',
+          }),
+        ]),
+      ],
+      query,
+      storage,
+      topicSlug,
+    });
+
+    expect(result.eligibleCount).toBe(1);
+    expect(result.run?.providers.map((provider) => provider.id)).toEqual([
+      'biomed-one',
+      'biomed-two',
+    ]);
+  });
+
   // A failed run is evidence too. Writing nothing used to make "the providers broke" and
   // "the providers found nothing" indistinguishable the moment the page reloaded.
   it('records the failure when every provider was skipped, saving no candidates', async () => {

@@ -2,6 +2,7 @@
   import { AlertTriangle, Check, FilePlus2, RotateCcw, Trash2 } from '@lucide/svelte';
   import {
     addSource,
+    citationIdentifierText,
     evidenceClaims,
     lensFor,
     maxSourceBytes,
@@ -635,7 +636,7 @@
         id="source-search"
         type="search"
         bind:value={sourceQuery}
-        placeholder="Title, publisher, provider, or host"
+        placeholder="Title, identifier, publisher, provider, or host"
       />
       <div class="source-filters" role="group" aria-label="Filter saved sources">
         <button
@@ -704,6 +705,11 @@
                 {#if source.tags?.length}
                   <p class="source-tags" aria-label="Source tags">
                     {source.tags.map((tag) => `#${tag}`).join(' · ')}
+                  </p>
+                {/if}
+                {#if source.citation?.identifiers.length}
+                  <p class="source-identifiers" aria-label="Citation identifiers">
+                    {source.citation.identifiers.map(citationIdentifierText).join(' · ')}
                   </p>
                 {/if}
                 {#if source.fetchMessage}
@@ -1142,6 +1148,14 @@
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     overflow-wrap: anywhere;
+  }
+
+  .source-identifiers {
+    margin: var(--space-2xs) 0;
+    overflow-wrap: anywhere;
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   .upgrade-source,

@@ -17,7 +17,7 @@ The latest query and every provider outcome survive reload. `found`, `empty`, an
 
 ## What gets saved
 
-The ranked first shelf is added to **Sources** automatically. Further ranked results are not saved until you approve them individually. Every saved record retains the URL, provider, capture method, ranking reasons, and reported publisher, author, or date when available.
+The ranked first shelf is added to **Sources** automatically. Further ranked results are not saved until you approve them individually. Every saved record retains the URL, provider, capture method, ranking reasons, and reported publisher, author, or date when available. Already-returned DOI, ISBN, arXiv, PMID, PMCID, OpenAlex, and Open Library identifiers are normalized into a bounded local citation record. This normalization performs no resolver request.
 
 - **Readable evidence** contains an abstract, extract, README, pasted text, or local file that Dusori can quote.
 - **Reference** preserves the title and browser URL when the page text was unavailable.
@@ -36,7 +36,7 @@ Manually added URL references are not fetched automatically. Consented research 
 ## Find, read, and annotate saved evidence
 
 The Sources shelf searches locally across source titles, publishers, providers, authors, original
-filenames, and URL hosts. **Evidence** shows local text Dusori can read; **References** shows saved
+filenames, citation identifiers, and URL hosts. **Evidence** shows local text Dusori can read; **References** shows saved
 URLs that still need readable text. The search and filter are temporary views: they do not write an
 index, preference, or completion state.
 
@@ -76,6 +76,12 @@ Optional comma- or space-separated tags are normalized into facets in `manifest.
 only how Sources and Map can find the record; it never copies or moves the source.
 
 Saved source text is bounded to 2 MiB. URLs with embedded usernames or passwords are rejected.
+
+Identifier metadata never changes a source's evidence state. The source manifest records whether
+an identifier came from the URL you saved or from a provider result covered by that provider's
+existing consent scope. Research packet manifests carry those bounded receipts. Dusori does not
+contact DOI, ISBN, or literature resolvers during save or export; a future resolver would require a
+separate disclosed provider action and would cache that consent provenance.
 
 ## Research providers
 

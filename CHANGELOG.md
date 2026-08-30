@@ -4,6 +4,15 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Citation-ready source identity
+
+- Added additive `dusori-citation-v1` metadata to saved sources, normalizing already-known DOI,
+  ISBN, arXiv, PMID, PMCID, OpenAlex, and Open Library identifiers without resolver requests.
+- Recorded whether citation metadata came from a local URL or an already-consented provider result;
+  any future resolver receipt requires its own provider and consent scope.
+- Made identifiers visible and locally searchable on the Sources shelf, and included the bounded
+  identifiers plus consent receipts in deterministic research packets and manifests.
+
 ### Durable research-thread foundation
 
 - Added stable topic-local question-thread IDs, optional parent IDs for explicit follow-up

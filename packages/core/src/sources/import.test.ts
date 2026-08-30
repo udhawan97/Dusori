@@ -154,6 +154,10 @@ describe('local source library', () => {
 
     expect(fetch).not.toHaveBeenCalled();
     expect(result.record.url).toBe('https://arxiv.org/abs/1706.03762');
+    expect(result.record.citation).toMatchObject({
+      identifiers: [{ scheme: 'arxiv', value: '1706.03762' }],
+      provenance: [{ method: 'source-url' }],
+    });
     expect((await storage.read(result.path))?.content).toContain(
       'stored this reference without fetching',
     );

@@ -1,4 +1,5 @@
 import type { StorageAdapter } from '../adapters.js';
+import { citationIdentifiersFromKnownValues } from '../citations/metadata.js';
 import { withAbortingFetchTimeout } from './fetch-timeout.js';
 import { rankCandidates, selectDiverse, type RankedCandidate } from './rank.js';
 import {
@@ -43,17 +44,16 @@ export interface RunResearchAgentInput {
 
 const defaultTimeoutMs = 12_000;
 
-function doiKey(candidate: RankedCandidate): string | null {
-  const fromMeta = candidate.meta.doi;
-  if (fromMeta && /^10\.\d{4,9}\/\S+$/iu.test(fromMeta)) return fromMeta.toLowerCase();
-  try {
-    const url = new URL(candidate.url);
-    if (url.hostname.toLowerCase() !== 'doi.org') return null;
-    const doi = decodeURIComponent(url.pathname.replace(/^\//u, ''));
-    return /^10\.\d{4,9}\/\S+$/iu.test(doi) ? doi.toLowerCase() : null;
-  } catch {
-    return null;
-  }
+function persistentIdentifierKeys(candidate: RankedCandidate): Set<string> {
+  return new Set(
+    citationIdentifiersFromKnownValues({
+      candidateKey: candidate.key,
+      identifiers: candidate.identifiers,
+      meta: candidate.meta,
+      provider: candidate.provider,
+      url: candidate.url,
+    }).map((identifier) => `${identifier.scheme}:${identifier.value}`),
+  );
 }
 
 function scholarlyTitleKey(candidate: RankedCandidate): string | null {
@@ -69,7 +69,7 @@ function scholarlyTitleKey(candidate: RankedCandidate): string | null {
 
 interface CandidateGroup {
   candidate: RankedCandidate;
-  dois: Set<string>;
+  identifiers: Set<string>;
   titles: Set<string>;
   urls: Set<string>;
 }
@@ -89,18 +89,17 @@ function overlaps(left: Set<string>, right: Set<string>): boolean {
 function dedupeRankedCandidates(candidates: RankedCandidate[]): RankedCandidate[] {
   let groups: CandidateGroup[] = [];
   for (const candidate of candidates) {
-    const doi = doiKey(candidate);
     const title = scholarlyTitleKey(candidate);
     const candidateGroup: CandidateGroup = {
       candidate,
-      dois: new Set(doi ? [doi] : []),
+      identifiers: persistentIdentifierKeys(candidate),
       titles: new Set(title ? [title] : []),
       urls: new Set([canonicalUrl(candidate.url)]),
     };
     const matches = groups.filter(
       (group) =>
         overlaps(group.urls, candidateGroup.urls) ||
-        overlaps(group.dois, candidateGroup.dois) ||
+        overlaps(group.identifiers, candidateGroup.identifiers) ||
         overlaps(group.titles, candidateGroup.titles),
     );
     if (matches.length === 0) {
@@ -111,7 +110,7 @@ function dedupeRankedCandidates(candidates: RankedCandidate[]): RankedCandidate[
     const primary = matches[0]!;
     for (const group of [candidateGroup, ...matches.slice(1)]) {
       for (const value of group.urls) primary.urls.add(value);
-      for (const value of group.dois) primary.dois.add(value);
+      for (const value of group.identifiers) primary.identifiers.add(value);
       for (const value of group.titles) primary.titles.add(value);
       if (returnedEvidenceQuality(group.candidate) > returnedEvidenceQuality(primary.candidate)) {
         primary.candidate = group.candidate;

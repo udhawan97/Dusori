@@ -27,6 +27,7 @@ describe('Open Library research provider', () => {
             edition_count: 12,
             first_publish_year: 2017,
             first_sentence: ['Data systems have changed radically.'],
+            isbn: ['978-1-4493-7332-0', 'invalid-isbn'],
             key: '/works/OL17898000W',
             subject: ['Distributed systems'],
             title: 'Designing Data-Intensive Applications',
@@ -40,11 +41,17 @@ describe('Open Library research provider', () => {
     expect(candidate).toMatchObject({
       key: 'openlibrary:OL17898000W',
       kind: 'book',
+      identifiers: [
+        { scheme: 'openlibrary', value: 'OL17898000W' },
+        { scheme: 'isbn', value: '978-1-4493-7332-0' },
+        { scheme: 'isbn', value: 'invalid-isbn' },
+      ],
       provider: 'openlibrary',
       publishedAt: '2017-01-01',
       snippet: 'Data systems have changed radically.',
       url: 'https://openlibrary.org/works/OL17898000W',
     });
+    expect(String((fetchImpl as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])).toContain('isbn');
   });
 
   it('captures a work description but keeps a missing description as a reference', async () => {
