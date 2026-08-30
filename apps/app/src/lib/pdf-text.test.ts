@@ -5,35 +5,37 @@ import { assemblePdfText, groupTextItemLines, maxPdfPages } from './pdf-text';
 describe('assemblePdfText', () => {
   it('joins the glyph runs of a line in reading order', () => {
     expect(assemblePdfText([[['Attention', 'weighs', 'every', 'token.']]])).toBe(
-      'Attention weighs every token.',
+      '<!-- dusori-page:0 label:1 -->\nAttention weighs every token.',
     );
   });
 
   it('keeps the line breaks an outline parser reads', () => {
     expect(assemblePdfText([[['Domain 1: Design.'], ['Task Statement 1.1: Scope.']]])).toBe(
-      'Domain 1: Design.\nTask Statement 1.1: Scope.',
+      '<!-- dusori-page:0 label:1 -->\nDomain 1: Design.\nTask Statement 1.1: Scope.',
     );
   });
 
   it('separates pages with a blank line so sections stay distinguishable', () => {
-    expect(assemblePdfText([[['Page one.']], [['Page two.']]])).toBe('Page one.\n\nPage two.');
+    expect(assemblePdfText([[['Page one.']], [['Page two.']]])).toBe(
+      '<!-- dusori-page:0 label:1 -->\nPage one.\n\n<!-- dusori-page:1 label:2 -->\nPage two.',
+    );
   });
 
   it('collapses the run of spaces pdf extraction leaves between glyph runs', () => {
     expect(assemblePdfText([[['Byte   pair', '  encoding  ', 'merges.']]])).toBe(
-      'Byte pair encoding merges.',
+      '<!-- dusori-page:0 label:1 -->\nByte pair encoding merges.',
     );
   });
 
   it('drops a whitespace-only line rather than closing a wrapped sentence', () => {
     expect(
       assemblePdfText([[['Task Statement 1.2: Design secure'], ['   '], ['workloads.']]]),
-    ).toBe('Task Statement 1.2: Design secure\nworkloads.');
+    ).toBe('<!-- dusori-page:0 label:1 -->\nTask Statement 1.2: Design secure\nworkloads.');
   });
 
   it('drops a page that carries no text rather than leaving a gap', () => {
     expect(assemblePdfText([[['Page one.']], [['   ']], [['Page three.']]])).toBe(
-      'Page one.\n\nPage three.',
+      '<!-- dusori-page:0 label:1 -->\nPage one.\n\n<!-- dusori-page:2 label:3 -->\nPage three.',
     );
   });
 

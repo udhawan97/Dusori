@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { normalizeTags } from '../tags/tags.js';
+
 export const schemaVersion = 1 as const;
 
 export const FileVersionSchema = z
@@ -75,6 +77,11 @@ export const SourceRecordSchema = z
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
     size: z.number().int().nonnegative().optional(),
     title: z.string().min(1).max(160),
+    tags: z
+      .array(z.string().min(1).max(80))
+      .max(24)
+      .transform((tags) => normalizeTags(tags))
+      .optional(),
     url: z.url().optional(),
     // Research provenance. Tolerant strings for the same reason as `origin` above: a provider
     // reports what it has, and a workspace written by a newer build must stay readable.

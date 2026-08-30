@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractTags, matchesTag, parseTagQuery } from './tags.js';
+import { extractTags, matchesTag, normalizeTags, parseTagQuery } from './tags.js';
 
 describe('extractTags', () => {
   it('reads a yaml list under tags in frontmatter', () => {
@@ -68,13 +68,27 @@ describe('extractTags', () => {
     expect(extractTags('Filed under #cloud/azure today.')).toEqual(['cloud/azure']);
   });
 
-  it('merges frontmatter and inline tags, deduplicated case insensitively', () => {
+  it('normalizes and merges frontmatter and inline tags deterministically', () => {
     const content = ['---', 'tags: Alpha', '---', '', 'Body mentions #alpha and #beta.'].join('\n');
-    expect(extractTags(content)).toEqual(['Alpha', 'beta']);
+    expect(extractTags(content)).toEqual(['alpha', 'beta']);
+  });
+
+  it('normalizes unicode compatibility forms and surrounding punctuation', () => {
+    expect(extractTags('Filed under #Ｃｌｏｕｄ and #cloud/design.')).toEqual([
+      'cloud',
+      'cloud/design',
+    ]);
   });
 
   it('returns an empty list when a document has no tags', () => {
     expect(extractTags('---\ntitle: Plain\n---\n\nNothing here.')).toEqual([]);
+  });
+
+  it('normalizes machine-record tags and accepts an optional leading hash', () => {
+    expect(normalizeTags([' Evidence ', '#evidence', 'Cloud/Design', ''])).toEqual([
+      'evidence',
+      'cloud/design',
+    ]);
   });
 
   it('does not treat a hash glued to a word as a tag', () => {

@@ -78,8 +78,40 @@ describe('workspace insights', () => {
     const note = await storage.read(notePath);
     await storage.write(notePath, `${note?.content ?? ''}\n\nSee [[../Overview]].\n`);
 
+    const beforeEvents = await buildWorkspaceInsights(storage, created.workspace, { now });
+    const threadId = `thread-${'a'.repeat(24)}`;
+    await storage.write(
+      `Topics/${created.topicSlug}/research.json`,
+      `${JSON.stringify({
+        activeThreadId: threadId,
+        dismissed: [],
+        events: [
+          {
+            at: now.toISOString(),
+            eventId: `event-${'b'.repeat(24)}`,
+            questionText: 'What matters?',
+            threadId,
+            type: 'question-created',
+          },
+        ],
+        schemaVersion: 1,
+        threads: [
+          {
+            createdAt: now.toISOString(),
+            outputStyle: 'brief',
+            questionText: 'What matters?',
+            tags: ['research/thread'],
+            threadId,
+          },
+        ],
+        topicSlug: created.topicSlug,
+      })}\n`,
+    );
     const insights = await buildWorkspaceInsights(storage, created.workspace, { now });
 
+    expect(insights.totals.artifactCount).toBe(beforeEvents.totals.artifactCount);
+    expect(insights.artifactMix).toEqual(beforeEvents.artifactMix);
+    expect(insights.tags).toEqual(beforeEvents.tags);
     expect(insights.totals).toMatchObject({
       activeDays: 1,
       noteCount: 2,

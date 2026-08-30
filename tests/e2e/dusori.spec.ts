@@ -5,6 +5,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { researchProviderPolicy } from '@dusori/core';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
+import { parseSourceAnnotationMetadata } from '../../apps/app/src/lib/source-reading';
+
 // The landing page and the docs index both advertise the current release. Pinning the number here
 // made every release edit this file, and it let the two drift apart unnoticed in between. Reading
 // the workspace version instead turns these into what they were always meant to prove: the pages
@@ -874,7 +876,9 @@ test('knowledge graph renders portable artifacts and opens a selected note', asy
   );
   await expect(atlas).toBeHidden();
   await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Notes$/u })).toBeVisible();
-  await expect(page.locator('.graph-ledger dt').filter({ hasText: /^Wikilinks$/u })).toBeVisible();
+  await expect(
+    page.locator('.graph-ledger dt').filter({ hasText: /^Explained edges$/u }),
+  ).toBeVisible();
   await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('First look');
   await page.getByRole('button', { name: 'Depth map', exact: true }).click();
   await expect(atlas).toBeVisible();
@@ -1245,6 +1249,7 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
 
   await openSources(page);
   await page.getByLabel('Source title').fill('Encoding handout');
+  await page.getByLabel('Tags optional').fill('Evidence, Encoding');
   await page
     .getByLabel('Source text')
     .fill(
@@ -1252,6 +1257,9 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
     );
   await page.getByRole('button', { name: 'Save source' }).click();
   await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText('Encoding handout');
+  await expect(page.getByRole('list', { name: 'Saved sources' })).toContainText(
+    '#evidence · #encoding',
+  );
 
   await openSources(page);
   await page.getByLabel('Source type').selectOption('url');
@@ -1301,10 +1309,27 @@ test('filters the source shelf, follows the reading trail, and anchors a selecte
     page,
     'Topics/ai-fundamentals/Notes/notes-on-encoding-handout.md',
   );
+  expect(parseSourceAnnotationMetadata(saved)?.locator).toBeDefined();
+  await expect(page.locator('.annotation-anchor-status')).toContainText('Quote anchor verified');
   expect(saved).toContain('[[../Sources/items/');
   expect(saved).toContain('|Encoding handout]]');
   expect(saved).toContain('source_content_sha256:');
+  expect(saved).toContain('source_locator: {');
+  expect(saved).toContain('"normalizationVersion":"dusori-source-text-v1"');
+  expect(saved).toContain('tags: [research/annotation]');
+  expect(saved).toContain('type: follow-up-to');
   expect(saved).toContain('> Positional encodings preserve sequence order');
+
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  const filters = page.getByRole('group', { name: 'Filter graph artifacts' });
+  await filters.getByRole('button', { name: 'Annotations', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Map documents' })).toContainText(
+    'Notes on Encoding handout',
+  );
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
+  const edges = page.locator('details.edge-inspector');
+  await edges.getByText(/Why these \d+ edges exist/u).click();
+  await expect(edges).toContainText('Learner-authored follow-up-to relation');
   await expectNoSeriousA11yViolations(page);
 });
 
@@ -1852,6 +1877,17 @@ test('Research Desk groups provider consent and builds a durable source-backed b
     format: 'pdf',
     type: 'export-created',
   });
+
+  await page.getByRole('button', { name: 'Map', exact: true }).click();
+  const mapFilters = page.getByRole('group', { name: 'Filter graph artifacts' });
+  await mapFilters.getByRole('button', { name: 'Events', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Map documents' })).toContainText('Answer written');
+  await page.getByRole('button', { name: 'Depth map', exact: true }).click();
+  const edgeInspector = page.locator('details.edge-inspector');
+  await edgeInspector.getByText(/Why these \d+ edges exist/u).click();
+  await edgeInspector.getByRole('button', { name: 'Answer written', exact: true }).first().click();
+  await expect(page.locator('.focused-event')).toContainText('Selected from Depth map');
+  await expect(page.locator('.focused-event')).toContainText('Answer written');
 
   await page.getByRole('checkbox', { name: /Recheck after seven days/u }).check();
   await expect

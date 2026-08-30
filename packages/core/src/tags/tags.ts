@@ -46,6 +46,23 @@ function scannableBody(content: string): string {
   return content.replace(FRONTMATTER, '').replace(FENCED_CODE, '').replace(INLINE_CODE, '');
 }
 
+/** Canonical portable tag spelling used by machine records and graph facets. */
+export function normalizeTag(value: string): string {
+  return value.normalize('NFKC').trim().replace(/^#+/u, '').toLocaleLowerCase();
+}
+
+export function normalizeTags(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const value of values) {
+    const tag = normalizeTag(value);
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    tags.push(tag);
+  }
+  return tags;
+}
+
 /**
  * Every tag on a document, frontmatter first and then body order. Duplicates are removed
  * case-insensitively while the first spelling is kept, so `Alpha` and `alpha` are one tag displayed
@@ -55,16 +72,7 @@ export function extractTags(content: string): string[] {
   const frontmatter = FRONTMATTER.exec(content)?.[1] ?? '';
   const found = [...frontmatterTags(frontmatter)];
   for (const match of scannableBody(content).matchAll(INLINE_TAG)) found.push(match[1]!);
-
-  const seen = new Set<string>();
-  const tags: string[] = [];
-  for (const tag of found) {
-    const key = tag.toLocaleLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    tags.push(tag);
-  }
-  return tags;
+  return normalizeTags(found);
 }
 
 export interface TagQuery {

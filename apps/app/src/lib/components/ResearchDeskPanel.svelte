@@ -63,6 +63,7 @@
   export let autoStart = false;
   export let initialQuestion = '';
   export let providerRecoveryReturn = false;
+  export let focusEventId = '';
   export let onAutoStartHandled: () => void = () => undefined;
   export let onProviderRecoveryReturnHandled: () => void = () => undefined;
   export let onQuestionChange: (question: string) => void = () => undefined;
@@ -986,6 +987,7 @@
       threads={researchThreads}
       events={researchEvents}
       threadId={answeredThreadId || undefined}
+      {focusEventId}
       {storage}
       generatedAt={synthesisGeneratedAt}
       {autoRefreshEnabled}

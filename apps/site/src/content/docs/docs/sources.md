@@ -48,7 +48,14 @@ keeps:
 - the exact selected words;
 - the nearest section heading, when one exists;
 - the local source path; and
-- the reading copy's current content SHA-256.
+- the reading copy's current content SHA-256;
+- a versioned normalized-content SHA-256 plus bounded exact/prefix/suffix context; and
+- Unicode-code-point start/end positions and retained PDF page identity when the local format can
+  supply them.
+
+Position is checked first only while both local fingerprints agree. Context is a fallback for the
+same fingerprint. If the file changes or a match is ambiguous, Dusori retains the original quote and
+fails closed instead of silently re-anchoring against a live page.
 
 Choosing **Annotate in a study note** without a selection creates the same source-linked note without
 inventing a quote. The source link and captured passage are saved by that explicit action before the
@@ -64,6 +71,9 @@ Choose **Remove from research** to stop a source from contributing to counts, Ma
 - **Markdown or text file:** `.md`, `.markdown`, or `.txt`, normalized for portable line endings.
 - **PDF:** text extracted on the device. The original is not copied or uploaded. A scan with no text layer is reported; Dusori ships no OCR.
 - **URL reference:** a local Markdown reference containing an `http://` or `https://` URL.
+
+Optional comma- or space-separated tags are normalized into facets in `manifest.json`. A tag changes
+only how Sources and Map can find the record; it never copies or moves the source.
 
 Saved source text is bounded to 2 MiB. URLs with embedded usernames or passwords are rejected.
 

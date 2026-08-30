@@ -29,6 +29,7 @@
   );
   $: sourceIndex = readingSources.findIndex((source) => source.path === currentPath);
   $: currentSource = sourceIndex < 0 ? undefined : readingSources[sourceIndex];
+  $: canQuote = currentSource ? sourceEvidenceState(currentSource) !== 'reference' : false;
   $: previousSource = sourceIndex > 0 ? readingSources[sourceIndex - 1] : undefined;
   $: nextSource = sourceIndex >= 0 ? readingSources[sourceIndex + 1] : undefined;
   $: resetSelectionForPath(currentPath);
@@ -48,6 +49,10 @@
   }
 
   function captureSelection(): void {
+    if (!canQuote) {
+      selectedPassage = null;
+      return;
+    }
     const selection = window.getSelection();
     if (!sheet || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
       selectedPassage = null;
@@ -107,14 +112,16 @@
       <button
         class="primary-button"
         disabled={selectionTooLong}
-        onclick={() => onAnnotate(selectedPassage ?? undefined)}
+        onclick={() => onAnnotate(canQuote ? (selectedPassage ?? undefined) : undefined)}
       >
         <Pencil aria-hidden="true" size={17} />
-        {selectionTooLong
-          ? 'Shorten the selection'
-          : selectedPassage
-            ? 'Quote selection in a note'
-            : 'Annotate in a study note'}
+        {!canQuote
+          ? 'Add context note'
+          : selectionTooLong
+            ? 'Shorten the selection'
+            : selectedPassage
+              ? 'Quote selection in a note'
+              : 'Annotate in a study note'}
       </button>
       <button class="secondary-button" onclick={onOpenAll}>All sources</button>
     </div>
@@ -134,6 +141,8 @@
     <span aria-live="polite">
       {#if selectionTooLong}
         Select at most {maxAnnotationQuoteCharacters.toLocaleString()} characters.
+      {:else if !canQuote}
+        Add readable local text before quoting this reference.
       {:else if selectedPassage}
         {selectedPassage.text.length.toLocaleString()} characters selected with source context.
       {:else}

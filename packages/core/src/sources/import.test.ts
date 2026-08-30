@@ -92,6 +92,7 @@ describe('local source library', () => {
       {
         content: 'A model maps inputs to outputs.\n',
         method: 'paste',
+        tags: ['Evidence', 'ｅｖｉｄｅｎｃｅ', 'ai/foundations'],
         title: 'Model definition',
         topicSlug: 'ai-fundamentals',
       },
@@ -108,6 +109,7 @@ describe('local source library', () => {
         method: 'paste',
         path: result.path,
         size: 32,
+        tags: ['evidence', 'ai/foundations'],
         title: 'Model definition',
       }),
     ]);

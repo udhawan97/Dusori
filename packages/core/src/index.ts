@@ -4,6 +4,7 @@ export * from './conflict/proposal-ledger.js';
 export * from './conflict/write-protocol.js';
 export * from './curriculum/import.js';
 export * from './graph/health-actions.js';
+export * from './graph/record-relations.js';
 export * from './graph/workspace-graph.js';
 export * from './graph/workspace-health.js';
 export * from './hash.js';

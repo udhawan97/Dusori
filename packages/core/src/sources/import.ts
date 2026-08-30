@@ -16,6 +16,7 @@ import { normalizeWorkspacePath, topicRoot } from '../workspace/paths.js';
 export const maxSourceBytes = 2 * 1024 * 1024;
 
 interface SourceInputBase {
+  tags?: string[];
   title: string;
   topicSlug: string;
 }
@@ -366,6 +367,7 @@ export async function addSource(
       sha256: contentHash,
       size,
       title,
+      tags: input.tags,
       url,
       whySelected: provenance?.whySelected,
     });

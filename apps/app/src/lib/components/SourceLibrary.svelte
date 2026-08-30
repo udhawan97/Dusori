@@ -5,6 +5,7 @@
     evidenceClaims,
     lensFor,
     maxSourceBytes,
+    normalizeTags,
     readSourceManifest,
     readSourcesIntoClaims,
     recordActiveResearchSynthesisOutcome,
@@ -41,6 +42,7 @@
   let method: 'paste' | 'file' | 'url' = 'paste';
   let extracting = false;
   let title = '';
+  let sourceTagsText = '';
   let pastedText = '';
   let url = '';
   let selectedFile: File | null = null;
@@ -383,16 +385,24 @@
     saving = true;
     clearFeedback();
     try {
+      const tags = normalizeTags(sourceTagsText.split(/[,\s]+/u));
       let result;
       if (method === 'paste') {
         result = await addSource(storage, {
           content: pastedText,
           method,
+          ...(tags.length ? { tags } : {}),
           title,
           topicSlug,
         });
       } else if (method === 'url') {
-        result = await addSource(storage, { method, title, topicSlug, url });
+        result = await addSource(storage, {
+          method,
+          ...(tags.length ? { tags } : {}),
+          title,
+          topicSlug,
+          url,
+        });
       } else {
         if (!selectedFile) throw new Error('Choose a Markdown, text, or PDF file to add.');
         if (selectedFile.size > maxSourceBytes) {
@@ -428,12 +438,14 @@
           mediaType: markdown ? 'text/markdown' : 'text/plain',
           method,
           originalName: selectedFile.name,
+          ...(tags.length ? { tags } : {}),
           title,
           topicSlug,
         });
       }
 
       await refresh();
+      sourceTagsText = '';
       // The write already succeeded. refresh() sets `error` on its own when the read-back
       // fails, and `error` outranks `success` in the feedback region, so clear it here to
       // avoid reporting a completed add as a failure.
@@ -531,6 +543,19 @@
         disabled={saving}
         aria-invalid={error && !title.trim() ? 'true' : undefined}
       />
+
+      <label for="source-tags">Tags <span class="optional">optional</span></label>
+      <input
+        id="source-tags"
+        bind:value={sourceTagsText}
+        maxlength="400"
+        disabled={saving}
+        placeholder="evidence, cloud/design"
+        aria-describedby="source-tags-help"
+      />
+      <p class="field-help" id="source-tags-help">
+        Comma or space separated. Tags create views; the source stays in this topic.
+      </p>
 
       {#if method === 'paste'}
         <label for="source-text">Source text</label>
@@ -675,6 +700,11 @@
                 <span>{sourceDetail(source)}</span>
                 {#if source.whySelected?.length}
                   <p class="source-reason">Saved because {source.whySelected.join(' · ')}</p>
+                {/if}
+                {#if source.tags?.length}
+                  <p class="source-tags" aria-label="Source tags">
+                    {source.tags.map((tag) => `#${tag}`).join(' · ')}
+                  </p>
                 {/if}
                 {#if source.fetchMessage}
                   <p class="source-row-error" role="status">{source.fetchMessage}</p>
@@ -832,6 +862,12 @@
     margin-block-start: var(--space-xs);
     font-size: var(--text-sm);
     font-weight: 700;
+  }
+
+  .optional {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 400;
   }
 
   input,
@@ -1098,6 +1134,14 @@
     overflow-wrap: anywhere;
     color: var(--color-muted);
     font-size: var(--text-xs);
+  }
+
+  .source-tags {
+    margin: var(--space-2xs) 0;
+    color: var(--color-accent-text);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    overflow-wrap: anywhere;
   }
 
   .upgrade-source,

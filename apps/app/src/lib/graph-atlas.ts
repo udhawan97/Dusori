@@ -14,8 +14,18 @@ export interface GraphAtlasConnection {
   slug: string;
 }
 
+export interface GraphAtlasEdge {
+  explanation: string;
+  id: string;
+  kind: WorkspaceGraph['edges'][number]['kind'];
+  relation?: WorkspaceGraph['edges'][number]['relation'];
+  source: WorkspaceGraphNode;
+  target: WorkspaceGraphNode;
+}
+
 export interface GraphAtlasTopic {
   connections: GraphAtlasConnection[];
+  edges: GraphAtlasEdge[];
   label: string;
   lanes: GraphAtlasLane[];
   slug: string;
@@ -35,8 +45,8 @@ const laneOrder: Array<{ id: GraphAtlasLaneId; label: string }> = [
 
 function laneFor(node: WorkspaceGraphNode): GraphAtlasLaneId {
   if (node.kind === 'source') return 'sources';
-  if (node.kind === 'note') return 'notes';
-  if (node.kind === 'update') return 'updates';
+  if (node.kind === 'note' || node.kind === 'annotation') return 'notes';
+  if (node.kind === 'update' || node.kind === 'event') return 'updates';
   return 'briefs';
 }
 
@@ -73,7 +83,7 @@ export function buildGraphAtlas(graph: WorkspaceGraph): GraphAtlas {
     .map(([slug, nodes]): GraphAtlasTopic => {
       const connectionCounts = new Map<string, number>();
       for (const edge of graph.edges) {
-        if (edge.kind !== 'links') continue;
+        if (edge.kind !== 'links' && edge.kind !== 'relation') continue;
         const sourceSlug = nodeById.get(edge.source)?.topicSlug;
         const targetSlug = nodeById.get(edge.target)?.topicSlug;
         const connectedSlug =
@@ -93,6 +103,23 @@ export function buildGraphAtlas(graph: WorkspaceGraph): GraphAtlas {
             slug: targetSlug,
           }))
           .sort((left, right) => left.label.localeCompare(right.label)),
+        edges: graph.edges
+          .map((edge): GraphAtlasEdge | null => {
+            const source = nodeById.get(edge.source);
+            const target = nodeById.get(edge.target);
+            if (!source || !target) return null;
+            if (source.topicSlug !== slug && target.topicSlug !== slug) return null;
+            return {
+              explanation: edge.explanation,
+              id: edge.id,
+              kind: edge.kind,
+              ...(edge.relation ? { relation: edge.relation } : {}),
+              source,
+              target,
+            };
+          })
+          .filter((edge): edge is GraphAtlasEdge => Boolean(edge))
+          .sort((left, right) => left.id.localeCompare(right.id)),
         label: labelBySlug.get(slug) ?? slug,
         lanes: laneOrder.map((lane) => ({
           ...lane,

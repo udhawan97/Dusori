@@ -13,10 +13,16 @@ Neither view stores a graph database or invents progress. The research journey r
 ## What becomes a node
 
 - The workspace and each topic are structural centers.
-- Notes, dated updates, syntheses, and active source items are artifacts. Removed sources stay restorable but disappear from Map and its counts.
+- Notes, source annotations, typed research events, dated updates, syntheses, and active source items
+  are artifacts. Removed sources stay restorable but disappear from Map and its counts.
 - `[[wikilinks]]` become edges when they resolve to one exact file.
+- `relations:` frontmatter creates only the allowlisted learner-authored edge types `supports`,
+  `challenges`, `updates`, `background-for`, and `follow-up-to`.
+- Typed activity edges link stored research events to their local source, annotation, or synthesis
+  artifact. They record history; they do not upgrade discovery into evidence.
 - Backlinks are those resolved edges read in reverse.
-- `tags:` frontmatter and inline `#tags` are derived on read and can filter the view.
+- Source/thread tags plus `tags:` frontmatter and inline `#tags` are normalized on read and can
+  filter the view without moving a file.
 
 View choice and Outline filters stay in app-local UI state, outside the portable workspace. The same files can be used in Obsidian without a Dusori plugin.
 
@@ -24,7 +30,9 @@ View choice and Outline filters stay in app-local UI state, outside the portable
 
 Each topic room begins with an evidence spine: discovered, saved, read, and quoted. Below it, every artifact has one readable home in Sources, Notes, Briefs & learning, or Updates. Cross-topic wikilinks appear as counted “Connects to” labels rather than lines crossing through other labels.
 
-Nothing is positioned by physics and there is no zoom level to repair. Open any artifact directly from its lane.
+Nothing is positioned by physics and there is no zoom level to repair. Open any artifact directly
+from its lane. Expand **Why these edges exist** to read the stored reason and jump to either endpoint;
+selecting a research event opens its bounded local receipt in Research.
 
 ## Use Outline for precision
 

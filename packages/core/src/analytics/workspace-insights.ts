@@ -200,7 +200,8 @@ function artifactMix(nodes: Array<{ kind: WorkspaceGraphNodeKind }>): ArtifactMi
     update: 0,
   };
   for (const node of nodes) {
-    if (node.kind === 'note' || node.kind === 'source' || node.kind === 'update') {
+    if (node.kind === 'annotation') counts.note += 1;
+    else if (node.kind === 'note' || node.kind === 'source' || node.kind === 'update') {
       counts[node.kind] += 1;
     } else {
       counts.foundation += 1;
@@ -265,6 +266,9 @@ export async function buildWorkspaceInsights(
     });
   });
 
+  // Research events are virtual Map receipts, not standalone workspace documents. Keep Insights'
+  // file-derived artifact counts and tag distribution stable while the Map exposes those receipts.
+  const artifactNodes = graph.nodes.filter((node) => node.kind !== 'event');
   const linkEdges = graph.edges.filter((edge) => edge.kind === 'links');
   const connected = new Set(linkEdges.flatMap((edge) => [edge.source, edge.target]));
   const linkDegree = new Map<string, number>();
@@ -272,7 +276,7 @@ export async function buildWorkspaceInsights(
     linkDegree.set(edge.source, (linkDegree.get(edge.source) ?? 0) + 1);
     linkDegree.set(edge.target, (linkDegree.get(edge.target) ?? 0) + 1);
   });
-  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const nodesById = new Map(artifactNodes.map((node) => [node.id, node]));
   const hubs = [...linkDegree]
     .map(([id, connections]) => {
       const node = nodesById.get(id);
@@ -296,10 +300,11 @@ export async function buildWorkspaceInsights(
 
   const topics = summaries
     .map((summary, index): TopicInsight => {
-      const topicNodes = graph.nodes.filter((node) => node.topicSlug === summary.slug);
+      const topicNodes = artifactNodes.filter((node) => node.topicSlug === summary.slug);
       return {
         activityCount: activityByTopic.get(summary.slug) ?? 0,
-        noteCount: topicNodes.filter((node) => node.kind === 'note').length,
+        noteCount: topicNodes.filter((node) => node.kind === 'note' || node.kind === 'annotation')
+          .length,
         objectiveCompleted: summary.progress.completed,
         objectivePercent: summary.progress.percent,
         objectiveTotal: summary.progress.total,
@@ -326,20 +331,21 @@ export async function buildWorkspaceInsights(
 
   return {
     activity,
-    artifactMix: artifactMix(graph.nodes),
+    artifactMix: artifactMix(artifactNodes),
     hubs,
     providers: [...providers]
       .map(([id, count]) => ({ count, id, label: labelProvider(id) }))
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label)),
     reviewPressure: reviewPressureFrom(schedules, days, now),
-    tags: tagCounts(graph.nodes),
+    tags: tagCounts(artifactNodes),
     topics,
     totals: {
       activeDays: activity.filter((point) => point.count > 0).length,
-      artifactCount: graph.nodes.length,
-      connectedArtifactPercent: percentage(connected.size, graph.nodes.length),
+      artifactCount: artifactNodes.length,
+      connectedArtifactPercent: percentage(connected.size, artifactNodes.length),
       linkHealthPercent: totalWikilinks === 0 ? 100 : percentage(linkEdges.length, totalWikilinks),
-      noteCount: graph.nodes.filter((node) => node.kind === 'note').length,
+      noteCount: artifactNodes.filter((node) => node.kind === 'note' || node.kind === 'annotation')
+        .length,
       objectiveCompleted,
       objectiveTotal,
       resolvedLinks: linkEdges.length,

@@ -601,6 +601,7 @@ export async function recordResearchRun(
           outputStyle: current.outputStyle ?? 'brief',
           parentThreadId: run.parentThreadId,
           questionText,
+          tags: ['research/thread'],
           threadId: await researchThreadId(normalizedSlug, questionText, at),
         });
     if (run.parentThreadId && !threads.some((thread) => thread.threadId === run.parentThreadId)) {

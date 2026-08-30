@@ -7,10 +7,19 @@ import { buildGraphAtlas } from './graph-atlas';
 const graph: WorkspaceGraph = {
   edges: [
     {
+      explanation: 'A stored wikilink connects the note to the overview.',
       id: 'links:Topics/alpha/Notes/one.md->Topics/beta/Overview.md',
       kind: 'links',
       source: 'Topics/alpha/Notes/one.md',
       target: 'Topics/beta/Overview.md',
+    },
+    {
+      explanation: 'Learner-authored follow-up-to relation stored in One.',
+      id: 'relation:Topics/alpha/Notes/one.md->Topics/alpha/Sources/source.md:follow-up-to',
+      kind: 'relation',
+      relation: 'follow-up-to',
+      source: 'Topics/alpha/Notes/one.md',
+      target: 'Topics/alpha/Sources/source.md',
     },
   ],
   nodes: [
@@ -71,5 +80,19 @@ describe('graph evidence atlas', () => {
 
     expect(alpha?.connections).toEqual([{ count: 1, label: 'Beta', slug: 'beta' }]);
     expect(beta?.connections).toEqual([{ count: 1, label: 'Alpha', slug: 'alpha' }]);
+  });
+
+  it('keeps every selected-topic edge inspectable with both jump targets', () => {
+    const alpha = buildGraphAtlas(graph).topics.find((topic) => topic.slug === 'alpha');
+
+    expect(alpha?.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          explanation: 'Learner-authored follow-up-to relation stored in One.',
+          source: expect.objectContaining({ label: 'One' }),
+          target: expect.objectContaining({ label: 'Source' }),
+        }),
+      ]),
+    );
   });
 });

@@ -1,9 +1,21 @@
 import type { StorageAdapter } from '../adapters.js';
+import { ResearchFileSchema } from '../research/research-file.js';
+import type { ResearchThreadEvent } from '../research/thread-events.js';
 import { SourceManifestSchema } from '../schemas/workspace.js';
-import { extractTags } from '../tags/tags.js';
+import { extractTags, normalizeTags } from '../tags/tags.js';
+import { extractRecordRelations, type WorkspaceRelationKind } from './record-relations.js';
 
 export type WorkspaceGraphNodeKind =
-  'home' | 'overview' | 'roadmap' | 'tutor' | 'note' | 'source' | 'update' | 'document';
+  | 'home'
+  | 'overview'
+  | 'roadmap'
+  | 'tutor'
+  | 'note'
+  | 'annotation'
+  | 'source'
+  | 'update'
+  | 'event'
+  | 'document';
 
 export interface WorkspaceGraphNode {
   id: string;
@@ -12,13 +24,18 @@ export interface WorkspaceGraphNode {
   path: string;
   tags?: string[];
   topicSlug?: string;
+  eventId?: string;
+  threadId?: string;
+  eventType?: ResearchThreadEvent['type'];
 }
 
 export interface WorkspaceGraphEdge {
   id: string;
-  kind: 'contains' | 'links';
+  kind: 'contains' | 'links' | 'relation' | 'activity';
   source: string;
   target: string;
+  explanation: string;
+  relation?: WorkspaceRelationKind;
 }
 
 export interface UnresolvedWorkspaceLink {
@@ -48,15 +65,44 @@ function topicSlug(path: string): string | undefined {
   return match?.[1];
 }
 
-function nodeKind(path: string): WorkspaceGraphNodeKind {
+function nodeKind(path: string, content: string): WorkspaceGraphNodeKind {
   if (path === 'Home.md') return 'home';
   if (path.endsWith('/Overview.md')) return 'overview';
   if (path.endsWith('/roadmap.md')) return 'roadmap';
   if (path.endsWith('/TUTOR.md')) return 'tutor';
-  if (path.includes('/Notes/')) return 'note';
+  if (path.includes('/Notes/')) {
+    const frontmatter = /^---\s*\n([\s\S]*?)\n---/u.exec(content)?.[1] ?? '';
+    return /^annotation:\s*source-(?:note|quote)\s*$/imu.test(frontmatter) ? 'annotation' : 'note';
+  }
   if (path.includes('/Sources/')) return 'source';
   if (path.includes('/Updates/')) return 'update';
   return 'document';
+}
+
+function eventLabel(event: ResearchThreadEvent): string {
+  if (event.type === 'question-created') return 'Question started';
+  if (event.type === 'follow-up-created') return 'Follow-up started';
+  if (event.type === 'research-completed') return 'Lookup completed';
+  if (event.type === 'source-saved') return 'Source saved';
+  if (event.type === 'source-read') return 'Evidence read';
+  if (event.type === 'quote-added') return 'Quote saved';
+  if (event.type === 'note-added') return 'Source note saved';
+  if (event.type === 'synthesis-written') return 'Answer written';
+  if (event.type === 'synthesis-proposed') return 'Answer proposed';
+  if (event.type === 'export-created') return 'Export created';
+  return 'Question redacted';
+}
+
+function eventTargets(event: ResearchThreadEvent): string[] {
+  if (event.type === 'source-saved') return event.sourcePath ? [event.sourcePath] : [];
+  if (event.type === 'source-read') return [event.sourcePath];
+  if (event.type === 'quote-added' || event.type === 'note-added') {
+    return [event.notePath, event.sourcePath];
+  }
+  if (event.type === 'synthesis-written' || event.type === 'synthesis-proposed') {
+    return event.artifactPath ? [event.artifactPath] : [];
+  }
+  return [];
 }
 
 function documentLabel(path: string, content: string): string {
@@ -126,6 +172,7 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
   const entries = await storage.list('', true);
   const removedSourcePaths = new Set<string>();
   const sourceTitlesByPath = new Map<string, string>();
+  const sourceTagsByPath = new Map<string, string[]>();
   for (const entry of entries) {
     if (entry.kind !== 'file' || !/\/Sources\/manifest\.json$/u.test(entry.path)) continue;
     const snapshot = await storage.read(entry.path);
@@ -133,7 +180,10 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     try {
       const manifest = SourceManifestSchema.parse(JSON.parse(snapshot.content));
       for (const source of manifest.sources) {
-        if (source.path) sourceTitlesByPath.set(source.path, source.title);
+        if (source.path) {
+          sourceTitlesByPath.set(source.path, source.title);
+          if (source.tags?.length) sourceTagsByPath.set(source.path, source.tags);
+        }
       }
       for (const removed of manifest.removedSources ?? []) {
         if (removed.record.path) removedSourcePaths.add(removed.record.path);
@@ -153,15 +203,49 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
   for (const path of paths) {
     const content = (await storage.read(path))?.content ?? '';
     contentByPath.set(path, content);
-    const tags = extractTags(content);
+    const tags = normalizeTags([...(sourceTagsByPath.get(path) ?? []), ...extractTags(content)]);
     nodes.push({
       id: path,
-      kind: nodeKind(path),
+      kind: nodeKind(path, content),
       label: sourceTitlesByPath.get(path) ?? documentLabel(path, content),
       path,
       ...(tags.length ? { tags } : {}),
       ...(topicSlug(path) ? { topicSlug: topicSlug(path) } : {}),
     });
+  }
+
+  const eventRecords: Array<{
+    event: ResearchThreadEvent;
+    eventNodeId: string;
+  }> = [];
+  for (const entry of entries) {
+    if (entry.kind !== 'file' || !/\/research\.json$/u.test(entry.path)) continue;
+    const snapshot = await storage.read(entry.path);
+    if (!snapshot) continue;
+    try {
+      const research = ResearchFileSchema.parse(JSON.parse(snapshot.content));
+      const tagsByThread = new Map(
+        (research.threads ?? []).map((thread) => [thread.threadId, thread.tags ?? []]),
+      );
+      for (const event of research.events ?? []) {
+        const eventNodeId = `research-event:${event.eventId}`;
+        const tags = tagsByThread.get(event.threadId) ?? [];
+        nodes.push({
+          eventId: event.eventId,
+          eventType: event.type,
+          id: eventNodeId,
+          kind: 'event',
+          label: eventLabel(event),
+          path: entry.path,
+          ...(tags.length ? { tags } : {}),
+          threadId: event.threadId,
+          topicSlug: research.topicSlug,
+        });
+        eventRecords.push({ event, eventNodeId });
+      }
+    } catch {
+      // Workspace health and the Research Desk own malformed-ledger recovery. The map stays inert.
+    }
   }
 
   // Tombstoned source files remain on disk so the user can restore them. Resolve links against
@@ -171,17 +255,28 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
   const edges: WorkspaceGraphEdge[] = [];
   const unresolvedLinks: UnresolvedWorkspaceLink[] = [];
   const edgeIds = new Set<string>();
-  const addEdge = (source: string, target: string, kind: WorkspaceGraphEdge['kind']): void => {
-    const id = `${kind}:${source}->${target}`;
+  const addEdge = (
+    source: string,
+    target: string,
+    kind: WorkspaceGraphEdge['kind'],
+    explanation: string,
+    relation?: WorkspaceRelationKind,
+  ): void => {
+    const id = `${kind}:${source}->${target}${relation ? `:${relation}` : ''}`;
     if (edgeIds.has(id)) return;
     edgeIds.add(id);
-    edges.push({ id, kind, source, target });
+    edges.push({ explanation, id, kind, ...(relation ? { relation } : {}), source, target });
   };
 
   for (const overview of nodes.filter((node) => node.kind === 'overview')) {
     for (const node of nodes) {
       if (node.id !== overview.id && node.topicSlug === overview.topicSlug) {
-        addEdge(overview.id, node.id, 'contains');
+        addEdge(
+          overview.id,
+          node.id,
+          'contains',
+          `Topic overview contains the stored ${node.kind}: ${node.label}.`,
+        );
       }
     }
   }
@@ -191,9 +286,46 @@ export async function buildWorkspaceGraph(storage: StorageAdapter): Promise<Work
     for (const match of content.matchAll(/\[\[([^\]]+)\]\]/gu)) {
       const rawTarget = match[1]!.split('|', 1)[0]!.split('#', 1)[0]!.trim();
       const resolved = resolveWikilink(source.path, rawTarget, resolvablePathSet);
-      if (resolved && !removedSourcePaths.has(resolved)) addEdge(source.id, resolved, 'links');
-      else if (!resolved && rawTarget)
+      if (resolved && !removedSourcePaths.has(resolved)) {
+        addEdge(
+          source.id,
+          resolved,
+          'links',
+          `Stored wikilink in ${source.label} points to ${
+            nodes.find((node) => node.id === resolved)?.label ?? resolved
+          }.`,
+        );
+      } else if (!resolved && rawTarget)
         unresolvedLinks.push({ source: source.id, target: rawTarget });
+    }
+    for (const relation of extractRecordRelations(content)) {
+      const resolved = resolveWikilink(source.path, relation.target, resolvablePathSet);
+      if (resolved && !removedSourcePaths.has(resolved)) {
+        addEdge(
+          source.id,
+          resolved,
+          'relation',
+          `Learner-authored ${relation.relation} relation stored in ${source.label}.`,
+          relation.relation,
+        );
+      } else if (!resolved) {
+        unresolvedLinks.push({ source: source.id, target: relation.target });
+      }
+    }
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  for (const { event, eventNodeId } of eventRecords) {
+    for (const target of eventTargets(event)) {
+      if (!nodeIds.has(target) || removedSourcePaths.has(target)) continue;
+      addEdge(
+        eventNodeId,
+        target,
+        'activity',
+        `${eventLabel(event)}: typed activity points to the stored artifact ${
+          nodes.find((node) => node.id === target)?.label ?? target
+        }.`,
+      );
     }
   }
 

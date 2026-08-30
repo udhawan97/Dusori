@@ -23,6 +23,13 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
 - Question redaction and thread-ledger deletion that preserve saved artifacts and warn that prior
   archives and presentation packets remain independent copies
 - Import validation and exact workspace ZIP round-trip coverage for the additive thread model
+- Versioned local quote locators with exact/prefix/suffix context, Unicode-code-point positions,
+  normalized-text hashes, and retained PDF page identity; a changed fingerprint fails closed
+- Normalized source/note/thread tags and explicit learner-authored typed relations that create views
+  and edges without moving or duplicating the underlying files
+- Depth-map edge explanations plus direct jumps to stored sources, annotations, events, and artifacts
+- Network-inert standalone HTML rendered from the same research packet as Markdown, with a
+  print-specific stylesheet for user-initiated Print/PDF
 
 ## Shipped through v0.14.0
 

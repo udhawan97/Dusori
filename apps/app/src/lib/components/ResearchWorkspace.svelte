@@ -20,6 +20,7 @@
   export let autoStart = false;
   export let initialQuestion = '';
   export let providerRecoveryReturn = false;
+  export let focusEventId = '';
   export let onAutoStartHandled: () => void = () => undefined;
   export let onProviderRecoveryReturnHandled: () => void = () => undefined;
   export let onArtifactSaved: () => void = () => undefined;
@@ -79,6 +80,7 @@
     {autoStart}
     {initialQuestion}
     {providerRecoveryReturn}
+    {focusEventId}
     {onAutoStartHandled}
     {onProviderRecoveryReturnHandled}
     {onQuestionChange}

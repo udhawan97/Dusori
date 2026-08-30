@@ -23,7 +23,7 @@ const noTextMessage =
  */
 export function assemblePdfText(pages: readonly (readonly (readonly string[])[])[]): string {
   const rendered: string[] = [];
-  for (const page of pages.slice(0, maxPdfPages)) {
+  for (const [pageIndex, page] of pages.slice(0, maxPdfPages).entries()) {
     const lines: string[] = [];
     for (const line of page) {
       // pdfjs emits a text item per glyph run, so runs are joined and then whitespace collapsed.
@@ -32,7 +32,11 @@ export function assemblePdfText(pages: readonly (readonly (readonly string[])[])
       // whitespace-only line is dropped rather than allowed to truncate a wrapped sentence.
       if (text) lines.push(text);
     }
-    if (lines.length > 0) rendered.push(lines.join('\n'));
+    if (lines.length > 0) {
+      rendered.push(
+        `<!-- dusori-page:${pageIndex} label:${pageIndex + 1} -->\n${lines.join('\n')}`,
+      );
+    }
   }
   if (rendered.length === 0) throw new Error(noTextMessage);
   return rendered.join('\n\n');

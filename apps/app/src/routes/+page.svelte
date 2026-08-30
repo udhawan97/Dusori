@@ -96,8 +96,12 @@
   import WorkspaceSearch from '$lib/components/WorkspaceSearch.svelte';
   import WorkspaceHealth from '$lib/components/WorkspaceHealth.svelte';
   import {
+    buildSourceQuoteLocator,
     normalizeSelectedPassage,
+    parseSourceAnnotationMetadata,
+    resolveSourceQuoteLocator,
     sourceAnnotationTemplate,
+    sourceEvidenceState,
     type SourcePassage,
   } from '$lib/source-reading';
 
@@ -114,6 +118,10 @@
   let notePath = '';
   let noteContent = '';
   let noteDraft = '';
+  let annotationAnchorStatus: {
+    message: string;
+    state: 'anchored' | 'stale' | 'unanchored';
+  } | null = null;
   let editingNote = false;
   let editableNote = false;
   let newNoteTitle = '';
@@ -137,6 +145,7 @@
   let artifactRevision = 0;
   let learningRevision = 0;
   let researchAutoStartSlug = '';
+  let researchFocusEventId = '';
   let providerRecoverySlug = '';
   let providerRecoveryReturnSlug = '';
   let researchQuestionDrafts: Record<string, string> = {};
@@ -612,7 +621,13 @@
   }
 
   function openResearch(slug = selectedSlug, record = true): void {
+    researchFocusEventId = '';
     commitNavigation({ kind: 'open', topicSlug: slug, view: 'research' }, record);
+  }
+
+  function openResearchEvent(slug: string, eventId: string): void {
+    researchFocusEventId = eventId;
+    commitNavigation({ kind: 'open', topicSlug: slug, view: 'research' }, true);
   }
 
   function openSources(slug = selectedSlug, record = true): void {
@@ -664,7 +679,48 @@
     const content = (await storage.read(path))?.content ?? '';
     if (!commitNavigation({ documentPath: path, kind: 'open', view: 'note' }, record)) return;
     noteContent = content;
+    annotationAnchorStatus = await inspectAnnotationAnchor(content);
     await refreshReadingSources(path);
+  }
+
+  async function inspectAnnotationAnchor(
+    content: string,
+  ): Promise<{ message: string; state: 'anchored' | 'stale' | 'unanchored' } | null> {
+    const metadata = parseSourceAnnotationMetadata(content);
+    if (!storage || !metadata?.locator) return null;
+    const source = await storage.read(metadata.sourcePath);
+    if (!source) {
+      return {
+        message: 'The local source is missing. The original quote remains in this note.',
+        state: 'unanchored',
+      };
+    }
+    const resolution = await resolveSourceQuoteLocator({
+      locator: metadata.locator,
+      recordedSourceContentHash: metadata.sourceContentHash,
+      sourceContent: source.content,
+      sourceContentHash: source.hash,
+    });
+    if (resolution.status === 'anchored') {
+      return {
+        message:
+          resolution.method === 'position'
+            ? 'Anchored to the verified position in this exact local source copy.'
+            : 'Anchored by verified quote context in this exact local source copy.',
+        state: 'anchored',
+      };
+    }
+    return resolution.status === 'stale'
+      ? {
+          message:
+            'The local source changed. Dusori retained the original quote and did not silently re-anchor it.',
+          state: 'stale',
+        }
+      : {
+          message:
+            'This local copy no longer has one unambiguous anchor. The original quote remains in the note.',
+          state: 'unanchored',
+        };
   }
 
   async function refreshReadingSources(path: string): Promise<void> {
@@ -765,6 +821,7 @@
         `- Saved an explicit edit to [[../../../${relativePath.replace(/\.md$/u, '')}]].`,
       );
       noteContent = noteDraft;
+      annotationAnchorStatus = await inspectAnnotationAnchor(noteDraft);
       stopEditingNote();
       status = 'Note saved locally and recorded in the update log.';
     });
@@ -778,6 +835,7 @@
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
+      annotationAnchorStatus = null;
       editingNote = true;
       status = 'Note created. Add the first useful idea, then save it.';
     });
@@ -790,6 +848,20 @@
       if (!currentSource) throw new Error('This reading copy is not in the active source shelf.');
       const currentSourceFile = await storage!.read(notePath);
       if (!currentSourceFile) throw new Error('This local reading copy is missing.');
+      if (passage && sourceEvidenceState(currentSource) === 'reference') {
+        throw new Error('Add readable local text before quoting this reference.');
+      }
+      const locatedPassage = passage
+        ? {
+            ...passage,
+            locator: await buildSourceQuoteLocator({
+              exact: passage.text,
+              sourceContent: currentSourceFile.content,
+              sourceContentHash: currentSourceFile.hash,
+            }),
+            text: normalizeSelectedPassage(passage.text),
+          }
+        : undefined;
       const sourceName = noteContent.match(/^#\s+(.+)$/mu)?.[1]?.trim() ?? currentSource.title;
       const baseTitle = `Notes on ${sourceName}`.slice(0, 160);
       let title = baseTitle;
@@ -802,7 +874,7 @@
       const createdAt = new Date();
       const content = sourceAnnotationTemplate({
         createdAt,
-        ...(passage ? { passage } : {}),
+        ...(locatedPassage ? { passage: locatedPassage } : {}),
         source: currentSource,
         sourceContentHash: currentSourceFile.hash,
         title,
@@ -832,6 +904,7 @@
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
+      annotationAnchorStatus = await inspectAnnotationAnchor(created.content);
       editingNote = true;
       status = passage
         ? `Quoted passage and source context saved locally. Add what it changes, then save your note.${activityWarning}`
@@ -1564,6 +1637,20 @@
                 onOpenSource={(path) => void openGraphDocument(path)}
               />
             {:else}
+              {#if annotationAnchorStatus}
+                <aside
+                  class="annotation-anchor-status"
+                  data-state={annotationAnchorStatus.state}
+                  aria-live="polite"
+                >
+                  <strong>
+                    {annotationAnchorStatus.state === 'anchored'
+                      ? 'Quote anchor verified'
+                      : 'Quote kept, anchor needs attention'}
+                  </strong>
+                  <p>{annotationAnchorStatus.message}</p>
+                </aside>
+              {/if}
               <!-- svelte-ignore a11y_click_events_have_key_events (delegation only: every target is a rendered <a>, which Enter already activates) -->
               <!-- svelte-ignore a11y_no_static_element_interactions (the sheet is a container; the links inside carry the roles) -->
               <div class="note-sheet" onclick={(event) => void followWikilink(event)}>
@@ -1577,6 +1664,7 @@
             mode={graphMode}
             onModeChange={setGraphMode}
             onOpen={(path) => void openGraphDocument(path)}
+            onOpenEvent={openResearchEvent}
           />
         {:else if workspaceView === 'research' && storage && workspace}
           {#key `${selectedSlug}-${learningRevision}`}
@@ -1591,6 +1679,7 @@
               autoStart={researchAutoStartSlug === selectedSlug}
               initialQuestion={researchQuestionDrafts[selectedSlug] ?? ''}
               providerRecoveryReturn={providerRecoveryReturnSlug === selectedSlug}
+              focusEventId={researchFocusEventId}
               onAutoStartHandled={() => (researchAutoStartSlug = '')}
               onProviderRecoveryReturnHandled={() => {
                 if (providerRecoveryReturnSlug === selectedSlug) providerRecoveryReturnSlug = '';
@@ -2613,6 +2702,31 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs);
+  }
+
+  .annotation-anchor-status {
+    width: min(100%, 54rem);
+    margin: var(--space-lg) auto 0;
+    padding: var(--space-sm) var(--space-md);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+  }
+
+  .annotation-anchor-status[data-state='anchored'] {
+    border-color: var(--color-accent-text);
+  }
+
+  .annotation-anchor-status[data-state='stale'],
+  .annotation-anchor-status[data-state='unanchored'] {
+    border-color: var(--color-muted);
+  }
+
+  .annotation-anchor-status p {
+    margin: var(--space-2xs) 0 0;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
   }
 
   .new-note-panel form {

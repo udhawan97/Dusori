@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { sha256 } from '../hash.js';
+import { normalizeTags } from '../tags/tags.js';
 
 export const maxResearchThreads = 50;
 export const maxResearchThreadEvents = 500;
@@ -18,6 +19,11 @@ export const ResearchThreadSchema = z
     questionText: z.string().min(1).max(400),
     angleId: z.string().min(1).max(40).optional(),
     outputStyle: z.enum(['brief', 'comparison', 'timeline', 'study-guide']),
+    tags: z
+      .array(z.string().min(1).max(80))
+      .max(24)
+      .transform((tags) => normalizeTags(tags))
+      .optional(),
     createdAt: z.string().datetime(),
     followedAt: z.string().datetime().optional(),
     redactedAt: z.string().datetime().optional(),

@@ -97,6 +97,7 @@ describe('research run ledger', () => {
     expect(file?.threads).toEqual([
       expect.objectContaining({
         questionText: 'How does spaced repetition support learning?',
+        tags: ['research/thread'],
         threadId: file?.runs?.[0]?.threadId,
       }),
     ]);

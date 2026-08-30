@@ -37,7 +37,7 @@
     type SourceRecord,
     type StorageAdapter,
   } from '@dusori/core';
-  import { tick } from 'svelte';
+  import { afterUpdate, tick } from 'svelte';
 
   import { wikilinkTarget } from '$lib/markdown';
   import {
@@ -63,6 +63,7 @@
   export let threads: ResearchThreadRecord[] = [];
   export let events: ResearchThreadEvent[] = [];
   export let threadId: string | undefined = undefined;
+  export let focusEventId = '';
   export let storage: StorageAdapter;
   export let generatedAt: string;
   export let autoRefreshEnabled = false;
@@ -86,6 +87,8 @@
   let managing = false;
   let threadElement: HTMLElement;
   let documentHeading: HTMLHeadingElement;
+  let focusedEventElement: HTMLElement;
+  let lastFocusedEventId = '';
 
   $: latestRun = runs.at(-1) ?? null;
   $: answerRun = researchAnswerRun(runs, synthesisRunAt);
@@ -103,6 +106,9 @@
   $: answerPreview = researchThreadPreview(synthesisMarkdown);
   $: threadEvents = threadId ? events.filter((event) => event.threadId === threadId) : [];
   $: currentThread = threads.find((thread) => thread.threadId === threadId);
+  $: focusedEvent = focusEventId
+    ? events.find((event) => event.eventId === focusEventId)
+    : undefined;
   $: exportInput = {
     generatedAt,
     outputStyle,
@@ -115,6 +121,12 @@
     threadId,
     threads,
   } satisfies ResearchThreadExportInput;
+
+  afterUpdate(() => {
+    if (!focusEventId || focusEventId === lastFocusedEventId) return;
+    lastFocusedEventId = focusEventId;
+    void revealFocusedEvent(focusEventId);
+  });
 
   function displayDate(value: string): string {
     const date = new Date(value);
@@ -178,6 +190,14 @@
     await tick();
     documentHeading?.focus({ preventScroll: true });
     documentHeading?.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }
+
+  async function revealFocusedEvent(eventId: string): Promise<void> {
+    view = 'thread';
+    await tick();
+    if (focusEventId !== eventId) return;
+    focusedEventElement?.focus({ preventScroll: true });
+    focusedEventElement?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }
 
   function downloadText(content: string, filename: string, mediaType: string): void {
@@ -522,6 +542,23 @@
     </p>
   {/if}
 
+  {#if focusEventId}
+    <aside class="focused-event" bind:this={focusedEventElement} tabindex="-1">
+      {#if focusedEvent}
+        {@const focusedPath = activityPath(focusedEvent)}
+        <span>Selected from Depth map · {displayDate(focusedEvent.at)}</span>
+        <strong>{activityLabel(focusedEvent)}</strong>
+        <p>{activityDetail(focusedEvent)}</p>
+        {#if focusedPath}
+          <button type="button" onclick={() => onOpenDocument(focusedPath)}>Open artifact</button>
+        {/if}
+      {:else}
+        <strong>Research event unavailable</strong>
+        <p>This event is no longer present in the bounded local thread ledger.</p>
+      {/if}
+    </aside>
+  {/if}
+
   {#if view === 'thread'}
     <ol class="message-list" aria-label={`Research thread for ${topicTitle}`}>
       <li class="message" style="--thread-index: 0">
@@ -697,7 +734,7 @@
             <ol class="activity-list" aria-label="Typed thread activity">
               {#each threadEvents as event (event.eventId)}
                 {@const path = activityPath(event)}
-                <li>
+                <li id={`activity-${event.eventId}`}>
                   <span>{displayDate(event.at)}</span>
                   <div>
                     <strong>{activityLabel(event)}</strong>
@@ -773,7 +810,8 @@
   .document-view h3,
   .export-status,
   .management-status,
-  .update-note {
+  .update-note,
+  .focused-event p {
     margin: 0;
   }
 
@@ -989,6 +1027,32 @@
     border: var(--rule-hair) solid var(--color-rule);
     color: var(--color-muted);
     font-size: var(--text-sm);
+  }
+
+  .focused-event {
+    display: grid;
+    gap: var(--space-xs);
+    max-width: 68ch;
+    padding: var(--space-md);
+    border: var(--rule-hair) solid var(--color-accent-text);
+    background: var(--color-paper-2);
+  }
+
+  .focused-event > span {
+    color: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+
+  .focused-event button {
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-accent-text);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
   }
 
   .message-list,

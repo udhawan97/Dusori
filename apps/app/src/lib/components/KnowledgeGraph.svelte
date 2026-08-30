@@ -30,6 +30,7 @@
 
   export let storage: StorageAdapter;
   export let onOpen: (path: string) => void;
+  export let onOpenEvent: (topicSlug: string, eventId: string) => void = () => undefined;
   export let mode: GraphMode = 'outline';
   export let onModeChange: (mode: GraphMode) => void = () => undefined;
 
@@ -48,7 +49,7 @@
   let loading = true;
   let error = '';
   let artifactQuery = '';
-  let artifactKind: 'all' | 'note' | 'source' | 'update' = 'all';
+  let artifactKind: 'all' | 'annotation' | 'event' | 'note' | 'source' | 'update' = 'all';
   let artifactTag = '';
   let topicEvidence: TopicEvidence[] = [];
   let selectedTopicSlug = '';
@@ -68,7 +69,9 @@
   function kindLabel(node: WorkspaceGraphNode): string {
     const labels: Record<string, string> = {
       document: 'Document',
+      event: 'Research event',
       home: 'Workspace',
+      annotation: 'Annotation',
       note: 'Note',
       overview: 'Overview',
       roadmap: 'Roadmap',
@@ -77,6 +80,14 @@
       update: 'Update',
     };
     return labels[node.kind] ?? node.kind;
+  }
+
+  function openNode(node: WorkspaceGraphNode): void {
+    if (node.kind === 'event' && node.topicSlug && node.eventId) {
+      onOpenEvent(node.topicSlug, node.eventId);
+      return;
+    }
+    onOpen(node.path);
   }
 
   onMount(async () => {
@@ -141,9 +152,9 @@
     const haystack = `${node.label} ${node.path} ${(node.tags ?? []).join(' ')}`;
     return matchesKind && matchesTag && (!query || haystack.toLocaleLowerCase().includes(query));
   });
-  $: noteCount = graph?.nodes.filter((node) => node.kind === 'note').length ?? 0;
+  $: noteCount =
+    graph?.nodes.filter((node) => node.kind === 'note' || node.kind === 'annotation').length ?? 0;
   $: sourceCount = graph?.nodes.filter((node) => node.kind === 'source').length ?? 0;
-  $: wikilinkCount = graph?.edges.filter((edge) => edge.kind === 'links').length ?? 0;
   $: selectedTopic =
     atlas?.topics.find((topic) => topic.slug === selectedTopicSlug) ?? atlas?.topics[0] ?? null;
 
@@ -270,8 +281,8 @@
         <dd>{sourceCount}</dd>
       </div>
       <div>
-        <dt>Wikilinks</dt>
-        <dd>{wikilinkCount}</dd>
+        <dt>Explained edges</dt>
+        <dd>{graph.edges.length}</dd>
       </div>
       <div>
         <dt>Unresolved</dt>
@@ -403,7 +414,7 @@
                       <ul>
                         {#each lane.nodes as node (node.id)}
                           <li>
-                            <button type="button" onclick={() => onOpen(node.path)}>
+                            <button type="button" onclick={() => openNode(node)}>
                               <span>{node.label}</span>
                               <small>{kindLabel(node)}</small>
                             </button>
@@ -416,6 +427,28 @@
                   </section>
                 {/each}
               </div>
+
+              {#if selectedTopic.edges.length}
+                <details class="edge-inspector">
+                  <summary>Why these {selectedTopic.edges.length} edges exist</summary>
+                  <ul>
+                    {#each selectedTopic.edges as edge (edge.id)}
+                      <li>
+                        <p>{edge.explanation}</p>
+                        <div>
+                          <button type="button" onclick={() => openNode(edge.source)}>
+                            {edge.source.label}
+                          </button>
+                          <span aria-hidden="true">→</span>
+                          <button type="button" onclick={() => openNode(edge.target)}>
+                            {edge.target.label}
+                          </button>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                </details>
+              {/if}
 
               {#if selectedTopic.connections.length}
                 <div class="connections">
@@ -442,7 +475,7 @@
             <ul>
               {#each atlas.workspace as node (node.id)}
                 <li>
-                  <button type="button" onclick={() => onOpen(node.path)}>
+                  <button type="button" onclick={() => openNode(node)}>
                     <FileText aria-hidden="true" size={16} strokeWidth={1.5} />
                     <span>{node.label}</span>
                     <small>{kindLabel(node)}</small>
@@ -468,11 +501,13 @@
           <input bind:value={artifactQuery} type="search" placeholder="Find an artifact" />
         </label>
         <div class="artifact-filters" role="group" aria-label="Filter graph artifacts">
-          {#each ['all', 'note', 'source', 'update'] as kind (kind)}
+          {#each ['all', 'annotation', 'event', 'note', 'source', 'update'] as kind (kind)}
             <button
               type="button"
               aria-pressed={artifactKind === kind}
-              onclick={() => (artifactKind = kind as 'all' | 'note' | 'source' | 'update')}
+              onclick={() =>
+                (artifactKind = kind as
+                  'all' | 'annotation' | 'event' | 'note' | 'source' | 'update')}
             >
               {kind === 'all' ? 'All' : `${kind[0]?.toLocaleUpperCase()}${kind.slice(1)}s`}
             </button>
@@ -496,7 +531,7 @@
         <ul aria-label="Map documents">
           {#each artifactNodes as node (node.id)}
             <li>
-              <button type="button" onclick={() => onOpen(node.path)}>
+              <button type="button" onclick={() => openNode(node)}>
                 <FileText aria-hidden="true" size={16} strokeWidth={1.5} />
                 <span title={node.label}>{node.label}</span>
                 <small>{kindLabel(node)}</small>
@@ -1146,6 +1181,58 @@
 
   .connections {
     margin-block-start: var(--space-lg);
+  }
+
+  .edge-inspector {
+    margin-block-start: var(--space-lg);
+    padding-block-start: var(--space-md);
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .edge-inspector summary {
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .edge-inspector ul {
+    display: grid;
+    gap: var(--space-sm);
+    max-height: 22rem;
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+  }
+
+  .edge-inspector li {
+    padding: var(--space-sm);
+    background: var(--color-paper-2);
+  }
+
+  .edge-inspector p {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  .edge-inspector li > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-block-start: var(--space-xs);
+  }
+
+  .edge-inspector button {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--color-accent-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .connections > div {
