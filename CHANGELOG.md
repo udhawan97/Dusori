@@ -4,6 +4,16 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Preview-first machine-file recovery
+
+- Added a local recovery ledger during startup and in Settings for recognized invalid workspace,
+  topic, source, research, review, and proposal JSON.
+- Shows the original excerpt, validation issue, bounded salvage summary, and exact proposed JSON
+  before a repair can be enabled; a review schedule stays manual-only when replacement would invent
+  history.
+- Archives the exact original bytes under `.dusori-recovery/` before a hash-guarded replacement, so
+  an external edit invalidates the reviewed plan instead of being overwritten.
+
 ## [0.15.0] - 2026-08-30
 
 ### Question-first research and evidence navigation

@@ -11,7 +11,12 @@
   } from '@lucide/svelte';
   import { onMount } from 'svelte';
 
-  import { researchProviderPolicy, type CompanionAiClient } from '@dusori/core';
+  import {
+    researchProviderPolicy,
+    type AppliedMachineFileRecovery,
+    type CompanionAiClient,
+    type StorageAdapter,
+  } from '@dusori/core';
 
   import {
     automaticUpdatePreferenceKey,
@@ -23,6 +28,9 @@
   import { readAppearance, setAppearance, type Appearance } from '$lib/appearance';
   import { listConsentDecisions, resetConsent, type StoredConsentDecision } from '$lib/consent';
 
+  import MachineFileRecovery from './MachineFileRecovery.svelte';
+
+  export let storage: StorageAdapter;
   export let storageKind: string;
   export let storageLabel: string;
   export let companionStatus: string;
@@ -37,6 +45,9 @@
   export let onOpenLegacyLearning: () => void = () => undefined;
   export let providerRecoveryActive = false;
   export let onReturnToResearch: () => void = () => undefined;
+  export let onMachineFileRecovered: (
+    recovery: AppliedMachineFileRecovery,
+  ) => void | Promise<void> = () => undefined;
 
   let updateStatus = 'Checking update support…';
   let updatePlatform: UpdatePlatform | null = null;
@@ -260,6 +271,10 @@
         </label>
       </div>
     </section>
+
+    <div class="recovery-slot">
+      <MachineFileRecovery {storage} onRecovered={onMachineFileRecovered} />
+    </div>
 
     <section aria-labelledby="privacy-title">
       <div class="section-heading">
@@ -498,6 +513,12 @@
   .settings-grid > section {
     padding-block: var(--space-xl);
     border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .recovery-slot {
+    padding-block: var(--space-xl);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+    grid-column: 1 / -1;
   }
 
   .section-heading {

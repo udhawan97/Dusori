@@ -19,6 +19,7 @@ export * from './notes/edit.js';
 export * from './portable.js';
 export * from './research/index.js';
 export * from './schemas/read-machine-file.js';
+export * from './schemas/machine-file-recovery.js';
 export * from './schemas/workspace.js';
 export * from './search/workspace-search.js';
 export * from './sources/import.js';

@@ -797,6 +797,92 @@ test('Settings exposes and persists all four appearance modes', async ({ page })
   }
 });
 
+test('Settings previews and archives an invalid source manifest before applying a repair', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+  const invalidManifest = '{"schemaVersion":1,"sources":[{"title":"Incomplete source"}]}\n';
+  await page.evaluate(async (content) => {
+    const origin = await navigator.storage.getDirectory();
+    const dusori = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const sources = await topic.getDirectoryHandle('Sources');
+    const file = await sources.getFileHandle('manifest.json');
+    const writable = await file.createWritable();
+    await writable.write(content);
+    await writable.close();
+  }, invalidManifest);
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const recovery = page.getByRole('region', { name: 'Machine-file recovery' });
+  await expect(recovery.getByText('1 file needs review')).toBeVisible();
+  await expect(recovery.getByRole('textbox', { name: /Original .*manifest\.json/u })).toHaveValue(
+    /Incomplete source/u,
+  );
+  await expect(recovery.getByRole('textbox', { name: /Proposed .*manifest\.json/u })).toHaveValue(
+    /"sources": \[\]/u,
+  );
+  await recovery.getByRole('checkbox', { name: 'I reviewed this exact replacement.' }).check();
+  await recovery.getByRole('button', { name: 'Archive original and apply repair' }).click();
+  await expect(page.getByText('No invalid recognized machine files were found.')).toBeVisible();
+
+  const stored = await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const dusori = await origin.getDirectoryHandle('Dusori');
+    const topic = await (
+      await dusori.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const sources = await topic.getDirectoryHandle('Sources');
+    const repaired = await (await sources.getFileHandle('manifest.json')).getFile();
+    const recoveryRoot = await dusori.getDirectoryHandle('.dusori-recovery');
+    const archiveBatch = (await Array.fromAsync(recoveryRoot.values())).find(
+      (entry): entry is FileSystemDirectoryHandle => entry.kind === 'directory',
+    );
+    if (!archiveBatch) return { archived: '', repaired: await repaired.text() };
+    const archivedTopic = await (
+      await archiveBatch.getDirectoryHandle('Topics')
+    ).getDirectoryHandle('ai-fundamentals');
+    const archivedSources = await archivedTopic.getDirectoryHandle('Sources');
+    const archived = await (await archivedSources.getFileHandle('manifest.json')).getFile();
+    return { archived: await archived.text(), repaired: await repaired.text() };
+  });
+  expect(stored.archived).toBe(invalidManifest);
+  expect(JSON.parse(stored.repaired)).toEqual({ schemaVersion: 1, sources: [] });
+});
+
+test('startup stops on an invalid workspace index and resumes only after reviewed recovery', async ({
+  page,
+}) => {
+  await createBrowserWorkspace(page);
+  await createTopic(page, { remainInResearch: true });
+  await page.evaluate(async () => {
+    const origin = await navigator.storage.getDirectory();
+    const dusori = await origin.getDirectoryHandle('Dusori');
+    const file = await dusori.getFileHandle('dusori.json');
+    const writable = await file.createWritable();
+    await writable.write('{not json');
+    await writable.close();
+  });
+  await page.reload();
+
+  const recovery = page.getByRole('region', { name: 'Your files are still here.' });
+  await expect(recovery).toBeVisible();
+  await expect(recovery.getByRole('textbox', { name: 'Original dusori.json' })).toHaveValue(
+    '{not json',
+  );
+  await expect(recovery.getByRole('textbox', { name: 'Proposed dusori.json' })).toHaveValue(
+    /"slug": "ai-fundamentals"/u,
+  );
+  await recovery.getByRole('checkbox', { name: 'I reviewed this exact replacement.' }).check();
+  await recovery.getByRole('button', { name: 'Archive original and apply repair' }).click();
+
+  await expect(page.getByRole('navigation', { name: 'Dusori Research Desk' })).toBeVisible();
+  await expect(page.getByText('AI Fundamentals', { exact: true }).first()).toBeVisible();
+});
+
 test('Obsidian setup explains least-privilege folder access and the portable fallback', async ({
   page,
 }) => {

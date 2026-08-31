@@ -37,6 +37,7 @@
     exportTopic,
     exportWorkspace,
     lineDiff,
+    inspectMachineFileRecoveries,
     prepareWorkspaceImport,
     proposeMarkdownUpdate,
     readMachineFile,
@@ -89,6 +90,7 @@
   import ResearchWorkspace from '$lib/components/ResearchWorkspace.svelte';
   import SourceReader from '$lib/components/SourceReader.svelte';
   import AppSettings from '$lib/components/AppSettings.svelte';
+  import MachineFileRecovery from '$lib/components/MachineFileRecovery.svelte';
   import SourceLibrary from '$lib/components/SourceLibrary.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import TopicAsk from '$lib/components/TopicAsk.svelte';
@@ -108,6 +110,8 @@
   let storage: StorageAdapter | null = null;
   let workspace: Workspace | null = null;
   let workspaceRestoring = true;
+  let machineRecoveryPending = false;
+  let machineRecoveryReason = '';
   let desktopRuntime = false;
   let storageLabel = '';
   // An example belongs in the placeholder. Seeding the value here meant a first Enter created a
@@ -487,7 +491,19 @@
   ): Promise<void> {
     storage = adapter;
     storageLabel = label;
-    workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
+    machineRecoveryPending = false;
+    machineRecoveryReason = '';
+    try {
+      workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
+    } catch (cause) {
+      const recoveries = await inspectMachineFileRecoveries(adapter).catch(() => []);
+      if (!recoveries.some((plan) => plan.path === 'dusori.json')) throw cause;
+      workspace = null;
+      machineRecoveryPending = true;
+      machineRecoveryReason =
+        cause instanceof Error ? cause.message : 'A machine-owned workspace file is invalid.';
+      return;
+    }
     const first = workspace.topics[0];
     if (!first) {
       if (restoreView) await applyLocationView();
@@ -501,6 +517,13 @@
       syncLocation(true);
       await orientView();
     }
+  }
+
+  async function resumeRecoveredWorkspace(): Promise<void> {
+    if (!storage) return;
+    await activateStorage(storage, storageLabel, true);
+    artifactRevision += 1;
+    learningRevision += 1;
   }
 
   async function createBrowserWorkspace(): Promise<void> {
@@ -1197,6 +1220,37 @@
     </span>
     <p>Opening your Research Desk…</p>
   </main>
+{:else if machineRecoveryPending && storage}
+  <main class="recovery-shell">
+    <header class="setup-header">
+      <a class="wordmark" href="../">
+        <span class="brand-symbol" aria-hidden="true">
+          <img
+            class="brand-mark-light"
+            src={`${base}/brand/dusori-mark.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+          <img
+            class="brand-mark-dark"
+            src={`${base}/brand/dusori-mark-reversed.svg`}
+            alt=""
+            width="28"
+            height="28"
+          />
+        </span>
+        <span>Dusori</span>
+      </a>
+      <ThemeToggle />
+    </header>
+    <MachineFileRecovery
+      {storage}
+      blocking
+      reason={machineRecoveryReason}
+      onRecovered={() => resumeRecoveredWorkspace()}
+    />
+  </main>
 {:else if !workspace}
   <main class="setup-shell">
     <header class="setup-header">
@@ -1559,8 +1613,9 @@
         />
       {/if}
 
-      {#if workspaceView === 'settings'}
+      {#if workspaceView === 'settings' && storage}
         <AppSettings
+          {storage}
           storageKind={storage?.kind ?? 'unknown'}
           {storageLabel}
           {companionStatus}
@@ -1575,6 +1630,7 @@
           onOpenLegacyLearning={() => void openLearning()}
           providerRecoveryActive={Boolean(providerRecoverySlug)}
           onReturnToResearch={returnToResearch}
+          onMachineFileRecovered={() => resumeRecoveredWorkspace()}
         />
       {:else if selectedSlug}
         {#if workspaceView === 'sources' && storage}
@@ -2038,6 +2094,16 @@
   .setup-shell {
     width: min(100%, 82rem);
     min-height: 100dvh;
+    margin-inline: auto;
+    padding: var(--space-md) var(--page-gutter) var(--space-2xl);
+  }
+
+  .recovery-shell {
+    display: grid;
+    width: min(100%, 82rem);
+    min-height: 100dvh;
+    align-content: start;
+    gap: clamp(var(--space-xl), 7vh, var(--space-2xl));
     margin-inline: auto;
     padding: var(--space-md) var(--page-gutter) var(--space-2xl);
   }

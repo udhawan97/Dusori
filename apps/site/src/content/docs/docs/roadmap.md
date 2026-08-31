@@ -5,6 +5,16 @@ description: What v0.15.0 ships and what remains explicitly unbuilt.
 
 The product roadmap is not a progress score for the researcher. Inside the app, **Map/Outline** shows what the local research files contain. Optional learning tools live under Settings. This page is the project roadmap.
 
+## In development after v0.15.0 — not released
+
+- A local recovery ledger for invalid machine-owned JSON, available during startup and in Settings
+- Read-only inspection that shows the validation issue, original excerpt, and exact proposed
+  replacement before enabling any repair
+- An exact original archive followed by a hash-guarded replacement, so an external edit invalidates
+  a stale recovery plan instead of being overwritten
+- Bounded salvage for valid topic, source, research, and proposal records; review schedules remain
+  manual-only when a truthful replacement cannot be derived without inventing history
+
 ## Shipped through v0.15.0
 
 - Stable topic-local question-thread identity with optional parent identity for explicit
@@ -83,7 +93,6 @@ The product roadmap is not a progress score for the researcher. Inside the app, 
   v0.15.0 notes
 - Separately consented citation resolver calls
 - Reproducible OS code-signing/notarization when an open, sustainable release path is available
-- A recovery UI for invalid machine-owned files that never mutates before showing the proposed repair
 - Model- or dataset-catalog providers such as Hugging Face until a concrete, consentable workflow has stable fixtures and honest evidence boundaries
 
 Candidates are not commitments. A feature becomes shipped only after its behavior, privacy boundary, documentation, tests, and release artifact are verified together.
