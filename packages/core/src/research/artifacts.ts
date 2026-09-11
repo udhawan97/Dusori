@@ -3,6 +3,7 @@ import {
   acceptMarkdownUpdate,
   appendTopicUpdate,
   proposeMarkdownUpdate,
+  recordTopicFileVersion,
   type MarkdownConflict,
 } from '../conflict/write-protocol.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
@@ -33,17 +34,7 @@ async function trackFile(
   modifiedAt: number,
   now: Date,
 ): Promise<void> {
-  const statePath = `${topicRoot(topicSlug)}/state.json`;
-  const state = await readMachineFile(storage, statePath, TopicStateSchema, now);
-  const next = TopicStateSchema.parse({
-    ...state,
-    fileIndex: { ...state.fileIndex, [path]: { ...state.fileIndex[path], hash, modifiedAt } },
-    updatedAt: now.toISOString(),
-  });
-  const snapshot = await storage.read(statePath);
-  await storage.write(statePath, `${JSON.stringify(next, null, 2)}\n`, {
-    expectedHash: snapshot?.hash,
-  });
+  await recordTopicFileVersion(storage, topicSlug, { hash, modifiedAt, path }, now);
 }
 
 /**

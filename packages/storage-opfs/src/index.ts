@@ -8,6 +8,8 @@ import {
   type WriteOptions,
 } from '@dusori/core';
 
+import { withFileWriteLock } from './write-lock.js';
+
 import {
   BrowserStorageSelectionError,
   browserEngineRequiresIndexedDb,
@@ -139,6 +141,14 @@ export class OpfsStorageAdapter implements StorageAdapter {
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<FileSnapshot> {
     const normalized = normalizeWorkspacePath(path);
+    return withFileWriteLock(normalized, () => this.writeLocked(normalized, content, options));
+  }
+
+  private async writeLocked(
+    normalized: string,
+    content: string,
+    options: WriteOptions,
+  ): Promise<FileSnapshot> {
     const current = await this.read(normalized);
     if (options.expectedHash === null && current) {
       throw new StorageConflictError(normalized, null, current.hash);
@@ -149,8 +159,13 @@ export class OpfsStorageAdapter implements StorageAdapter {
     const [parent, name] = await parentAndName(this.root, normalized, true);
     const handle = await parent.getFileHandle(name, { create: true });
     const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
+    try {
+      await writable.write(content);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => undefined);
+      throw error;
+    }
     const writtenHash = await sha256(content);
     // Closing an OPFS writer is not enough on every Chromium runner: getFile() may briefly keep
     // returning the preceding snapshot. A successful write must not resolve until the adapter can

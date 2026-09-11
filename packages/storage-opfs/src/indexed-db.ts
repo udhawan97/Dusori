@@ -170,13 +170,29 @@ export class IndexedDbStorageAdapter implements StorageAdapter {
       throw new StorageConflictError(normalized, options.expectedHash, current?.hash ?? null);
     }
     const transaction = this.database.transaction(storeName, 'readwrite');
+    const completed = transactionComplete(transaction);
     const store = transaction.objectStore(storeName);
+    // Hashing may yield beyond an IndexedDB transaction's lifetime. Compare the exact bytes
+    // whose hash was checked above inside the same transaction that commits the replacement.
+    const actual = await requestResult(
+      store.get(normalized) as IDBRequest<IndexedDbEntry | undefined>,
+    );
+    const actualContent = actual?.kind === 'file' ? actual.content : undefined;
+    if (options.expectedHash !== undefined && actualContent !== current?.content) {
+      transaction.abort();
+      await completed.catch(() => undefined);
+      throw new StorageConflictError(
+        normalized,
+        options.expectedHash,
+        actualContent === undefined ? null : await sha256(actualContent),
+      );
+    }
     const modifiedAt = Date.now();
     for (const directory of parentDirectories(normalized)) {
       store.put({ kind: 'directory', modifiedAt } satisfies IndexedDbEntry, directory);
     }
     store.put({ content, kind: 'file', modifiedAt } satisfies IndexedDbEntry, normalized);
-    await transactionComplete(transaction);
+    await completed;
     return {
       content,
       hash: await sha256(content),

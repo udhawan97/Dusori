@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
@@ -36,6 +36,44 @@ async function readTopic(): Promise<MemoryStorageAdapter> {
 }
 
 describe('topic synthesis artifact', () => {
+  it('reapplies tracking after a concurrent state change without duplicating the activity log', async () => {
+    const storage = await readTopic();
+    const path = `Topics/${slug}/state.json`;
+    const write = storage.write.bind(storage);
+    let inject = true;
+    vi.spyOn(storage, 'write').mockImplementation(async (target, content, options) => {
+      if (inject && target === path) {
+        inject = false;
+        const snapshot = (await storage.read(path))!;
+        await write(
+          path,
+          JSON.stringify({
+            ...JSON.parse(snapshot.content),
+            status: 'paused',
+            learnerExtension: 'keep',
+          }),
+          { expectedHash: snapshot.hash },
+        );
+      }
+      return write(target, content, options);
+    });
+    const result = await writeTopicSynthesis(storage, slug, title, now);
+    expect(result.status).toBe('written');
+    const state = JSON.parse((await storage.read(path))!.content);
+    expect(state.status).toBe('paused');
+    expect(state.learnerExtension).toBe('keep');
+    expect(state.fileIndex[`Topics/${slug}/Synthesis.md`].hash).toBe(
+      (await storage.read(`Topics/${slug}/Synthesis.md`))!.hash,
+    );
+    const updates = await storage.list(`Topics/${slug}/Updates`, true);
+    const logs = await Promise.all(
+      updates
+        .filter((entry) => entry.kind === 'file')
+        .map(async (entry) => (await storage.read(entry.path))!.content),
+    );
+    expect(logs.join('\n').match(/Wrote \[\[/gu)).toHaveLength(1);
+  });
+
   it('creates a tracked Synthesis.md citing the source', async () => {
     const storage = await readTopic();
 

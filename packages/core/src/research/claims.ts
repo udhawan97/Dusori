@@ -142,7 +142,10 @@ export async function readSourcesIntoClaims(
           reason: 'Its saved text is missing from this workspace.',
           title: record.title,
         });
-        next.push(record);
+        if (record.readState === 'read') {
+          next.push({ ...record, readState: 'readable' });
+          changed = true;
+        } else next.push(record);
         continue;
       }
       const claims = extractClaims({ at, content: file.content, title: record.title });
@@ -150,6 +153,7 @@ export async function readSourcesIntoClaims(
       const compatibleClaims = claims.map((claim) => ({
         ...previousClaims.get(claim.text),
         ...claim,
+        heading: claim.heading,
       }));
       if (claims.length === 0) {
         result.unreadable.push({
@@ -176,7 +180,11 @@ export async function readSourcesIntoClaims(
       const unchanged =
         record.readState === 'read' &&
         record.claims?.length === compatibleClaims.length &&
-        record.claims.every((claim, index) => claim.text === compatibleClaims[index]?.text);
+        record.claims.every(
+          (claim, index) =>
+            claim.text === compatibleClaims[index]?.text &&
+            claim.heading === compatibleClaims[index]?.heading,
+        );
       if (unchanged) {
         next.push(record);
         continue;

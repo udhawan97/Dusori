@@ -38,7 +38,7 @@ export interface ResearchSequenceProgress {
 }
 
 export type ResearchSequenceStatus =
-  'brief-proposed' | 'brief-ready' | 'needs-readable-evidence' | 'no-results';
+  'brief-proposed' | 'brief-ready' | 'needs-readable-evidence' | 'no-results' | 'receipt-not-saved';
 
 export interface ResearchSequenceResult extends ResearchRunResult {
   status: ResearchSequenceStatus;
@@ -151,6 +151,8 @@ async function saveCandidate(
   now: Date,
   fetchImpl: typeof fetch,
   timeoutMs: number,
+  threadId?: string,
+  recordActivity = true,
 ): Promise<ResearchSourceOutcome> {
   let capture: { content?: string; title: string; url: string } = {
     title: candidate.title,
@@ -222,7 +224,7 @@ async function saveCandidate(
     }
     const readable = isReadableResearchCapture(capturedVia);
     let activityWarning = '';
-    if (!saved.deduplicated || saved.restored || saved.upgraded) {
+    if (recordActivity && (!saved.deduplicated || saved.restored || saved.upgraded)) {
       try {
         await recordResearchThreadEvent(
           input.storage,
@@ -234,6 +236,7 @@ async function saveCandidate(
             type: 'source-saved',
           },
           now,
+          threadId,
         );
       } catch {
         activityWarning = ' The source was saved, but thread activity could not be updated.';
@@ -259,6 +262,7 @@ async function recordReadActivity(
   topicSlug: string,
   read: Awaited<ReturnType<typeof readSourcesIntoClaims>>['read'],
   now: Date,
+  threadId?: string,
 ): Promise<string | undefined> {
   try {
     for (const source of read) {
@@ -273,6 +277,7 @@ async function recordReadActivity(
           type: 'source-read',
         },
         now,
+        threadId,
       );
     }
     return undefined;
@@ -424,7 +429,7 @@ export async function runResearchSequence(
       claimCount: 0,
       readCount: 0,
       sources: [],
-      status: 'no-results',
+      status: discovery.receiptFailure ? 'receipt-not-saved' : 'no-results',
     };
   }
 
@@ -443,16 +448,42 @@ export async function runResearchSequence(
       report(input.onProgress, { candidate, source: outcome, stage: 'saving' });
       continue;
     }
-    const outcome = await saveCandidate(input, provider, candidate, now, fetchImpl, timeoutMs);
+    const outcome = await saveCandidate(
+      input,
+      provider,
+      candidate,
+      now,
+      fetchImpl,
+      timeoutMs,
+      discovery.run?.threadId,
+      Boolean(discovery.run),
+    );
     sources.push(outcome);
     report(input.onProgress, { candidate, source: outcome, stage: 'saving' });
+  }
+
+  if (discovery.receiptFailure) {
+    return {
+      ...discovery,
+      aiUnavailable: false,
+      claimCount: 0,
+      readCount: 0,
+      sources,
+      status: 'receipt-not-saved',
+    };
   }
 
   report(input.onProgress, { stage: 'reading' });
   const read = await readSourcesIntoClaims(input.storage, input.topicSlug, now);
   const readCount = read.read.length;
   const claimCount = read.read.reduce((total, entry) => total + entry.claims, 0);
-  const activityWarning = await recordReadActivity(input.storage, input.topicSlug, read.read, now);
+  const activityWarning = await recordReadActivity(
+    input.storage,
+    input.topicSlug,
+    read.read,
+    now,
+    discovery.run?.threadId,
+  );
   if (claimCount === 0) {
     return {
       ...discovery,

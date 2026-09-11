@@ -5,6 +5,7 @@ import { readSourceManifest, addSource } from '../sources/import.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { extractClaims, readSourcesIntoClaims } from './claims.js';
+import { buildTopicSynthesis } from './synthesis.js';
 
 const now = new Date('2026-08-02T10:00:00.000Z');
 const at = now.toISOString();
@@ -72,6 +73,80 @@ describe('claim extraction', () => {
 });
 
 describe('reading sources into claims', () => {
+  it('excludes missing local text from new evidence and can read it again after restoration', async () => {
+    const storage = await topicStorage();
+    const first = await addSource(storage, {
+      content: article,
+      method: 'paste',
+      title: 'First source',
+      topicSlug: slug,
+    });
+    await addSource(storage, {
+      content: article.replace('Spaced repetition', 'Distributed study'),
+      method: 'paste',
+      title: 'Second source',
+      topicSlug: slug,
+    });
+    await readSourcesIntoClaims(storage, slug, now);
+    const before = await readSourceManifest(storage, slug, now);
+    const oldClaims = before.sources[0]!.claims;
+    await storage.remove(first.path);
+
+    const result = await readSourcesIntoClaims(storage, slug, now);
+    const missing = await readSourceManifest(storage, slug, now);
+    const synthesis = buildTopicSynthesis({ now, sources: missing.sources, topicTitle: slug });
+    expect(result.unreadable).toContainEqual({
+      title: 'First source',
+      reason: 'Its saved text is missing from this workspace.',
+    });
+    expect(missing.sources[0]!.claims).toEqual(oldClaims);
+    expect(synthesis.readCount).toBe(1);
+    expect(
+      synthesis.clusters
+        .flatMap((cluster) => cluster.claims)
+        .every((claim) => claim.sourceTitle === 'Second source'),
+    ).toBe(true);
+
+    await storage.write(first.path, article, { expectedHash: null });
+    await readSourcesIntoClaims(storage, slug, now);
+    expect(
+      buildTopicSynthesis({
+        now,
+        sources: (await readSourceManifest(storage, slug, now)).sources,
+        topicTitle: slug,
+      }).readCount,
+    ).toBe(2);
+  });
+
+  it('updates a moved quote heading and removes a heading that no longer exists', async () => {
+    const storage = await topicStorage();
+    const source = await addSource(storage, {
+      content: article,
+      method: 'paste',
+      title: 'Spaced repetition',
+      topicSlug: slug,
+    });
+    await readSourcesIntoClaims(storage, slug, now);
+    const originalClaims = (await readSourceManifest(storage, slug, now)).sources[0]!.claims!;
+    await storage.externalWrite(
+      source.path,
+      article.replace('## Forgetting curve', '## Limitations'),
+    );
+    await readSourcesIntoClaims(storage, slug, now);
+    const moved = (await readSourceManifest(storage, slug, now)).sources[0]!.claims!;
+    expect(moved[0]!.heading).toBe('Limitations');
+    expect(moved.map((claim) => claim.text)).toEqual(originalClaims.map((claim) => claim.text));
+
+    await storage.externalWrite(source.path, article.replace('## Forgetting curve\n', ''));
+    await readSourcesIntoClaims(storage, slug, now);
+    expect(
+      (await readSourceManifest(storage, slug, now)).sources[0]!.claims![0]!.heading,
+    ).toBeUndefined();
+    const snapshot = await storage.read(`Topics/${slug}/Sources/manifest.json`);
+    await readSourcesIntoClaims(storage, slug, now);
+    expect((await storage.read(snapshot!.path))!.hash).toBe(snapshot!.hash);
+  });
+
   it('records claims and read state on the manifest, and is idempotent', async () => {
     const storage = await topicStorage();
     await addSource(storage, {

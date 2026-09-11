@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FileSnapshot, WriteOptions } from '../adapters.js';
 import { resolvePendingProposal } from '../conflict/proposal-ledger.js';
@@ -8,12 +8,105 @@ import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace } from '../workspace/create.js';
 import { buildResearchQuery } from './plan.js';
 import type { RankedCandidate } from './rank.js';
-import { readResearchFile, resolveResearchSynthesisProposal } from './research-file.js';
+import {
+  readResearchFile,
+  recordResearchRun,
+  resolveResearchSynthesisProposal,
+} from './research-file.js';
 import { runResearchSequence, saveApprovedResearchCandidate } from './sequence.js';
 import type { ResearchCandidate, ResearchProvider } from './types.js';
 
 const now = new Date('2026-08-11T10:00:00.000Z');
 const query = buildResearchQuery('TypeScript', { title: 'Why do generic constraints matter?' });
+
+describe('research receipt persistence', () => {
+  it.each([false, true])(
+    'keeps captures without replacing or attributing an answer (prior answer: %s)',
+    async (previous) => {
+      const { storage, topicSlug } = await workspace();
+      if (previous) {
+        await runResearchSequence({
+          now,
+          providers: [provider()],
+          query,
+          storage,
+          topicSlug,
+          topicTitle: 'TypeScript',
+        });
+      }
+      const researchPath = `Topics/${topicSlug}/research.json`;
+      const synthesisPath = `Topics/${topicSlug}/Synthesis.md`;
+      const originalResearch = await storage.read(researchPath);
+      const originalSynthesis = await storage.read(synthesisPath);
+      const write = storage.write.bind(storage);
+      let fail = true;
+      vi.spyOn(storage, 'write').mockImplementation(async (path, content, options) => {
+        if (fail && path === researchPath) throw new Error('Receipt disk unavailable.');
+        return write(path, content, options);
+      });
+      const nextProvider = provider({ id: 'newdocs' });
+      const search = vi.spyOn(nextProvider, 'search');
+      const result = await runResearchSequence({
+        now: new Date(now.getTime() + 1_000),
+        providers: [nextProvider],
+        query: { ...query, questionText: 'What are generic constraint limitations?' },
+        storage,
+        topicSlug,
+        topicTitle: 'TypeScript',
+      });
+      expect(result.status).toBe('receipt-not-saved');
+      expect(result.run).toBeNull();
+      expect(result.receiptFailure?.message).toContain('Receipt disk unavailable.');
+      expect(result.sources[0]?.record?.path).toBeTruthy();
+      expect(await storage.read(result.sources[0]!.record!.path!)).not.toBeNull();
+      expect(await storage.read(researchPath)).toEqual(originalResearch);
+      expect(await storage.read(synthesisPath)).toEqual(originalSynthesis);
+      expect(result.synthesis).toBeUndefined();
+
+      fail = false;
+      const pending = result.receiptFailure!;
+      const recovered = await recordResearchRun(
+        storage,
+        topicSlug,
+        pending.receipt,
+        new Date(pending.at),
+      );
+      expect(recovered.runs?.at(-1)?.questionText).toBe('What are generic constraint limitations?');
+      expect(recovered.runs?.at(-1)?.providers[0]?.outcome).toBe('found');
+      expect(search).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('retains an empty or failed-provider receipt when history storage is unavailable', async () => {
+    const { storage, topicSlug } = await workspace();
+    const write = storage.write.bind(storage);
+    vi.spyOn(storage, 'write').mockImplementation(async (path, content, options) => {
+      if (path.endsWith('/research.json')) throw new Error('History unavailable.');
+      return write(path, content, options);
+    });
+    const empty = provider({ id: 'empty' });
+    empty.search = async () => [];
+    const failed = provider({ id: 'failed' });
+    failed.search = async () => {
+      throw new Error('Provider unavailable.');
+    };
+    const result = await runResearchSequence({
+      now,
+      providers: [empty, failed],
+      query,
+      storage,
+      topicSlug,
+      topicTitle: 'TypeScript',
+    });
+    expect(result.status).toBe('receipt-not-saved');
+    expect(result.receiptFailure?.receipt.providers.map((entry) => entry.outcome)).toEqual([
+      'empty',
+      'failed',
+    ]);
+    expect(result.sources).toEqual([]);
+    expect(result.synthesis).toBeUndefined();
+  });
+});
 
 function provider(
   options: {

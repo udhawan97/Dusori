@@ -1,4 +1,4 @@
-import { StorageConflictError, type StorageAdapter } from '../adapters.js';
+import { StorageConflictError, type FileSnapshot, type StorageAdapter } from '../adapters.js';
 import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, type TopicState } from '../schemas/workspace.js';
 import {
@@ -17,6 +17,50 @@ export interface MarkdownConflict {
   proposalContent: string;
   proposalPath: string;
   updatePath: string;
+}
+
+/** Apply only this file's version to the exact state snapshot protected by the write guard. */
+export async function recordTopicFileVersion(
+  storage: StorageAdapter,
+  topicSlug: string,
+  file: Pick<FileSnapshot, 'path' | 'hash' | 'modifiedAt'>,
+  now: Date,
+): Promise<TopicState> {
+  const statePath = `${topicRoot(topicSlug)}/state.json`;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(statePath);
+    if (!snapshot) throw new Error(`Required machine file is missing: ${statePath}`);
+    const state = TopicStateSchema.parse(JSON.parse(snapshot.content));
+    const current = await storage.read(file.path);
+    // A later save may have completed while this one waited or retried. Do not roll its
+    // index back, and do not adopt external bytes as though Dusori had written them.
+    // Reading the document after the state snapshot means a later cooperating state commit
+    // either is already reflected here or makes the guarded write conflict and retry.
+    if (current?.hash !== file.hash) return state;
+    const next = TopicStateSchema.parse({
+      ...state,
+      updatedAt: now.toISOString(),
+      fileIndex: {
+        ...state.fileIndex,
+        [file.path]: {
+          ...state.fileIndex[file.path],
+          hash: file.hash,
+          modifiedAt: file.modifiedAt,
+        },
+      },
+    });
+    try {
+      await storage.write(statePath, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot.hash,
+      });
+      return next;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+  throw new Error(
+    'Topic state changed repeatedly. The document was saved; retry its state update.',
+  );
 }
 
 export async function appendTopicUpdate(
@@ -106,20 +150,9 @@ export async function acceptMarkdownUpdate(
   const root = topicRoot(topicSlug);
   const path = normalizeWorkspacePath(`${root}/${relativePath}`);
   const statePath = `${root}/state.json`;
-  const state = await readMachineFile(storage, statePath, TopicStateSchema, now);
+  await readMachineFile(storage, statePath, TopicStateSchema, now);
   const written = await storage.write(path, nextContent, { expectedHash });
-  const nextState = TopicStateSchema.parse({
-    ...state,
-    updatedAt: now.toISOString(),
-    fileIndex: {
-      ...state.fileIndex,
-      [path]: { ...state.fileIndex[path], hash: written.hash, modifiedAt: written.modifiedAt },
-    },
-  });
-  const stateFile = await storage.read(statePath);
-  await storage.write(statePath, `${JSON.stringify(nextState, null, 2)}\n`, {
-    expectedHash: stateFile?.hash,
-  });
+  const nextState = await recordTopicFileVersion(storage, topicSlug, written, now);
   await appendTopicUpdate(
     storage,
     topicSlug,

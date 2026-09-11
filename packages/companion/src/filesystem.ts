@@ -9,10 +9,14 @@ import {
   unlink,
   writeFile,
 } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 import { normalizeWorkspacePath, sha256, StorageConflictError } from '@dusori/core';
+
+// All API clients handled by this process share the queue. Separate companion processes and
+// external editors do not participate; atomic rename alone cannot provide cross-process CAS.
+const pendingWrites = new Map<string, Promise<void>>();
 
 function isContained(root: string, candidate: string): boolean {
   const delta = relative(root, candidate);
@@ -90,7 +94,32 @@ export async function writeWorkspaceFile(
   const normalized = normalizeWorkspacePath(path);
   const candidate = await resolveContained(root, normalized, true);
   await mkdir(dirname(candidate), { recursive: true });
+  const key = resolve(await realpath(dirname(candidate)), basename(candidate))
+    .normalize('NFC')
+    .toLowerCase();
+  const previous = pendingWrites.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => held);
+  pendingWrites.set(key, tail);
+  await previous;
+  try {
+    return await writeLockedWorkspaceFile(root, normalized, candidate, content, expectedHash);
+  } finally {
+    release();
+    if (pendingWrites.get(key) === tail) pendingWrites.delete(key);
+  }
+}
 
+async function writeLockedWorkspaceFile(
+  root: string,
+  normalized: string,
+  candidate: string,
+  content: string,
+  expectedHash?: string | null,
+) {
   let currentHash: string | null = null;
   try {
     currentHash = (await readWorkspaceFile(root, normalized)).hash;

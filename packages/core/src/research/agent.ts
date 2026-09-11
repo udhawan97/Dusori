@@ -7,6 +7,7 @@ import {
   readResearchFile,
   recordResearchRun,
   type ResearchRunRecord,
+  type ResearchRunInput,
   type RunProviderOutcome,
 } from './research-file.js';
 import { filterResearchSuggestions } from './suggest.js';
@@ -26,6 +27,12 @@ export interface ResearchRunResult {
   skipped: SkippedProvider[];
   /** The run as it was persisted, or null if only the persistence step failed. */
   run: ResearchRunRecord | null;
+  /** Retained without another provider call so the caller can retry just the receipt commit. */
+  receiptFailure?: {
+    at: string;
+    message: string;
+    receipt: ResearchRunInput;
+  };
 }
 
 export interface RunResearchAgentInput {
@@ -185,22 +192,28 @@ export async function runResearchAgent(input: RunResearchAgentInput): Promise<Re
   // The run itself is evidence: a failure trail must survive reload exactly like a success,
   // or "no research found" and "research broke" become indistinguishable after a reload.
   // A trail that cannot be written must not cost the user the results themselves.
-  const run = await recordResearchRun(
-    input.storage,
-    input.topicSlug,
-    {
-      angleId: input.query.angleId,
-      candidates: eligible.map((candidate) => ({ key: candidate.key, url: candidate.url })),
-      eligibleCount: eligible.length,
-      providers: outcomes,
-      parentThreadId: input.parentThreadId,
-      questionText: input.query.questionText ?? input.query.objectiveTitle,
-      searchText: input.query.searchText,
-    },
-    now,
-  )
-    .then((file): ResearchRunRecord | null => file.runs?.at(-1) ?? null)
-    .catch((): null => null);
+  const receipt: ResearchRunInput = {
+    angleId: input.query.angleId,
+    candidates: eligible.map((candidate) => ({ key: candidate.key, url: candidate.url })),
+    eligibleCount: eligible.length,
+    providers: outcomes,
+    parentThreadId: input.parentThreadId,
+    questionText: input.query.questionText ?? input.query.objectiveTitle,
+    searchText: input.query.searchText,
+  };
+  let run: ResearchRunRecord | null = null;
+  let receiptFailure: ResearchRunResult['receiptFailure'];
+  try {
+    const file = await recordResearchRun(input.storage, input.topicSlug, receipt, now);
+    run = file.runs?.at(-1) ?? null;
+    if (!run) throw new Error('The saved research receipt is missing its run.');
+  } catch (error) {
+    receiptFailure = {
+      at: now.toISOString(),
+      message: `Research history could not be saved. Collected sources are retained, but the answer was not rebuilt. ${error instanceof Error ? error.message : 'Retry saving the research receipt.'}`,
+      receipt,
+    };
+  }
 
-  return { eligibleCount: eligible.length, overflow, run, shortlist, skipped };
+  return { eligibleCount: eligible.length, overflow, receiptFailure, run, shortlist, skipped };
 }

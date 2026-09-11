@@ -8,6 +8,8 @@ import {
   type WriteOptions,
 } from '@dusori/core';
 
+import { withFileWriteLock } from './write-lock.js';
+
 const databaseName = 'dusori-handles';
 const storeName = 'directories';
 const handleKey = 'workspace-root';
@@ -94,6 +96,14 @@ export class FsaStorageAdapter implements StorageAdapter {
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<FileSnapshot> {
     const normalized = normalizeWorkspacePath(path);
+    return withFileWriteLock(normalized, () => this.writeLocked(normalized, content, options));
+  }
+
+  private async writeLocked(
+    normalized: string,
+    content: string,
+    options: WriteOptions,
+  ): Promise<FileSnapshot> {
     const current = await this.read(normalized);
     if (options.expectedHash === null && current) {
       throw new StorageConflictError(normalized, null, current.hash);
@@ -104,8 +114,13 @@ export class FsaStorageAdapter implements StorageAdapter {
     const [parent, name] = await parentAndName(this.root, normalized, true);
     const handle = await parent.getFileHandle(name, { create: true });
     const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
+    try {
+      await writable.write(content);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => undefined);
+      throw error;
+    }
     return (await this.read(normalized))!;
   }
 }
