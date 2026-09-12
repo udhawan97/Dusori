@@ -180,8 +180,9 @@
     try {
       await updatePlatform.installAndRestart(false);
     } catch (caught) {
-      updateStatus =
+      const message =
         caught instanceof Error ? caught.message : 'The update could not be installed.';
+      updateStatus = `${message} Use Check now to refresh the offered update if needed.`;
       updateBusy = false;
     }
   }
@@ -257,7 +258,11 @@
         Dusori writes only inside this workspace. Notes remain Markdown and JSON.
       </p>
       <div class="actions">
-        <button disabled={busy} onclick={onExportWorkspace}>
+        <button
+          disabled={busy}
+          onclick={onExportWorkspace}
+          aria-describedby="workspace-export-detail"
+        >
           <Download aria-hidden="true" size={17} /> Export workspace
         </button>
         {#if hasTopic}
@@ -270,6 +275,9 @@
           <input type="file" accept=".zip,application/zip" onchange={onImportWorkspace} />
         </label>
       </div>
+      <p id="workspace-export-detail" class="detail">
+        Internal recovery copies stay in this storage and are omitted from workspace exports.
+      </p>
     </section>
 
     <div class="recovery-slot">

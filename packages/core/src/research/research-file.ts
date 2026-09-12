@@ -6,6 +6,7 @@ import { readMachineFile } from '../schemas/read-machine-file.js';
 import { TopicStateSchema, schemaVersion } from '../schemas/workspace.js';
 import { clearSynthesisStale } from '../sources/import.js';
 import { topicRoot } from '../workspace/paths.js';
+import { isLocalSynthesis, synthesisResearchIdentity } from './synthesis-provenance.js';
 import {
   ResearchThreadEventSchema,
   ResearchThreadEventTombstoneSchema,
@@ -102,6 +103,8 @@ export const ResearchFileSchema = z
     outputStyle: ResearchOutputStyleSchema.optional(),
     /** The run whose answer is currently stored in Synthesis.md. */
     synthesisRunAt: z.string().datetime().optional(),
+    /** The current brief was built locally without claiming a provider-run association. */
+    synthesisDetachedAt: z.string().datetime().optional(),
     /** Additive P0 thread identity. Legacy runs remain outside this collection. */
     threads: z.array(ResearchThreadSchema).max(maxResearchThreads).optional(),
     /** Bounded typed activity; discovery and generated artifacts remain distinct from evidence. */
@@ -773,6 +776,7 @@ export async function recordResearchSynthesisOutcome(
       events: activity.events,
       runs,
       synthesisRunAt,
+      synthesisDetachedAt: outcome === 'written' ? undefined : current.synthesisDetachedAt,
     });
     try {
       await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
@@ -785,6 +789,36 @@ export async function recordResearchSynthesisOutcome(
   }
 
   throw new Error('Research answer provenance changed repeatedly. Try rebuilding it again.');
+}
+
+/** Detaches the current local brief without rewriting historical provider runs or events. */
+export async function detachResearchSynthesis(
+  storage: StorageAdapter,
+  topicSlug: string,
+  now = new Date(),
+): Promise<void> {
+  const path = researchFilePath(topicSlug);
+  await readMachineFile(storage, `${topicRoot(topicSlug)}/state.json`, TopicStateSchema, now);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const snapshot = await storage.read(path);
+    const current = snapshot
+      ? ResearchFileSchema.parse(JSON.parse(snapshot.content))
+      : ResearchFileSchema.parse({ dismissed: [], schemaVersion, topicSlug });
+    const next = ResearchFileSchema.parse({
+      ...current,
+      synthesisRunAt: undefined,
+      synthesisDetachedAt: now.toISOString(),
+    });
+    try {
+      await storage.write(path, `${JSON.stringify(next, null, 2)}\n`, {
+        expectedHash: snapshot?.hash ?? null,
+      });
+      return;
+    } catch (error) {
+      if (!(error instanceof StorageConflictError)) throw error;
+    }
+  }
+  throw new Error('Research provenance changed repeatedly. Retry the local build.');
 }
 
 /** Associates a later manual rebuild with the newest run in the active stable thread. */
@@ -815,13 +849,34 @@ export async function resolveResearchSynthesisProposal(
   const ledger = await readProposalLedger(storage, topicSlug);
   const proposal = ledger.proposals.find((entry) => entry.proposalPath === proposalPath);
   if (!proposal || proposal.currentPath !== `${topicRoot(topicSlug)}/Synthesis.md`) return null;
+  const proposed = await storage.read(proposalPath);
+  if (proposed && isLocalSynthesis(proposed.content)) {
+    // Local proposals must never fall back to an unrelated provider's proposed run.
+    if (resolution === 'accepted') {
+      const current = await storage.read(proposal.currentPath);
+      if (current && isLocalSynthesis(current.content)) {
+        await detachResearchSynthesis(storage, topicSlug, now);
+        await clearSynthesisStale(storage, topicSlug, now);
+      }
+    }
+    return readResearchFile(storage, topicSlug, now);
+  }
   const research = await readResearchFile(storage, topicSlug, now);
   if (!research) return null;
+  const identity = synthesisResearchIdentity(proposed?.content ?? '');
   const producingRun =
-    [...(research.runs ?? [])]
-      .reverse()
-      .find((run) => run.at === proposal.createdAt && run.synthesisOutcome === 'proposed') ??
-    [...(research.runs ?? [])].reverse().find((run) => run.synthesisOutcome === 'proposed');
+    identity !== undefined
+      ? research.runs?.find(
+          (run) => identity && run.at === identity.at && run.threadId === identity.threadId,
+        )
+      : ([...(research.runs ?? [])]
+          .reverse()
+          .find((run) => run.at === proposal.createdAt && run.synthesisOutcome === 'proposed') ??
+        [...(research.runs ?? [])].reverse().find((run) => run.synthesisOutcome === 'proposed'));
+  if (identity !== undefined && !producingRun)
+    throw new Error(
+      'The exact research receipt for this proposal is missing. Restore it before resolving the proposal.',
+    );
   if (!producingRun) return research;
 
   const next = await recordResearchSynthesisOutcome(

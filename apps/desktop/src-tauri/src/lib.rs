@@ -3,7 +3,11 @@ use std::{
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
-    sync::{Mutex, mpsc},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -38,11 +42,54 @@ struct CompanionState {
 struct WorkspaceRoot(PathBuf);
 
 #[derive(Default)]
-struct PendingUpdate(Mutex<Option<DownloadedUpdate>>);
+struct PendingUpdate(Mutex<Option<DownloadedUpdate>>, AtomicBool);
 
+struct InstallGuard<'a>(&'a AtomicBool);
+
+impl Drop for InstallGuard<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
+fn begin_install(pending: &PendingUpdate) -> Result<InstallGuard<'_>, String> {
+    pending
+        .1
+        .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+        .map_err(|_| "An update installation is already in progress.".to_string())?;
+    Ok(InstallGuard(&pending.1))
+}
+
+#[derive(Clone)]
 struct DownloadedUpdate {
-    bytes: Vec<u8>,
+    bytes: Arc<[u8]>,
     version: String,
+}
+
+fn downloaded_update_for_install(pending: &PendingUpdate) -> Result<DownloadedUpdate, String> {
+    pending
+        .0
+        .lock()
+        .map_err(|_| "The pending update lock was poisoned.".to_string())?
+        .as_ref()
+        .cloned()
+        .ok_or_else(|| "Download the update before installing it.".to_string())
+}
+
+fn clear_installed_update(
+    pending: &PendingUpdate,
+    installed: &DownloadedUpdate,
+) -> Result<(), String> {
+    let mut slot = pending
+        .0
+        .lock()
+        .map_err(|_| "The pending update lock was poisoned.".to_string())?;
+    if slot.as_ref().is_some_and(|current| {
+        current.version == installed.version && Arc::ptr_eq(&current.bytes, &installed.bytes)
+    }) {
+        slot.take();
+    }
+    Ok(())
 }
 
 #[derive(Debug, Serialize)]
@@ -516,7 +563,7 @@ async fn download_update(
         .lock()
         .map_err(|_| "The pending update lock was poisoned.".to_string())?
         .replace(DownloadedUpdate {
-            bytes,
+            bytes: bytes.into(),
             version: version.clone(),
         });
     Ok(DesktopUpdate {
@@ -549,12 +596,10 @@ async fn install_downloaded_update(
             "Installation requires an explicit confirmation after saving current work.".into(),
         );
     }
-    let downloaded = pending
-        .0
-        .lock()
-        .map_err(|_| "The pending update lock was poisoned.".to_string())?
-        .take()
-        .ok_or_else(|| "Download the update before installing it.".to_string())?;
+    // Keep the verified artifact pending until installation succeeds. The release-feed check and
+    // installer can both fail transiently; either failure must leave the Install action retryable.
+    let _install_guard = begin_install(&pending)?;
+    let downloaded = downloaded_update_for_install(&pending)?;
     let update = app
         .updater()
         .map_err(|error| error.to_string())?
@@ -564,8 +609,9 @@ async fn install_downloaded_update(
         .ok_or_else(|| "The downloaded update is no longer offered.".to_string())?;
     validate_downloaded_version(&downloaded.version, &update.version)?;
     update
-        .install(downloaded.bytes)
+        .install(downloaded.bytes.to_vec())
         .map_err(|error| error.to_string())?;
+    clear_installed_update(&pending, &downloaded)?;
     Ok(update.version)
 }
 
@@ -725,10 +771,12 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        DESKTOP_APP_PATH, append_bounded_update_chunk, checked_path, normalized_segments,
-        validate_downloaded_version, validate_update_content_length, validated_external_url,
-        verify_update_signature, write_workspace_file,
+        DESKTOP_APP_PATH, DownloadedUpdate, PendingUpdate, append_bounded_update_chunk,
+        begin_install, checked_path, clear_installed_update, downloaded_update_for_install,
+        normalized_segments, validate_downloaded_version, validate_update_content_length,
+        validated_external_url, verify_update_signature, write_workspace_file,
     };
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn desktop_window_opens_at_the_svelte_base_route() {
@@ -822,5 +870,62 @@ mod tests {
     fn rejects_changed_update_metadata_before_installation() {
         assert!(validate_downloaded_version("0.12.0", "0.12.1").is_err());
         assert!(validate_downloaded_version("0.12.0", "0.12.0").is_ok());
+    }
+
+    #[test]
+    fn failed_install_preflight_keeps_the_verified_download_retryable() {
+        let pending = PendingUpdate(
+            Mutex::new(Some(DownloadedUpdate {
+                bytes: Arc::from([1_u8, 2, 3]),
+                version: "0.12.0".into(),
+            })),
+            Default::default(),
+        );
+
+        let attempt = downloaded_update_for_install(&pending).unwrap();
+        assert!(validate_downloaded_version(&attempt.version, "0.12.1").is_err());
+        assert_eq!(
+            downloaded_update_for_install(&pending)
+                .unwrap()
+                .bytes
+                .as_ref(),
+            [1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn successful_install_clears_only_the_artifact_that_was_installed() {
+        let installed = DownloadedUpdate {
+            bytes: Arc::from([1_u8, 2, 3]),
+            version: "0.12.0".into(),
+        };
+        let pending = PendingUpdate(Mutex::new(Some(installed.clone())), Default::default());
+        clear_installed_update(&pending, &installed).unwrap();
+        assert!(downloaded_update_for_install(&pending).is_err());
+
+        let replacement = DownloadedUpdate {
+            bytes: Arc::from([4_u8, 5, 6]),
+            version: "0.12.1".into(),
+        };
+        pending.0.lock().unwrap().replace(replacement.clone());
+        clear_installed_update(&pending, &installed).unwrap();
+        assert_eq!(
+            downloaded_update_for_install(&pending)
+                .unwrap()
+                .bytes
+                .as_ref(),
+            replacement.bytes.as_ref()
+        );
+    }
+
+    #[test]
+    fn an_install_attempt_excludes_competing_attempts_and_releases_after_failure() {
+        let pending = PendingUpdate::default();
+        {
+            let _guard = begin_install(&pending).unwrap();
+            assert!(begin_install(&pending).is_err());
+            assert!(downloaded_update_for_install(&pending).is_err());
+        }
+        assert!(begin_install(&pending).is_ok());
     }
 }

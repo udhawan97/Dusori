@@ -1,7 +1,7 @@
 import type { SourceClaim, SourceRecord } from '../schemas/workspace.js';
 import { evidenceClaims } from './evidence.js';
 import { lensFor, missionLensLabels, missionLenses } from './mission.js';
-import type { ResearchOutputStyle } from './research-file.js';
+import type { ResearchOutputStyle, ResearchRunRecord } from './research-file.js';
 
 export interface SynthesisClaim extends SourceClaim {
   sourceTitle: string;
@@ -232,6 +232,10 @@ function citation(claim: SynthesisClaim): string {
 }
 
 export interface RenderSynthesisOptions {
+  /** A standalone local build belongs to no provider run, including after proposal acceptance. */
+  provenance?: 'local-text';
+  /** Exact receipt identity for an explicitly resumed local continuation. */
+  researchRun?: Pick<ResearchRunRecord, 'at' | 'threadId'>;
   /** Verbatim source passages selected and ordered by an optional model. */
   aiOverview?: string;
   aiModel?: string;
@@ -351,6 +355,14 @@ export function renderSynthesisMarkdown(
     `topic: ${synthesis.topicTitle}`,
     `created: ${day}`,
     'generated: synthesis',
+    ...(options.provenance ? [`provenance: ${options.provenance}`] : []),
+    ...(options.researchRun
+      ? [
+          'provenance: research-run',
+          `research_run_at: ${JSON.stringify(options.researchRun.at)}`,
+          `research_thread_id: ${JSON.stringify(options.researchRun.threadId ?? null)}`,
+        ]
+      : []),
     `structure: ${outputStyle}`,
     '---',
     '',

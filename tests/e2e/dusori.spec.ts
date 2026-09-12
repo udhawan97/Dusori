@@ -3201,9 +3201,7 @@ test('export and replacement import preserve the rendered workspace', async ({ p
   expect(archive).not.toBeNull();
 
   page.once('dialog', (dialog) => {
-    expect(dialog.message()).toContain(
-      'Replace this browser workspace with “My research workspace”?',
-    );
+    expect(dialog.message()).toContain('Replace this workspace with “My research workspace”?');
     expect(dialog.message()).toContain('1 topic');
     expect(dialog.message()).toMatch(/\d+ files/u);
     expect(dialog.message()).toContain('validated before this confirmation');

@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { exportTopic, exportWorkspace, prepareWorkspaceImport } from './portable.js';
 import { MemoryStorageAdapter } from './testing/memory-storage.js';
@@ -84,6 +84,101 @@ describe('exportTopic', () => {
 });
 
 describe('workspace archive resource limits', () => {
+  it('exports an importable workspace while retaining internal recovery copies on disk', async () => {
+    const storage = await twoTopicWorkspace();
+    for (const root of ['.dusori-import-recovery', '.dusori-recovery']) {
+      await storage.write(`${root}/original.json`, 'preserved recovery bytes');
+    }
+    const archive = await exportWorkspace(storage);
+    await expect(prepareWorkspaceImport(archive)).resolves.toMatchObject({
+      preview: { workspaceName: 'Dusori' },
+    });
+    expect((await pathsIn(archive)).some((path) => path.startsWith('.dusori'))).toBe(false);
+    for (const root of ['.dusori-import-recovery', '.dusori-recovery']) {
+      expect((await storage.read(`${root}/original.json`))?.content).toBe(
+        'preserved recovery bytes',
+      );
+    }
+  });
+
+  it('rejects a later invalid path before expanding any entry', async () => {
+    const archive = await exportWorkspace(await twoTopicWorkspace());
+    const zip = await JSZip.loadAsync(archive);
+    // Use a real parsed entry so central-directory size validation still executes.
+    const last = Object.values(zip.files).find((entry) => !entry.dir)!;
+    const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+    const spies = entries.map((entry) => vi.spyOn(entry, 'async'));
+    const invalid = {
+      ...last,
+      name: '.dusori-import-recovery/invalid.md',
+      unsafeOriginalName: '.dusori-import-recovery/invalid.md',
+    };
+    zip.files['.dusori-import-recovery/invalid.md'] = invalid;
+    const loader = vi.spyOn(JSZip, 'loadAsync').mockResolvedValueOnce(zip);
+    try {
+      await expect(prepareWorkspaceImport(archive)).rejects.toThrow(/reserved recovery path/u);
+      for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+    } finally {
+      loader.mockRestore();
+    }
+  });
+
+  it.each([
+    {
+      files: [['Home.MD', 'alias']],
+      message: /aliased paths/u,
+      name: 'case-folded aliases',
+    },
+    {
+      files: [
+        ['Topics/cloud-native/Notes/Café.md', 'first'],
+        ['Topics/cloud-native/Notes/Cafe\u0301.md', 'second'],
+      ],
+      message: /aliased paths/u,
+      name: 'Unicode-normalized aliases',
+    },
+    {
+      files: [
+        ['collision', 'file'],
+        ['collision/child.md', 'child'],
+      ],
+      message: /file as a directory/u,
+      name: 'file and directory ancestor collisions',
+    },
+    {
+      files: [['Topics/cloud-native/Notes/trailing.', 'alias']],
+      message: /non-portable path/u,
+      name: 'trailing-dot aliases',
+    },
+    {
+      files: [['.DUSORI-IMPORT-RECOVERY/backup/dusori.json', '{}']],
+      message: /reserved recovery path/u,
+      name: 'internal recovery paths',
+    },
+    {
+      files: [['.dusori-recovery/original.json', '{}']],
+      message: /reserved recovery path/u,
+      name: 'machine-file recovery paths',
+    },
+    {
+      files: [['Topics/cloud-native/Notes/trailing ', 'alias']],
+      message: /non-portable path/u,
+      name: 'trailing-space aliases',
+    },
+    {
+      files: [['Home.md/child.md', 'child']],
+      message: /file as a directory/u,
+      name: 'existing file ancestors',
+    },
+  ])('rejects $name before workspace validation', async ({ files, message }) => {
+    const zip = await JSZip.loadAsync(await exportWorkspace(await twoTopicWorkspace()));
+    for (const [path, content] of files) zip.file(path!, content!);
+
+    await expect(
+      prepareWorkspaceImport(await zip.generateAsync({ type: 'uint8array' })),
+    ).rejects.toThrow(message);
+  });
+
   it('rejects an invalid additive research activity file during archive preflight', async () => {
     const storage = await twoTopicWorkspace();
     await storage.write(

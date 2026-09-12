@@ -14,8 +14,10 @@
     angleById,
     buildAngleQuery,
     buildResearchQuery,
+    coordinateStorage,
     evidenceClaims,
     isMissionStale,
+    isLocalSynthesis,
     isUsableAiCapability,
     lensFor,
     loadResearchProviderCatalog,
@@ -27,6 +29,7 @@
     saveApprovedResearchCandidate,
     setAutoRefresh,
     setResearchOutputStyle,
+    synthesisResearchProvenanceMatches,
     type CompanionAiClient,
     type CompanionResearchClient,
     type RankedCandidate,
@@ -44,7 +47,15 @@
   } from '@dusori/core';
 
   import { modal } from '$lib/actions/modal';
-  import { denyConsent, grantConsent, hasConsent, readConsent } from '$lib/consent';
+  import { hasConsent, readConsent } from '$lib/consent';
+  import { applyResearchConsent } from '$lib/research-consent-action';
+  import {
+    buildLocalResearch,
+    pendingResearchReceipt,
+    retainResearchReceipt,
+    retryResearchReceipt,
+    type PendingResearchReceipt,
+  } from '$lib/local-research';
   import { openExternalFromDesktop } from '$lib/open-external';
   import { createAiSynthesisOptions } from '$lib/research-synthesis';
   import {
@@ -145,6 +156,11 @@
   let selectedAngleId = 'overview';
   let outputStyle: ResearchOutputStyle = 'brief';
   let stage: Stage = 'idle';
+  let pendingReceipt: PendingResearchReceipt | undefined;
+  let receiptBusy = false;
+  let recoveredRun: ResearchRunRecord | undefined;
+  let localBuildBusy = false;
+  let localSynthesis = false;
   let runResult: ResearchSequenceResult | null = null;
   let latestRun: ResearchRunRecord | null = null;
   let researchRuns: ResearchRunRecord[] = [];
@@ -204,6 +220,7 @@
   });
 
   async function initialize(): Promise<void> {
+    pendingReceipt = pendingResearchReceipt(storage, topicSlug);
     const returningFromProviderRecovery = providerRecoveryReturn;
     const cachedQuestion = initialQuestion.trim();
     const draftRevisionAtStart = questionDraftRevision;
@@ -220,6 +237,12 @@
       }
     }
     const staleRefreshDue = await restoreResultState();
+    if (pendingReceipt) {
+      runError = pendingReceipt.message;
+      stage = 'idle';
+      if (autoStart) onAutoStartHandled();
+      return;
+    }
     const userEditedDuringInitialization = questionDraftRevision !== draftRevisionAtStart;
     const cachedDraftDiffersFromLatestRun = Boolean(
       cachedQuestion && cachedQuestion !== question.trim(),
@@ -357,6 +380,8 @@
         }
       }
       const { manifest, research, synthesis } = snapshot;
+      localSynthesis =
+        isLocalSynthesis(synthesis?.content ?? '') || Boolean(research?.synthesisDetachedAt);
       savedSources = manifest.sources;
       readCount = manifest.sources.filter((source) => evidenceClaims(source).length > 0).length;
       claimCount = manifest.sources.reduce(
@@ -376,7 +401,13 @@
           .slice(synthesisRunIndex + 1)
           .some((run) => run.synthesisOutcome === 'proposed' || run.synthesisOutcome === 'kept');
       latestBriefPath =
-        synthesis && (!manifest.synthesisStaleAt || editedSynthesisWasPreserved)
+        synthesis &&
+        synthesisResearchProvenanceMatches(
+          synthesis.content,
+          researchRuns,
+          research?.synthesisRunAt,
+        ) &&
+        (!manifest.synthesisStaleAt || editedSynthesisWasPreserved)
           ? synthesisPath
           : '';
       synthesisMarkdown = latestBriefPath ? (synthesis?.content ?? '') : '';
@@ -519,7 +550,15 @@
   }
 
   async function beginResearch(): Promise<void> {
-    if (running || savingExtra || !question.trim()) return;
+    if (
+      running ||
+      savingExtra ||
+      pendingReceipt ||
+      receiptBusy ||
+      localBuildBusy ||
+      !question.trim()
+    )
+      return;
     runError = '';
     providerChoiceRecovery = false;
     status = '';
@@ -560,29 +599,72 @@
     if (restoreFocus) restoreResearchFocus();
   }
 
-  async function confirmConsent(): Promise<void> {
-    let stored = true;
-    for (const provider of consentProviders) {
-      const scope = scopeOf(provider);
-      stored =
-        (selectedScopes.includes(scope) ? grantConsent(scope) : denyConsent(scope)) && stored;
+  async function confirmConsent(action: 'allow' | 'deny' = 'allow'): Promise<void> {
+    const scopes = (action === 'deny' ? relevantProviders : consentProviders).map(scopeOf);
+    const choices = [...selectedScopes];
+    closeConsent();
+    try {
+      await applyResearchConsent(action, scopes, choices, async () => {
+        const relevant = providerSession?.select(currentQuery) ?? availableProviders;
+        const allowed = relevant.filter((provider) => hasConsent(scopeOf(provider)));
+        if (!allowed.length) {
+          providerChoiceRecovery = true;
+          status = 'Providers are off. Review provider choices when you want to research.';
+          return;
+        }
+        await research(allowed, currentQuery, true);
+      });
+      if (action === 'deny') {
+        status = '';
+        runError = 'Every relevant provider was kept off. No research was sent.';
+        providerChoiceRecovery = true;
+      }
+    } catch (caught) {
+      runError = caught instanceof Error ? caught.message : 'Provider choices could not be saved.';
+    } finally {
+      consentRevision += 1;
     }
-    consentRevision += 1;
-    closeConsent(false);
-    if (!stored) {
+  }
+
+  async function savePendingReceipt(): Promise<void> {
+    if (!pendingReceipt || receiptBusy) return;
+    receiptBusy = true;
+    runError = '';
+    try {
+      recoveredRun = await retryResearchReceipt(storage, topicSlug);
+      pendingReceipt = pendingResearchReceipt(storage, topicSlug);
+      await restoreResultState();
+      status =
+        'Research receipt saved locally. Build from the saved text when you are ready; no providers were called.';
+      onThreadChanged();
+    } catch (caught) {
       runError =
-        'This device could not remember the provider choices. Check browser storage and try again.';
-      return;
+        caught instanceof Error ? caught.message : 'The receipt could not be saved. Retry locally.';
+    } finally {
+      receiptBusy = false;
     }
-    const relevant = providerSession?.select(currentQuery) ?? availableProviders;
-    const allowed = relevant.filter((provider) => hasConsent(scopeOf(provider)));
-    if (allowed.length === 0) {
+  }
+
+  async function buildRecoveredSources(): Promise<void> {
+    if (!recoveredRun || pendingReceipt || localBuildBusy) return;
+    localBuildBusy = true;
+    runError = '';
+    try {
+      const result = await buildLocalResearch(storage, topicSlug, topicTitle, {
+        run: recoveredRun,
+      });
+      recoveredRun = undefined;
+      await restoreResultState();
+      status = result.message;
+      notifyResearchActivity();
+    } catch (caught) {
       runError =
-        'Every relevant provider was kept off. Reset a provider decision in Settings when you want to research.';
-      providerChoiceRecovery = true;
-      return;
+        caught instanceof Error
+          ? caught.message
+          : 'The local brief could not be built. Saved text remains available.';
+    } finally {
+      localBuildBusy = false;
     }
-    await research(allowed, currentQuery, true);
   }
 
   function updateProgress(key: string, update: Partial<SourceProgress>): void {
@@ -629,6 +711,7 @@
     orientOnComplete = false,
   ): Promise<void> {
     stage = 'searching';
+    recoveredRun = undefined;
     sourceProgress = [];
     showOverflow = false;
     savingExtraKey = '';
@@ -638,7 +721,8 @@
     runError = '';
     providerChoiceRecovery = false;
     try {
-      await setResearchOutputStyle(storage, topicSlug, outputStyle);
+      const runStorage = coordinateStorage(storage).createWorkspaceScope();
+      await setResearchOutputStyle(runStorage, topicSlug, outputStyle);
       const routedProviders =
         providerSession?.select(query, new Set(providerList.map(scopeOf))) ?? providerList;
       const answeredRun = researchRuns.find((run) => run.at === synthesisRunAt);
@@ -660,11 +744,24 @@
         parentThreadId,
         providers: routedProviders,
         query,
-        storage,
+        storage: runStorage,
         topicSlug,
         topicTitle,
       });
+      // Failed persistence can become a retryable result; never retain it after replacement.
+      runStorage.assertWorkspaceCurrent();
       runResult = result;
+      if (result.status === 'receipt-not-saved') {
+        if (!result.receiptFailure)
+          throw new Error('The failed research receipt was not retained.');
+        retainResearchReceipt(storage, topicSlug, result.receiptFailure);
+        pendingReceipt = result.receiptFailure;
+        await restoreResultState();
+        stage = 'idle';
+        runError = pendingReceipt.message;
+        notifyResearchActivity();
+        return;
+      }
       latestRun = result.run;
       discoveredCount = result.eligibleCount;
       if (result.status === 'no-results') {
@@ -769,7 +866,7 @@
   }
 
   async function approveExtraCandidate(candidate: RankedCandidate): Promise<void> {
-    if (savingExtra || approvedExtraKeys.has(candidate.key)) return;
+    if (savingExtra || pendingReceipt || approvedExtraKeys.has(candidate.key)) return;
     const provider = providers.find((entry) => entry.id === candidate.provider);
     if (!provider || !hasConsent(scopeOf(provider))) {
       extraFeedback = {
@@ -872,14 +969,19 @@
         value={question}
         required
         maxlength="240"
-        disabled={running}
+        disabled={running || Boolean(pendingReceipt)}
         placeholder="What do you want to understand?"
         oninput={(event) => useCustomQuestion(event.currentTarget.value)}
       />
       <button
         bind:this={researchButton}
         class="primary"
-        disabled={running || savingExtra || !question.trim()}
+        disabled={running ||
+          savingExtra ||
+          Boolean(pendingReceipt) ||
+          receiptBusy ||
+          localBuildBusy ||
+          !question.trim()}
       >
         <Search aria-hidden="true" size={17} />
         {running ? 'Researching…' : 'Research and build'}
@@ -975,7 +1077,35 @@
       {/if}
     </div>
   {/if}
-  {#if threadReady}
+  {#if pendingReceipt}
+    <section class="next-step" aria-label="Unsaved research receipt">
+      <strong>Save this research receipt before continuing</strong>
+      <p>{pendingReceipt.receipt.questionText ?? pendingReceipt.receipt.searchText}</p>
+      <p>
+        The exact receipt is kept for this session. Save it before closing or reloading. Collected
+        sources remain local; no answer or activity is assigned to an earlier question.
+      </p>
+      <button type="button" disabled={receiptBusy} onclick={() => void savePendingReceipt()}
+        >{receiptBusy ? 'Saving receipt…' : 'Save receipt locally'}</button
+      >
+    </section>
+  {:else if recoveredRun}
+    <section class="next-step" aria-label="Continue saved research locally">
+      <button
+        type="button"
+        disabled={localBuildBusy || running}
+        onclick={() => void buildRecoveredSources()}
+        >{localBuildBusy ? 'Building from local text…' : 'Build from recovered sources'}</button
+      >
+    </section>
+  {/if}
+  {#if localSynthesis && latestBriefPath && synthesisMarkdown && !pendingReceipt}
+    <section class="next-step" aria-label="Local source brief">
+      <h2>Brief from saved local text</h2>
+      <p>This document was built locally. It is not attributed to an earlier provider lookup.</p>
+      <button type="button" onclick={() => onSourceSaved(latestBriefPath)}>Open local brief</button>
+    </section>
+  {:else if threadReady && !pendingReceipt}
     <ResearchThread
       {topicSlug}
       {topicTitle}
@@ -1002,7 +1132,7 @@
     />
   {/if}
 
-  {#if latestRun && !threadReady}
+  {#if latestRun && !threadReady && !pendingReceipt}
     <details class="latest-run" role="region" aria-label="Latest lookup">
       <summary><strong>Latest lookup</strong> · {questionForRun(latestRun)}</summary>
       <ul class="provider-failures" aria-label="Provider outcomes">
@@ -1075,7 +1205,7 @@
       <strong>References are useful, but they are not evidence yet.</strong>
       <p>
         Read a page through the local companion, open the original in your browser, or paste text
-        you are allowed to use. The brief refreshes after readable text arrives.
+        you are allowed to use. In Sources, choose Build brief from local text after saving it.
       </p>
       <div class="next-actions">
         <button type="button" onclick={onOpenSources}>Open Sources</button>
@@ -1115,7 +1245,9 @@
               <button
                 class="approve-extra"
                 aria-label={`Approve and add ${candidate.title} to Sources`}
-                disabled={savingExtra || approvedExtraKeys.has(candidate.key)}
+                disabled={savingExtra ||
+                  Boolean(pendingReceipt) ||
+                  approvedExtraKeys.has(candidate.key)}
                 onclick={() => void approveExtraCandidate(candidate)}
               >
                 <Plus aria-hidden="true" size={14} />
@@ -1208,7 +1340,7 @@
         <span class="full-copy">Decide later</span>
         <span class="compact-copy" aria-hidden="true">Later</span>
       </button>
-      <button class="quiet" aria-label="Keep all off" onclick={() => void confirmConsent()}>
+      <button class="quiet" aria-label="Keep all off" onclick={() => void confirmConsent('deny')}>
         <span class="full-copy">Keep all off</span>
         <span class="compact-copy" aria-hidden="true">Off</span>
       </button>

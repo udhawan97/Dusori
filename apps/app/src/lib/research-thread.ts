@@ -6,7 +6,14 @@ import type {
   SourceRecord,
   StorageAdapter,
 } from '@dusori/core';
-import { citationIdentifierText, evidenceClaims, sha256 } from '@dusori/core';
+import {
+  citationIdentifierText,
+  evidenceClaims,
+  isLocalSynthesis,
+  sha256,
+  synthesisResearchProvenanceMatches,
+  synthesisResearchRun,
+} from '@dusori/core';
 
 import { renderMarkdown } from './markdown.js';
 
@@ -24,6 +31,27 @@ export interface ResearchThreadExportInput {
 }
 
 export type ResearchThreadExportFormat = 'html' | 'markdown' | 'pdf';
+
+/** The document's local origin overrides stale ledger or caller-supplied thread identities. */
+function artifactExportInput(input: ResearchThreadExportInput): ResearchThreadExportInput {
+  if (
+    !synthesisResearchProvenanceMatches(input.synthesisMarkdown, input.runs, input.synthesisRunAt)
+  )
+    return {
+      ...input,
+      runs: [],
+      threads: [],
+      threadId: undefined,
+      synthesisRunAt: undefined,
+      synthesisMarkdown:
+        '# Brief withheld\n\nThe research receipt has not been linked to this brief. Save its provenance before exporting the answer.\n',
+    };
+  const run = synthesisResearchRun(input.synthesisMarkdown, input.runs, input.synthesisRunAt);
+  if (run) return { ...input, threadId: run.threadId };
+  return isLocalSynthesis(input.synthesisMarkdown)
+    ? { ...input, runs: [], threads: [], threadId: undefined, synthesisRunAt: undefined }
+    : input;
+}
 
 export interface ResearchThreadExportManifest {
   schemaVersion: 1;
@@ -287,6 +315,9 @@ export function researchThreadManifestFilename(topicSlug: string): string {
  * passages live only inside the existing synthesis, whose evidence boundary is enforced in core.
  */
 export function renderResearchThreadMarkdown(input: ResearchThreadExportInput): string {
+  input = artifactExportInput(input);
+  const local = isLocalSynthesis(input.synthesisMarkdown);
+  const title = `${local ? 'Local source brief' : 'Research thread'} — ${input.topicTitle}`;
   const latestRun = input.runs.at(-1);
   const answerRun = researchAnswerRun(input.runs, input.synthesisRunAt);
   const nonReplacingProposal = proposedRunAfterAnswer(input.runs, answerRun);
@@ -297,18 +328,24 @@ export function renderResearchThreadMarkdown(input: ResearchThreadExportInput): 
   );
   const lines = [
     '---',
-    `title: ${JSON.stringify(`Research thread — ${input.topicTitle}`)}`,
+    `title: ${JSON.stringify(title)}`,
     `topic: ${JSON.stringify(input.topicTitle)}`,
     `generated: ${input.generatedAt}`,
     `structure: ${input.outputStyle}`,
     ...(input.threadId ? [`thread_id: ${input.threadId}`] : []),
     '---',
     '',
-    `# Research thread — ${markdownText(input.topicTitle)}`,
+    `# ${markdownText(title)}`,
     '',
     `Exported from Dusori on ${input.generatedAt.slice(0, 10)}. ${readCount} of ${input.sources.length} saved sources currently support ${claimCount} quoted ${claimCount === 1 ? 'passage' : 'passages'}.`,
     '',
   ];
+
+  if (local)
+    lines.push(
+      'Built from saved local text. This brief is not attributed to a provider lookup.',
+      '',
+    );
 
   if (answerRun) {
     lines.push(
@@ -419,6 +456,7 @@ export async function buildResearchThreadExportBundle(
   format: ResearchThreadExportFormat,
   createdAt = new Date(),
 ): Promise<ResearchThreadExportBundle> {
+  input = artifactExportInput(input);
   const content =
     format === 'markdown'
       ? renderResearchThreadMarkdown(input)
@@ -520,7 +558,9 @@ function networkInertHtml(value: string): string {
 export async function renderResearchThreadHtml(input: ResearchThreadExportInput): Promise<string> {
   const markdown = renderResearchThreadMarkdown(input);
   const rendered = await renderMarkdown(markdown);
-  const title = escapeHtml(`Research thread — ${input.topicTitle}`);
+  const title = escapeHtml(
+    `${isLocalSynthesis(input.synthesisMarkdown) ? 'Local source brief' : 'Research thread'} — ${input.topicTitle}`,
+  );
   const body = networkInertHtml(rendered.html);
   return `<!doctype html>
 <html lang="en">

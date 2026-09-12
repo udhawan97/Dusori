@@ -86,3 +86,15 @@ describe.each([
     ).resolves.toMatchObject({ content: 'independent' });
   });
 });
+
+it('refuses the FSA copy-delete fallback before removing its source', async () => {
+  const { root } = directoryFixture();
+  const storage = new FsaStorageAdapter(root);
+  await storage.write('source.md', 'externally editable bytes');
+
+  await expect(storage.move('source.md', 'target.md')).rejects.toThrow(
+    /cannot atomically move connected-folder files/u,
+  );
+  expect((await storage.read('source.md'))?.content).toBe('externally editable bytes');
+  expect(await storage.read('target.md')).toBeNull();
+});

@@ -9,6 +9,7 @@ export * from './learn-page.js';
 export * from './mission.js';
 export * from './plan.js';
 export * from './synthesis.js';
+export * from './synthesis-provenance.js';
 export * from './providers/index.js';
 export * from './rank.js';
 export * from './reputation.js';

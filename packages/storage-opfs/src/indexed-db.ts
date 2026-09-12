@@ -68,6 +68,7 @@ export async function indexedDbWorkspaceDatabaseExists(
 
 export class IndexedDbStorageAdapter implements StorageAdapter {
   readonly kind = 'indexeddb' as const;
+  readonly supportsSafeWorkspaceRelocation = true;
 
   private constructor(private readonly database: IDBDatabase) {}
 

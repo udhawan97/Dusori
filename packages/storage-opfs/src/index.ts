@@ -86,6 +86,7 @@ async function currentFile(handle: FileSystemFileHandle): Promise<File> {
 
 export class OpfsStorageAdapter implements StorageAdapter {
   readonly kind = 'opfs' as const;
+  readonly supportsSafeWorkspaceRelocation = true;
 
   constructor(private readonly root: FileSystemDirectoryHandle) {}
 

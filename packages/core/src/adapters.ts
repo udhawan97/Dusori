@@ -20,11 +20,13 @@ export interface WriteOptions {
 
 export interface StorageAdapter {
   readonly kind: StorageKind;
+  readonly supportsSafeWorkspaceRelocation?: boolean;
   ensureDirectory(path: string): Promise<void>;
   list(path?: string, recursive?: boolean): Promise<StorageEntry[]>;
   move(from: string, to: string): Promise<void>;
   read(path: string): Promise<FileSnapshot | null>;
   remove(path: string, recursive?: boolean): Promise<void>;
+  runExclusiveWorkspaceMutation?<T>(operation: (storage: StorageAdapter) => Promise<T>): Promise<T>;
   write(path: string, content: string, options?: WriteOptions): Promise<FileSnapshot>;
 }
 

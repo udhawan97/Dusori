@@ -18,6 +18,7 @@ import {
 import { WorkspaceSchema } from '../schemas/workspace.js';
 import { MemoryStorageAdapter } from '../testing/memory-storage.js';
 import { createTopic, createWorkspace, workspaceFingerprint } from './create.js';
+import { coordinateStorage } from './coordinated-storage.js';
 import { normalizeWorkspacePath, slugify } from './paths.js';
 
 const now = new Date('2026-07-20T12:00:00.000Z');
@@ -178,6 +179,48 @@ describe('workspace vertical slice', () => {
     expect(await workspaceFingerprint(destination)).toBe(before);
   });
 
+  it('preserves machine-file recovery bytes after a successful workspace replacement', async () => {
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+
+    const destination = new MemoryStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    const recoveryPath = '.dusori-recovery/dusori.json.invalid-original';
+    const recoveryBytes = '{invalid workspace bytes';
+    await destination.write(recoveryPath, recoveryBytes, { expectedHash: null });
+
+    await importWorkspace(destination, await exportWorkspace(source));
+
+    expect((await destination.read(recoveryPath))?.content).toBe(recoveryBytes);
+    expect(
+      await destination.read(`${workspaceImportRecoveryRoot}/backup/${recoveryPath}`),
+    ).toBeNull();
+    expect(
+      (await destination.list('', true)).some((entry) =>
+        entry.path.startsWith(`${workspaceImportRecoveryRoot}/`),
+      ),
+    ).toBe(false);
+  });
+
+  it('preserves an existing import recovery root with a case-insensitive alias', async () => {
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+
+    const destination = new MemoryStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    const recoveryPath = '.DUSORI-IMPORT-RECOVERY/backup/dusori.json';
+    const recoveryBytes = '{previous recovery bytes';
+    await destination.write(recoveryPath, recoveryBytes, { expectedHash: null });
+
+    await expect(importWorkspace(destination, await exportWorkspace(source))).rejects.toThrow(
+      /previous import left a durable recovery copy/u,
+    );
+
+    expect((await destination.read(recoveryPath))?.content).toBe(recoveryBytes);
+  });
+
   it('rejects an invalid archive before replacing the destination workspace', async () => {
     const invalid = new MemoryStorageAdapter();
     await createWorkspace(invalid, 'Invalid import', now);
@@ -228,9 +271,203 @@ describe('workspace vertical slice', () => {
     expect(await workspaceFingerprint(destination)).toBe(before);
   });
 
+  it('rejects queued app writes that belong to the replaced workspace', async () => {
+    let releaseStaging = (): void => undefined;
+    let reportStaging = (): void => undefined;
+    const stagingPaused = new Promise<void>((resolve) => {
+      reportStaging = resolve;
+    });
+    const continueStaging = new Promise<void>((resolve) => {
+      releaseStaging = resolve;
+    });
+    class PausingStorageAdapter extends MemoryStorageAdapter {
+      override async ensureDirectory(path: string): Promise<void> {
+        await super.ensureDirectory(path);
+        if (path === `${workspaceImportRecoveryRoot}/staged`) {
+          reportStaging();
+          await continueStaging;
+        }
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const raw = new PausingStorageAdapter();
+    await createWorkspace(raw, 'Keep me', now);
+    const destination = coordinateStorage(raw);
+    const replacement = replaceWorkspace(destination, prepared);
+    await stagingPaused;
+    const laterEdit = destination.write('Home.md', '# Written while import was staging\n');
+    const staleWrite = expect(laterEdit).rejects.toThrow(/workspace was replaced/u);
+    releaseStaging();
+    await Promise.all([replacement, staleWrite]);
+
+    expect((await destination.read('Home.md'))?.content).toBe(
+      (await source.read('Home.md'))?.content,
+    );
+    expect(JSON.parse((await destination.read('dusori.json'))!.content).name).toBe(
+      'Imported learning',
+    );
+    await destination.write('Home.md', '# Deliberate edit after import\n');
+    expect((await destination.read('Home.md'))?.content).toBe('# Deliberate edit after import\n');
+  });
+
+  it('aborts before clearing live files when an external edit arrives during staging', async () => {
+    let releaseStaging = (): void => undefined;
+    let reportStaging = (): void => undefined;
+    const stagingPaused = new Promise<void>((resolve) => {
+      reportStaging = resolve;
+    });
+    const continueStaging = new Promise<void>((resolve) => {
+      releaseStaging = resolve;
+    });
+    class PausingStorageAdapter extends MemoryStorageAdapter {
+      override async ensureDirectory(path: string): Promise<void> {
+        await super.ensureDirectory(path);
+        if (path === `${workspaceImportRecoveryRoot}/staged`) {
+          reportStaging();
+          await continueStaging;
+        }
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new PausingStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    const replacement = replaceWorkspace(destination, prepared);
+    await stagingPaused;
+    await destination.externalWrite('Home.md', '# External edit kept\n');
+    releaseStaging();
+
+    await expect(replacement).rejects.toThrow(/changed while the replacement was being staged/u);
+    expect((await destination.read('Home.md'))?.content).toBe('# External edit kept\n');
+    expect(JSON.parse((await destination.read('dusori.json'))!.content).name).toBe('Keep me');
+    expect(await destination.read(`${workspaceImportRecoveryRoot}/backup/dusori.json`)).toBeNull();
+  });
+
+  it('restores an external edit that lands immediately before the first live removal', async () => {
+    class LateEditStorageAdapter extends MemoryStorageAdapter {
+      injectLateEdit = false;
+
+      override async move(from: string, to: string): Promise<void> {
+        if (this.injectLateEdit && !from.startsWith(`${workspaceImportRecoveryRoot}/`)) {
+          this.injectLateEdit = false;
+          await this.externalWrite('Home.md', '# External edit at commit boundary\n');
+        }
+        await super.move(from, to);
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    await createTopic(source, 'AI Fundamentals', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new LateEditStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    destination.injectLateEdit = true;
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /changed immediately before replacement/u,
+    );
+    expect((await destination.read('Home.md'))?.content).toBe(
+      '# External edit at commit boundary\n',
+    );
+    expect(JSON.parse((await destination.read('dusori.json'))!.content).name).toBe('Keep me');
+  });
+
+  it('refuses replacement before staging when the adapter cannot relocate safely', async () => {
+    class UnsafeMoveStorageAdapter extends MemoryStorageAdapter {
+      override readonly supportsSafeWorkspaceRelocation = false;
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new UnsafeMoveStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    const before = await workspaceFingerprint(destination);
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /storage target cannot safely replace the workspace/u,
+    );
+    expect(await workspaceFingerprint(destination)).toBe(before);
+    expect(await destination.read(`${workspaceImportRecoveryRoot}/backup/dusori.json`)).toBeNull();
+  });
+
+  it('fails closed when an adapter does not declare safe workspace relocation', async () => {
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new MemoryStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    Reflect.deleteProperty(destination, 'supportsSafeWorkspaceRelocation');
+    const before = await workspaceFingerprint(destination);
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /storage target cannot safely replace the workspace/u,
+    );
+    expect(await workspaceFingerprint(destination)).toBe(before);
+  });
+
+  it('preserves a file recreated externally before a failed import write', async () => {
+    class RecreatedFileStorageAdapter extends MemoryStorageAdapter {
+      failNextLiveWrite = false;
+
+      override async write(
+        path: string,
+        content: string,
+        options?: Parameters<MemoryStorageAdapter['write']>[2],
+      ) {
+        if (this.failNextLiveWrite && !path.startsWith(`${workspaceImportRecoveryRoot}/`)) {
+          this.failNextLiveWrite = false;
+          await this.externalWrite('External.md', '# Recreated by an external editor\n');
+          throw new Error('simulated import write failure');
+        }
+        return super.write(path, content, options);
+      }
+    }
+
+    const source = new MemoryStorageAdapter();
+    await createWorkspace(source, 'Imported learning', now);
+    const prepared = await prepareWorkspaceImport(await exportWorkspace(source));
+
+    const destination = new RecreatedFileStorageAdapter();
+    await createWorkspace(destination, 'Keep me', now);
+    destination.failNextLiveWrite = true;
+
+    await expect(replaceWorkspace(destination, prepared)).rejects.toThrow(
+      /previous workspace was restored/u,
+    );
+    expect(JSON.parse((await destination.read('dusori.json'))!.content).name).toBe('Keep me');
+    expect(
+      (await destination.read(`${workspaceImportRecoveryRoot}/failed-import/External.md`))?.content,
+    ).toBe('# Recreated by an external editor\n');
+  });
+
   it('keeps a durable untouched backup when both replacement and restoration writes fail', async () => {
     class PersistentlyFailingStorageAdapter extends MemoryStorageAdapter {
       failLiveWrites = false;
+
+      override async move(from: string, to: string): Promise<void> {
+        if (
+          this.failLiveWrites &&
+          from.startsWith(`${workspaceImportRecoveryRoot}/`) &&
+          !to.startsWith(`${workspaceImportRecoveryRoot}/`)
+        ) {
+          throw new Error('persistent restoration failure');
+        }
+        await super.move(from, to);
+      }
 
       override async write(
         path: string,

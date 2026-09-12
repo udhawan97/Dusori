@@ -5,6 +5,7 @@ import { ProposalLedgerSchema } from './conflict/proposal-ledger.js';
 import { ResearchFileSchema } from './research/research-file.js';
 import { SourceManifestSchema, TopicStateSchema, WorkspaceSchema } from './schemas/workspace.js';
 import { normalizeWorkspacePath, topicRoot } from './workspace/paths.js';
+import { coordinateStorage } from './workspace/coordinated-storage.js';
 
 const maxWorkspaceFiles = 5_000;
 const maxWorkspaceBytes = 64 * 1024 * 1024;
@@ -13,6 +14,7 @@ const maxArchiveCompressionRatio = 200;
 const maxWorkspacePathBytes = 640;
 const maxWorkspacePathSegments = 16;
 export const workspaceImportRecoveryRoot = '.dusori-import-recovery';
+const reservedWorkspaceRoots = new Set([workspaceImportRecoveryRoot, '.dusori-recovery']);
 
 interface WorkspaceImportFile {
   content: string;
@@ -163,9 +165,15 @@ function validatePreparedFiles(files: readonly WorkspaceImportFile[]): Workspace
   };
 }
 
-async function snapshotStorage(storage: StorageAdapter): Promise<WorkspaceImportFile[]> {
+async function snapshotStorage(
+  storage: StorageAdapter,
+  excludeInternalRecovery = false,
+): Promise<WorkspaceImportFile[]> {
   const files = (await storage.list('', true))
-    .filter((entry) => entry.kind === 'file')
+    .filter(
+      (entry) =>
+        entry.kind === 'file' && (!excludeInternalRecovery || !isReservedWorkspacePath(entry.path)),
+    )
     .sort((left, right) => left.path.localeCompare(right.path));
   const snapshots: WorkspaceImportFile[] = [];
   for (const entry of files) {
@@ -173,6 +181,70 @@ async function snapshotStorage(storage: StorageAdapter): Promise<WorkspaceImport
     if (snapshot) snapshots.push({ content: snapshot.content, path: entry.path });
   }
   return snapshots;
+}
+
+function snapshotsMatch(
+  left: readonly WorkspaceImportFile[],
+  right: readonly WorkspaceImportFile[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (file, index) => file.path === right[index]?.path && file.content === right[index]?.content,
+    )
+  );
+}
+
+function isSnapshotSubset(
+  subset: readonly WorkspaceImportFile[],
+  complete: readonly WorkspaceImportFile[],
+): boolean {
+  const byPath = new Map(complete.map((file) => [file.path, file.content]));
+  return subset.every((file) => byPath.get(file.path) === file.content);
+}
+
+function archiveAliasKey(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => segment.normalize('NFC').toLowerCase())
+    .join('/');
+}
+
+function isReservedWorkspacePath(path: string): boolean {
+  return reservedWorkspaceRoots.has(archiveAliasKey(path).split('/')[0] ?? '');
+}
+
+function registerArchivePath(path: string, aliases: Map<string, string>): void {
+  const segments = path.split('/');
+  for (const segment of segments) {
+    if (segment.endsWith('.') || segment.endsWith(' ')) {
+      throw new Error(`The workspace archive contains a non-portable path: ${path}`);
+    }
+  }
+
+  const key = archiveAliasKey(path);
+  const root = key.split('/')[0] ?? '';
+  if (reservedWorkspaceRoots.has(root)) {
+    throw new Error(`The workspace archive uses Dusori's reserved recovery path: ${path}`);
+  }
+  const existing = aliases.get(key);
+  if (existing) {
+    throw new Error(`The workspace archive contains aliased paths: ${existing} and ${path}`);
+  }
+  for (let index = 1; index < segments.length; index += 1) {
+    const ancestorKey = archiveAliasKey(segments.slice(0, index).join('/'));
+    const ancestor = aliases.get(ancestorKey);
+    if (ancestor) {
+      throw new Error(`The workspace archive uses a file as a directory: ${ancestor} and ${path}`);
+    }
+  }
+  const descendant = [...aliases.entries()].find(([candidate]) => candidate.startsWith(`${key}/`));
+  if (descendant) {
+    throw new Error(
+      `The workspace archive uses a file as a directory: ${path} and ${descendant[1]}`,
+    );
+  }
+  aliases.set(key, path);
 }
 
 async function writeFiles(
@@ -193,16 +265,78 @@ function prefixedFiles(
   return files.map((file) => ({ content: file.content, path: `${prefix}/${file.path}` }));
 }
 
-async function clearLiveWorkspace(storage: StorageAdapter): Promise<void> {
-  const entries = (await storage.list('', false))
-    .filter((entry) => entry.path !== workspaceImportRecoveryRoot)
-    .sort((left, right) => right.path.length - left.path.length);
-  for (const entry of entries) await storage.remove(entry.path, true);
+async function restoreRelocatedWorkspace(
+  storage: StorageAdapter,
+  recoveryRoot: string,
+  files: readonly WorkspaceImportFile[],
+): Promise<void> {
+  for (const file of files) {
+    if (await storage.read(file.path)) {
+      throw new Error(
+        `Workspace recovery stopped because ${file.path} was recreated externally. Its pre-replacement bytes remain at ${recoveryRoot}/${file.path}.`,
+      );
+    }
+    const parent = file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : '';
+    if (parent) await storage.ensureDirectory(parent);
+    await storage.move(`${recoveryRoot}/${file.path}`, file.path);
+  }
+}
+
+async function relocateLiveWorkspace(
+  storage: StorageAdapter,
+  recoveryRoot: string,
+  expected: readonly WorkspaceImportFile[],
+): Promise<WorkspaceImportFile[]> {
+  const entries = (await storage.list('', true)).filter(
+    (entry) => !isReservedWorkspacePath(entry.path),
+  );
+  const files = entries
+    .filter((entry) => entry.kind === 'file')
+    .sort((left, right) => left.path.localeCompare(right.path));
+  const relocated: WorkspaceImportFile[] = [];
+
+  try {
+    for (const entry of files) {
+      const destination = `${recoveryRoot}/${entry.path}`;
+      const parent = destination.slice(0, destination.lastIndexOf('/'));
+      await storage.ensureDirectory(parent);
+      await storage.move(entry.path, destination);
+      const snapshot = await storage.read(destination);
+      if (!snapshot) throw new Error(`Workspace file disappeared while moving it: ${entry.path}`);
+      relocated.push({ content: snapshot.content, path: entry.path });
+    }
+
+    const directories = entries
+      .filter((entry) => entry.kind === 'directory')
+      .sort((left, right) => right.path.length - left.path.length);
+    for (const entry of directories) await storage.remove(entry.path, false);
+
+    const remaining = await snapshotStorage(storage, true);
+    if (remaining.length > 0 || !snapshotsMatch(expected, relocated)) {
+      throw new Error('The workspace changed immediately before replacement.');
+    }
+    return relocated;
+  } catch (error) {
+    try {
+      await restoreRelocatedWorkspace(storage, recoveryRoot, relocated);
+    } catch (restoreError) {
+      throw new AggregateError(
+        [error, restoreError],
+        `Workspace import stopped after a late external edit. Live bytes were preserved, and any displaced bytes remain at ${recoveryRoot}.`,
+        { cause: restoreError },
+      );
+    }
+    throw error;
+  }
 }
 
 export async function exportWorkspace(storage: StorageAdapter): Promise<Uint8Array> {
   const zip = new JSZip();
-  const files = (await storage.list('', true)).filter((entry) => entry.kind === 'file');
+  // Recovery archives belong to this device's repair workflow, not to an importable workspace.
+  // Exporting must leave those live copies untouched while producing an archive we can import.
+  const files = (await storage.list('', true)).filter(
+    (entry) => entry.kind === 'file' && !isReservedWorkspacePath(entry.path),
+  );
   for (const entry of files) {
     const snapshot = await storage.read(entry.path);
     if (snapshot) zip.file(entry.path, snapshot.content);
@@ -263,7 +397,8 @@ export async function prepareWorkspaceImport(
   }
   preflightArchiveEntries(entries);
 
-  const paths = new Set<string>();
+  const aliases = new Map<string, string>();
+  const validatedEntries: { entry: JSZip.JSZipObject; path: string }[] = [];
   const files: WorkspaceImportFile[] = [];
   let totalBytes = 0;
   for (const entry of entries) {
@@ -278,9 +413,11 @@ export async function prepareWorkspaceImport(
     }
     const path = normalizeWorkspacePath(originalName);
     if (!path) continue;
-    if (paths.has(path))
-      throw new Error(`The workspace archive contains a duplicate path: ${path}`);
-    paths.add(path);
+    registerArchivePath(path, aliases);
+    validatedEntries.push({ entry, path });
+  }
+  // Check the complete path set before allocating any expanded file content.
+  for (const { entry, path } of validatedEntries) {
     const content = await entry.async('string');
     const contentBytes = new TextEncoder().encode(content).byteLength;
     if (contentBytes > maxWorkspaceFileBytes) {
@@ -296,17 +433,28 @@ export async function prepareWorkspaceImport(
   return { files, preview: validatePreparedFiles(files) };
 }
 
-export async function replaceWorkspace(
+async function replaceWorkspaceUnlocked(
   storage: StorageAdapter,
   prepared: PreparedWorkspaceImport,
 ): Promise<void> {
-  if ((await storage.list('', false)).some((entry) => entry.path === workspaceImportRecoveryRoot)) {
+  if (
+    (await storage.list('', false)).some(
+      (entry) => archiveAliasKey(entry.path) === workspaceImportRecoveryRoot,
+    )
+  ) {
     throw new Error(
-      `A previous import left a durable recovery copy at ${workspaceImportRecoveryRoot}. Export or recover it before replacing this workspace again.`,
+      `A previous import left a durable recovery copy at ${workspaceImportRecoveryRoot}. Recover or copy that directory separately before replacing this workspace again; normal workspace exports omit internal recovery copies.`,
     );
   }
-  const backup = await snapshotStorage(storage);
+  if (storage.supportsSafeWorkspaceRelocation !== true) {
+    throw new Error(
+      'This storage target cannot safely replace the workspace because it does not guarantee safe file relocation. The current workspace was not changed.',
+    );
+  }
+  const backup = await snapshotStorage(storage, true);
   const backupRoot = `${workspaceImportRecoveryRoot}/backup`;
+  const commitRoot = `${workspaceImportRecoveryRoot}/commit`;
+  const failedRoot = `${workspaceImportRecoveryRoot}/failed-import`;
   const stagedRoot = `${workspaceImportRecoveryRoot}/staged`;
 
   // Both complete copies are written before the first live file is removed. If staging itself
@@ -325,13 +473,32 @@ export async function replaceWorkspace(
     );
   }
 
+  const current = await snapshotStorage(storage, true);
+  if (!snapshotsMatch(backup, current)) {
+    await storage.remove(workspaceImportRecoveryRoot, true).catch(() => undefined);
+    throw new Error(
+      'Workspace import stopped because the current workspace changed while the replacement was being staged. No live workspace files were removed.',
+    );
+  }
+
+  let relocated: WorkspaceImportFile[];
   try {
-    await clearLiveWorkspace(storage);
+    relocated = await relocateLiveWorkspace(storage, commitRoot, backup);
+  } catch (commitGuardError) {
+    throw new Error(
+      `Workspace import stopped because the current workspace changed immediately before replacement. Recovery copies remain at ${workspaceImportRecoveryRoot}: ${commitGuardError instanceof Error ? commitGuardError.message : 'unknown storage error'}`,
+      { cause: commitGuardError },
+    );
+  }
+
+  try {
     await writeFiles(storage, prepared.files);
   } catch (commitError) {
+    let displacedImport: WorkspaceImportFile[];
     try {
-      await clearLiveWorkspace(storage);
-      await writeFiles(storage, backup);
+      const failedImport = await snapshotStorage(storage, true);
+      displacedImport = await relocateLiveWorkspace(storage, failedRoot, failedImport);
+      await restoreRelocatedWorkspace(storage, commitRoot, relocated);
     } catch (rollbackError) {
       throw new AggregateError(
         [commitError, rollbackError],
@@ -339,14 +506,30 @@ export async function replaceWorkspace(
         { cause: rollbackError },
       );
     }
-    await storage.remove(workspaceImportRecoveryRoot, true).catch(() => undefined);
+    if (isSnapshotSubset(displacedImport, prepared.files)) {
+      await storage.remove(workspaceImportRecoveryRoot, true).catch(() => undefined);
+    }
     const message = commitError instanceof Error ? commitError.message : 'unknown storage error';
-    throw new Error(`Workspace import failed; the previous workspace was restored: ${message}`, {
-      cause: commitError,
-    });
+    const recoveryNote = isSnapshotSubset(displacedImport, prepared.files)
+      ? ''
+      : ` External or unexpected bytes remain at ${workspaceImportRecoveryRoot}.`;
+    throw new Error(
+      `Workspace import failed; the previous workspace was restored: ${message}.${recoveryNote}`,
+      { cause: commitError },
+    );
   }
 
   await storage.remove(workspaceImportRecoveryRoot, true);
+}
+
+export async function replaceWorkspace(
+  storage: StorageAdapter,
+  prepared: PreparedWorkspaceImport,
+): Promise<void> {
+  const coordinated = coordinateStorage(storage);
+  return coordinated.runExclusiveWorkspaceMutation((inner) =>
+    replaceWorkspaceUnlocked(inner, prepared),
+  );
 }
 
 export async function importWorkspace(

@@ -42,6 +42,14 @@ async function parentAndName(
 export class FsaStorageAdapter implements StorageAdapter {
   readonly kind = 'fsa' as const;
 
+  get supportsSafeWorkspaceRelocation(): boolean {
+    return (
+      typeof FileSystemFileHandle !== 'undefined' &&
+      typeof (FileSystemFileHandle.prototype as FileSystemFileHandle & { move?: unknown }).move ===
+        'function'
+    );
+  }
+
   constructor(readonly root: FileSystemDirectoryHandle) {}
 
   async ensureDirectory(path: string): Promise<void> {
@@ -64,10 +72,20 @@ export class FsaStorageAdapter implements StorageAdapter {
   }
 
   async move(from: string, to: string): Promise<void> {
-    const source = await this.read(from);
-    if (!source) throw new Error(`Missing file: ${from}`);
-    await this.write(to, source.content, { expectedHash: null });
-    await this.remove(from);
+    const [sourceParent, sourceName] = await parentAndName(this.root, from);
+    const source = await sourceParent.getFileHandle(sourceName);
+    const move = (
+      source as FileSystemFileHandle & {
+        move?: (destination: FileSystemDirectoryHandle, name: string) => Promise<void>;
+      }
+    ).move;
+    if (typeof move !== 'function') {
+      throw new Error(
+        'This browser cannot atomically move connected-folder files, so Dusori refused the operation before deleting the source.',
+      );
+    }
+    const [destinationParent, destinationName] = await parentAndName(this.root, to, true);
+    await move.call(source, destinationParent, destinationName);
   }
 
   async read(path: string): Promise<FileSnapshot | null> {

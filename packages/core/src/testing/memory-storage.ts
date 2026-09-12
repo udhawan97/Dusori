@@ -15,6 +15,7 @@ interface MemoryFile {
 
 export class MemoryStorageAdapter implements StorageAdapter {
   readonly kind = 'memory' as const;
+  readonly supportsSafeWorkspaceRelocation: boolean = true;
   readonly files = new Map<string, MemoryFile>();
   readonly directories = new Set<string>(['']);
   private clock = 1;

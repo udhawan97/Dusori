@@ -28,6 +28,7 @@
 
   import { createLatestRequestGate } from '$lib/latest-request';
   import { handleExternalLink } from '$lib/open-external';
+  import { buildLocalResearch, pendingResearchReceipt } from '$lib/local-research';
   import {
     filterSavedSources,
     sourceFilterCounts,
@@ -53,6 +54,9 @@
   let removedSources: RemovedSource[] = [];
   let loading = true;
   let saving = false;
+  let building = false;
+  let localBriefPath = '';
+  let receiptPending = false;
   let error = '';
   let success = '';
   let sourceQuery = '';
@@ -130,6 +134,8 @@
   }
 
   async function recordSavedSourceActivity(record: SourceRecord): Promise<string> {
+    if (pendingResearchReceipt(storage, topicSlug))
+      return ' Save the pending receipt in Research before building or recording thread activity.';
     try {
       await recordResearchThreadEvent(storage, topicSlug, {
         readState: record.readState,
@@ -172,7 +178,14 @@
   }
 
   async function fetchSource(record: SourceRecord): Promise<void> {
-    if (!companion || fetchingSha || !record.url) return;
+    if (
+      !companion ||
+      fetchingSha ||
+      building ||
+      pendingResearchReceipt(storage, topicSlug) ||
+      !record.url
+    )
+      return;
     fetchingSha = record.sha256;
     clearFeedback();
     try {
@@ -270,7 +283,7 @@
   }
 
   async function removeFromResearch(record: SourceRecord): Promise<void> {
-    if (removingSha) return;
+    if (removingSha || building || pendingResearchReceipt(storage, topicSlug)) return;
     removingSha = record.sha256;
     clearFeedback();
     try {
@@ -307,7 +320,7 @@
   }
 
   async function restoreRemoved(entry: RemovedSource): Promise<void> {
-    if (restoringSha) return;
+    if (restoringSha || building || pendingResearchReceipt(storage, topicSlug)) return;
     restoringSha = entry.record.sha256;
     clearFeedback();
     try {
@@ -355,7 +368,7 @@
   }
 
   async function saveCitation(record: SourceRecord): Promise<void> {
-    if (savingCitationSha) return;
+    if (savingCitationSha || building || pendingResearchReceipt(storage, topicSlug)) return;
     savingCitationSha = record.sha256;
     clearFeedback();
     try {
@@ -399,6 +412,7 @@
     currentStorage: StorageAdapter,
     currentTopicSlug: string,
   ): Promise<void> {
+    receiptPending = Boolean(pendingResearchReceipt(currentStorage, currentTopicSlug));
     if (currentRevision < 0) return;
     await refresh(currentStorage, currentTopicSlug);
   }
@@ -440,6 +454,7 @@
   }
 
   async function submit(): Promise<void> {
+    if (saving || building) return;
     saving = true;
     clearFeedback();
     try {
@@ -529,6 +544,28 @@
     }
   }
 
+  async function buildFromLocalText(): Promise<void> {
+    if (building || saving || fetchingSha || removingSha || restoringSha || savingCitationSha)
+      return;
+    building = true;
+    clearFeedback();
+    localBriefPath = '';
+    try {
+      const result = await buildLocalResearch(storage, topicSlug, topicTitle);
+      await refresh();
+      success = result.message;
+      localBriefPath = result.path ?? '';
+      onSourceSaved();
+    } catch (caught) {
+      error =
+        caught instanceof Error
+          ? caught.message
+          : 'The local brief could not be built. Saved sources remain available.';
+    } finally {
+      building = false;
+    }
+  }
+
   function methodLabel(source: SourceRecord): string {
     if (source.method === 'file') return 'Local file';
     if (source.method === 'url') return 'URL reference';
@@ -562,7 +599,7 @@
 <section
   class="source-library"
   aria-labelledby="source-library-title"
-  aria-busy={loading || saving}
+  aria-busy={loading || saving || building}
 >
   <div class="source-heading">
     <div>
@@ -661,11 +698,39 @@
         {/if}
       {/if}
 
-      <button class="add-source" disabled={saving || loading}>
+      <button class="add-source" disabled={saving || loading || building}>
         {saving ? 'Saving source…' : 'Save source'}
       </button>
     </form>
   </details>
+
+  {#if receiptPending}
+    <p class="field-help" role="status">
+      A research receipt is still unsaved. Return to Research and choose Save receipt locally before
+      reading or building evidence.
+    </p>
+  {:else if sources.some((source) => source.readState !== 'reference' && source.path)}
+    <div class="local-build">
+      <button
+        class="add-source"
+        type="button"
+        disabled={loading ||
+          saving ||
+          building ||
+          Boolean(fetchingSha || removingSha || restoringSha || savingCitationSha)}
+        onclick={() => void buildFromLocalText()}
+        >{building ? 'Building from local text…' : 'Build brief from local text'}</button
+      >
+      <p class="field-help">
+        Uses saved text only. Original URLs are not fetched and no provider or AI request is made.
+      </p>
+      {#if localBriefPath}<button
+          class="source-title"
+          type="button"
+          onclick={() => onOpenSource(localBriefPath)}>Open local result</button
+        >{/if}
+    </div>
+  {/if}
 
   <div class="source-feedback" aria-live="polite">
     {#if upgradeError}
@@ -807,7 +872,10 @@
                       disabled={Boolean(savingCitationSha)}
                     />
                     <div class="citation-actions">
-                      <button type="submit" disabled={Boolean(savingCitationSha)}>
+                      <button
+                        type="submit"
+                        disabled={Boolean(savingCitationSha) || building || receiptPending}
+                      >
                         {savingCitationSha === source.sha256 ? 'Saving citation…' : 'Save citation'}
                       </button>
                       <button
@@ -821,7 +889,7 @@
                   <button
                     class="edit-citation"
                     type="button"
-                    disabled={Boolean(savingCitationSha) || saving}
+                    disabled={Boolean(savingCitationSha) || saving || building || receiptPending}
                     onclick={() => editCitation(source)}
                   >
                     {source.citation ? 'Edit citation' : 'Add citation details'}
@@ -842,7 +910,7 @@
                 {#if source.method === 'url' && companion}
                   <button
                     class="upgrade-source"
-                    disabled={Boolean(fetchingSha) || saving}
+                    disabled={Boolean(fetchingSha) || saving || building || receiptPending}
                     onclick={() => void fetchSource(source)}
                   >
                     {fetchingSha === source.sha256 ? 'Reading…' : `Read from ${hostOf(source)}`}
@@ -850,7 +918,7 @@
                 {/if}
                 <button
                   class="remove-source"
-                  disabled={Boolean(removingSha) || saving}
+                  disabled={Boolean(removingSha) || saving || building || receiptPending}
                   onclick={() => void removeFromResearch(source)}
                 >
                   <Trash2 aria-hidden="true" size={15} />
@@ -884,7 +952,10 @@
         {#each removedSources as entry (entry.record.sha256)}
           <li>
             <span>{entry.record.title}</span>
-            <button disabled={Boolean(restoringSha)} onclick={() => void restoreRemoved(entry)}>
+            <button
+              disabled={Boolean(restoringSha) || building || receiptPending}
+              onclick={() => void restoreRemoved(entry)}
+            >
               <RotateCcw aria-hidden="true" size={15} />
               {restoringSha === entry.record.sha256 ? 'Restoring…' : 'Restore'}
             </button>
@@ -912,6 +983,9 @@
     order: 1;
   }
   .source-feedback {
+    order: 2;
+  }
+  .local-build {
     order: 2;
   }
   .source-tools {

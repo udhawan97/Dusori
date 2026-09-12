@@ -27,4 +27,5 @@ export * from './sources/capped.js';
 export * from './sources/upgrade.js';
 export * from './tags/tags.js';
 export * from './workspace/create.js';
+export * from './workspace/coordinated-storage.js';
 export * from './workspace/paths.js';

@@ -98,6 +98,7 @@ export function restartDesktopApp(action: ProtectedUpdateAction): Promise<void> 
 
 export class TauriStorageAdapter implements StorageAdapter {
   readonly kind = 'tauri' as const;
+  readonly supportsSafeWorkspaceRelocation = true;
 
   async ensureDirectory(path: string): Promise<void> {
     await desktopInvoke('workspace_ensure_directory', { path });

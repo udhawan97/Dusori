@@ -68,6 +68,10 @@
     stripCompanionCredentials,
   } from '$lib/companion-origin';
   import { containTab, modal } from '$lib/actions/modal';
+  import { discardNoteDraft, retainNoteDraft, type NoteDrafts } from '$lib/note-drafts';
+  import { hasPendingResearchReceipts } from '$lib/local-research';
+  import { workspaceImportTarget } from '$lib/workspace-import-target';
+  import { coordinateAppStorage } from '$lib/workspace-coordination';
   import { resolveDesktopStorage, startBundledDesktopSession } from '$lib/desktop-platform';
   import { runAutomaticUpdateCheck } from '$lib/app-updates';
   import { startSystemAppearanceSync } from '$lib/appearance';
@@ -122,6 +126,8 @@
   let notePath = '';
   let noteContent = '';
   let noteDraft = '';
+  let noteDraftOriginal = '';
+  let noteDrafts: NoteDrafts = {};
   let annotationAnchorStatus: {
     message: string;
     state: 'anchored' | 'stale' | 'unanchored';
@@ -205,6 +211,17 @@
     syncOnline();
     window.addEventListener('online', syncOnline);
     window.addEventListener('offline', syncOnline);
+    const protectUnsavedWork = (event: BeforeUnloadEvent) => {
+      if (
+        Object.keys(noteDrafts).length ||
+        (editingNote && noteDraft !== noteDraftOriginal) ||
+        (storage && hasPendingResearchReceipts(storage))
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', protectUnsavedWork);
     void restoreWorkspace();
     // This belongs to the application shell rather than Settings: an opted-in learner who opens
     // straight into Learn must still receive the automatic signed check and download.
@@ -220,6 +237,7 @@
       window.removeEventListener('popstate', restoreView);
       window.removeEventListener('online', syncOnline);
       window.removeEventListener('offline', syncOnline);
+      window.removeEventListener('beforeunload', protectUnsavedWork);
     };
   });
 
@@ -293,13 +311,22 @@
     if (workspaceView === 'settings' && decision.state.view !== 'settings') {
       providerRecoverySlug = '';
     }
-    stopEditingNote();
+    if (editingNote)
+      noteDrafts = retainNoteDraft(noteDrafts, notePath, noteDraft, noteDraftOriginal);
+    editingNote = false;
+    noteDraft = '';
     creatingTopic = decision.state.creatingTopic;
     previousSlug = decision.state.topicCreationReturnSlug;
     selectedSlug = decision.state.topicSlug;
     workspaceView = decision.state.view;
     graphMode = decision.state.graphMode;
     notePath = decision.state.documentPath;
+    if (workspaceView === 'note' && notePath in noteDrafts) {
+      noteDraft = noteDrafts[notePath]!.content;
+      noteDraftOriginal = noteDrafts[notePath]!.original;
+      editingNote = true;
+      status = 'Unsaved note draft restored. Save it or choose Cancel to discard it.';
+    }
     conflict = null;
     inspectorOpen = false;
     mobileNavOpen = false;
@@ -489,14 +516,15 @@
     label: string,
     restoreView = false,
   ): Promise<void> {
-    storage = adapter;
+    const activeStorage = coordinateAppStorage(adapter);
+    storage = activeStorage;
     storageLabel = label;
     machineRecoveryPending = false;
     machineRecoveryReason = '';
     try {
-      workspace = await readMachineFile(adapter, 'dusori.json', WorkspaceSchema);
+      workspace = await readMachineFile(activeStorage, 'dusori.json', WorkspaceSchema);
     } catch (cause) {
-      const recoveries = await inspectMachineFileRecoveries(adapter).catch(() => []);
+      const recoveries = await inspectMachineFileRecoveries(activeStorage).catch(() => []);
       if (!recoveries.some((plan) => plan.path === 'dusori.json')) throw cause;
       workspace = null;
       machineRecoveryPending = true;
@@ -607,6 +635,7 @@
   function showImportedRoadmap(content: string): void {
     if (!commitNavigation({ kind: 'open', topicSlug: selectedSlug, view: 'roadmap' })) return;
     noteContent = content;
+    if (!editingNote) noteDraftOriginal = content;
     learningRevision += 1;
     artifactRevision += 1;
     announceStatus('Curriculum applied. The imported roadmap is open.');
@@ -803,6 +832,7 @@
   }
 
   function stopEditingNote(): void {
+    noteDrafts = discardNoteDraft(noteDrafts, notePath);
     editingNote = false;
     noteDraft = '';
   }
@@ -810,6 +840,7 @@
   function beginEditingNote(): void {
     if (!editableNote) return;
     noteDraft = noteContent;
+    noteDraftOriginal = noteContent;
     editingNote = true;
   }
 
@@ -858,6 +889,7 @@
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
+      noteDraftOriginal = created.content;
       annotationAnchorStatus = null;
       editingNote = true;
       status = 'Note created. Add the first useful idea, then save it.';
@@ -927,6 +959,7 @@
       if (!commitNavigation({ documentPath: created.path, kind: 'open', view: 'note' })) return;
       noteContent = created.content;
       noteDraft = created.content;
+      noteDraftOriginal = created.content;
       annotationAnchorStatus = await inspectAnnotationAnchor(created.content);
       editingNote = true;
       status = passage
@@ -1117,22 +1150,33 @@
     const file = input.files?.[0];
     if (!file) return;
     await perform(async () => {
+      if (
+        Object.keys(noteDrafts).length ||
+        editingNote ||
+        (storage && hasPendingResearchReceipts(storage))
+      ) {
+        throw new Error(
+          'Save or discard your note drafts and save pending research receipts before replacing this workspace.',
+        );
+      }
       const prepared = await prepareWorkspaceImport(await file.arrayBuffer());
       const { fileCount, topicCount, workspaceName } = prepared.preview;
       const replacing = Boolean(storage && (await storage.read('dusori.json')));
+      const target = workspaceImportTarget(storage?.kind ?? 'opfs', storageLabel);
       const confirmed = window.confirm(
-        `${replacing ? 'Replace this browser workspace with' : 'Import'} “${workspaceName}”?\n\n` +
+        `${replacing ? 'Replace this workspace with' : 'Import this workspace:'} “${workspaceName}”?\n\n` +
+          `Target: ${target}.\n\n` +
           `${topicCount} topic${topicCount === 1 ? '' : 's'} · ${fileCount} files\n\n` +
           `The archive was validated before this confirmation.${
             replacing
-              ? ' If storage fails during replacement, Dusori will restore the current workspace.'
+              ? ' Dusori stages a backup before replacement and keeps it for recovery if automatic restoration cannot finish.'
               : ''
           }`,
       );
       if (!confirmed) return;
       const adapter = storage ?? (await createBrowserStorage());
       await replaceWorkspace(adapter, prepared);
-      await activateStorage(adapter, 'Browser workspace · imported');
+      await activateStorage(adapter, storageLabel || 'Browser workspace · private');
       status = 'Workspace validated and imported safely.';
     }, 'import');
     input.value = '';
@@ -1142,6 +1186,7 @@
     action: () => Promise<void>,
     target: 'browser' | 'folder' | 'import' | null = null,
   ): Promise<void> {
+    if (busy) return;
     busy = true;
     setupErrorTarget = target;
     error = '';
@@ -1623,7 +1668,11 @@
           {online}
           {busy}
           hasTopic={Boolean(selectedSlug)}
-          hasUnsavedWrites={editingNote || Boolean(conflict) || busy}
+          hasUnsavedWrites={editingNote ||
+            Object.keys(noteDrafts).length > 0 ||
+            hasPendingResearchReceipts(storage) ||
+            Boolean(conflict) ||
+            busy}
           onExportWorkspace={() => void downloadWorkspace()}
           onExportTopic={() => void downloadTopic()}
           onImportWorkspace={(event) => void uploadWorkspace(event)}
@@ -1667,7 +1716,10 @@
                   <p class="kicker">Local Markdown</p>
                   <h1 id="note-editor-title">Edit note</h1>
                 </div>
-                <p>External changes remain protected by a reviewable proposal.</p>
+                <p>
+                  Drafts stay available while you navigate. Save before closing; Cancel discards
+                  this draft.
+                </p>
               </div>
               <label for="note-markdown">Markdown note</label>
               <textarea id="note-markdown" bind:value={noteDraft} spellcheck="true"></textarea>
