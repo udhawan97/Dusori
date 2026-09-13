@@ -124,18 +124,49 @@ export async function createTopic(
     ...workspace.topics,
     { createdAt: now.toISOString(), kind, slug, title: title.trim() },
   ];
+  const { workspace: nextWorkspace, homeConflict } = await writeWorkspaceTopics(
+    storage,
+    workspace,
+    nextTopics,
+    now,
+  );
+
+  return {
+    notePath: `${root}/Notes/001-first-look.md`,
+    state,
+    topicSlug: slug,
+    updatePath,
+    workspace: nextWorkspace,
+    workspaceHomeConflict: homeConflict,
+  };
+}
+
+/**
+ * Persists a new topic list: rewrites Home.md (hash-guarded, with a dated proposal fallback on
+ * conflict) and dusori.json. Home.md lists only active topics, so archiving or deleting a topic
+ * drops it from the home page just as creating one adds it. Shared by create, delete, and archive.
+ */
+export async function writeWorkspaceTopics(
+  storage: StorageAdapter,
+  workspace: Workspace,
+  nextTopics: Workspace['topics'],
+  now: Date,
+): Promise<{ workspace: Workspace; homeConflict: boolean }> {
   const currentHome = await storage.read('Home.md');
   const expectedHome = workspace.fileIndex['Home.md'];
-  let workspaceHomeConflict = false;
+  let homeConflict = false;
   let homeVersion = expectedHome;
-  const nextHome = homeTemplate(workspace.name, nextTopics);
+  const nextHome = homeTemplate(
+    workspace.name,
+    nextTopics.filter((topic) => !topic.archived),
+  );
   if (currentHome && expectedHome && currentHome.hash === expectedHome.hash) {
     const writtenHome = await storage.write('Home.md', nextHome, {
       expectedHash: expectedHome.hash,
     });
     homeVersion = { ...expectedHome, ...fileVersion(writtenHome) };
   } else {
-    workspaceHomeConflict = true;
+    homeConflict = true;
     const proposal = await storage.write(
       `Home.proposed-${now.toISOString().slice(0, 10)}.md`,
       nextHome,
@@ -158,15 +189,7 @@ export async function createTopic(
   await storage.write('dusori.json', `${JSON.stringify(nextWorkspace, null, 2)}\n`, {
     expectedHash: currentWorkspaceFile?.hash,
   });
-
-  return {
-    notePath: `${root}/Notes/001-first-look.md`,
-    state,
-    topicSlug: slug,
-    updatePath,
-    workspace: nextWorkspace,
-    workspaceHomeConflict,
-  };
+  return { workspace: nextWorkspace, homeConflict };
 }
 
 export async function workspaceFingerprint(storage: StorageAdapter): Promise<string> {

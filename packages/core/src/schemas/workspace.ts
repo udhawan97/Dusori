@@ -17,6 +17,8 @@ export const TopicIndexSchema = z
     kind: z.enum(['certification', 'general']).optional(),
     slug: z.string().min(1).max(80),
     title: z.string().min(1).max(160),
+    /** Shelf flag: an archived topic keeps its files but drops out of the active rail. */
+    archived: z.boolean().optional(),
   })
   .passthrough();
 

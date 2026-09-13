@@ -1,5 +1,7 @@
 <script lang="ts">
   import {
+    Archive,
+    ArchiveRestore,
     BookOpen,
     Download,
     HardDrive,
@@ -7,6 +9,7 @@
     RefreshCw,
     ShieldCheck,
     Sparkles,
+    Trash2,
     Upload,
   } from '@lucide/svelte';
   import { onMount } from 'svelte';
@@ -27,8 +30,15 @@
   } from '$lib/app-updates';
   import { readAppearance, setAppearance, type Appearance } from '$lib/appearance';
   import { listConsentDecisions, resetConsent, type StoredConsentDecision } from '$lib/consent';
+  import { topicExportFormats, type TopicExportFormat } from '$lib/topic-export';
 
   import MachineFileRecovery from './MachineFileRecovery.svelte';
+
+  interface TopicEntry {
+    slug: string;
+    title: string;
+    archived?: boolean;
+  }
 
   export let storage: StorageAdapter;
   export let storageKind: string;
@@ -40,8 +50,16 @@
   export let hasTopic = false;
   export let hasUnsavedWrites = false;
   export let onExportWorkspace: () => void;
-  export let onExportTopic: () => void;
+  export let onExportTopic: (format: TopicExportFormat) => void;
+  export let topics: TopicEntry[] = [];
+  export let selectedSlug = '';
+  export let onArchiveTopic: (slug: string, archived: boolean) => void = () => undefined;
+  export let onDeleteTopic: (slug: string) => void = () => undefined;
   export let onImportWorkspace: (event: Event) => void;
+
+  let topicFormat: TopicExportFormat = 'zip';
+
+  $: selectedTitle = topics.find((topic) => topic.slug === selectedSlug)?.title ?? '';
   export let onOpenLegacyLearning: () => void = () => undefined;
   export let providerRecoveryActive = false;
   export let onReturnToResearch: () => void = () => undefined;
@@ -266,8 +284,16 @@
           <Download aria-hidden="true" size={17} /> Export workspace
         </button>
         {#if hasTopic}
-          <button disabled={busy} onclick={onExportTopic}>
-            <Download aria-hidden="true" size={17} /> Export current topic
+          <label class="format-picker">
+            <span>Current topic as</span>
+            <select bind:value={topicFormat} disabled={busy} aria-label="Topic export format">
+              {#each topicExportFormats as option (option.id)}
+                <option value={option.id}>{option.label}</option>
+              {/each}
+            </select>
+          </label>
+          <button disabled={busy} onclick={() => onExportTopic(topicFormat)}>
+            <Download aria-hidden="true" size={17} /> Export {selectedTitle || 'topic'}
           </button>
         {/if}
         <label class="file-action">
@@ -275,10 +301,55 @@
           <input type="file" accept=".zip,application/zip" onchange={onImportWorkspace} />
         </label>
       </div>
+      {#if hasTopic}
+        <p class="detail">
+          {topicExportFormats.find((option) => option.id === topicFormat)?.detail}
+        </p>
+      {/if}
       <p id="workspace-export-detail" class="detail">
         Internal recovery copies stay in this storage and are omitted from workspace exports.
       </p>
     </section>
+
+    {#if topics.length > 0}
+      <section aria-labelledby="topics-title">
+        <div class="section-heading">
+          <Archive aria-hidden="true" size={22} strokeWidth={1.5} />
+          <div>
+            <p class="eyebrow">Topics</p>
+            <h2 id="topics-title">Archive or delete topics</h2>
+          </div>
+        </div>
+        <p class="detail">
+          Archive a topic to clear it from the workspace rail without losing anything — restore it
+          any time. Delete removes its files for good; you’ll confirm by typing its name.
+        </p>
+        <ul class="topic-manager" aria-label="Manage topics">
+          {#each topics as topic (topic.slug)}
+            <li>
+              <span>
+                <strong>{topic.title}</strong>
+                {#if topic.archived}<small>Archived</small>{/if}
+              </span>
+              <div class="topic-manager-actions">
+                {#if topic.archived}
+                  <button disabled={busy} onclick={() => onArchiveTopic(topic.slug, false)}>
+                    <ArchiveRestore aria-hidden="true" size={15} /> Unarchive
+                  </button>
+                {:else}
+                  <button disabled={busy} onclick={() => onArchiveTopic(topic.slug, true)}>
+                    <Archive aria-hidden="true" size={15} /> Archive
+                  </button>
+                {/if}
+                <button class="danger" disabled={busy} onclick={() => onDeleteTopic(topic.slug)}>
+                  <Trash2 aria-hidden="true" size={15} /> Delete
+                </button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
 
     <div class="recovery-slot">
       <MachineFileRecovery {storage} onRecovered={onMachineFileRecovered} />
@@ -605,6 +676,67 @@
     border-color: var(--color-ink);
     background: var(--color-ink);
     color: var(--color-paper);
+  }
+
+  .format-picker {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+  }
+
+  .format-picker select {
+    min-height: 2.25rem;
+    padding-inline: var(--space-xs);
+    border: var(--rule-hair) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-ink);
+    font: inherit;
+  }
+
+  .topic-manager {
+    display: grid;
+    gap: 0;
+    margin: var(--space-md) 0 0;
+    padding: 0;
+    border-block-start: var(--rule-hair) solid var(--color-rule);
+    list-style: none;
+  }
+
+  .topic-manager li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    padding-block: var(--space-xs);
+    border-block-end: var(--rule-hair) solid var(--color-rule);
+  }
+
+  .topic-manager span {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-xs);
+  }
+
+  .topic-manager small {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .topic-manager-actions {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  button.danger {
+    border-color: var(--color-danger, #b3261e);
+    color: var(--color-danger, #b3261e);
   }
 
   .automatic-update {

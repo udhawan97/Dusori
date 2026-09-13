@@ -34,8 +34,14 @@
     sha256,
     createTopic,
     createWorkspace,
+    collectTopicDocument,
+    deleteTopic,
     exportTopic,
     exportWorkspace,
+    setTopicArchived,
+    topicToJson,
+    topicToMarkdown,
+    topicToText,
     lineDiff,
     inspectMachineFileRecoveries,
     prepareWorkspaceImport,
@@ -68,6 +74,8 @@
     stripCompanionCredentials,
   } from '$lib/companion-origin';
   import { containTab, modal } from '$lib/actions/modal';
+  import { renderMarkdown } from '$lib/markdown';
+  import type { TopicExportFormat } from '$lib/topic-export';
   import { discardNoteDraft, retainNoteDraft, type NoteDrafts } from '$lib/note-drafts';
   import { hasPendingResearchReceipts } from '$lib/local-research';
   import { workspaceImportTarget } from '$lib/workspace-import-target';
@@ -1114,13 +1122,65 @@
   function downloadArchive(archive: Uint8Array, filename: string): void {
     const bytes = new Uint8Array(archive.byteLength);
     bytes.set(archive);
-    const blob = new Blob([bytes.buffer], { type: 'application/zip' });
+    downloadBlob(new Blob([bytes.buffer], { type: 'application/zip' }), filename);
+  }
+
+  function downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadText(content: string, filename: string, mediaType: string): void {
+    downloadBlob(new Blob([content], { type: `${mediaType};charset=utf-8` }), filename);
+  }
+
+  /** Wraps rendered Markdown as a self-contained, theme-neutral HTML document. */
+  async function topicToHtml(slug: string): Promise<string> {
+    const doc = await collectTopicDocument(storage!, slug);
+    const { html } = await renderMarkdown(topicToMarkdown(doc));
+    const title = doc.title.replace(/[<&]/gu, (character) =>
+      character === '<' ? '&lt;' : '&amp;',
+    );
+    return (
+      `<!doctype html>\n<html lang="en"><head><meta charset="utf-8">` +
+      `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+      `<title>${title}</title>` +
+      `<style>body{font:16px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;` +
+      `max-width:44rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a}` +
+      `h1,h2,h3{line-height:1.25}code,pre{font-family:ui-monospace,monospace}` +
+      `pre{background:#f4f4f4;padding:1rem;overflow:auto}blockquote{color:#555;` +
+      `border-left:3px solid #ccc;margin:1rem 0;padding-left:1rem}</style></head>` +
+      `<body>${html}</body></html>\n`
+    );
+  }
+
+  // ponytail: PDF goes through the browser's own print dialog (Save as PDF), not a silent
+  // download — the sandbox blocks scripted PDF saves. Swap in a PDF lib only if one-click matters.
+  async function printTopicPdf(slug: string): Promise<void> {
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+    frame.srcdoc = await topicToHtml(slug);
+    await new Promise<void>((resolve) => {
+      frame.addEventListener('load', () => resolve(), { once: true });
+    });
+    const view = frame.contentWindow;
+    if (view) {
+      view.addEventListener('afterprint', () => frame.remove(), { once: true });
+      view.focus();
+      view.print();
+    }
+    // Fallback cleanup if afterprint never fires (e.g. the dialog is dismissed without printing).
+    window.setTimeout(() => frame.remove(), 60_000);
   }
 
   async function downloadWorkspace(): Promise<void> {
@@ -1132,16 +1192,90 @@
     });
   }
 
-  async function downloadTopic(): Promise<void> {
+  async function downloadTopic(format: TopicExportFormat = 'zip'): Promise<void> {
     if (!storage || !selectedSlug) return;
+    const slug = selectedSlug;
+    const base = `dusori-topic-${slug}-${new Date().toISOString().slice(0, 10)}`;
     await perform(async () => {
-      const archive = await exportTopic(storage!, selectedSlug);
-      downloadArchive(
-        archive,
-        `dusori-topic-${selectedSlug}-${new Date().toISOString().slice(0, 10)}.zip`,
-      );
-      status =
-        'Topic exported as a portable ZIP. It holds one topic, so it is not a workspace archive Dusori can import.';
+      switch (format) {
+        case 'zip': {
+          downloadArchive(await exportTopic(storage!, slug), `${base}.zip`);
+          status =
+            'Topic exported as a portable ZIP. It holds one topic, so it is not a workspace archive Dusori can import.';
+          return;
+        }
+        case 'markdown': {
+          const doc = await collectTopicDocument(storage!, slug);
+          downloadText(topicToMarkdown(doc), `${base}.md`, 'text/markdown');
+          break;
+        }
+        case 'text': {
+          const doc = await collectTopicDocument(storage!, slug);
+          downloadText(topicToText(doc), `${base}.txt`, 'text/plain');
+          break;
+        }
+        case 'json': {
+          const doc = await collectTopicDocument(storage!, slug);
+          downloadText(topicToJson(doc), `${base}.json`, 'application/json');
+          break;
+        }
+        case 'html': {
+          downloadText(await topicToHtml(slug), `${base}.html`, 'text/html');
+          break;
+        }
+        case 'pdf': {
+          await printTopicPdf(slug);
+          status = 'Opening the print dialog — choose “Save as PDF” to keep the file.';
+          return;
+        }
+      }
+      status = `Topic exported as ${format.toUpperCase()}.`;
+    });
+  }
+
+  /** After a topic leaves the active rail, keep a live topic open rather than a stale one. */
+  async function reselectAfterRemoval(removedSlug: string): Promise<void> {
+    if (selectedSlug !== removedSlug) return;
+    const next = workspace?.topics.find((topic) => !topic.archived);
+    if (next) openResearch(next.slug);
+    else {
+      selectedSlug = '';
+      await orientView();
+    }
+  }
+
+  async function archiveTopic(slug: string, archived: boolean): Promise<void> {
+    if (!storage) return;
+    const title = workspace?.topics.find((topic) => topic.slug === slug)?.title ?? slug;
+    await perform(async () => {
+      workspace = await setTopicArchived(storage!, slug, archived);
+      if (archived) await reselectAfterRemoval(slug);
+      status = archived ? `“${title}” archived.` : `“${title}” restored to active topics.`;
+    });
+  }
+
+  async function removeTopic(slug: string): Promise<void> {
+    if (!storage) return;
+    const title = workspace?.topics.find((topic) => topic.slug === slug)?.title;
+    if (!title) return;
+    // Two deliberate steps: consequences, then type-the-name (AWS/GitHub style). Native dialogs
+    // match this file's existing import confirmation and cannot be dismissed by a stray click.
+    const warned = window.confirm(
+      `Permanently delete “${title}”?\n\n` +
+        `This erases its notes, sources, roadmap, and synthesis from ${storageLabel}. ` +
+        `Exported archives are separate copies and are not touched. This cannot be undone.`,
+    );
+    if (!warned) return;
+    const typed = window.prompt(`To confirm, type the topic name exactly:\n\n${title}`);
+    if (typed === null) return;
+    if (typed.trim() !== title) {
+      announceStatus('The name did not match, so nothing was deleted.');
+      return;
+    }
+    await perform(async () => {
+      workspace = await deleteTopic(storage!, slug);
+      await reselectAfterRemoval(slug);
+      status = `“${title}” was permanently deleted.`;
     });
   }
 
@@ -1557,7 +1691,7 @@
       </div>
       <div class="studio-section topic-list">
         <p>Topics</p>
-        {#each workspace.topics as topic (topic.slug)}
+        {#each workspace.topics.filter((topic) => !topic.archived) as topic (topic.slug)}
           <button
             class:active={topic.slug === selectedSlug}
             class="studio-link"
@@ -1674,7 +1808,11 @@
             Boolean(conflict) ||
             busy}
           onExportWorkspace={() => void downloadWorkspace()}
-          onExportTopic={() => void downloadTopic()}
+          onExportTopic={(format) => void downloadTopic(format)}
+          topics={workspace.topics}
+          selectedSlug={selectedSlug}
+          onArchiveTopic={(slug, archived) => void archiveTopic(slug, archived)}
+          onDeleteTopic={(slug) => void removeTopic(slug)}
           onImportWorkspace={(event) => void uploadWorkspace(event)}
           onOpenLegacyLearning={() => void openLearning()}
           providerRecoveryActive={Boolean(providerRecoverySlug)}
@@ -2060,7 +2198,7 @@
           Export workspace
         </button>
         {#if selectedSlug}
-          <button class="inspector-action" disabled={busy} onclick={downloadTopic}>
+          <button class="inspector-action" disabled={busy} onclick={() => void downloadTopic('zip')}>
             <Download aria-hidden="true" size={18} />
             Export this topic
           </button>

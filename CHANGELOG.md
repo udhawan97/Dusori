@@ -4,6 +4,15 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ## [Unreleased]
 
+### Remove topics and export in more formats
+
+- Added topic removal: archive a topic to clear it from the workspace rail without losing anything
+  (reversible), or permanently delete it. Delete erases the topic's files and drops it from
+  `dusori.json` and Home.md behind an AWS-style guard — a consequences warning, then typing the
+  topic name to confirm. Archived topics keep every file and stay out of the active rail.
+- Added single-topic export in Markdown, HTML, PDF (via the browser print dialog), JSON, and plain
+  text, alongside the existing portable ZIP bundle.
+
 ### Preview-first machine-file recovery
 
 - Added a local recovery ledger during startup and in Settings for recognized invalid workspace,
