@@ -15,7 +15,7 @@
     "@dusori/storage-tauri": "workspace:*",
     "@lucide/svelte": "1.27.0",
     "@sveltejs/adapter-static": "3.0.10",
-    "@sveltejs/kit": "2.70.2",
+    "@sveltejs/kit": "2.70.3",
     "@vite-pwa/assets-generator": "1.0.2",
     "@vite-pwa/sveltekit": "1.1.0",
     "mermaid": "11.16.1",
