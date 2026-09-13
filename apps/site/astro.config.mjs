@@ -47,6 +47,7 @@ export default defineConfig({
           label: 'Release history',
           collapsed: true,
           items: [
+            { label: 'v0.15.1', slug: 'docs/releases/v0-15-1' },
             { label: 'v0.13.0', slug: 'docs/releases/v0-13-0' },
             { label: 'v0.12.4', slug: 'docs/releases/v0-12-4' },
             { label: 'v0.12.3', slug: 'docs/releases/v0-12-3' },

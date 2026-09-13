@@ -15,13 +15,23 @@ All notable Dusori changes are documented here. Dusori follows [Semantic Version
 
 ### Preview-first machine-file recovery
 
-- Added a local recovery ledger during startup and in Settings for recognized invalid workspace,
-  topic, source, research, review, and proposal JSON.
-- Shows the original excerpt, validation issue, bounded salvage summary, and exact proposed JSON
-  before a repair can be enabled; a review schedule stays manual-only when replacement would invent
-  history.
-- Archives the exact original bytes under `.dusori-recovery/` before a hash-guarded replacement, so
-  an external edit invalidates the reviewed plan instead of being overwritten.
+The [v0.15.1] release section below captures this work.
+
+## [0.15.1] - 2026-09-13
+
+### Preview-first machine-file recovery
+
+- Continued delivery of local recovery safeguards, including a startup and Settings ledger for invalid
+  workspace, topic, source, research, review, and proposal JSON.
+- Added explicit user-visible salvage preview with exact failed bytes, bounded summary, and proposal
+  review before any replacement write.
+- Preserved reviewed recovery plans when external edits invalidate the hash guard, so replacement remains
+  manual-only in those cases.
+
+### CI/CD reliability
+
+- Fixed a format-check regression in the primary pipeline branch by aligning generated source formatting with
+  the repository's committed style.
 
 ## [0.15.0] - 2026-08-30
 
@@ -496,7 +506,8 @@ Dusori becomes research-first: you name a topic you want to understand, and the 
 - Remote fetching, PDF extraction, search, Ollama transformations, generated schedules, and unattended work are not implemented.
 - The optional companion is versioned in the repository but is not published to npm in this release.
 
-[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/udhawan97/Dusori/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/udhawan97/Dusori/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/udhawan97/Dusori/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/udhawan97/Dusori/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/udhawan97/Dusori/compare/v0.12.4...v0.13.0
