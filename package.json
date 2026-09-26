@@ -28,7 +28,7 @@
     "@emnapi/core": "1.11.1",
     "@emnapi/runtime": "1.11.3",
     "@astrojs/check": "0.9.10",
-    "@axe-core/playwright": "4.12.1",
+    "@axe-core/playwright": "4.13.0",
     "@dusori/core": "workspace:*",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.62.1",
