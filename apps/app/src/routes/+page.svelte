@@ -1810,7 +1810,7 @@
           onExportWorkspace={() => void downloadWorkspace()}
           onExportTopic={(format) => void downloadTopic(format)}
           topics={workspace.topics}
-          selectedSlug={selectedSlug}
+          {selectedSlug}
           onArchiveTopic={(slug, archived) => void archiveTopic(slug, archived)}
           onDeleteTopic={(slug) => void removeTopic(slug)}
           onImportWorkspace={(event) => void uploadWorkspace(event)}
@@ -2198,7 +2198,11 @@
           Export workspace
         </button>
         {#if selectedSlug}
-          <button class="inspector-action" disabled={busy} onclick={() => void downloadTopic('zip')}>
+          <button
+            class="inspector-action"
+            disabled={busy}
+            onclick={() => void downloadTopic('zip')}
+          >
             <Download aria-hidden="true" size={18} />
             Export this topic
           </button>

@@ -1,10 +1,6 @@
 import type { StorageAdapter } from './adapters.js';
 import { readMachineFile } from './schemas/read-machine-file.js';
-import {
-  SourceManifestSchema,
-  TopicStateSchema,
-  WorkspaceSchema,
-} from './schemas/workspace.js';
+import { SourceManifestSchema, TopicStateSchema, WorkspaceSchema } from './schemas/workspace.js';
 import { topicRoot } from './workspace/paths.js';
 
 export interface TopicSection {
@@ -49,14 +45,16 @@ export async function collectTopicDocument(
   const sections: TopicSection[] = [];
   for (const name of orderedTopLevel) {
     const file = await storage.read(`${root}/${name}`);
-    if (file) sections.push({ path: `${root}/${name}`, title: sectionTitle(name), markdown: file.content });
+    if (file)
+      sections.push({ path: `${root}/${name}`, title: sectionTitle(name), markdown: file.content });
   }
   const notes = (await storage.list(`${root}/Notes`, true))
     .filter((entry) => entry.kind === 'file' && entry.path.endsWith('.md'))
     .sort((left, right) => left.path.localeCompare(right.path));
   for (const entry of notes) {
     const file = await storage.read(entry.path);
-    if (file) sections.push({ path: entry.path, title: sectionTitle(entry.path), markdown: file.content });
+    if (file)
+      sections.push({ path: entry.path, title: sectionTitle(entry.path), markdown: file.content });
   }
 
   const manifestFile = await storage.read(`${root}/Sources/manifest.json`);
