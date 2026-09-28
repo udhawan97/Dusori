@@ -13,7 +13,7 @@
     "@dusori/storage-fsa": "workspace:*",
     "@dusori/storage-opfs": "workspace:*",
     "@dusori/storage-tauri": "workspace:*",
-    "@lucide/svelte": "1.27.0",
+    "@lucide/svelte": "1.48.0",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.70.3",
     "@vite-pwa/assets-generator": "1.0.2",
